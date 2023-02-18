@@ -4,9 +4,14 @@ import os
 from typing import TYPE_CHECKING
 
 import aiosqlite
+from fuzzywuzzy import fuzz
 
 if TYPE_CHECKING:
     from core.bot import MangaClient
+
+
+def _levenshtein_distance(a: str, b: str) -> int:
+    return fuzz.ratio(a, b)
 
 
 class Database:
@@ -54,7 +59,6 @@ class Database:
                 )
                 """
             )
-
             await db.commit()
 
     async def add_series(
@@ -112,7 +116,7 @@ class Database:
                     """
                     SELECT series.id, series.human_name, series.last_chapter FROM series WHERE series.id IN (
                         SELECT series_id FROM users WHERE id = ?
-                    ) AND series.human_name LIKE ?;
+                    ) AND series.human_name LIKE ? LIMIT 25;
                     """,
                     (user_id, f"%{current}%"),
                 ) as cursor:
@@ -129,10 +133,14 @@ class Database:
                 return await cursor.fetchall()
 
     async def get_guild_config(self, guild_id: int) -> tuple:
+        """
+        Returns a tuple containing the guild's channel_id and updates_role_id and webhook url.
+        >>> (channel_id, updates_role_id, webhook_url)
+        """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                 """
-                SELECT channel_id, updates_role_id FROM config WHERE guild_id = ?;
+                SELECT channel_id, updates_role_id, webhook_url FROM config WHERE guild_id = ?;
                 """,
                 (guild_id,),
             ) as cursor:
@@ -149,11 +157,24 @@ class Database:
                 result = await cursor.fetchone()
                 return result[0] if result else None
 
-    async def get_all_series(self) -> list:
+    async def get_all_series(self, current: str = None) -> list:
         """
         Returns a list of tuples containing all series in the database.
         >>> [(id, human_name, manga_url, last_chapter, completed, scanlator), ...)]
         """
+        if current is not None:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+                async with db.execute(
+                    """
+                    SELECT * FROM series
+                    ORDER BY levenshtein(human_name, ?)
+                    LIMIT 25;
+                    """,
+                    (current,),
+                ) as cursor:
+                    return await cursor.fetchall()
+
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                 """
@@ -161,6 +182,33 @@ class Database:
                 """
             ) as cursor:
                 return await cursor.fetchall()
+
+    async def get_all_series_autocomplete(self, current: str = None) -> list:
+        """
+        Returns a list of tuples containing all series in the database.
+        >>> [(id, human_name, manga_url, last_chapter, completed, scanlator), ...)]
+        """
+        if current is not None:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+
+                async with db.execute(
+                    """
+                    SELECT * FROM series
+                    ORDER BY levenshtein(human_name, ?)
+                    LIMIT 25;
+                    """,
+                    (current,),
+                ) as cursor:
+                    return await cursor.fetchall()
+        else:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute(
+                    """
+                    SELECT * FROM series LIMIT 25;
+                    """,
+                ) as cursor:
+                    return await cursor.fetchall()
 
     async def get_all_subscribed_series(self):
         """
@@ -246,3 +294,19 @@ class Database:
                 """
             ) as cursor:
                 return await cursor.fetchall()
+
+    async def get_latest_chapter(self, series_id: str) -> float:
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                """
+                SELECT last_chapter FROM series WHERE id = ?;
+                """,
+                (series_id,),
+            ) as cursor:
+                result = await cursor.fetchone()
+                ch = result[0] if result else None
+                if not ch:
+                    return None
+                if int(ch) == ch:
+                    return int(ch)
+                return ch

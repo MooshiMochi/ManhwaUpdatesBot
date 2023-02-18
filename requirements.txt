@@ -5,3 +5,5 @@ aiosqlite
 aiofiles
 pyyaml
 beautifulsoup4
+fuzzywuzzy
+python-Levenshtein

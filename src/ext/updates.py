@@ -22,17 +22,16 @@ class MangaUpdates(commands.Cog):
             "manganato": Manganato,
             "toonily": Toonily,
         }
-        # self.register_command_checks()
 
     async def cog_load(self):
         self.bot._logger.info("Loaded Manga Updates Cog...")
         self.check_updates_task.start()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        ignore_checks = ["list", "unsubscribe"]
+        ignore_checks = ["list", "unsubscribe", "help", "latest"]
         if interaction.command.qualified_name in ignore_checks:
             return True
-
+        print(interaction.command.qualified_name)
         if interaction.guild_id is None:
             em = discord.Embed(
                 title="Error",
@@ -144,6 +143,8 @@ class MangaUpdates(commands.Cog):
                     self.bot._logger.info(
                         f"Sending update for {human_name}. Chapter {new_chapter}"
                     )
+                    if int(new_chapter) == new_chapter:
+                        new_chapter = int(new_chapter)
                     await webhook.send(
                         f"<@&{role_id}> **{human_name}** chapter **{new_chapter}** has been released!\n{url}",
                         allowed_mentions=discord.AllowedMentions(roles=True),
@@ -237,7 +238,26 @@ class MangaUpdates(commands.Cog):
             interaction.user.id, current
         )
 
-        return [discord.app_commands.Choice(name=x[1], value=x[0]) for x in subs][:25]
+        return [
+            discord.app_commands.Choice(
+                name=x[1][:97] + ("..." if len(x[1]) >= 100 else ""), value=x[0]
+            )
+            for x in subs
+        ][:25]
+
+    async def latest_chapters_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[discord.app_commands.Choice[str]]:
+        """Autocomplete for the /latest command"""
+        subs: list[
+            str, str, str, float, bool, str
+        ] = await self.bot.db.get_all_series_autocomplete(current)
+        return [
+            discord.app_commands.Choice(
+                name=x[1][:97] + ("..." if len(x[1]) >= 100 else ""), value=x[0]
+            )
+            for x in subs
+        ][:25]
 
     @app_commands.command(
         name="unsubscribe", description="Unsubscribe from a series on Manganato."
@@ -292,6 +312,51 @@ class MangaUpdates(commands.Cog):
 
         view = PaginatorView(pages, interaction, 60)
         await interaction.response.send_message(embed=pages[0], view=view)
+
+    @app_commands.command(
+        name="latest", description="Get the latest chapter of a series."
+    )
+    @app_commands.describe(manga_name="The name of the series.")
+    @app_commands.autocomplete(manga_name=latest_chapters_autocomplete)
+    async def latest_chapter(self, interaction: discord.Interaction, manga_name: str):
+
+        manga_id = manga_name  # for readability
+
+        latest_chapter = await self.bot.db.get_latest_chapter(manga_id)
+        manga_name = await self.bot.db.get_series_name(manga_id)
+
+        em = discord.Embed(title="Latest Chapter", color=discord.Color.green())
+        em.description = f"The latest chapter of `{manga_name}` is `{latest_chapter}`."
+        em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+
+        await interaction.response.send_message(embed=em, ephemeral=True)
+        return
+
+    @app_commands.command(
+        name="help", description="Get started with Manga Updates Bot."
+    )
+    async def help(self, interaction: discord.Interaction) -> None:
+        em = discord.Embed(title="Manga Updates Bot", color=discord.Color.green())
+        em.description = (
+            "Manga Updates Bot is a bot that allows you to subscribe to your favorite manga series and get notified when a new chapter is released.\n"
+            "To get started, the bot needs to be set up first. This can be done by using the `/config setup` command.\n"
+            "Note that this command can only be used by a server moderator that has the manage_channels/manage_roles permissions.\n\n"
+            "**Commands:**\n"
+            "You can subscribe to a series by using the `/subscribe` command."
+            "You can also unsubscribe from a series by using the `/unsubscribe` command.\n"
+            "You can view all your subscribed series by using the `/list` command.\n"
+            "You can also view the latest chapter of a series by using the `/latest` command.\n\n"
+            "**Permissions:**\n"
+            "The bot needs the following permissions to function properly:\n"
+            "• Send Messages\n"
+            "• Embed Links\n"
+            "• Manage Webhooks\n\n"
+            "**Further Help:**\n"
+            "If you need further help, you can join the [support server](https://discord.gg/EQ83EWW7Nu) and contact Mooshi#6669 - the bot developer.\n\n"
+        )
+        em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+        await interaction.response.send_message(embed=em, ephemeral=True)
+        return
 
 
 async def setup(bot: MangaClient) -> None:

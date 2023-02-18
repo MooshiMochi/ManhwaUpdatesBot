@@ -32,6 +32,20 @@ class BotCommandTree(discord.app_commands.CommandTree):
         except (InteractionResponded, discord.errors.HTTPException):
             await interaction.followup.send(embed=embed)
 
+    async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
+        """
+        The global check for application commands.
+        """
+        if not interaction.guild:
+            return False
+        elif (
+            not interaction.guild.me.guild_permissions.send_messages
+            and not interaction.guild.me.guild_permissions.embed_links
+        ):
+            print("I don't have permission to send messages or embed links.")
+            return False
+        return True
+
     async def on_error(
         self,
         interaction: discord.Interaction,

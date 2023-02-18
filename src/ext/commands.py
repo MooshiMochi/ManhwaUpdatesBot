@@ -28,6 +28,19 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
             await interaction.response.send_message(embed=em, ephemeral=True)
             return False
 
+        elif interaction.guild.me.guild_permissions.manage_webhooks is False:
+            em = discord.Embed(
+                title="Error",
+                description="I don't have permission to manage webhooks.",
+                color=0xFF0000,
+            )
+            em.description += (
+                "\nThis is important so I can send updates to the channel you specify."
+            )
+            em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
+            await interaction.response.send_message(embed=em, ephemeral=True)
+            return False
+
         if (
             interaction.user.guild_permissions.manage_roles
             or interaction.user.id in self.bot.owner_ids
