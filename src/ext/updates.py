@@ -155,24 +155,44 @@ class MangaUpdates(commands.Cog):
     async def before_check_updates_task(self):
         await self.bot.wait_until_ready()
 
-    sub_group = app_commands.Group(
-        name="subscribe", description="Subscribe to a manga series."
-    )
+    @app_commands.command(name="subscribe", description="Subscribe to a manga series.")
+    async def subscribe(self, interaction: discord.Interaction, manga_url: str) -> None:
+        if RegExpressions.manganato_url.match(manga_url):
+            scanlator = Manganato
 
-    @sub_group.command(
-        name="tritinia", description="Subscribe to a series on Tritinia Scans."
-    )
-    async def sub_tritinia(self, interaction: discord.Interaction, series_url: str):
+            series_id = RegExpressions.manganato_url.search(manga_url).group(4)
+            url_name = None  # we don't care for it in manganato
+            series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
-        manga_url_name = RegExpressions.tritinia_url.search(series_url)
-        if not manga_url_name:
+        elif RegExpressions.tritinia_url.match(manga_url):
+            scanlator = TritiniaScans
+
+            url_name = RegExpressions.tritinia_url.search(manga_url).group(3)
+            series_url: str = TritiniaScans.base_url + url_name
+            series_id = TritiniaScans.get_manga_id(series_url)
+
+        elif RegExpressions.toonily_url.match(manga_url):
+            scanlator = Toonily
+
+            url_name = RegExpressions.toonily_url.search(manga_url).group(3)
+            series_url: str = Toonily.base_url + url_name
+            series_id = Toonily.get_manga_id(series_url)
+
+        else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
-            em.description = "The URL you provided must follow the format:\n```diff\n+ https://tritinia.org/manga/manga-title/```"
+            em.description = (
+                "The URL you provided must follow either format:\n```diff"
+                "\n+ Manganato -> https://manganato.com/manga-m123456"
+                "\n+ Tritinia  -> https://tritinia.org/manga/manga-title/"
+                "\n+ Toonily   -> https://toonily.net/manga/manga-title/"
+                "```"
+            )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.response.send_message(embed=em, ephemeral=True)
 
-        url_name = manga_url_name.group(3)
-        completed = await TritiniaScans.is_series_completed(self.bot._session, url_name)
+        completed = await scanlator.is_series_completed(
+            self.bot._session, series_id, url_name
+        )
 
         if completed:
             em = discord.Embed(title="Series Completed", color=discord.Color.red())
@@ -180,121 +200,20 @@ class MangaUpdates(commands.Cog):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.response.send_message(embed=em, ephemeral=True)
 
-        scanlator = "tritinia"
-        series_name = await TritiniaScans.get_human_name(self.bot._session, url_name)
-        series_id = TritiniaScans.get_manga_id(TritiniaScans.base_url + url_name)
-        latest_chapter = await TritiniaScans.get_curr_chapter_num(
-            self.bot._session, url_name, None
+        latest_chapter = await scanlator.get_curr_chapter_num(
+            self.bot._session, series_id, url_name
         )
+        series_name = await scanlator.get_human_name(
+            self.bot._session, series_id, url_name
+        )
+
         await self.bot.db.add_series(
             series_id,
             series_name,
-            TritiniaScans.base_url + url_name,
+            series_url,
             latest_chapter or 1,
             False,
-            scanlator,
-        )
-
-        await self.bot.db.subscribe_user(
-            interaction.user.id, interaction.guild_id, series_id
-        )
-
-        embed = discord.Embed(
-            title="Subscribed to Series",
-            color=discord.Color.green(),
-            description=f"Successfully subscribed to {series_name}!",
-        )
-        embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @sub_group.command(
-        name="manganato", description="Subscribe to a series on Manganato."
-    )
-    @app_commands.describe(
-        series_url="The URL of the series. E.g https://manganato.com/manga-abc123"
-    )
-    async def sub_manganato(self, interaction: discord.Interaction, series_url: str):
-
-        manga_id = RegExpressions.manganato_url.search(series_url)
-
-        if not manga_id:
-            em = discord.Embed(title="Invalid URL", color=discord.Color.red())
-            em.description = "The URL you provided must follow either format:\n```diff\n+ https://manganato.com/manga-abc123\n+ https://chapmanganato.com/manga-abc123```"
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
-
-        series_id = manga_id.group(4)
-        completed = await Manganato.is_series_completed(self.bot._session, series_id)
-
-        if completed:
-            em = discord.Embed(title="Series Completed", color=discord.Color.red())
-            em.description = "This series has already been completed."
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
-
-        scanlator = "manganato"
-        series_name = await Manganato.get_human_name(self.bot._session, series_id)
-        latest_chapter = await Manganato.get_curr_chapter_num(
-            self.bot._session, None, series_id
-        )
-        await self.bot.db.add_series(
-            series_id,
-            series_name,
-            Manganato.fmt_url.format(manga_id=series_id),
-            latest_chapter or 1,
-            False,
-            scanlator,
-        )
-
-        await self.bot.db.subscribe_user(
-            interaction.user.id, interaction.guild_id, series_id
-        )
-
-        embed = discord.Embed(
-            title="Subscribed to Series",
-            color=discord.Color.green(),
-            description=f"Successfully subscribed to {series_name}!",
-        )
-        embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @sub_group.command(name="toonily", description="Subscribe to a series on Toonily.")
-    @app_commands.describe(
-        series_url="The URL of the series. E.g https://toonily.com/webtoon/series-name/"
-    )
-    async def sub_toonily(self, interaction: discord.Interaction, series_url: str):
-
-        manga_url_name = RegExpressions.toonily_url.search(series_url)
-        if not manga_url_name:
-            em = discord.Embed(title="Invalid URL", color=discord.Color.red())
-            em.description = "The URL you provided must follow the format:\n```diff\n+ https://toonily.com/webtoon/manga-title/```"
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
-
-        url_name = manga_url_name.group(3)
-        completed = await Toonily.is_series_completed(self.bot._session, url_name)
-
-        if completed:
-            em = discord.Embed(title="Series Completed", color=discord.Color.red())
-            em.description = "This series has already been completed."
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
-
-        scanlator = "toonily"
-        series_name = await Toonily.get_human_name(self.bot._session, url_name)
-        series_id = Toonily.get_manga_id(Toonily.base_url + url_name)
-        latest_chapter = await Toonily.get_curr_chapter_num(
-            self.bot._session, url_name, None
-        )
-        await self.bot.db.add_series(
-            series_id,
-            series_name,
-            Toonily.base_url + url_name,
-            latest_chapter or 1,
-            False,
-            scanlator,
+            scanlator.name,
         )
 
         await self.bot.db.subscribe_user(

@@ -12,6 +12,7 @@ from .errors import MangaNotFoundError
 class ABCScan:
     base_url: str = None
     fmt_url: str = None
+    name: str = "Unknown"
 
     @classmethod
     async def check_updates(
@@ -42,7 +43,7 @@ class ABCScan:
 
     @classmethod
     async def is_series_completed(
-        cls, session: aiohttp.ClientSession, manga: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> bool:
         """
         Summary:
@@ -52,7 +53,8 @@ class ABCScan:
         Parameters:
 
         session: aiohttp.ClientSession - The session to use for the request.
-        manga: str - The name of the manga.
+        manga_id: str - The ID of the manga.
+        url_manga_name: str - The name of the manga in the scanlator's website.
 
         Returns:
 
@@ -65,7 +67,9 @@ class ABCScan:
         raise NotImplementedError
 
     @classmethod
-    async def get_human_name(cls, session: aiohttp.ClientSession, manga: str) -> str:
+    async def get_human_name(
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
+    ) -> str:
         """
         Summary:
 
@@ -74,7 +78,8 @@ class ABCScan:
         Parameters:
 
         session: aiohttp.ClientSession - The session to use for the request.
-        manga: str - The name of the manga.
+        manga_id: str - The ID of the manga.
+        url_manga_name: str - The name of the manga in the scanlator's website.
 
         Returns:
 
@@ -105,7 +110,10 @@ class ABCScan:
 
     @classmethod
     async def get_curr_chapter_num(
-        cls, session: aiohttp.ClientSession, manga: str, manga_id: str
+        cls,
+        session: aiohttp.ClientSession,
+        manga_id: str,
+        url_manga_name: str,
     ) -> float | None:
         """
         Summary:
@@ -115,7 +123,7 @@ class ABCScan:
         Parameters:
 
         session: aiohttp.ClientSession - The session to use for the request.
-        manga: str - The name of the manga.
+        url_manga_name: str - The name of the manga in the scanlator's website.
         manga_id: str - The ID of the manga.
 
         Returns:
@@ -128,6 +136,7 @@ class ABCScan:
 class TritiniaScans(ABCScan):
     base_url = "https://tritinia.org/manga/"
     fmt_url = base_url + "{manga}/ajax/chapters/"
+    name = "tritinia"
 
     @classmethod
     async def check_updates(
@@ -159,7 +168,7 @@ class TritiniaScans(ABCScan):
 
     @classmethod
     async def get_curr_chapter_num(
-        cls, session: aiohttp.ClientSession, url_manga_name: str, manga_id: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> float | None:
         async with session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
             if resp.status != 200:
@@ -178,7 +187,7 @@ class TritiniaScans(ABCScan):
 
     @classmethod
     async def is_series_completed(
-        cls, session: aiohttp.ClientSession, url_manga_name: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> bool:
         async with session.get(cls.base_url + url_manga_name) as resp:
             if resp.status != 200:
@@ -196,7 +205,7 @@ class TritiniaScans(ABCScan):
 
     @classmethod
     async def get_human_name(
-        cls, session: aiohttp.ClientSession, url_manga_name: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> str | None:
         async with session.get(cls.base_url + url_manga_name) as resp:
             if resp.status != 200:
@@ -219,6 +228,7 @@ class TritiniaScans(ABCScan):
 class Manganato(ABCScan):
     base_url = "https://chapmanganato.com/manga-"
     fmt_url = base_url + "{manga_id}"
+    name = "manganato"
 
     @classmethod
     async def check_updates(
@@ -250,7 +260,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def is_series_completed(
-        cls, session: aiohttp.ClientSession, manga_id: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> bool:
         async with session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
@@ -278,7 +288,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_human_name(
-        cls, session: aiohttp.ClientSession, manga_id: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> str | None:
         async with session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
@@ -290,7 +300,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_curr_chapter_num(
-        cls, session: aiohttp.ClientSession, manga_url: str, manga_id: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> float | None:
         async with session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
@@ -317,6 +327,7 @@ class Manganato(ABCScan):
 class Toonily(ABCScan):
     base_url = "https://toonily.com/webtoon/"
     fmt_url = base_url + "{manga_url_name}"
+    name = "toonily"
 
     @classmethod
     async def check_updates(
@@ -354,9 +365,11 @@ class Toonily(ABCScan):
 
     @classmethod
     async def get_curr_chapter_num(
-        cls, session: aiohttp.ClientSession, manga_url: str, manga_id: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> float | None:
-        async with session.get(cls.fmt_url.format(manga_url_name=manga_url)) as resp:
+        async with session.get(
+            cls.fmt_url.format(manga_url_name=url_manga_name)
+        ) as resp:
             if resp.status != 200:
                 return None
 
@@ -375,7 +388,7 @@ class Toonily(ABCScan):
 
     @classmethod
     async def is_series_completed(
-        cls, session: aiohttp.ClientSession, url_manga_name: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> bool:
         async with session.get(
             cls.fmt_url.format(manga_url_name=url_manga_name)
@@ -395,7 +408,7 @@ class Toonily(ABCScan):
 
     @classmethod
     async def get_human_name(
-        cls, session: aiohttp.ClientSession, url_manga_name: str
+        cls, session: aiohttp.ClientSession, manga_id: str, url_manga_name: str
     ) -> str | None:
         async with session.get(cls.base_url + url_manga_name) as resp:
             if resp.status != 200:
