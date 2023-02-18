@@ -56,7 +56,14 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         channel: discord.TextChannel,
         updates_role: discord.Role,
     ):
-        await self.bot.db.add_config(interaction.guild_id, channel.id, updates_role.id)
+        webhook: discord.Webhook = await channel.create_webhook(
+            name="Manga Bot",
+            avatar=await self.bot.user.avatar.read(),
+            reason="Manga Bot",
+        )
+        await self.bot.db.upsert_config(
+            interaction.guild_id, channel.id, updates_role.id, webhook.url
+        )
 
         em = discord.Embed(
             title="Setup",

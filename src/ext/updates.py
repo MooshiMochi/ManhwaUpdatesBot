@@ -57,24 +57,38 @@ class MangaUpdates(commands.Cog):
 
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
-        series: list[
+        subscribed_series: list[
+            tuple[str, str, str, float, bool, str]
+        ] = await self.bot.db.get_all_subscribed_series()
+
+        if not subscribed_series:
+            return
+
+        all_series: list[
             tuple[str, str, str, float, bool, str]
         ] = await self.bot.db.get_all_series()
-        subscribed_series: dict[int, list[str]] = await self.bot.db.get_all_user_subs()
 
-        subbed_series_ids = set(
-            [
-                series_id
-                for user_subs in subscribed_series.values()
-                for series_id in user_subs
-            ]
+        series_ids_to_discard = set([x[0] for x in all_series]) - set(
+            [x[0] for x in subscribed_series]
         )
-        untracked_series_ids = set([x[0] for x in series]) - subbed_series_ids
 
-        if untracked_series_ids:
-            await self.bot.db.bulk_delete_series(untracked_series_ids)
+        if series_ids_to_discard:
+            await self.bot.db.bulk_delete_series(series_ids_to_discard)
 
-        series = [x for x in series if x[0] in subbed_series_ids]
+        series_webhook_roles: list[
+            tuple[str, str, str]
+        ] = await self.bot.db.get_series_webhook_role_pairs()
+
+        series_webhooks_roles: dict[str, dict[str, list[tuple[str, str]]]] = {}
+        for series_id, webhook_url, role_id in series_webhook_roles:
+            if series_id not in series_webhooks_roles:
+                series_webhooks_roles[series_id] = {
+                    "webhook_role_pairs": [(webhook_url, role_id)]
+                }
+            else:
+                series_webhooks_roles[series_id]["webhook_role_pairs"].append(
+                    (webhook_url, role_id)
+                )
 
         for (
             series_id,
@@ -83,7 +97,7 @@ class MangaUpdates(commands.Cog):
             last_chapter,
             completed,
             scanlator,
-        ) in series:
+        ) in subscribed_series:
             if completed:
                 self.bot._logger.warning(f"Deleting completed series {human_name}")
                 await self.bot.db.delete_series(series_id)
@@ -108,27 +122,34 @@ class MangaUpdates(commands.Cog):
             )
 
             if update_check_result is None:
-                self.bot._logger.debug(f"No updates for {human_name} ({series_id})")
+                self.bot._logger.info(f"No updates for {human_name} ({series_id})")
                 continue
 
             url, new_chapter = update_check_result
 
             await self.bot.db.update_series(series_id, new_chapter)
 
-            for channel_id, role_id in await self.bot.db.get_series_channels_and_roles(
-                series_id
-            ):
-                channel = self.bot.get_channel(channel_id)
-                if channel:
-                    self.bot._logger.debug(
+            wh_n_role = series_webhooks_roles.get(series_id, None)
+            if wh_n_role is None:
+                self.bot._logger.warning(
+                    f"No webhook/role pairs for {human_name} ({series_id})"
+                )
+                continue
+            for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
+                webhook = discord.Webhook.from_url(
+                    webhook_url, session=self.bot._session
+                )
+
+                if webhook:
+                    self.bot._logger.info(
                         f"Sending update for {human_name}. Chapter {new_chapter}"
                     )
-                    await channel.send(
+                    await webhook.send(
                         f"<@&{role_id}> **{human_name}** chapter **{new_chapter}** has been released!\n{url}",
                         allowed_mentions=discord.AllowedMentions(roles=True),
                     )
                 else:
-                    self.bot._logger.warning(f"Cant find channel {channel_id}")
+                    self.bot._logger.warning(f"Cant connect to webhook {webhook_url}")
 
     @check_updates_task.before_loop
     async def before_check_updates_task(self):

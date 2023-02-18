@@ -49,7 +49,8 @@ class Database:
                 """CREATE TABLE IF NOT EXISTS config (
                     guild_id INTEGER PRIMARY KEY NOT NULL,
                     channel_id INTEGER NOT NULL,
-                    updates_role_id INTEGER NOT NULL
+                    updates_role_id INTEGER NOT NULL,
+                    webhook_url TEXT NOT NULL
                 )
                 """
             )
@@ -86,28 +87,18 @@ class Database:
 
             await db.commit()
 
-    async def add_config(
-        self, guild_id: int, channel_id: int, updates_role_id: int
+    async def upsert_config(
+        self, guild_id: int, channel_id: int, updates_role_id: int, webhook_url: str
     ) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO config (guild_id, channel_id, updates_role_id) VALUES ($1, $2, $3) ON CONFLICT(guild_id) DO UPDATE SET channel_id = $2, updates_role_id = $3 WHERE guild_id = $1;
+                INSERT INTO config (guild_id, channel_id, updates_role_id, webhook_url) VALUES ($1, $2, $3, $4) ON CONFLICT(guild_id) DO UPDATE SET channel_id = $2, updates_role_id = $3, webhook_url = $4 WHERE guild_id = $1;
                 """,
-                (guild_id, channel_id, updates_role_id),
+                (guild_id, channel_id, updates_role_id, webhook_url),
             )
 
             await db.commit()
-
-    async def get_series(self, name: str) -> tuple:
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                """
-                SELECT * FROM series WHERE name = ?;
-                """,
-                (name,),
-            ) as cursor:
-                return await cursor.fetchone()
 
     async def get_user_subs(self, user_id: int, current: str = None) -> tuple:
         async with aiosqlite.connect(self.db_name) as db:
@@ -158,18 +149,6 @@ class Database:
                 result = await cursor.fetchone()
                 return result[0] if result else None
 
-    async def get_series_channels_and_roles(self, series_id: int) -> list:
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                """
-                SELECT channel_id, updates_role_id FROM config WHERE guild_id IN (
-                    SELECT guild_id FROM users WHERE series_id = ?
-                );
-                """,
-                (series_id,),
-            ) as cursor:
-                return await cursor.fetchall()
-
     async def get_all_series(self) -> list:
         """
         Returns a list of tuples containing all series in the database.
@@ -183,27 +162,20 @@ class Database:
             ) as cursor:
                 return await cursor.fetchall()
 
-    async def get_all_user_subs(self) -> list:
+    async def get_all_subscribed_series(self):
         """
-        Returns a dict of user_id: list[series_id] containing all the series all users are subscribed to.
-        >>> {user_id: [series_id, ...], ...}
+        Returns a list of tuples containing all series that are subscribed to by at least one user.
+        >>> [(id, human_name, manga_url, last_chapter, completed, scanlator), ...)]
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                 """
-                SELECT * FROM users;
+                SELECT * FROM series WHERE series.id IN (
+                    SELECT series_id FROM users
+                );
                 """
             ) as cursor:
-                result: list[tuple[int, str]] = await cursor.fetchall()
-                results_dict: dict[int, list[str]] = {}
-
-                for tup in result:
-                    user_id = tup[0]
-                    if user_id not in results_dict:
-                        results_dict[user_id] = []
-                    results_dict[user_id].append(tup[1])
-
-                return results_dict
+                return await cursor.fetchall()
 
     async def update_series(self, series_id: str, new_chapter: float) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -216,19 +188,6 @@ class Database:
             )
             if result.rowcount < 1:
                 raise ValueError(f"No series with ID {series_id} was found.")
-            await db.commit()
-
-    async def update_config(
-        self, guild_id: int, channel_id: int, updates_role_id: int
-    ) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                UPDATE config SET channel_id = ?, updates_role_id = ? WHERE guild_id = ?;
-                """,
-                (channel_id, updates_role_id, guild_id),
-            )
-
             await db.commit()
 
     async def delete_series(self, series_id: str) -> None:
@@ -276,32 +235,14 @@ class Database:
             )
             await db.commit()
 
-    async def delete_all_series(self) -> None:
+    async def get_series_webhook_role_pairs(self) -> list[tuple[str, str, int]]:
         async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
+            async with db.execute(
                 """
-                DELETE FROM series;
+                SELECT series.id, config.webhook_url, config.updates_role_id FROM series
+                INNER JOIN config ON series.id IN (
+                    SELECT series_id FROM users WHERE guild_id = config.guild_id
+                );
                 """
-            )
-
-            await db.commit()
-
-    async def delete_all_users(self) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM users;
-                """
-            )
-
-            await db.commit()
-
-    async def delete_all_config(self) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM config;
-                """
-            )
-
-            await db.commit()
+            ) as cursor:
+                return await cursor.fetchall()
