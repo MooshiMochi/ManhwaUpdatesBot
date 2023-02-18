@@ -23,7 +23,7 @@ async def main(config):
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
     client.load_config(config)
-    setup_logging(level=logging.INFO if config["debug"]["state"] else logging.DEBUG)
+    setup_logging()
 
     async with client:
         await load_extensions(client, config["extensions"])
