@@ -1,0 +1,4 @@
+On /setup:
+    - create a webhook and store it in the guild config table
+    - use the webhook to send updates to the channel instead of the bot
+    - this will save requests and make the bot more efficient

@@ -1,0 +1,25 @@
+# Path: config.yml
+
+debug: &debug
+  state: true
+
+privileged-intents:
+  message_content: true
+  members: false
+  presences: false
+
+constants:
+  owner-ids:
+    - 383287544336613385
+
+  test-guild-id: 1066891416934023218
+  log-channel-id: 1076211859302129726
+
+extensions:
+  - src.ext.commands
+  - src.ext.updates
+  - src.ext.dev
+
+prefix: '!'
+
+token: MafmWFajKWJFKjwakjkjlfkwaj.WFAF12.WAKJAKLWJGJw1243

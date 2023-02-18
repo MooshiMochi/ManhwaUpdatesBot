@@ -1,0 +1,7 @@
+requests
+discord.py[speed]
+aiohttp
+aiosqlite
+aiofiles
+pyyaml
+beautifulsoup4
