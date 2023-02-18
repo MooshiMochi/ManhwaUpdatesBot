@@ -28,11 +28,27 @@ class MangaClient(commands.Bot):
         await self.db.async_init()
         self._session = aiohttp.ClientSession()
 
+        if not self.__config["constants"]["synced"]:
+            self.loop.create_task(self.sync_commands())
+
+    async def sync_commands(self):
+        await self.wait_until_ready()
+        fmt = await self.tree.sync()
+        self._logger.info(f"Synced {len(fmt)} commands globally.")
+
+        self.__config["constants"]["synced"] = True
+        import yaml
+
+        with open("config.yml", "w") as f:
+            yaml.dump(self.__config, f, default_flow_style=False)
+
     def load_config(self, config: dict):
         self.owner_ids = config["constants"]["owner-ids"]
         self.test_guild_id = config["constants"]["test-guild-id"]
         self.log_channel_id: int = config["constants"]["log-channel-id"]
         self._debug_mode: bool = config["debug"]["state"]
+
+        self.__config: dict = config
 
     async def on_ready(self):
         self._logger.info("Ready!")
