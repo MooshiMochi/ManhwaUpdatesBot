@@ -21,7 +21,7 @@ How to set up the bot:
 1. Go to your terminal/console and run the following commands in order:
 
 ```bash
-git clone
+git clone https://github.com/MooshiMochi/ManhwaUpdatesBot
 cd ManhwaUpdatesBot
 cp config.yml.example config.yml
 pip install -r requirements.txt
