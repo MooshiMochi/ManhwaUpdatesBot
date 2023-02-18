@@ -3,7 +3,7 @@ import logging
 import aiohttp
 import discord
 from discord import Intents
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from .database import Database
 
