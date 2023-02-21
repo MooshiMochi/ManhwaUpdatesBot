@@ -11,17 +11,14 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from src.core.scanlationClasses import *
-from src.objects import PaginatorView
+from src.objects import Manga, PaginatorView, RateLimiter
 
 
 class MangaUpdates(commands.Cog):
     def __init__(self, bot: MangaClient):
         self.bot: MangaClient = bot
-        self.SCANLATORS: dict[str, ABCScan] = {
-            "tritinia": TritiniaScans,
-            "manganato": Manganato,
-            "toonily": Toonily,
-        }
+        self.SCANLATORS: dict[str, ABCScan] = SCANLATORS
+        self.rate_limiter: RateLimiter = RateLimiter()
 
     async def cog_load(self):
         self.bot._logger.info("Loaded Manga Updates Cog...")
@@ -31,7 +28,6 @@ class MangaUpdates(commands.Cog):
         ignore_checks = ["list", "unsubscribe", "help", "latest"]
         if interaction.command.qualified_name in ignore_checks:
             return True
-        print(interaction.command.qualified_name)
         if interaction.guild_id is None:
             em = discord.Embed(
                 title="Error",
@@ -56,23 +52,17 @@ class MangaUpdates(commands.Cog):
 
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
-        subscribed_series: list[
-            tuple[str, str, str, float, bool, str]
-        ] = await self.bot.db.get_all_subscribed_series()
+        subscribed_series: list[Manga] = await self.bot.db.get_all_subscribed_series()
 
         if not subscribed_series:
             return
 
-        all_series: list[
-            tuple[str, str, str, float, bool, str]
-        ] = await self.bot.db.get_all_series()
+        all_series: list[Manga] = await self.bot.db.get_all_series()
 
-        series_ids_to_discard = set([x[0] for x in all_series]) - set(
-            [x[0] for x in subscribed_series]
-        )
+        series_to_delete = set(all_series) - set(subscribed_series)
 
-        if series_ids_to_discard:
-            await self.bot.db.bulk_delete_series(series_ids_to_discard)
+        if series_to_delete:
+            await self.bot.db.bulk_delete_series(series_to_delete)
 
         series_webhook_roles: list[
             tuple[str, str, str]
@@ -89,26 +79,21 @@ class MangaUpdates(commands.Cog):
                     (webhook_url, role_id)
                 )
 
-        for (
-            series_id,
-            human_name,
-            manga_url,
-            last_chapter,
-            completed,
-            scanlator,
-        ) in subscribed_series:
-            if completed:
-                self.bot._logger.warning(f"Deleting completed series {human_name}")
-                await self.bot.db.delete_series(series_id)
+        for manga in subscribed_series:
+            if manga.completed:
+                self.bot._logger.warning(
+                    f"Deleting completed series {manga.human_name}"
+                )
+                await self.bot.db.delete_series(manga.series_id)
 
-            scanner = self.SCANLATORS.get(scanlator, None)
+            scanner = self.SCANLATORS.get(manga.scanlator, None)
             if scanner is None:
                 self.bot._logger.warning(
-                    f"Unknown scanlator {scanlator} for {human_name}. ID--{series_id}"
+                    f"Unknown scanlator {manga.scanlator} for {manga.human_name}. ID--{manga.id}"
                 )
                 log_em = discord.Embed(
                     title="Unknown Scanlator",
-                    description=f"```diff\n- Scanlator: {scanlator}\n- Name: {human_name}\n- ID: {series_id}```",
+                    description=f"```diff\n- Scanlator: {manga.scanlator}\n- Name: {manga.human_name}\n- ID: {manga.id}```",
                 )
                 log_em.set_footer(
                     text="Manga Updates Logs", icon_url=self.bot.user.avatar_url
@@ -116,22 +101,28 @@ class MangaUpdates(commands.Cog):
                 await self.bot.log_to_discord(embed=log_em)
                 continue
 
+            await self.rate_limiter.delay_if_necessary(manga)
+
             update_check_result = await scanner.check_updates(
-                self.bot._session, human_name, manga_url, series_id, last_chapter
+                self.bot._session,
+                manga.human_name,
+                manga.manga_url,
+                manga.id,
+                manga.last_chapter,
             )
 
             if update_check_result is None:
-                self.bot._logger.info(f"No updates for {human_name} ({series_id})")
+                # self.bot._logger.info(f"No updates for {manga.human_name} ({manga.id})")
                 continue
 
-            url, new_chapter = update_check_result
+            url, new_chapter, completed = update_check_result
+            manga.update(new_chapter, completed)
+            await self.bot.db.update_series(manga)
 
-            await self.bot.db.update_series(series_id, new_chapter)
-
-            wh_n_role = series_webhooks_roles.get(series_id, None)
+            wh_n_role = series_webhooks_roles.get(manga.id, None)
             if wh_n_role is None:
                 self.bot._logger.warning(
-                    f"No webhook/role pairs for {human_name} ({series_id})"
+                    f"No webhook/role pairs for {manga.human_name} ({manga.id})"
                 )
                 continue
             for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
@@ -141,12 +132,12 @@ class MangaUpdates(commands.Cog):
 
                 if webhook:
                     self.bot._logger.info(
-                        f"Sending update for {human_name}. Chapter {new_chapter}"
+                        f"Sending update for {manga.human_name}. Chapter {new_chapter}"
                     )
                     if int(new_chapter) == new_chapter:
                         new_chapter = int(new_chapter)
                     await webhook.send(
-                        f"<@&{role_id}> **{human_name}** chapter **{new_chapter}** has been released!\n{url}",
+                        f"<@&{role_id}> **{manga.human_name}** chapter **{new_chapter}** has been released!\n{url}",
                         allowed_mentions=discord.AllowedMentions(roles=True),
                     )
                 else:
@@ -208,17 +199,14 @@ class MangaUpdates(commands.Cog):
             self.bot._session, series_id, url_name
         )
 
-        await self.bot.db.add_series(
-            series_id,
-            series_name,
-            series_url,
-            latest_chapter or 1,
-            False,
-            scanlator.name,
+        manga: Manga = Manga(
+            series_id, series_name, series_url, latest_chapter, False, scanlator.name
         )
 
+        await self.bot.db.add_series(manga)
+
         await self.bot.db.subscribe_user(
-            interaction.user.id, interaction.guild_id, series_id
+            interaction.user.id, interaction.guild_id, manga.id
         )
 
         embed = discord.Embed(
@@ -234,13 +222,14 @@ class MangaUpdates(commands.Cog):
         self, interaction: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the playlist command."""
-        subs: list[str, str] = await self.bot.db.get_user_subs(
+        subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id, current
         )
 
         return [
             discord.app_commands.Choice(
-                name=x[1][:97] + ("..." if len(x[1]) >= 100 else ""), value=x[0]
+                name=x.human_name + ("..." if len(x.human_name) >= 100 else ""),
+                value=x.id,
             )
             for x in subs
         ][:25]
@@ -249,12 +238,11 @@ class MangaUpdates(commands.Cog):
         self, interaction: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /latest command"""
-        subs: list[
-            str, str, str, float, bool, str
-        ] = await self.bot.db.get_all_series_autocomplete(current)
+        subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
         return [
             discord.app_commands.Choice(
-                name=x[1][:97] + ("..." if len(x[1]) >= 100 else ""), value=x[0]
+                name=x.human_name + ("..." if len(x.human_name) >= 100 else ""),
+                value=x.id,
             )
             for x in subs
         ][:25]
@@ -262,15 +250,16 @@ class MangaUpdates(commands.Cog):
     @app_commands.command(
         name="unsubscribe", description="Unsubscribe from a series on Manganato."
     )
-    @app_commands.describe(manga_name="The name of the series.")
-    @app_commands.autocomplete(manga_name=manga_autocomplete)
-    async def unsubscribe(self, interaction: discord.Interaction, manga_name: str):
-        await self.bot.db.unsub_user(interaction.user.id, manga_name)
+    @app_commands.describe(manga_id="The name of the series.")
+    @app_commands.autocomplete(manga_id=manga_autocomplete)
+    @app_commands.rename(manga_id="manga")
+    async def unsubscribe(self, interaction: discord.Interaction, manga_id: str):
+        await self.bot.db.unsub_user(interaction.user.id, manga_id)
 
-        manga_name = await self.bot.db.get_series_name(manga_name)
+        manga: Manga = await self.bot.db.get_series(manga_id)
 
         em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
-        em.description = f"Successfully unsubscribed from `{manga_name}`."
+        em.description = f"Successfully unsubscribed from `{manga.human_name}`."
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.response.send_message(embed=em, ephemeral=True)
@@ -279,7 +268,7 @@ class MangaUpdates(commands.Cog):
     @app_commands.command(name="list", description="List all your subscribed series.")
     async def list_subs(self, interaction: discord.Interaction):
 
-        subs = await self.bot.db.get_user_subs(interaction.user.id)
+        subs: list[Manga] = await self.bot.db.get_user_subs(interaction.user.id)
 
         if not subs:
             em = discord.Embed(title="No Subscriptions", color=discord.Color.red())
@@ -292,7 +281,7 @@ class MangaUpdates(commands.Cog):
             em.description = (
                 "```diff\n"
                 + "- "
-                + "\n- ".join([f"{x[1]} - {x[2]}" for x in subs])
+                + "\n- ".join([f"{x.human_name} - {x.last_chapter}" for x in subs])
                 + "```"
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
@@ -304,7 +293,9 @@ class MangaUpdates(commands.Cog):
             em.description = (
                 "```diff\n"
                 + "- "
-                + "\n- ".join([f"{x[1]} - {x[2]}" for x in subs[i : i + 25]])
+                + "\n- ".join(
+                    [f"{x.human_name} - {x.last_chapter}" for x in subs[i : i + 25]]
+                )
                 + "```"
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
@@ -316,17 +307,17 @@ class MangaUpdates(commands.Cog):
     @app_commands.command(
         name="latest", description="Get the latest chapter of a series."
     )
-    @app_commands.describe(manga_name="The name of the series.")
-    @app_commands.autocomplete(manga_name=latest_chapters_autocomplete)
-    async def latest_chapter(self, interaction: discord.Interaction, manga_name: str):
+    @app_commands.describe(manga_id="The name of the series.")
+    @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
+    @app_commands.rename(manga_id="manga")
+    async def latest_chapter(self, interaction: discord.Interaction, manga_id: str):
 
-        manga_id = manga_name  # for readability
-
-        latest_chapter = await self.bot.db.get_latest_chapter(manga_id)
-        manga_name = await self.bot.db.get_series_name(manga_id)
+        manga: Manga = await self.bot.db.get_series(manga_id)
 
         em = discord.Embed(title="Latest Chapter", color=discord.Color.green())
-        em.description = f"The latest chapter of `{manga_name}` is `{latest_chapter}`."
+        em.description = (
+            f"The latest chapter of `{manga.human_name}` is `{manga.last_chapter}`."
+        )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.response.send_message(embed=em, ephemeral=True)

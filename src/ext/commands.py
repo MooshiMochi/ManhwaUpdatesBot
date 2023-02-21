@@ -9,6 +9,8 @@ import discord
 from discord import app_commands
 from discord.ext.commands import GroupCog
 
+from src.objects import GuildSettings
+
 
 class CommandsCog(GroupCog, name="config", description="Config commands."):
     def __init__(self, bot):
@@ -69,21 +71,42 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         channel: discord.TextChannel,
         updates_role: discord.Role,
     ):
+
+        existing_config: GuildSettings = await self.bot.db.get_guild_config(
+            interaction.guild_id
+        )
+        if existing_config.channel.id == channel.id:
+            if existing_config.webhook:
+                try:
+                    await existing_config.webhook.delete(reason="Manga Bot - Setup")
+                except discord.HTTPException:
+                    pass
+
         webhook: discord.Webhook = await channel.create_webhook(
             name="Manga Bot",
             avatar=await self.bot.user.avatar.read(),
             reason="Manga Bot",
         )
-        await self.bot.db.upsert_config(
-            interaction.guild_id, channel.id, updates_role.id, webhook.url
+        guild_config: GuildSettings = GuildSettings(
+            self.bot, interaction.guild_id, channel.id, updates_role.id, webhook.url
         )
+        await self.bot.db.upsert_config(guild_config)
 
         em = discord.Embed(
             title="Setup",
-            description="Setup complete!\n\n> **Channel:** {}\n> **Updates Role:** {}".format(
-                channel.mention, updates_role.mention
+            description=(
+                "Setup complete!\n\n"
+                "> **Channel:** <#{}>\n"
+                "> **Updates Role:** <@&{}>\n"
+                "> **Webhook Details:**\n"
+                "> \u200b \u200b- ID: {}"
+            ).format(
+                guild_config.channel.id,
+                guild_config.role.id,
+                guild_config.webhook.id,
             ),
         )
+
         em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
 
         return await interaction.response.send_message(embed=em, ephemeral=True)
@@ -92,12 +115,29 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         name="show", description="Shows the current config for this server."
     )
     async def show_config(self, interaction: discord.Interaction):
-        guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
+        guild_config: GuildSettings = await self.bot.db.get_guild_config(
+            interaction.guild_id
+        )
+        if not guild_config:
+            em = discord.Embed(
+                title="Error",
+                description="There is no config for this server.\n\nSetup the bot with `/config setup`.",
+                color=0xFF0000,
+            )
+            em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
+            return await interaction.response.send_message(embed=em, ephemeral=True)
 
         em = discord.Embed(
             title="Config",
-            description="> **Channel:** <#{}>\n> **Updates Role:** <@&{}>".format(
-                guild_config[0], guild_config[1]
+            description=(
+                "> **Channel:** <#{}>\n"
+                "> **Updates Role:** <@&{}>\n"
+                "> **Webhook Details:**\n"
+                "> \u200b \u200b- ID: {}"
+            ).format(
+                guild_config.channel.id,
+                guild_config.role.id,
+                guild_config.webhook.id,
             ),
         )
         em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
@@ -108,11 +148,37 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         name="clear", description="Clears the current config for this server."
     )
     async def clear_config(self, interaction: discord.Interaction):
+
+        guild_config: GuildSettings = await self.bot.db.get_guild_config(
+            interaction.guild_id
+        )
+
+        if not guild_config:
+            em = discord.Embed(
+                title="Error",
+                description="There is no config for this server.\n\nSetup the bot with `/config setup`.",
+                color=0xFF0000,
+            )
+            em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
+            return await interaction.response.send_message(embed=em, ephemeral=True)
+
+        if guild_config.channel:
+            if guild_config.webhook:
+                try:
+                    await guild_config.webhook.delete(reason="Manga Bot - Clear Config")
+                except (discord.Forbidden, discord.NotFound):
+                    pass
+
         await self.bot.db.delete_config(interaction.guild_id)
 
         em = discord.Embed(
             title="Config",
-            description="> **Channel:** None\n> **Updates Role:** None",
+            description=(
+                "> **Channel:** None\n"
+                "> **Updates Role:** None\n"
+                "> **Webhook Details:**\n"
+                "> \u200b \u200b- ID: Deleted"
+            ),
         )
         em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
 

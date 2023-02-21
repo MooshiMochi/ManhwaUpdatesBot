@@ -5,6 +5,7 @@ import discord
 from discord import Intents
 from discord.ext import commands
 
+from src.objects import GuildSettings
 from src.static import ID
 
 from .database import Database
@@ -74,35 +75,32 @@ class MangaClient(commands.Bot):
         await self.process_commands(message)
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
-        guild_config: tuple[ID, ID, str] = await self.db.get_guild_config(guild.id)
+        guild_config: GuildSettings = await self.db.get_guild_config(guild.id)
         if not guild_config:
             return
 
-        channel = guild.get_channel(guild_config[0])
-        role = guild.get_role(guild_config[1])
         if (
-            channel is None or role is None
+            guild_config.channel is None or guild_config.role is None
         ):  # if we can't find the channel or role, we can't send updates so delete guild config entirely
             await self.db.delete_config(guild.id)
             return
 
         try:
-            channel_webhooks = await channel.webhooks()
+            channel_webhooks = await guild_config.channel.webhooks()
         except discord.Forbidden:
             await self.db.delete_config(guild.id)
             return
 
-        webhook_urls = [webhook.ur for webhook in channel_webhooks]
-        if webhook_urls and guild_config[2] in webhook_urls:
+        if channel_webhooks and guild_config.webhook in channel_webhooks:
             return  # Everything is fine, we have a webhook in the channel
         else:
             try:
-                webhook = await channel.create_webhook(
+                guild_config.webhook = await guild_config.channel.create_webhook(
                     name="Manga Updates",
                     avatar=await self.user.avatar.read(),
                     reason="Manga Updates",
                 )
-                await self.db.upsert_config(guild.id, channel.id, role.id, webhook.url)
+                await self.db.upsert_config(guild_config)
             except discord.Forbidden:
                 await self.db.delete_config(guild.id)
             finally:

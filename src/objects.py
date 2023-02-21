@@ -1,9 +1,23 @@
-from asyncio import TimeoutError
-from typing import Iterable, Union
+from __future__ import annotations
 
+import asyncio
+import logging
+import random
+import time
+import urllib
+from asyncio import TimeoutError
+from typing import TYPE_CHECKING, Iterable, Self, Union
+
+if TYPE_CHECKING:
+    from src.core.bot import MangaClient
+
+import aiohttp
 import discord
+from bs4 import BeautifulSoup
 from discord.ext.commands import Context
 from discord.ext.commands import Paginator as CommandPaginator
+
+from src.core.scanlationClasses import SCANLATORS, ABCScan
 
 
 class PaginatorView(discord.ui.View):
@@ -163,3 +177,210 @@ class TextPageSource:
         for i in range(0, len(text), self._max_size - 300):
             chunks.append(text[i : i + self._max_size - 300])
         return chunks
+
+
+class Manga:
+    def __init__(
+        self,
+        id: str,
+        human_name: str,
+        manga_url: str,
+        last_chapter: float,
+        completed: bool,
+        scanlator: str,
+    ) -> None:
+        self._id: str = id
+        self._human_name: str = human_name
+        self._manga_url: str = manga_url
+        self._last_chapter: float = last_chapter
+        self._completed: bool = completed
+        self._scanlator: str = scanlator
+
+    def update(
+        self,
+        last_chapter: float = None,
+        completed: bool = None,
+    ) -> None:
+        """Update the manga."""
+        if last_chapter:
+            self._last_chapter = last_chapter
+        if completed:
+            self._completed = completed
+
+    @property
+    def id(self) -> str:
+        """Get the database ID of the manga."""
+        return self._id
+
+    @property
+    def human_name(self) -> str:
+        """Get the name of the manga."""
+        return self._human_name
+
+    @property
+    def manga_url(self) -> str:
+        """Get the URL of the manga.
+        Example: https://toonily.net/webtoon/what-do-i-do-now/
+        """
+        return self._manga_url
+
+    @property
+    def last_chapter(self) -> float:
+        """Get the last chapter of the manga."""
+        return self._last_chapter
+
+    @property
+    def completed(self) -> bool:
+        """Get the status of the manga."""
+        return self._completed
+
+    @property
+    def scanlator(self) -> str:
+        """Get the scanlator of the manga."""
+        return self._scanlator
+
+    @classmethod
+    def from_tuple(cls, data: tuple) -> Self:
+        """Create a Manga object from a tuple."""
+        return cls(*data)
+
+    @classmethod
+    def from_tuples(cls, data: list[tuple]) -> list[Self]:
+        """Create a list of Manga objects from a list of tuples."""
+        return [cls.from_tuple(d) for d in data] if data else []
+
+    def to_tuple(self) -> tuple:
+        """Convert a Manga object to a tuple."""
+        return (
+            self.id,
+            self.human_name,
+            self.manga_url,
+            self.last_chapter,
+            self.completed,
+            self.scanlator,
+        )
+
+    def __repr__(self) -> str:
+        return f"Manga(id={self.id}, human_name={self.human_name}, manga_url={self.manga_url}, last_chapter={self.last_chapter}, completed={self.completed}, scanlator={self.scanlator})"
+
+
+class GuildSettings:
+    def __init__(
+        self,
+        bot: MangaClient,
+        guild_id: int,
+        channel_id: int,
+        updates_role_id: int,
+        webhook_url: str,
+        *args,
+        **kwargs,
+    ) -> None:
+        self._bot: MangaClient = bot
+        self.guild: discord.Guild = bot.get_guild(guild_id)
+        self.channel: discord.abc.GuildChannel = self.guild.get_channel(channel_id)
+        self.role: discord.Role = self.guild.get_role(updates_role_id)
+        self.webhook: discord.Webhook = discord.Webhook.from_url(
+            webhook_url, session=bot._session
+        )
+        self._args = args
+        self._kwargs = kwargs
+
+    @classmethod
+    def from_tuple(cls, bot: MangaClient, data: tuple) -> "GuildSettings":
+        return cls(bot, *data)
+
+    @classmethod
+    def from_tuples(cls, bot: MangaClient, data: list[tuple]) -> list["GuildSettings"]:
+        return [cls.from_tuple(bot, d) for d in data] if data else []
+
+    def to_tuple(self) -> tuple:
+        """
+        Returns a tuple containing the guild settings.
+        >>> (guild_id, channel_id, updates_role_id, webhook_url)
+        """
+        return (
+            self.guild.id,
+            self.channel.id,
+            self.role.id,
+            self.webhook.url,
+        )
+
+
+class MangaUpdatesUtils:
+    @staticmethod
+    async def getMangaUpdatesID(
+        session: aiohttp.ClientSession, manga_title: str
+    ) -> tuple[str, str, str] | None:
+        """Scrape the series ID from MangaUpdates.com
+
+        Returns:
+            >>> (name, url, _id)
+            >>> None if not found
+        """
+        encoded_title = urllib.parse.quote(manga_title)
+        async with session.get(
+            f"https://www.mangaupdates.com/search.html?search={encoded_title}"
+        ) as resp:
+            if resp.status != 200:
+                return None
+
+            soup = BeautifulSoup(await resp.text(), "html.parser")
+
+            series_info = soup.find("div", {"class": "col-6 py-1 py-md-0 text"})
+            first_title = series_info.find("a")
+            url = first_title["href"]
+            _id = url.split("/")[-2]
+            return _id
+
+    @staticmethod
+    async def is_series_completed(
+        session: aiohttp.ClientSession, manga_id: str
+    ) -> bool:
+        """Check if the series is completed or not."""
+        api_url = "https://api.mangaupdates.com/v1/series/{id}"
+
+        async with session.get(api_url.format(id=manga_id)) as resp:
+            if resp.status != 200:
+                return None
+
+            data = await resp.json()
+            return data["completed"]
+
+
+class RateLimiter:
+    SCANLATORS: dict[str, ABCScan] = SCANLATORS
+    _logger = logging.getLogger("RateLimiter")
+
+    def __init__(self):
+        self._last_request_times = {}
+
+    def get_scanlator_key(self, manga: Manga):
+        """
+        Returns the scanlator key for a given Manga object, which corresponds to one of the keys in self.SCANLATORS.
+        """
+        return manga.scanlator
+
+    async def delay_if_necessary(self, manga: Manga):
+        """
+        Delays the current coroutine if the previous request to the same scanlator was made not too long ago.
+        """
+        scanlator_key = self.get_scanlator_key(manga)
+        last_request_time = self._last_request_times.get(scanlator_key, None)
+
+        if last_request_time is not None:
+            time_since_last_request = time.monotonic() - last_request_time
+            min_time_between_requests = self.SCANLATORS[
+                scanlator_key
+            ].MIN_TIME_BETWEEN_REQUESTS
+            if time_since_last_request < min_time_between_requests:
+                time_to_sleep = (
+                    min_time_between_requests
+                    - time_since_last_request
+                    + random.uniform(0.5, 1.5)
+                )
+                self._logger.debug(
+                    f"Delaying request to {scanlator_key} for {time_to_sleep} seconds."
+                )
+                await asyncio.sleep(time_to_sleep)
+
+        self._last_request_times[scanlator_key] = time.monotonic()
