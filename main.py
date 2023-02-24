@@ -1,5 +1,5 @@
 import asyncio
-import logging
+import os
 
 import yaml
 from discord import Intents
@@ -31,4 +31,10 @@ async def main(config):
 
 
 if __name__ == "__main__":
+    if not os.path.exists("logs"):
+        os.mkdir("logs")
+    if not os.path.exists("logs/error.log"):
+        with open("logs/error.log", "w") as f:
+            f.write("")
+
     asyncio.run(main(config), debug=config["debug"]["state"])
