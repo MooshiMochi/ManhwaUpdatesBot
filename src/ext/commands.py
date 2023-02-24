@@ -234,14 +234,18 @@ class MangaUpdates(commands.Cog):
     async def manga_autocomplete(
         self, interaction: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
-        """Autocomplete for the playlist command."""
+        """Autocomplete for the /unsubscribe command."""
         subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id, current
         )
 
         return [
             discord.app_commands.Choice(
-                name=x.human_name + ("..." if len(x.human_name) >= 100 else ""),
+                name=(
+                    x.human_name[:97] + "..."
+                    if len(x.human_name) > 100
+                    else x.human_name
+                ),
                 value=x.id,
             )
             for x in subs
@@ -254,7 +258,11 @@ class MangaUpdates(commands.Cog):
         subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
         return [
             discord.app_commands.Choice(
-                name=x.human_name + ("..." if len(x.human_name) >= 100 else ""),
+                name=(
+                    x.human_name[:97] + "..."
+                    if len(x.human_name) > 100
+                    else x.human_name
+                ),
                 value=x.id,
             )
             for x in subs
@@ -267,9 +275,9 @@ class MangaUpdates(commands.Cog):
     @app_commands.autocomplete(manga_id=manga_autocomplete)
     @app_commands.rename(manga_id="manga")
     async def unsubscribe(self, interaction: discord.Interaction, manga_id: str):
-        await self.bot.db.unsub_user(interaction.user.id, manga_id)
-
         manga: Manga = await self.bot.db.get_series(manga_id)
+
+        await self.bot.db.unsub_user(interaction.user.id, manga_id)
 
         em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
         em.description = f"Successfully unsubscribed from `{manga.human_name}`."
