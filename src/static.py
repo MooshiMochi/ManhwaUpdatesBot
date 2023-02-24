@@ -27,3 +27,6 @@ class RegExpressions:
     tritinia_url = re.compile(
         r"(https?://)?(www\.)?tritinia.org/manga/([a-zA-Z0-9-]+)(/.*)?"
     )
+    mangadex_url = re.compile(
+        r"(https?://)?(www\.)?mangadex.org/title/([a-zA-Z0-9-]+)(/.*)?"
+    )

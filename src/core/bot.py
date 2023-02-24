@@ -6,9 +6,9 @@ from discord import Intents
 from discord.ext import commands
 
 from src.objects import GuildSettings
-from src.static import ID
 
 from .database import Database
+from .mangadexAPI import MangaDexAPI
 
 
 class MangaClient(commands.Bot):
@@ -26,12 +26,13 @@ class MangaClient(commands.Bot):
         self._session: aiohttp.ClientSession = None
         self.log_channel_id: int = None
         self._debug_mode: bool = False
+        self.mangadex_api: MangaDexAPI = None
 
     async def setup_hook(self):
         await self.db.async_init()
         self._session = aiohttp.ClientSession()
 
-        if not self.__config["constants"]["synced"]:
+        if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
 
     async def sync_commands(self):
@@ -39,19 +40,23 @@ class MangaClient(commands.Bot):
         fmt = await self.tree.sync()
         self._logger.info(f"Synced {len(fmt)} commands globally.")
 
-        self.__config["constants"]["synced"] = True
+        self._config["constants"]["synced"] = True
         import yaml
 
         with open("config.yml", "w") as f:
-            yaml.dump(self.__config, f, default_flow_style=False)
+            yaml.dump(self._config, f, default_flow_style=False)
 
     def load_config(self, config: dict):
         self.owner_ids = config["constants"]["owner-ids"]
         self.test_guild_id = config["constants"]["test-guild-id"]
         self.log_channel_id: int = config["constants"]["log-channel-id"]
         self._debug_mode: bool = config["debug"]["state"]
+        self.mangadex_api = MangaDexAPI(
+            "https://api.mangadex.org",
+            aiohttp.ClientSession(),
+        )
 
-        self.__config: dict = config
+        self._config: dict = config
 
     async def on_ready(self):
         self._logger.info("Ready!")

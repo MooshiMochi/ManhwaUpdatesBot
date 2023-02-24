@@ -1,48 +1,25 @@
-import urllib.parse
+from src.core.scanlationClasses import *
 
-import aiohttp
-from bs4 import BeautifulSoup
+from .static import RegExpressions
 
 
-class MangaUpdates:
-    @staticmethod
-    async def scrape_series_id(
-        session: aiohttp.ClientSession, manga_title: str
-    ) -> tuple[str, str, str] | None:
-        """Scrape the series ID from MangaUpdates.com
+def get_manga_scanlation_class(url: str = None, key: str = None) -> ABCScan | None:
+    if url is None and key is None:
+        raise ValueError("Either URL or key must be provided.")
 
-        Returns:
-            >>> (name, url, _id)
-            >>> None if not found
-        """
-        encoded_title = urllib.parse.quote(manga_title)
-        async with session.get(
-            f"https://www.mangaupdates.com/search.html?search={encoded_title}"
-        ) as resp:
-            if resp.status != 200:
-                return None
+    d: dict[str, ABCScan] = {
+        "toonily": Toonily,
+        "manganato": Manganato,
+        "tritinia": TritiniaScans,
+        "mangadex": MangaDex,
+        "chapmanganato": Manganato,
+    }
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+    if key is not None:
+        if existing_class := d.get(key):
+            return existing_class
 
-            series_info = soup.find("div", {"class": "col-6 py-1 py-md-0 text"})
-            first_title = series_info.find("a")
-            name = first_title.text
-            url = first_title["href"]
-            _id = url.split("/")[-2]
-            if len(id) >= 3:
-                return name, url, _id
-            return None
-
-    @staticmethod
-    async def is_series_completed(
-        session: aiohttp.ClientSession, manga_id: str
-    ) -> bool:
-        """Check if the series is completed or not."""
-        api_url = "https://api.mangaupdates.com/v1/series/{id}"
-
-        async with session.get(api_url.format(id=manga_id)) as resp:
-            if resp.status != 200:
-                return None
-
-            data = await resp.json()
-            return data["completed"]
+    for name, obj in RegExpressions.__dict__.items():
+        if isinstance(obj, re.Pattern) and name.count("_") == 1:
+            if obj.match(url):
+                return d[name.split("_")[0]]

@@ -412,6 +412,39 @@ class Restricted(commands.Cog):
             raise e
 
     @developer.command(
+        name="logs",
+        help="View/Clear the error.log file.",
+        brief="View/Clear the error.log file.",
+    )
+    @commands.is_owner()
+    async def logs_clear(
+        self, ctx: commands.Context, *, action: Literal["clear", "view"] = "view"
+    ) -> None:
+        action = action.lower()
+        log_file = "logs/error.log"
+        assert os.path.exists("logs"), "logs folder does not exist."
+        assert os.path.exists(log_file), "error.log file does not exist."
+
+        if action == "clear":
+            with open(log_file, "w") as f:
+                f.write("")
+            return await ctx.send("```diff\n-<[ Logs cleared. ]>-```")
+
+        with open(log_file, "r") as f:
+            lines = f.readlines()
+
+        if not lines:
+            return await ctx.send("```diff\n-<[ No logs. ]>-```")
+
+        pages = TextPageSource(
+            "\n".join(lines).replace(self.client._config["token"], "[TOKEN]"),
+            code_block=True,
+        ).getPages()
+
+        view = PaginatorView(pages, ctx)
+        view.message = await ctx.send(view._iterable[0], view=view)
+
+    @developer.command(
         name="eval",
         help="Run something in python shell.",
         brief="Run something in python shell.",

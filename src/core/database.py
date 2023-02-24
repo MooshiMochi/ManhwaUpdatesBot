@@ -65,7 +65,6 @@ class Database:
 
     async def add_series(self, manga_obj: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
-            print(manga_obj.to_tuple())
             await db.execute(
                 """
                 INSERT INTO series (id, human_name, manga_url, last_chapter, completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(id) DO NOTHING;
@@ -215,7 +214,6 @@ class Database:
 
     async def update_series(self, manga: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
-            new_chapter = float(new_chapter)
             result = await db.execute(
                 """
                 UPDATE series SET last_chapter = ? WHERE id = ?;
@@ -260,10 +258,10 @@ class Database:
             await db.commit()
 
     async def bulk_delete_series(
-        self, series: list[Manga] | tuple[Manga] | set[Manga]
+        self, series_ids: list[str] | tuple[str] | set[str]
     ) -> None:
         async with aiosqlite.connect(self.db_name) as db:
-            id_list = ",".join([f"'{manga.id}'" for manga in series])
+            id_list = ",".join([f"'{_id}'" for _id in series_ids])
             await db.execute(
                 f"""
                 DELETE FROM series WHERE id IN ({id_list});

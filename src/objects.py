@@ -364,7 +364,13 @@ class RateLimiter:
         """
         Delays the current coroutine if the previous request to the same scanlator was made not too long ago.
         """
+
+        scanlators_to_ignore = ["mangadex"]
+
         scanlator_key = self.get_scanlator_key(manga)
+        if scanlator_key in scanlators_to_ignore:
+            return
+
         last_request_time = self._last_request_times.get(scanlator_key, None)
 
         if last_request_time is not None:
