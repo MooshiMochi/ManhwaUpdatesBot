@@ -408,39 +408,6 @@ class Restricted(commands.Cog):
             raise e
 
     @developer.command(
-        name="logs",
-        help="View/Clear the error.log file.",
-        brief="View/Clear the error.log file.",
-    )
-    @commands.is_owner()
-    async def logs_clear(
-        self, ctx: commands.Context, *, action: Literal["clear", "view"] = "view"
-    ) -> None:
-        action = action.lower()
-        log_file = "logs/error.log"
-        assert os.path.exists("logs"), "logs folder does not exist."
-        assert os.path.exists(log_file), "error.log file does not exist."
-
-        if action == "clear":
-            with open(log_file, "w") as f:
-                f.write("")
-            return await ctx.send("```diff\n-<[ Logs cleared. ]>-```")
-
-        with open(log_file, "r") as f:
-            lines = f.readlines()
-
-        if not lines:
-            return await ctx.send("```diff\n-<[ No logs. ]>-```")
-
-        pages = TextPageSource(
-            "\n".join(lines).replace(self.client._config["token"], "[TOKEN]"),
-            code_block=True,
-        ).getPages()
-
-        view = PaginatorView(pages, ctx)
-        view.message = await ctx.send(view._iterable[0], view=view)
-
-    @developer.command(
         name="eval",
         help="Run something in python shell.",
         brief="Run something in python shell.",
@@ -519,6 +486,68 @@ class Restricted(commands.Cog):
                         else:
                             view = PaginatorView(pages, ctx)
                             view.message = await ctx.send(pages[0], view=view)
+
+    @developer.command(
+        name="logs",
+        help="View/Clear the error.log file.",
+        brief="View/Clear the error.log file.",
+    )
+    @commands.is_owner()
+    async def logs_clear(
+        self, ctx: commands.Context, *, action: Literal["clear", "view"] = "view"
+    ) -> None:
+        action = action.lower()
+        log_file = "logs/error.log"
+        assert os.path.exists("logs"), "logs folder does not exist."
+        assert os.path.exists(log_file), "error.log file does not exist."
+
+        if action == "clear":
+            with open(log_file, "w") as f:
+                f.write("")
+            return await ctx.send("```diff\n-<[ Logs cleared. ]>-```")
+
+        with open(log_file, "r") as f:
+            lines = f.readlines()
+
+        if not lines:
+            return await ctx.send("```diff\n-<[ No logs. ]>-```")
+
+        pages = TextPageSource(
+            "\n".join(lines).replace(self.client._config["token"], "[TOKEN]"),
+            code_block=True,
+        ).getPages()
+
+        view = PaginatorView(pages, ctx)
+        view.message = await ctx.send(view._iterable[0], view=view)
+
+    @developer.command(
+        name="clear_commands",
+        help="Clear all commands.",
+        brief="Clear all commands.",
+    )
+    async def clear_commands(
+        self,
+        ctx: commands.Context,
+        spec: Optional[Literal["~"]] = None,
+    ) -> None:
+        """
+        Usage:
+        '!d clear_commands' | Clears the commands from all guilds
+        '!d clear_commands ~' | Clears the commands in the current guild
+        """
+        if spec == "~":
+            self.client.tree.clear_commands(guild=ctx.guild)
+            await ctx.invoke(
+                self.client.get_command("developer synctree"), guilds=None, spec="~"
+            )
+        else:
+            self.client.tree.clear_commands()
+            await ctx.invoke(self.client.get_command("developer synctree"))
+
+        await ctx.send(
+            f"Cleared all commands {'globally' if spec is None else 'from the current guild.'}"
+        )
+        return
 
 
 async def setup(bot: MangaClient) -> None:
