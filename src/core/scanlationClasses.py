@@ -161,7 +161,7 @@ class ABCScan:
         raise NotImplementedError
 
     @classmethod
-    def get_rx_url_name(cls, url: str) -> str:
+    def get_rx_url_name(cls, url: str) -> str | None:
         """
         Summary:
 
@@ -175,6 +175,7 @@ class ABCScan:
 
         str - The name of the manga from the URL.
             Note: This can be the ID of the manga depending on the scanlator (i.e. Mangadex).
+        None - If the URL is not valid.
         """
         raise NotImplementedError
 
@@ -276,8 +277,9 @@ class TritiniaScans(ABCScan):
         return hash_object.hexdigest()
 
     @classmethod
-    def get_rx_url_name(cls, url: str) -> str:
-        return RegExpressions.tritinia_url.search(url).group(3)
+    def get_rx_url_name(cls, url: str) -> str | None:
+        if RegExpressions.tritinia_url.match(url):
+            return RegExpressions.tritinia_url.search(url).group(3)
 
 
 class Manganato(ABCScan):
@@ -385,8 +387,9 @@ class Manganato(ABCScan):
         return re.search(r"manga-(.*)", manga_url).group(1)
 
     @classmethod
-    def get_rx_url_name(cls, url: str) -> str:
-        return RegExpressions.manganato_url.search(url).group(4)
+    def get_rx_url_name(cls, url: str) -> str | None:
+        if RegExpressions.manganato_url.match(url):
+            return RegExpressions.manganato_url.search(url).group(4)
 
 
 class Toonily(ABCScan):
@@ -495,8 +498,9 @@ class Toonily(ABCScan):
         return super().get_manga_id(manga_url)
 
     @classmethod
-    def get_rx_url_name(cls, url: str) -> str:
-        return RegExpressions.toonily_url.search(url).group(3)
+    def get_rx_url_name(cls, url: str) -> str | None:
+        if RegExpressions.toonily_url.match(url):
+            return RegExpressions.toonily_url.search(url).group(3)
 
 
 class MangaDex(ABCScan):
@@ -553,8 +557,9 @@ class MangaDex(ABCScan):
         return RegExpressions.mangadex_url.search(manga_url).group(3)
 
     @classmethod
-    def get_rx_url_name(cls, url: str) -> str:
-        return RegExpressions.mangadex_url.search(url).group(3)
+    def get_rx_url_name(cls, url: str) -> str | None:
+        if RegExpressions.mangadex_url.match(url):
+            return RegExpressions.mangadex_url.search(url).group(3)
 
 
 SCANLATORS: dict[ABCScan] = {

@@ -57,21 +57,23 @@ class MangaUpdates(commands.Cog):
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
         subscribed_series: list[Manga] = await self.bot.db.get_all_subscribed_series()
-        print(f"Subscribed series: ({len(subscribed_series)}) ->>", subscribed_series)
         if not subscribed_series:
             return
 
         all_series: list[Manga] = await self.bot.db.get_all_series()
-        print(f"All series: ({len(all_series)}) ->>", all_series)
 
         series_to_delete_ids = [
             m.id for m in all_series if m.id not in [m2.id for m2 in subscribed_series]
         ]
-        print(
-            f"Series to delete: ({len(series_to_delete_ids)}) ->>", series_to_delete_ids
-        )
 
         if series_to_delete_ids:
+            print(f"All series: ({len(all_series)}) ->> {all_series}")
+            print(
+                f"Subscribed series: ({len(subscribed_series)}) ->> {subscribed_series}"
+            )
+            self.bot._logger.warn(
+                f"Series to delete: ({len(series_to_delete_ids)}) ->> {series_to_delete_ids}"
+            )
             await self.bot.db.bulk_delete_series(series_to_delete_ids)
 
         series_webhook_roles: list[
@@ -410,6 +412,12 @@ class MangaUpdates(commands.Cog):
 
         result = results[0]
 
+        chapters = await self.bot.mangadex_api.get_chapters_list(result["id"])
+        if chapters:
+            latest_chapter = chapters[-1]["attributes"]["chapter"]
+        else:
+            latest_chapter = "N/A"
+
         em = discord.Embed(
             title=f"Title: {result['attributes']['title']['en']}",
             color=discord.Color.green(),
@@ -426,6 +434,7 @@ class MangaUpdates(commands.Cog):
         em.description = (
             f"**Year:** {result['attributes']['year']}\n"
             f"**Status:** {result['attributes']['status'].title()}\n"
+            f"**Latest English Chapter:** {latest_chapter}\n"
         )
 
         em.add_field(

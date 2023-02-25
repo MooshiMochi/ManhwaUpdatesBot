@@ -55,6 +55,7 @@ class MangaDexAPI:
     async def get_chapters_list(
         self, manga_id: str, languages: list[str] = ["en"]
     ) -> list[Dict[str, Any]]:
+        """Return a list of chapters in ascending order"""
         endpoint = f"manga/{manga_id}/feed"
         result = await self.__request(
             "GET", endpoint, params={"translatedLanguage[]": languages}
