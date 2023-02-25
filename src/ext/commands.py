@@ -156,6 +156,8 @@ class MangaUpdates(commands.Cog):
 
     @app_commands.command(name="subscribe", description="Subscribe to a manga series.")
     async def subscribe(self, interaction: discord.Interaction, manga_url: str) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
         if RegExpressions.manganato_url.match(manga_url):
             scanlator = Manganato
 
@@ -197,7 +199,7 @@ class MangaUpdates(commands.Cog):
                 "```"
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
+            return await interaction.followup.send(embed=em, ephemeral=True)
 
         completed = await scanlator.is_series_completed(self.bot, series_id, url_name)
 
@@ -205,7 +207,7 @@ class MangaUpdates(commands.Cog):
             em = discord.Embed(title="Series Completed", color=discord.Color.red())
             em.description = "This series has already been completed."
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
+            return await interaction.followup.send(embed=em, ephemeral=True)
 
         latest_chapter = await scanlator.get_curr_chapter_num(
             self.bot, series_id, url_name
@@ -229,7 +231,7 @@ class MangaUpdates(commands.Cog):
         )
         embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def manga_autocomplete(
         self, interaction: discord.Interaction, current: str
@@ -275,6 +277,8 @@ class MangaUpdates(commands.Cog):
     @app_commands.autocomplete(manga_id=manga_autocomplete)
     @app_commands.rename(manga_id="manga")
     async def unsubscribe(self, interaction: discord.Interaction, manga_id: str):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
         manga: Manga = await self.bot.db.get_series(manga_id)
 
         await self.bot.db.unsub_user(interaction.user.id, manga_id)
@@ -283,11 +287,12 @@ class MangaUpdates(commands.Cog):
         em.description = f"Successfully unsubscribed from `{manga.human_name}`."
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
-        await interaction.response.send_message(embed=em, ephemeral=True)
+        await interaction.followup.send(embed=em, ephemeral=True)
         return
 
     @app_commands.command(name="list", description="List all your subscribed series.")
     async def list_subs(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
 
         subs: list[Manga] = await self.bot.db.get_user_subs(interaction.user.id)
 
@@ -295,7 +300,7 @@ class MangaUpdates(commands.Cog):
             em = discord.Embed(title="No Subscriptions", color=discord.Color.red())
             em.description = "You have no subscriptions."
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
+            return await interaction.followup.send(embed=em, ephemeral=True)
 
         if len(subs) <= 25:
             em = discord.Embed(title="Your Subscriptions", color=discord.Color.green())
@@ -306,7 +311,7 @@ class MangaUpdates(commands.Cog):
                 + "```"
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
+            return await interaction.followup.send(embed=em, ephemeral=True)
 
         pages = []
         for i in range(0, len(subs), 25):
@@ -323,7 +328,7 @@ class MangaUpdates(commands.Cog):
             pages.append(em)
 
         view = PaginatorView(pages, interaction, 60)
-        await interaction.response.send_message(embed=pages[0], view=view)
+        await interaction.followup.send(embed=pages[0], view=view)
 
     @app_commands.command(
         name="latest", description="Get the latest chapter of a series."
@@ -332,6 +337,7 @@ class MangaUpdates(commands.Cog):
     @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
     @app_commands.rename(manga_id="manga")
     async def latest_chapter(self, interaction: discord.Interaction, manga_id: str):
+        await interaction.response.defer(ephemeral=True, thinking=True)
 
         manga: Manga = await self.bot.db.get_series(manga_id)
 
@@ -341,7 +347,7 @@ class MangaUpdates(commands.Cog):
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
-        await interaction.response.send_message(embed=em, ephemeral=True)
+        await interaction.followup.send(embed=em, ephemeral=True)
         return
 
     @app_commands.command(
@@ -375,11 +381,13 @@ class MangaUpdates(commands.Cog):
     )
     @app_commands.describe(query="The name of the manga.")
     async def dex_search(self, interaction: discord.Interaction, query: str):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
         response: dict[str, Any] = await self.bot.mangadex_api.search(query, limit=1)
         results: list[dict[str, Any]] = response["data"]
 
         if not results:
-            return await interaction.response.send_message(
+            return await interaction.followup.send(
                 embed=discord.Embed(
                     title="No Results Found",
                     description="No results were found for your query.",
@@ -438,7 +446,7 @@ class MangaUpdates(commands.Cog):
 
         view = SubscribeView(self.bot)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=em,
             ephemeral=True,
             view=view,

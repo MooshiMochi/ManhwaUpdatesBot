@@ -71,6 +71,7 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         channel: discord.TextChannel,
         updates_role: discord.Role,
     ):
+        await interaction.response.defer(ephemeral=True, thinking=True)
 
         existing_config: GuildSettings = await self.bot.db.get_guild_config(
             interaction.guild_id
@@ -109,12 +110,14 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
 
         em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
 
-        return await interaction.response.send_message(embed=em, ephemeral=True)
+        return await interaction.followup.send(embed=em, ephemeral=True)
 
     @app_commands.command(
         name="show", description="Shows the current config for this server."
     )
     async def show_config(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
         guild_config: GuildSettings = await self.bot.db.get_guild_config(
             interaction.guild_id
         )
@@ -125,7 +128,7 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
                 color=0xFF0000,
             )
             em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
+            return await interaction.followup.send(embed=em, ephemeral=True)
 
         em = discord.Embed(
             title="Config",
@@ -142,12 +145,13 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         )
         em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
 
-        return await interaction.response.send_message(embed=em, ephemeral=True)
+        return await interaction.followup.send(embed=em, ephemeral=True)
 
     @app_commands.command(
         name="clear", description="Clears the current config for this server."
     )
     async def clear_config(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
 
         guild_config: GuildSettings = await self.bot.db.get_guild_config(
             interaction.guild_id
@@ -160,7 +164,7 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
                 color=0xFF0000,
             )
             em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
-            return await interaction.response.send_message(embed=em, ephemeral=True)
+            return await interaction.followup.send(embed=em, ephemeral=True)
 
         if guild_config.channel:
             if guild_config.webhook:
@@ -182,7 +186,7 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         )
         em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
 
-        return await interaction.response.send_message(embed=em, ephemeral=True)
+        return await interaction.followup.send(embed=em, ephemeral=True)
 
 
 async def setup(bot: MangaClient) -> None:
