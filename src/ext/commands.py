@@ -308,12 +308,14 @@ class MangaUpdates(commands.Cog):
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         if len(subs) <= 25:
-            em = discord.Embed(title="Your Subscriptions", color=discord.Color.green())
-            em.description = (
-                "```diff\n"
-                + "- "
-                + "\n- ".join([f"{x.human_name} - {x.last_chapter}" for x in subs])
-                + "```"
+            em = discord.Embed(
+                title=f"Your Subscriptions ({len(subs)})", color=discord.Color.green()
+            )
+            em.description = "• " + "\n• ".join(
+                [
+                    f"[{x.human_name}]({x.manga_url}) - Chapter {x.last_chapter}"
+                    for x in subs
+                ]
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
@@ -321,13 +323,11 @@ class MangaUpdates(commands.Cog):
         pages = []
         for i in range(0, len(subs), 25):
             em = discord.Embed(title="Your Subscriptions", color=discord.Color.green())
-            em.description = (
-                "```diff\n"
-                + "- "
-                + "\n- ".join(
-                    [f"{x.human_name} - {x.last_chapter}" for x in subs[i : i + 25]]
-                )
-                + "```"
+            em.description = "• " + "\n• ".join(
+                [
+                    f"[{x.human_name}]({x.manga_url}) - Chapter {x.last_chapter}"
+                    for x in subs[i : i + 25]
+                ]
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             pages.append(em)
