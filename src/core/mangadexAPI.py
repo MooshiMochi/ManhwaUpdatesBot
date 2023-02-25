@@ -60,16 +60,12 @@ class MangaDexAPI:
         result = await self.__request(
             "GET", endpoint, params={"translatedLanguage[]": languages}
         )
-        result = sorted(result["data"], key=lambda x: x["attributes"]["chapter"])
+        result = sorted(result["data"], key=lambda x: float(x["attributes"]["chapter"]))
         for x in range(len(result.copy())):
             if result[x]["attributes"]["volume"] is None:
                 result[x]["attributes"]["volume"] = 0
-        result = sorted(result, key=lambda x: x["attributes"]["volume"])
+        result = sorted(result, key=lambda x: float(x["attributes"]["volume"]))
         return list(result)
-
-    # async def get_chapters(self, chapter_id: str) -> Dict[str, Any]:
-    #     endpoint = f"chapter/{chapter_id}"
-    #     return await self.__request("GET", endpoint)
 
     async def search(
         self,
