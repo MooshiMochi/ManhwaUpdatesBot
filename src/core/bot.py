@@ -38,6 +38,29 @@ class MangaClient(commands.Bot):
 
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
+        self.loop.create_task(self.update_restart_message())
+
+    async def update_restart_message(self):
+        await self.wait_until_ready()
+
+        if os.path.exists("logs/restart.txt"):
+            with open("logs/restart.txt", "r") as f:
+                contents = f.read()
+                if not contents:
+                    return
+                channel_id, msg_id = contents.split("/")[5:]
+
+            with open("logs/restart.txt", "w") as f:  # clear the file
+                f.write("")
+            channel = self.get_channel(int(channel_id))
+            if channel is None:
+                return
+            msg = await channel.fetch_message(int(msg_id))
+            if msg is None:
+                return
+            em = msg.embeds[0]
+            em.description = f"✅ `Bot is now online.`"
+            return await msg.edit(embed=em)
 
     async def sync_commands(self):
         await self.wait_until_ready()

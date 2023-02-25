@@ -62,17 +62,13 @@ class Restricted(commands.Cog):
         return [output.decode() for output in result]
 
     async def restart_bot(self, message_url: str = None):
+        with open("logs/restart.txt", "w") as f:
+            f.write(message_url)
+
         if os.name == "nt":
             python = sys.executable
             sys_args = sys.argv
-            if "-msg" in sys_args:
-                sys_args = sys_args[: sys_args.index("-msg")]
-
-            await self.client.close()
-            if message_url:
-                os.execl(python, python, *sys_args, f"-msg {message_url}")
-            else:
-                os.execl(python, python, *sys_args)
+            os.execl(python, python, *sys_args)
         else:
             os.system("pm2 restart manga-bot")
 
@@ -106,7 +102,7 @@ class Restricted(commands.Cog):
     async def developer_restart(self, ctx: commands.Context):
         msg = await ctx.send(
             embed=discord.Embed(
-                description=f"🔃 `Restarting the bot.`",
+                description=f"⚠️ `Restarting the bot.`",
                 color=discord.Color.dark_theme(),
             )
         )

@@ -141,3 +141,5 @@ test.py
 **/database.db
 config.yml
 result.html
+
+logs/restart.txt
