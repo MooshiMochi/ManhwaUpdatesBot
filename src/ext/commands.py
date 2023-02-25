@@ -57,16 +57,19 @@ class MangaUpdates(commands.Cog):
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
         subscribed_series: list[Manga] = await self.bot.db.get_all_subscribed_series()
-
+        print(f"Subscribed series: ({len(subscribed_series)}) ->>", subscribed_series)
         if not subscribed_series:
             return
 
         all_series: list[Manga] = await self.bot.db.get_all_series()
+        print(f"All series: ({len(all_series)}) ->>", all_series)
 
-        series_to_delete_ids = set([m.id for m in all_series]) - set(
-            [m.id for m in subscribed_series]
+        series_to_delete_ids = [
+            m.id for m in all_series if m.id not in [m2.id for m2 in subscribed_series]
+        ]
+        print(
+            f"Series to delete: ({len(series_to_delete_ids)}) ->>", series_to_delete_ids
         )
-        print(series_to_delete_ids)
 
         if series_to_delete_ids:
             await self.bot.db.bulk_delete_series(series_to_delete_ids)
@@ -383,8 +386,17 @@ class MangaUpdates(commands.Cog):
     async def dex_search(self, interaction: discord.Interaction, query: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        response: dict[str, Any] = await self.bot.mangadex_api.search(query, limit=1)
-        results: list[dict[str, Any]] = response["data"]
+        if manga_id := MangaDex.get_rx_url_name(query):
+            response: dict[str, Any] = await self.bot.mangadex_api.get_manga(manga_id)
+        else:
+            response: dict[str, Any] = await self.bot.mangadex_api.search(
+                query, limit=1
+            )
+        results: list[dict[str, Any]] = (
+            response["data"]
+            if isinstance(response["data"], list)
+            else [response["data"]]
+        )
 
         if not results:
             return await interaction.followup.send(

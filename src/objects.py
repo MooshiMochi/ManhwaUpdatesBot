@@ -261,7 +261,7 @@ class Manga:
         )
 
     def __repr__(self) -> str:
-        return f"Manga(id={self.id}, human_name={self.human_name}, manga_url={self.manga_url}, last_chapter={self.last_chapter}, completed={self.completed}, scanlator={self.scanlator})"
+        return f"Manga({self.human_name} - {self.last_chapter})"
 
 
 class GuildSettings:
