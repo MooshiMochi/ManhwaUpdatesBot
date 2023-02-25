@@ -1,4 +1,5 @@
 import logging
+import os
 
 import aiohttp
 import discord
@@ -30,7 +31,10 @@ class MangaClient(commands.Bot):
 
     async def setup_hook(self):
         await self.db.async_init()
-        self._session = aiohttp.ClientSession()
+        if os.name == "nt":
+            self._session = aiohttp.ClientSession()
+        else:
+            self._session = aiohttp.ClientSession(trust_env=True)
 
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
@@ -53,7 +57,7 @@ class MangaClient(commands.Bot):
         self._debug_mode: bool = config["debug"]["state"]
         self.mangadex_api = MangaDexAPI(
             "https://api.mangadex.org",
-            aiohttp.ClientSession(),
+            aiohttp.ClientSession(trust_env=True if os.name != "nt" else False),
         )
 
         self._config: dict = config
