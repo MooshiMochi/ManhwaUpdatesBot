@@ -30,11 +30,11 @@ class ABCScan:
         url_manga_name: str,
         manga_id: str,
         last_chapter: int,
-    ) -> tuple[str, float, bool]:
+    ) -> list[tuple[str, float, bool]]:
         """
         Summary:
 
-        Checks whether a new release has appeared on the scanlator's website.
+        Checks whether any new releases has appeared on the scanlator's website.
         Checks whether the series is completed or not.
 
         Parameters:
@@ -45,10 +45,10 @@ class ABCScan:
         last_chapter: int - The last chapter released last time.
 
         Returns:
-
-        str/None - The `url` of the new chapter if a new release appeared, otherwise `None`.
-        float/None - The `chapter` number of the new chapter if a new release appeared, otherwise `None`.
-        bool - `True` if the series is completed, otherwise `False`.
+        list[tuple[str, float, bool]] - A list of tuples containing the following:
+            :str/None: - The `url` of the new chapter if a new release appeared, otherwise `None`.
+            :float/None: - The `chapter` number of the new chapter if a new release appeared, otherwise `None`.
+            :bool: - `True` if the series is completed, otherwise `False`.
         """
         raise NotImplementedError
 
@@ -193,7 +193,7 @@ class TritiniaScans(ABCScan):
         url_manga_name: str,
         manga_id: str,
         last_chapter: int,
-    ) -> tuple[str, float, bool] | None:
+    ) -> list[tuple[str, float, bool]] | None:
         url_manga_name = RegExpressions.tritinia_url.search(url_manga_name).group(3)
 
         async with bot._session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
@@ -202,18 +202,22 @@ class TritiniaScans(ABCScan):
                 return None
             text = await resp.text()
 
-            soup = BeautifulSoup(text, "html.parser")
-            last_chapter_container = soup.find("li", {"class": "wp-manga-chapter"})
-            last_chapter_tag = last_chapter_container.find("a")
-
-            new_url = last_chapter_tag["href"]
-            new_chapter = float(
-                RegExpressions.chapter_num_from_url.search(new_url).group(1)
-            )
-
             completed = await cls.is_series_completed(bot, manga_id, url_manga_name)
-            if new_chapter > last_chapter:
-                return new_url, new_chapter, completed
+
+            soup = BeautifulSoup(text, "html.parser")
+            last_chapter_containers = soup.find_all("li", {"class": "wp-manga-chapter"})
+            new_updates: list[tuple[str, float, bool]] = []
+
+            for chap_container in last_chapter_containers:
+                last_chapter_tag = chap_container.find("a")
+                new_url = last_chapter_tag["href"]
+                new_chapter = float(
+                    RegExpressions.chapter_num_from_url.search(new_url).group(1)
+                )
+                if new_chapter > last_chapter:
+                    new_updates.append((new_url, new_chapter, completed))
+
+            return list(reversed(new_updates))
 
     @classmethod
     async def get_curr_chapter_num(
@@ -295,7 +299,7 @@ class Manganato(ABCScan):
         url_manga_name: str,
         manga_id: str,
         last_chapter: int,
-    ) -> tuple[str, float, bool] | None:
+    ) -> list[tuple[str, float, bool]] | None:
         async with bot._session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
                 print("Manganato: Failed to get manga page", resp.status)
@@ -303,18 +307,23 @@ class Manganato(ABCScan):
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
 
+            completed = cls._bs_is_series_completed(soup)
+            new_updates: list[tuple[str, float, bool]] = []
+
             chapter_list_container = soup.find(
                 "div", {"class": "panel-story-chapter-list"}
             )
-            last_chapter_link = chapter_list_container.find("a")
-            last_chapter_url = last_chapter_link["href"]
-            last_web_chapter = float(
-                RegExpressions.chapter_num_from_url.search(last_chapter_url).group(1)
-            )
+            chapter_tags = chapter_list_container.find_all("a")
+            for chp_tag in chapter_tags:
+                new_chapter_url = chp_tag["href"]
+                new_chapter = float(
+                    RegExpressions.chapter_num_from_url.search(new_chapter_url).group(1)
+                )
 
-            if float(last_chapter) == last_web_chapter:
-                return None
-            return last_chapter_url, last_web_chapter, cls._bs_is_series_completed(soup)
+                if new_chapter > float(last_chapter):
+                    new_updates.append((new_chapter_url, new_chapter, completed))
+
+            return list(reversed(new_updates))
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
@@ -405,7 +414,7 @@ class Toonily(ABCScan):
         url_manga_name: str,
         manga_id: str,
         last_chapter: int,
-    ) -> tuple[str, float, bool] | None:
+    ) -> list[tuple[str, float, bool]] | None:
 
         url_manga_name = RegExpressions.toonily_url.search(url_manga_name).group(3)
 
@@ -416,20 +425,25 @@ class Toonily(ABCScan):
                 print("Toonily: Failed to get manga page", resp.status)
                 return None
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            completed = cls._bs_is_series_completed(soup)
+            new_updates: list[tuple[str, float, bool]] = []
 
             chapter_list_container = soup.find(
                 "ul", {"class": "main version-chap no-volumn"}
             )
-            last_chapter_link = chapter_list_container.find("a")
-            last_chapter_url = last_chapter_link["href"]
-            last_web_chapter = float(
-                RegExpressions.chapter_num_from_url.search(last_chapter_url).group(1)
-            )
+            new_chapter_links = chapter_list_container.find_all("a")
+            for chp_link in new_chapter_links:
+                new_chapter_url = chp_link["href"]
+                new_chapter = float(
+                    RegExpressions.chapter_num_from_url.search(new_chapter_url).group(1)
+                )
+                if new_chapter > float(last_chapter):
+                    new_updates.append((new_chapter_url, new_chapter, completed))
 
-            if float(last_chapter) == last_web_chapter:
-                return None
-            return last_chapter_url, last_web_chapter, cls._bs_is_series_completed(soup)
+            return list(reversed(new_updates))
 
     @classmethod
     async def get_curr_chapter_num(
@@ -516,20 +530,24 @@ class MangaDex(ABCScan):
         url_manga_name: str,
         manga_id: str,
         last_chapter: int,
-    ) -> tuple[str, float, bool] | None:
+    ) -> list[tuple[str, float, bool]] | None:
 
         chapters = await bot.mangadex_api.get_chapters_list(manga_id)
-        last_chapter_url = "https://mangadex.org/chapter/" + chapters[-1]["id"]
-        last_web_chapter = float(chapters[-1]["attributes"]["chapter"])
 
-        if float(last_chapter) == last_web_chapter:
-            return None
+        completed = await cls.is_series_completed(bot, manga_id, url_manga_name)
+        new_updates: list[tuple[str, float, bool]] = []
 
-        return (
-            last_chapter_url,
-            last_web_chapter,
-            await cls.is_series_completed(bot, manga_id, url_manga_name),
-        )
+        for new_chp in reversed(chapters):
+            if float(new_chp["attributes"]["chapter"]) > float(last_chapter):
+                new_updates.append(
+                    (
+                        "https://mangadex.org/chapter/" + new_chp["id"],
+                        float(new_chp["attributes"]["chapter"]),
+                        completed,
+                    )
+                )
+
+        return list(reversed(new_updates))
 
     @classmethod
     async def get_curr_chapter_num(

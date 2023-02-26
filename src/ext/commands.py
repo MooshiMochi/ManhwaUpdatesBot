@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 import discord
@@ -115,7 +116,9 @@ class MangaUpdates(commands.Cog):
 
             await self.rate_limiter.delay_if_necessary(manga)
 
-            update_check_result = await scanner.check_updates(
+            update_check_result: list[
+                tuple[str, float, bool]
+            ] = await scanner.check_updates(
                 self.bot,
                 manga.human_name,
                 manga.manga_url,
@@ -123,13 +126,9 @@ class MangaUpdates(commands.Cog):
                 manga.last_chapter,
             )
 
-            if update_check_result is None:
+            if not update_check_result:
                 # self.bot._logger.info(f"No updates for {manga.human_name} ({manga.id})")
                 continue
-
-            url, new_chapter, completed = update_check_result
-            manga.update(new_chapter, completed)
-            await self.bot.db.update_series(manga)
 
             wh_n_role = series_webhooks_roles.get(manga.id, None)
             if wh_n_role is None:
@@ -138,22 +137,37 @@ class MangaUpdates(commands.Cog):
                 )
                 continue
             for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
+
                 webhook = discord.Webhook.from_url(
                     webhook_url, session=self.bot._session
                 )
 
                 if webhook:
-                    self.bot._logger.info(
-                        f"Sending update for {manga.human_name}. Chapter {new_chapter}"
-                    )
-                    if int(new_chapter) == new_chapter:
-                        new_chapter = int(new_chapter)
-                    await webhook.send(
-                        f"<@&{role_id}> **{manga.human_name}** chapter **{new_chapter}** has been released!\n{url}",
-                        allowed_mentions=discord.AllowedMentions(roles=True),
-                    )
+
+                    for url, new_chapter, completed in update_check_result:
+                        manga.update(new_chapter, completed)
+
+                        self.bot._logger.info(
+                            f"Sending update for {manga.human_name}. Chapter {new_chapter}"
+                        )
+                        if int(new_chapter) == new_chapter:
+                            new_chapter = int(new_chapter)
+
+                        try:
+                            await webhook.send(
+                                f"<@&{role_id}> **{manga.human_name}** chapter **{new_chapter}** has been released!\n{url}",
+                                allowed_mentions=discord.AllowedMentions(roles=True),
+                            )
+                            await asyncio.sleep(1)
+                        except discord.HTTPException:
+                            self.bot._logger.warning(
+                                f"Failed to send update for {manga.human_name}. Chapter {new_chapter}"
+                            )
                 else:
                     self.bot._logger.warning(f"Cant connect to webhook {webhook_url}")
+
+            manga.update(update_check_result[-1][1], update_check_result[-1][2])
+            await self.bot.db.update_series(manga)
 
     @check_updates_task.before_loop
     async def before_check_updates_task(self):
