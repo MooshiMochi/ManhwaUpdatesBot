@@ -541,7 +541,8 @@ class Restricted(commands.Cog):
                 self.client.get_command("developer synctree"), guilds=None, spec="~"
             )
         else:
-            self.client.tree.clear_commands()
+            for guild in self.client.guilds:
+                self.client.tree.clear_commands(guild=guild)
             await ctx.invoke(self.client.get_command("developer synctree"))
 
         await ctx.send(
