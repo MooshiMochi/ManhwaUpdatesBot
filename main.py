@@ -1,12 +1,14 @@
 import asyncio
+import logging
 import os
 
-import yaml
 from discord import Intents
+from discord.errors import LoginFailure
 from discord.utils import setup_logging
 
 from src.core.bot import MangaClient
 from src.core.command_tree import BotCommandTree
+from src.utils import ensure_configs, ensure_environment, exit_bot
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -14,27 +16,44 @@ async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
         await client.load_extension(extension)
 
 
-with open("config.yml", "r") as f:
-    config = yaml.safe_load(f)
-
-
-async def main(config):
-
-    intents = Intents(Intents.default().value, **config["privileged-intents"])
-    client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
-    client.load_config(config)
-    setup_logging()
-
-    async with client:
-        await load_extensions(client, config["extensions"])
-        await client.start(config["token"])
-
-
-if __name__ == "__main__":
+def ensure_logs() -> None:
     if not os.path.exists("logs"):
         os.mkdir("logs")
     if not os.path.exists("logs/error.log"):
         with open("logs/error.log", "w") as f:
             f.write("")
 
-    asyncio.run(main(config), debug=config["debug"]["state"])
+
+async def main():
+    setup_logging()
+
+    _logger = logging.getLogger("main")
+
+    config = ensure_configs(_logger)
+
+    ensure_logs()
+
+    intents = Intents(Intents.default().value, **config["privileged-intents"])
+    client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
+    client.load_config(config)
+
+    await ensure_environment(client, _logger)
+
+    async with client:
+        await load_extensions(client, config["extensions"])
+        try:
+            await client.start(config["token"])
+        except LoginFailure as e:
+            _logger.critical(f"{e}")
+            _logger.critical(
+                "    - Please run the setup.bat file if you're on windows or the setup.sh file if you're on linux/macOS."
+            )
+            await client.close()
+            exit_bot()
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        exit(1)

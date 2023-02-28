@@ -2,7 +2,7 @@
 
 ## Requirements:
 
-- Python 3.10+
+- Python 3.11+
 
 This bot currently only supports the following websites:
 
@@ -10,6 +10,7 @@ This bot currently only supports the following websites:
 - https://manganato.com
 - https://chapmanganato.com
 - https://tritinia.org
+- https://mangadex.org
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
 
@@ -18,19 +19,19 @@ Or you can contact me through my email at rchiriac16@gmail.com
 
 How to set up the bot:
 
-1. Go to your terminal/console and run the following commands in order:
+1. Cloning the repository
 
-```bash
-git clone https://github.com/MooshiMochi/ManhwaUpdatesBot
-cd ManhwaUpdatesBot
-cp config.yml.example config.yml
-pip install -r requirements.txt
-```
+   ```bash
+   git clone https://github.com/MooshiMochi/ManhwaUpdatesBot
+   cd ManhwaUpdatesBot
+   ```
 
-2. Open the config.yml file and edit the settings inside it.
+2. Running the bot
 
-3. Run the bot by running the following command:
+   > If you are on windows, run the `run.bat` file.
+   > If you are on linux, run the `following command:
 
-```bash
-python main.py
-```
+   ```bash
+   chmod +x run.sh
+   ./run.sh
+   ```

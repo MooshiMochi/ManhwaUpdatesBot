@@ -74,10 +74,10 @@ class MangaClient(commands.Bot):
             yaml.dump(self._config, f, default_flow_style=False)
 
     def load_config(self, config: dict):
-        self.owner_ids = config["constants"]["owner-ids"]
-        self.test_guild_id = config["constants"]["test-guild-id"]
-        self.log_channel_id: int = config["constants"]["log-channel-id"]
-        self._debug_mode: bool = config["debug"]["state"]
+        self.owner_ids = config["constants"].get("owner-ids", [self.owner_id])
+        self.test_guild_id = config["constants"].get("test-guild-id")
+        self.log_channel_id: int = config["constants"].get("log-channel-id")
+        self._debug_mode: bool = config.get("debug", False)
         self.mangadex_api = MangaDexAPI(
             "https://api.mangadex.org",
             aiohttp.ClientSession(trust_env=True if os.name != "nt" else False),
@@ -89,7 +89,8 @@ class MangaClient(commands.Bot):
         self._logger.info("Ready!")
 
     async def close(self):
-        await self._session.close()
+        await self._session.close() if self._session else None
+        await self.mangadex_api.session.close() if self.mangadex_api else None
         await super().close()
 
     async def log_to_discord(self, *args, **kwargs) -> None:
@@ -98,6 +99,8 @@ class MangaClient(commands.Bot):
             await self.wait_until_ready()
 
         channel = self.get_channel(self.log_channel_id)
+        if not channel:
+            return
         try:
             await channel.send(**kwargs)
         except Exception as e:

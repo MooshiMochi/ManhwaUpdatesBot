@@ -489,7 +489,7 @@ class MangaUpdates(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot._debug_mode:
+    if bot._debug_mode and bot.test_guild_id:
         await bot.add_cog(MangaUpdates(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
         await bot.add_cog(MangaUpdates(bot))

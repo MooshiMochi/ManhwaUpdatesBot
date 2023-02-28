@@ -24,5 +24,6 @@
     "upsert",
     "volumn",
     "webtoon"
-  ]
+  ],
+  "editor.renderWhitespace": "selection"
 }

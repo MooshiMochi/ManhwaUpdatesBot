@@ -190,7 +190,7 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot._debug_mode:
+    if bot._debug_mode and bot.test_guild_id:
         await bot.add_cog(CommandsCog(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
         await bot.add_cog(CommandsCog(bot))
