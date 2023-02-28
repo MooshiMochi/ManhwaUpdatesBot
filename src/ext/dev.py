@@ -543,7 +543,7 @@ class Restricted(commands.Cog):
         else:
             for guild in self.client.guilds:
                 self.client.tree.clear_commands(guild=guild)
-            await ctx.invoke(self.client.get_command("developer synctree"))
+            await ctx.invoke(self.client.get_command("developer synctree"), guilds=None)
 
         await ctx.send(
             f"Cleared all commands {'globally' if spec is None else 'from the current guild.'}"
