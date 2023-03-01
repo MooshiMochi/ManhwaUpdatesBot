@@ -440,7 +440,10 @@ class MangaUpdates(commands.Cog):
             x["id"] for x in result["relationships"] if x["type"] == "cover_art"
         ][0]
         cover_url = await self.bot.mangadex_api.get_cover(result["id"], cover_id)
-        synopsis = result["attributes"]["description"]["en"]
+        synopsis = result["attributes"]["description"].get("en")
+        if not synopsis:
+            # If the synopsis is not available in English, use the first available language.
+            synopsis = result["attributes"]["description"].values()[0]
 
         em.set_image(url=cover_url)
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
