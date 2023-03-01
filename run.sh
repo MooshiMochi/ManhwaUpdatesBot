@@ -10,17 +10,21 @@ if [ ! -f $CONFIG_FILE_NAME ]; then
     cp config.yml.example $CONFIG_FILE_NAME
 fi
 
-# Check which python command to use
-PYTHON_VERSION=$($PYTHON_EXE -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
+# check if the current Python version is at least the required version
+if $PYTHON_EXE -c "import sys; sys.exit(sys.version_info >= (3, 10))"; then
+  echo "Using Python $PYTHON_EXE, version $PYTHON_VERSION_REQUIRED or later is not found."
+  PYTHON_EXE="python"
+  echo "Attempting to use $PYTHON_EXE instead."
 
-if ! $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
-    PYTHON_EXE="python"
-    PYTHON_VERSION=$($PYTHON_EXE -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
-    if ! $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
-        echo "Python $PYTHON_VERSION_REQUIRED or later is required"
-        exit 1
-    fi
+  # if the required version is not found, try with the "python" command
+  if $PYTHON_EXE -c "import sys; sys.exit(sys.version_info >= (3, 10))"; then
+    echo "Unable to find a compatible version of Python. Please install Python $PYTHON_VERSION_REQUIRED or later and try again."
+    exit 1
+  fi
 fi
+
+# Continue with script if Python version is sufficient
+echo "Starting the script with $PYTHON_EXE"
 
 # Check if venv is installed, install if needed
 if $PYTHON_EXE -c "import ensurepip" &>/dev/null; then
