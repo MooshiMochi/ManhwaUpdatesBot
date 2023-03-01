@@ -15,6 +15,14 @@ PYTHON_VERSION=$($PYTHON_EXE -c 'import sys; print("{}.{}".format(sys.version_in
 if $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
     echo "Python version is sufficient"
 else
+    PYTHON_EXE="python"
+    PYTHON_VERSION=$($PYTHON_EXE -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
+    if $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
+        echo "Python version is sufficient"
+    else
+        echo "Python $PYTHON_VERSION_REQUIRED or later is required"
+        exit 1
+    fi
     echo "Python $PYTHON_VERSION_REQUIRED or later is required"
     exit 1
 fi

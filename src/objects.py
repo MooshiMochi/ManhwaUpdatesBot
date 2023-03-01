@@ -6,7 +6,7 @@ import random
 import time
 import urllib
 from asyncio import TimeoutError
-from typing import TYPE_CHECKING, Iterable, Self, Union
+from typing import TYPE_CHECKING, Iterable, Union
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
@@ -240,12 +240,12 @@ class Manga:
         return self._scanlator
 
     @classmethod
-    def from_tuple(cls, data: tuple) -> Self:
+    def from_tuple(cls, data: tuple) -> "Manga":
         """Create a Manga object from a tuple."""
         return cls(*data)
 
     @classmethod
-    def from_tuples(cls, data: list[tuple]) -> list[Self]:
+    def from_tuples(cls, data: list[tuple]) -> list["Manga"]:
         """Create a list of Manga objects from a list of tuples."""
         return [cls.from_tuple(d) for d in data] if data else []
 

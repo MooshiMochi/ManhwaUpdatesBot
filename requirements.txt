@@ -1,5 +1,5 @@
 requests
-discord.py[speed]
+discord.py
 aiohttp
 aiosqlite
 aiofiles
