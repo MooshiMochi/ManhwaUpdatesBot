@@ -1,5 +1,9 @@
 # ManhwaUpdatesBot
 
+## About:
+
+This is a bot that will periodically check for updates on the manga that you have subscribed to and alert you when there is a new chapter available.
+
 ## Requirements:
 
 - Python 3.10+
