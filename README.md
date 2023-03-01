@@ -2,7 +2,7 @@
 
 ## Requirements:
 
-- Python 3.11+
+- Python 3.10+
 
 This bot currently only supports the following websites:
 
@@ -27,11 +27,15 @@ How to set up the bot:
    ```
 
 2. Running the bot
-
-   > If you are on windows, run the `run.bat` file.
-   > If you are on linux, run the `following command:
+   **windows:**
 
    ```bash
-   chmod +x run.sh
+   .\run.bat
+   ```
+
+   **linux:**
+
+   ```bash
+   chmod +x run.sh setup.sh
    ./run.sh
    ```

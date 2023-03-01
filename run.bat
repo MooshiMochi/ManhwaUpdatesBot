@@ -6,12 +6,18 @@ set VENV_NAME=.venv
 %PYTHON_EXE% --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo Python is not installed. Please install Python and try again.
-    pause
-    exit /b 1
+
+    set PYTHON_EXE=python3
+    %PYTHON_EXE% --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo Python is not installed. Please install Python and try again.
+        pause
+        exit /b 1
+    )
 )
 
 rem Check Python version
-%PYTHON_EXE% -c "import sys; sys.exit(not (sys.version_info.major >= 3 and sys.version_info.minor >= 11))"
+%PYTHON_EXE% -c "import sys; sys.exit(not (sys.version_info.major >= 3 and sys.version_info.minor >= 10))"
 
 if %errorlevel% neq 0 (
     echo You need at least Python 3.11 to run the bot.

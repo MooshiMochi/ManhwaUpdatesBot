@@ -20,6 +20,6 @@ if grep -q "token" $CONFIG_FILE_NAME; then
 else
   # Add new token key-value pair to config.yml file
   if [ -n "$BOT_TOKEN" ]; then
-    echo "token: $BOT_TOKEN" >>$CONFIG_FILE_NAME
+    echo "token: $BOT_TOKEN" > $CONFIG_FILE_NAME
   fi
 fi

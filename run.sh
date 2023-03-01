@@ -2,7 +2,7 @@
 
 CONFIG_FILE_NAME="config.yml"
 VENV_FOLDER="venv"
-PYTHON_VERSION_REQUIRED="3.11"
+PYTHON_VERSION_REQUIRED="3.10"
 PYTHON_EXE="python3"
 
 # Copy config file example if config file does not already exist
@@ -10,21 +10,16 @@ if [ ! -f $CONFIG_FILE_NAME ]; then
     cp config.yml.example $CONFIG_FILE_NAME
 fi
 
-# Check if python version is sufficient
+# Check which python command to use
 PYTHON_VERSION=$($PYTHON_EXE -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
-if $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
-    echo "Python version is sufficient"
-else
+
+if ! $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
     PYTHON_EXE="python"
     PYTHON_VERSION=$($PYTHON_EXE -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
-    if $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
-        echo "Python version is sufficient"
-    else
+    if ! $PYTHON_EXE -c "import sys; sys.exit(0 if float('{}.{}'.format(sys.version_info.major, sys.version_info.minor)) >= float('$PYTHON_VERSION_REQUIRED') else 1)"; then
         echo "Python $PYTHON_VERSION_REQUIRED or later is required"
         exit 1
     fi
-    echo "Python $PYTHON_VERSION_REQUIRED or later is required"
-    exit 1
 fi
 
 # Check if venv is installed, install if needed
