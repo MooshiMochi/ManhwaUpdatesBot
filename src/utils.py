@@ -18,7 +18,7 @@ async def ensure_environment(bot, logger) -> None:
             "Bot wasn't installed using Git. Please re-install using the command below:"
         )
         logger.critical(
-            "       git pull https://github.com/MooshiMochi/ManhwaUpdatesBot"
+            "       git clone https://github.com/MooshiMochi/ManhwaUpdatesBot"
         )
         await bot.close()
         exit_bot()

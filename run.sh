@@ -20,10 +20,10 @@ else
 fi
 
 # Check if venv is installed, install if needed
-if $PYTHON_EXE -c "import venv" &>/dev/null; then
-    echo "venv module found"
+if $PYTHON_EXE -c "import ensurepip" &>/dev/null; then
+    echo "ensurepip module found"
 else
-    echo "venv module not found, attempting to install"
+    echo "ensurepip module not found, attempting to install"
     if command -v apt-get &>/dev/null; then
         # Linux
         if [ "$(whoami)" == "root" ]; then
