@@ -43,3 +43,8 @@ How to set up the bot:
    chmod +x run.sh setup.sh
    ./run.sh
    ```
+
+_P.S: I am already hosting a version of this bot, so if you want to invite it to your server, here's the URL:_
+
+   • https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands
+  
