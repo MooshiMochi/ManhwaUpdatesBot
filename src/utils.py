@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import yaml
 
@@ -24,9 +25,8 @@ async def ensure_environment(bot, logger) -> None:
         exit_bot()
 
 
-def ensure_configs(logger) -> None:
+def ensure_configs(logger) -> Optional[dict]:
     required_keys = ["token"]
-    config: dict = None
 
     if not os.path.exists("config.yml"):
         logger.critical(
@@ -39,10 +39,10 @@ def ensure_configs(logger) -> None:
             config = yaml.safe_load(f)
         except yaml.YAMLError as e:
             logger.critical(
-                "   - config.yml file is not a valid YAML file. Please follow the instructions listed in the README.md file."
+                "   - config.yml file is not a valid YAML file. Please follow the instructions "
+                "listed in the README.md file."
             )
             logger.critical("   - Error: " + str(e))
-            raise e
             exit_bot()
             return
 
@@ -69,7 +69,8 @@ def ensure_configs(logger) -> None:
         else:
             setup_file = "setup.sh"
         logger.critical(
-            f"   - config.yml file is missing following required key(s): {missing_required_keys_str}. Please run the {setup_file} file."
+            f"   - config.yml file is missing following required key(s): "
+            f"{missing_required_keys_str}. Please run the {setup_file} file."
         )
         exit_bot()
         return
@@ -114,17 +115,11 @@ def ensure_configs(logger) -> None:
     return config
 
 
-def get_manga_scanlation_class(url: str = None, key: str = None) -> ABCScan | None:
+def get_manga_scanlation_class(url: str = None, key: str = None) -> Optional[ABCScan]:
     if url is None and key is None:
         raise ValueError("Either URL or key must be provided.")
 
-    d: dict[str, ABCScan] = {
-        "toonily": Toonily,
-        "manganato": Manganato,
-        "tritinia": TritiniaScans,
-        "mangadex": MangaDex,
-        "chapmanganato": Manganato,
-    }
+    d: dict[str, ABCScan] = SCANLATORS
 
     if key is not None:
         if existing_class := d.get(key):

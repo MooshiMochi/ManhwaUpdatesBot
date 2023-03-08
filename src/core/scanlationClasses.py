@@ -34,7 +34,7 @@ class ABCScan:
         """
         Summary:
 
-        Checks whether any new releases has appeared on the scanlator's website.
+        Checks whether any new releases have appeared on the scanlator's website.
         Checks whether the series is completed or not.
 
         Parameters:
@@ -196,7 +196,7 @@ class TritiniaScans(ABCScan):
     ) -> list[tuple[str, float, bool]] | None:
         url_manga_name = RegExpressions.tritinia_url.search(url_manga_name).group(3)
 
-        async with bot._session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
+        async with bot.session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
             if resp.status != 200:
                 print("Tritinia: Failed to get manga page", resp.status)
                 return None
@@ -223,7 +223,7 @@ class TritiniaScans(ABCScan):
     async def get_curr_chapter_num(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> float | None:
-        async with bot._session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
+        async with bot.session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
             if resp.status != 200:
                 return None
             text = await resp.text()
@@ -252,7 +252,7 @@ class TritiniaScans(ABCScan):
     async def is_series_completed(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> bool:
-        async with bot._session.get(cls.base_url + url_manga_name) as resp:
+        async with bot.session.get(cls.base_url + url_manga_name) as resp:
             if resp.status != 200:
                 raise MangaNotFoundError(manga_url=cls.base_url + url_manga_name)
 
@@ -263,7 +263,7 @@ class TritiniaScans(ABCScan):
     async def get_human_name(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> str | None:
-        async with bot._session.get(cls.base_url + url_manga_name) as resp:
+        async with bot.session.get(cls.base_url + url_manga_name) as resp:
             if resp.status != 200:
                 return None
 
@@ -300,7 +300,7 @@ class Manganato(ABCScan):
         manga_id: str,
         last_chapter: int,
     ) -> list[tuple[str, float, bool]] | None:
-        async with bot._session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
                 print("Manganato: Failed to get manga page", resp.status)
                 return None
@@ -346,7 +346,7 @@ class Manganato(ABCScan):
     async def is_series_completed(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> bool:
-        async with bot._session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
                 raise MangaNotFoundError(cls.fmt_url.format(manga_id=manga_id))
 
@@ -362,7 +362,7 @@ class Manganato(ABCScan):
     async def get_human_name(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> str | None:
-        async with bot._session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
                 return None
 
@@ -374,7 +374,7 @@ class Manganato(ABCScan):
     async def get_curr_chapter_num(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> float | None:
-        async with bot._session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
                 return None
 
@@ -418,7 +418,7 @@ class Toonily(ABCScan):
 
         url_manga_name = RegExpressions.toonily_url.search(url_manga_name).group(3)
 
-        async with bot._session.get(
+        async with bot.session.get(
             cls.fmt_url.format(manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
@@ -449,7 +449,7 @@ class Toonily(ABCScan):
     async def get_curr_chapter_num(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> float | None:
-        async with bot._session.get(
+        async with bot.session.get(
             cls.fmt_url.format(manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
@@ -482,7 +482,7 @@ class Toonily(ABCScan):
     async def is_series_completed(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> bool:
-        async with bot._session.get(
+        async with bot.session.get(
             cls.fmt_url.format(manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
@@ -495,7 +495,7 @@ class Toonily(ABCScan):
     async def get_human_name(
         cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> str | None:
-        async with bot._session.get(cls.base_url + url_manga_name) as resp:
+        async with bot.session.get(cls.base_url + url_manga_name) as resp:
             if resp.status != 200:
                 return None
 
@@ -580,7 +580,7 @@ class MangaDex(ABCScan):
             return RegExpressions.mangadex_url.search(url).group(3)
 
 
-SCANLATORS: dict[ABCScan] = {
+SCANLATORS: dict[str, ABCScan] = {
     Toonily.name: Toonily,
     TritiniaScans.name: TritiniaScans,
     Manganato.name: Manganato,

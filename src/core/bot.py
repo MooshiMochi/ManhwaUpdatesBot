@@ -1,11 +1,11 @@
 import logging
 import os
+from typing import Optional
 
 import aiohttp
 import discord
 from discord import Intents
 from discord.ext import commands
-
 from src.objects import GuildSettings
 
 from .database import Database
@@ -24,10 +24,10 @@ class MangaClient(commands.Bot):
         )
         self.db = Database(self, "database.db")
         self._logger: logging.Logger = logging.getLogger("bot")
-        self._session: aiohttp.ClientSession = None
-        self.log_channel_id: int = None
+        self._session: Optional[aiohttp.ClientSession] = None
+        self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
-        self.mangadex_api: MangaDexAPI = None
+        self.mangadex_api: Optional[MangaDexAPI] = None
 
     async def setup_hook(self):
         await self.db.async_init()
@@ -140,3 +140,11 @@ class MangaClient(commands.Bot):
                 await self.db.delete_config(guild.id)
             finally:
                 return
+
+    @property
+    def session(self):
+        return self._session
+
+    @property
+    def logger(self):
+        return self._logger

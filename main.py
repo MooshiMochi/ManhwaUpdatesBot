@@ -46,7 +46,8 @@ async def main():
         except LoginFailure as e:
             _logger.critical(f"{e}")
             _logger.critical(
-                "    - Please run the setup.bat file if you're on windows or the setup.sh file if you're on linux/macOS."
+                "    - Please run the setup.bat file if you're on "
+                "windows or the setup.sh file if you're on linux/macOS."
             )
             await client.close()
             exit_bot()

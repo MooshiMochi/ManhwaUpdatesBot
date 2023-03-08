@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 
 if TYPE_CHECKING:
-    from core.bot import MangaClient
+    from .bot import MangaClient
 
 import traceback as tb
 from datetime import timedelta

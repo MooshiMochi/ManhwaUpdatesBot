@@ -277,10 +277,10 @@ class GuildSettings:
     ) -> None:
         self._bot: MangaClient = bot
         self.guild: discord.Guild = bot.get_guild(guild_id)
-        self.channel: discord.abc.GuildChannel = self.guild.get_channel(channel_id)
+        self.channel: discord.TextChannel = self.guild.get_channel(channel_id)
         self.role: discord.Role = self.guild.get_role(updates_role_id)
         self.webhook: discord.Webhook = discord.Webhook.from_url(
-            webhook_url, session=bot._session
+            webhook_url, session=bot.session
         )
         self._args = args
         self._kwargs = kwargs

@@ -122,7 +122,7 @@ class Database:
                     return Manga.from_tuples(result)
                 return []
 
-    async def get_guild_config(self, guild_id: int) -> tuple:
+    async def get_guild_config(self, guild_id: int) -> GuildSettings | None:
         """
         Returns a GuildSettings object.
         >>> GuildSettings(guild_id, channel_id, updates_role_id, webhook_url)
