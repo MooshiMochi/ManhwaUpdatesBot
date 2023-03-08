@@ -48,3 +48,13 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
 
    • https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands
   
+
+## Todo:
+   ### Websites to add: 
+      flamescans.org
+      en.leviathanscans.com
+      luminousscans.com (maybe)
+      void-scans.com
+      anigliscans.com
+      drakescans.com
+      nitroscans.com
