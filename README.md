@@ -65,3 +65,8 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
       This will most likely be done through a view.
 
       - a command that will show the user all the manga that they have bookmarked
+
+   ### Issues:
+      - when checking for updates, sometimes a manga might be dropped. We need to account for that
+        when checking whether to let the user subscribe to that series or not.
+        The error message also needs to be updated to say taht the manga is either completed or dropped.
