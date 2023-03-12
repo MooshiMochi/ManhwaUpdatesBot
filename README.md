@@ -15,6 +15,7 @@ This bot currently only supports the following websites:
 - https://chapmanganato.com
 - https://tritinia.org
 - https://mangadex.org
+- https://flamescans.org
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
 
@@ -51,10 +52,16 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
 
 ## Todo:
    ### Websites to add: 
-      flamescans.org
       en.leviathanscans.com
       luminousscans.com (maybe)
       void-scans.com
       anigliscans.com
       drakescans.com
       nitroscans.com
+
+   ### Features to add:
+      - a bookmark feature where the user can bookmark both a completed manga and an ongoing manga
+      the user will be able to edit the chapter that they've read for each bookmarked manga.
+      This will most likely be done through a view.
+
+      - a command that will show the user all the manga that they have bookmarked
