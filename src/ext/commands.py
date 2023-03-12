@@ -385,18 +385,18 @@ class MangaUpdates(commands.Cog):
         em = discord.Embed(title="Supported Websites", color=discord.Color.green())
         em.description = (
             """
-            Manga Updates Bot currently supports the following websites:\n
-            • [MangaDex](https://mangadex.org/)\n
-            \u200b \\> Format -> `https://mangadex.org/title/1b2c3d/`
-            • [MangaNato](https://manganato.com/)\n
-            \u200b \\> Format -> `https://manganato.com/manga-m123456` 
-            • [Toonily](https://toonily.com)\n
-            \u200b \\> Format -> `https://toonily.net/manga/manga-title/`
-            • [TritiniaScans](https://tritinia.org)\n
-            \u200b \\> Format -> `https://tritinia.org/manga/manga-title/`
-            • [FlameScans](https://flamescans.org/)\n
-            \u200b \\> Format -> `https://flamescans.org/series/12351-manga-title/`
-            \n__**Note:**__\n
+            Manga Updates Bot currently supports the following websites:
+            • [MangaDex](https://mangadex.org/)
+             \u200b \u200b \u200b \↪ Format -> `https://mangadex.org/title/1b2c3d/`
+            • [MangaNato](https://manganato.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://manganato.com/manga-m123456` 
+            • [Toonily](https://toonily.com)
+            \u200b \u200b \u200b \↪ Format -> `https://toonily.net/manga/manga-title/`
+            • [TritiniaScans](https://tritinia.org)
+            \u200b \u200b \u200b \↪ Format -> `https://tritinia.org/manga/manga-title/`
+            • [FlameScans](https://flamescans.org/)
+            \u200b \u200b \u200b \↪ Format -> `https://flamescans.org/series/12351-manga-title/`
+            \n__**Note:**__
             More websites will be added in the future, however websites such as AsuraScans and ReaperScans \
             are not supported due to their anti-bot measures.
             """
