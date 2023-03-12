@@ -14,7 +14,7 @@ from .mangadexAPI import MangaDexAPI
 
 class MangaClient(commands.Bot):
     def __init__(
-        self, prefix: str = "!", intents: Intents = Intents.default(), *args, **kwargs
+            self, prefix: str = "!", intents: Intents = Intents.default(), *args, **kwargs
     ):
         super().__init__(
             command_prefix=commands.when_mentioned_or(prefix or "!"),
@@ -22,6 +22,8 @@ class MangaClient(commands.Bot):
             *args,
             **kwargs,
         )
+        self._config = None
+        self.test_guild_id = None
         self.db = Database(self, "database.db")
         self._logger: logging.Logger = logging.getLogger("bot")
         self._session: Optional[aiohttp.ClientSession] = None
@@ -79,7 +81,6 @@ class MangaClient(commands.Bot):
         self.log_channel_id: int = config["constants"].get("log-channel-id")
         self._debug_mode: bool = config.get("debug", False)
         self.mangadex_api = MangaDexAPI(
-            "https://api.mangadex.org",
             aiohttp.ClientSession(trust_env=True if os.name != "nt" else False),
         )
 
@@ -93,7 +94,7 @@ class MangaClient(commands.Bot):
         await self.mangadex_api.session.close() if self.mangadex_api else None
         await super().close()
 
-    async def log_to_discord(self, *args, **kwargs) -> None:
+    async def log_to_discord(self, **kwargs) -> None:
         """Log a message to a discord log channel."""
         if not self.is_ready():
             await self.wait_until_ready()
@@ -115,7 +116,7 @@ class MangaClient(commands.Bot):
             return
 
         if (
-            guild_config.channel is None or guild_config.role is None
+                guild_config.channel is None or guild_config.role is None
         ):  # if we can't find the channel or role, we can't send updates so delete guild config entirely
             await self.db.delete_config(guild.id)
             return
@@ -148,3 +149,7 @@ class MangaClient(commands.Bot):
     @property
     def logger(self):
         return self._logger
+
+    @property
+    def config(self):
+        return self._config

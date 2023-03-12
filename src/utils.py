@@ -1,9 +1,15 @@
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .scanners import ABCScan
+
 import os
+import re
 from typing import Optional
+import hashlib
 
 import yaml
-
-from src.core.scanlationClasses import *
 
 from .static import RegExpressions
 
@@ -115,11 +121,11 @@ def ensure_configs(logger) -> Optional[dict]:
     return config
 
 
-def get_manga_scanlation_class(url: str = None, key: str = None) -> Optional[ABCScan]:
+def get_manga_scanlation_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:
     if url is None and key is None:
         raise ValueError("Either URL or key must be provided.")
 
-    d: dict[str, ABCScan] = SCANLATORS
+    d: dict[str, ABCScan] = scanlators
 
     if key is not None:
         if existing_class := d.get(key):
@@ -129,3 +135,7 @@ def get_manga_scanlation_class(url: str = None, key: str = None) -> Optional[ABC
         if isinstance(obj, re.Pattern) and name.count("_") == 1:
             if obj.match(url):
                 return d[name.split("_")[0]]
+
+
+def _hash(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()

@@ -1,19 +1,8 @@
 import re
 
-import discord
-
 
 class Emotes:
     warning = "⚠️"
-
-
-class ID(discord.Object):
-    """
-    This is a simple class to represent a discord ID.
-    """
-
-    def __init__(self, id: int) -> None:
-        super().__init__(id)
 
 
 class RegExpressions:
@@ -29,4 +18,8 @@ class RegExpressions:
     )
     mangadex_url = re.compile(
         r"(https?://)?(www\.)?mangadex.org/title/([a-zA-Z0-9-]+)(/.*)?"
+    )
+
+    flamescans_url = re.compile(
+        r"(https?://)?(www\.)?flamescans.org/series/([0-9]+)-([a-zA-Z0-9-]+)(/.*)?"
     )

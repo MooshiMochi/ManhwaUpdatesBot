@@ -4,7 +4,7 @@ import inspect
 from typing import TYPE_CHECKING, Literal, Optional
 
 if TYPE_CHECKING:
-    from core.bot import MangaClient
+    from src.core import MangaClient
 
 import asyncio
 import io
@@ -110,10 +110,10 @@ class Restricted(commands.Cog):
 
     @developer.command(name="synctree", aliases=["sync_tree"])
     async def tree_sync(
-        self,
-        ctx: commands.Context,
-        guilds: commands.Greedy[Object],
-        spec: Optional[Literal["~"]] = None,
+            self,
+            ctx: commands.Context,
+            guilds: commands.Greedy[Object],
+            spec: Optional[Literal["~"]] = None,
     ) -> None:
         """
         Usage:
@@ -343,10 +343,10 @@ class Restricted(commands.Cog):
         ]
 
         if (
-            f"{filename}" not in all_loaded_cog_paths
-            and filename not in all_loaded_cog_paths
+                f"{filename}" not in all_loaded_cog_paths
+                and filename not in all_loaded_cog_paths
         ):
-            text = "\n- ".join(all_loaded_cog_paths.replace("cogs.", ""))
+            text = "\n- ".join(all_loaded_cog_paths).replace("cogs.", "")
             return await ctx.send(
                 embed=discord.Embed(
                     description=f"```diff\n- {text}\n```",
@@ -382,8 +382,8 @@ class Restricted(commands.Cog):
             filename = filename.replace("cogs.", "")
 
         if (
-            f"{filename}" not in all_loaded_cog_paths
-            and filename not in all_loaded_cog_paths
+                f"{filename}" not in all_loaded_cog_paths
+                and filename not in all_loaded_cog_paths
         ):
             text = "\n- ".join(
                 map(lambda x: x.replace("cogs.", ""), all_loaded_cog_paths)
@@ -494,8 +494,8 @@ class Restricted(commands.Cog):
     )
     @commands.is_owner()
     async def logs_clear(
-        self, ctx: commands.Context, *, action: Literal["clear", "view"] = "view"
-    ) -> None:
+            self, ctx: commands.Context, *, action: Literal["clear", "view"] = "view"
+    ) -> Optional[discord.Message]:
         action = action.lower()
         log_file = "logs/error.log"
         assert os.path.exists("logs"), "logs folder does not exist."
@@ -513,12 +513,12 @@ class Restricted(commands.Cog):
             return await ctx.send("```diff\n-<[ No logs. ]>-```")
 
         pages = TextPageSource(
-            "\n".join(lines).replace(self.client._config["token"], "[TOKEN]"),
+            "\n".join(lines).replace(self.client.config["token"], "[TOKEN]"),
             code_block=True,
         ).getPages()
 
         view = PaginatorView(pages, ctx)
-        view.message = await ctx.send(view._iterable[0], view=view)
+        view.message = await ctx.send(view.items[0], view=view)
 
     @developer.command(
         name="clear_commands",
@@ -526,29 +526,45 @@ class Restricted(commands.Cog):
         brief="Clear all commands.",
     )
     async def clear_commands(
-        self,
-        ctx: commands.Context,
-        spec: Optional[Literal["~"]] = None,
+            self,
+            ctx: commands.Context,
+            spec: Optional[Literal["~"]] = None,
     ) -> None:
         """
         Usage:
         '!d clear_commands' | Clears the commands from all guilds
         '!d clear_commands ~' | Clears the commands in the current guild
         """
+        sync_cmd = self.client.get_command("developer synctree")
+        if not sync_cmd:
+            await ctx.send("```diff\n-<[ Command not found. ]>-```")
+            return
         if spec == "~":
             self.client.tree.clear_commands(guild=ctx.guild)
             await ctx.invoke(
-                self.client.get_command("developer synctree"), guilds=None, spec="~"
+                sync_cmd, guilds=None, spec="~"
             )
         else:
             for guild in self.client.guilds:
                 self.client.tree.clear_commands(guild=guild)
-            await ctx.invoke(self.client.get_command("developer synctree"), guilds=None)
+            await ctx.invoke(sync_cmd, guilds=None)
 
         await ctx.send(
             f"Cleared all commands {'globally' if spec is None else 'from the current guild.'}"
         )
         return
+
+    @developer.command(
+        name="export_db",
+        help="Export the database to an Excel file.",
+        brief="Export the database to an Excel file.",
+    )
+    async def _export_db(self, ctx: commands.Context) -> None:
+        await ctx.send("```diff\n-<[ Exporting database. ]>-```")
+        io_buffer: io.BytesIO = await self.client.loop.run_in_executor(None, self.client.db.export)
+        await ctx.send(
+            file=discord.File(io_buffer, filename="manga_db.xlsx")
+        )
 
 
 async def setup(bot: MangaClient) -> None:

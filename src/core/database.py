@@ -7,9 +7,12 @@ import aiosqlite
 from fuzzywuzzy import fuzz
 
 if TYPE_CHECKING:
-    from core.bot import MangaClient
+    from .bot import MangaClient
 
 from src.objects import GuildSettings, Manga
+from io import BytesIO
+import pandas as pd
+import sqlite3
 
 
 def _levenshtein_distance(a: str, b: str) -> int:
@@ -33,7 +36,8 @@ class Database:
                     id TEXT PRIMARY KEY NOT NULL,
                     human_name TEXT NOT NULL,
                     manga_url TEXT NOT NULL,
-                    last_chapter FLOAT NOT NULL,
+                    last_chapter_url_hash INT NOT NULL,
+                    last_chapter_string TEXT NOT NULL,
                     completed BOOLEAN NOT NULL DEFAULT false,
                     scanlator TEXT NOT NULL DEFAULT 'Unknown'
                 )
@@ -63,11 +67,43 @@ class Database:
             )
             await db.commit()
 
+    def export(self) -> BytesIO:
+        """As this function carries out non-async operations, it must be run in a thread executor."""
+
+        with sqlite3.connect(self.db_name) as conn:
+            output = BytesIO()
+            writer = pd.ExcelWriter(output, engine="openpyxl")
+
+            # Get all tables
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [table[0] for table in cursor.fetchall()]
+
+            for table in tables:
+                df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
+                df.to_excel(writer, sheet_name=table, index=False)
+
+            writer.book.save(output)
+            output.seek(0)
+            return output
+
+    def import_data(self, file: BytesIO) -> None:
+        """Imports data from an Excel file into the database."""
+
+        with sqlite3.connect(self.db_name) as conn:
+            # Read the Excel file into a dictionary of DataFrames
+            dfs = pd.read_excel(file, sheet_name=None)
+
+            # Import each table
+            for table_name, df in dfs.items():
+                df.to_sql(table_name, conn, index=False, if_exists="replace")
+
     async def add_series(self, manga_obj: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, manga_url, last_chapter, completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, manga_url, last_chapter_url_hash, last_chapter_string, completed, 
+                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(id) DO NOTHING;
                 """,
                 (manga_obj.to_tuple()),
             )
@@ -89,7 +125,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO config (guild_id, channel_id, updates_role_id, webhook_url) VALUES ($1, $2, $3, $4) ON CONFLICT(guild_id) DO UPDATE SET channel_id = $2, updates_role_id = $3, webhook_url = $4 WHERE guild_id = $1;
+                INSERT INTO config (guild_id, channel_id, updates_role_id, webhook_url) VALUES ($1, $2, $3, $4
+                ) ON CONFLICT(guild_id) DO UPDATE SET channel_id = $2, updates_role_id = $3, webhook_url = $4 
+                WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
             )
@@ -106,7 +144,8 @@ class Database:
 
             if current is not None:
                 query = """
-                        SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = ?) AND series.human_name LIKE ? LIMIT 25;
+                        SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = ?
+                        ) AND series.human_name LIKE ? LIMIT 25;
                         """
                 params = (user_id, f"%{current}%")
 
@@ -216,9 +255,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                UPDATE series SET last_chapter = ? WHERE id = ?;
+                UPDATE series SET last_chapter_url_hash = ? WHERE id = ?;
                 """,
-                (manga.last_chapter, manga.id),
+                (manga.last_chapter_url_hash, manga.id),
             )
             if result.rowcount < 1:
                 raise ValueError(f"No series with ID {manga.id} was found.")

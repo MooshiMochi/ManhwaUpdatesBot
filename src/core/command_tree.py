@@ -13,7 +13,7 @@ from datetime import timedelta
 import discord
 from discord import InteractionResponded, app_commands
 
-from src.static import Emotes as emotes
+from src.static import Emotes
 
 from .errors import *
 
@@ -42,7 +42,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             not interaction.guild.me.guild_permissions.send_messages
             and not interaction.guild.me.guild_permissions.embed_links
         ):
-            print("I don't have permission to send messages or embed links.")
+            self.client.logger.error("I don't have permission to send messages or embed links.")
             return False
         return True
 
@@ -62,25 +62,25 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
         ignore_args = (app_commands.CheckFailure, app_commands.CommandNotFound)
 
-        self.client._logger.error(f"New error of type: {type(error)}")
+        self.client.logger.error(f"New error of type: {type(error)}")
 
         if isinstance(error, app_commands.errors.MissingRole):
             embed = discord.Embed(
-                title=f"{emotes.warning} Hey, you can't do that!",
+                title=f"{Emotes.warning} Hey, you can't do that!",
                 color=0xFF0000,
                 description=f"Sorry, you need to have the role <@&{error.missing_role}> to execute that command.",
             )
 
         elif isinstance(error, MangaNotFoundError):
             embed = discord.Embed(
-                title=f"{emotes.warning} Manga not found!",
+                title=f"{Emotes.warning} Manga not found!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, app_commands.errors.MissingAnyRole):
             embed = discord.Embed(
-                title=f"{emotes.warning} Hey, you can't do that!",
+                title=f"{Emotes.warning} Hey, you can't do that!",
                 color=0xFF0000,
                 description="Sorry, you need to have one of the following roles: "
                 + f"<@&{'>, <@&'.join(error.missing_roles)}> to execute that command.",
@@ -91,7 +91,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             if "send_messages" in perms:
                 return
             embed = discord.Embed(
-                title=f"{emotes.warning} I can't do that.",
+                title=f"{Emotes.warning} I can't do that.",
                 color=0xFF0000,
                 description=f"Sorry, I require the permission(s) `{perms}` to "
                 + "execute that command. Please contact a server "
@@ -122,13 +122,13 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 )
             if len(error.missing_permissions) == 1:
                 embed = discord.Embed(
-                    title=f"{emotes.warning} Hey, you can't do that!",
+                    title=f"{Emotes.warning} Hey, you can't do that!",
                     color=0xFF0000,
                     description=f"Sorry, you need the `{perms}` permission to execute this command.",
                 )
             else:
                 embed = discord.Embed(
-                    title=f"{emotes.warning} Hey, you can't do that!",
+                    title=f"{Emotes.warning} Hey, you can't do that!",
                     color=0xFF0000,
                     description=f"Sorry, you need the `{perms}` permissions to execute this command.",
                 )
@@ -139,7 +139,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
         else:
             embed = discord.Embed(
-                title=f"{emotes.warning} An unknown error occurred!",
+                title=f"{Emotes.warning} An unknown error occurred!",
                 color=0xFF0000,
                 description=f"",
             )
@@ -159,8 +159,9 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
             embed.description += final_traceback
 
-            self.client._logger.error(
-                f"{emotes.warning} An unhandled error has occurred: {str(error)} - More details can be found in logs/error.log"
+            self.client.logger.error(
+                f"{Emotes.warning} An unhandled error has occurred: {str(error)} - More details can be found in "
+                f"logs/error.log"
             )
             async with aiofiles.open(
                 "logs/error.log", "a", encoding="utf-8"

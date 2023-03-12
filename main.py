@@ -6,8 +6,8 @@ from discord import Intents
 from discord.errors import LoginFailure
 from discord.utils import setup_logging
 
-from src.core.bot import MangaClient
-from src.core.command_tree import BotCommandTree
+from src.core import MangaClient
+from src.core import BotCommandTree
 from src.utils import ensure_configs, ensure_environment, exit_bot
 
 

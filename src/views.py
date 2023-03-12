@@ -3,25 +3,24 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.core.scanlationClasses import ABCScan
     from src.core.bot import MangaClient
+
+from src.scanners import SCANLATORS, ABCScan
 
 import discord
 from discord import ButtonStyle
-from discord.ui import Button, View, button
+from discord.ui import View, button
 
-from .objects import Manga
-from .utils import get_manga_scanlation_class
+from src.objects import Manga
+from src.utils import get_manga_scanlation_class
 
 
 class SubscribeView(View):
     def __init__(
         self,
         bot: MangaClient,
-        *args,
-        **kwargs,
     ):
-        super().__init__(*args, timeout=None, **kwargs)
+        super().__init__(timeout=None)
         self.bot: MangaClient = bot
 
     @button(
@@ -30,12 +29,12 @@ class SubscribeView(View):
         emoji="📚",
         custom_id="search_subscribe",
     )
-    async def subscribe(self, interaction: discord.Interaction, button: Button):
+    async def subscribe(self, interaction: discord.Interaction, _):
 
         message: discord.Message = interaction.message
         manga_home_url = message.embeds[0].fields[-1].value
 
-        scanlator: ABCScan = get_manga_scanlation_class(manga_home_url)
+        scanlator: ABCScan = get_manga_scanlation_class(SCANLATORS, manga_home_url)
 
         url_name = scanlator.get_rx_url_name(manga_home_url)
         series_url: str = manga_home_url
@@ -61,13 +60,16 @@ class SubscribeView(View):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.response.send_message(embed=em, ephemeral=True)
 
-        latest_chapter = await scanlator.get_curr_chapter_num(
+        latest_chapter_url_hash = await scanlator.get_curr_chapter_url_hash(
+            self.bot, series_id, url_name
+        )
+        last_chapter_text = await scanlator.get_curr_chapter_text(
             self.bot, series_id, url_name
         )
         series_name = await scanlator.get_human_name(self.bot, series_id, url_name)
 
         manga: Manga = Manga(
-            series_id, series_name, series_url, latest_chapter, False, scanlator.name
+            series_id, series_name, series_url, latest_chapter_url_hash, last_chapter_text, False, scanlator.name
         )
 
         await self.bot.db.add_series(manga)

@@ -7,13 +7,12 @@ import aiohttp
 class MangaDexAPI:
     def __init__(
         self,
-        api_url: str,
         session: Optional[aiohttp.ClientSession] = None,
     ):
-        self.api_url = api_url
+        self.api_url: str = "https://api.mangadex.org"
         self.session = session or aiohttp.ClientSession()
         self.headers = {
-            "User-Agent": "mangadex-api-wrapper",
+            "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
         }
         self.rate_limit_remaining = None
         self.rate_limit_reset = None
@@ -53,18 +52,20 @@ class MangaDexAPI:
         return await self.__request("GET", endpoint)
 
     async def get_chapters_list(
-        self, manga_id: str, languages: list[str] = ["en"]
+        self, manga_id: str, languages=None
     ) -> list[Dict[str, Any]]:
         """Return a list of chapters in ascending order"""
+        if languages is None:
+            languages = ["en"]
         endpoint = f"manga/{manga_id}/feed"
         result = await self.__request(
             "GET", endpoint, params={"translatedLanguage[]": languages}
         )
-        result = sorted(result["data"], key=lambda x: float(x["attributes"]["chapter"]))
         for x in range(len(result.copy())):
-            if result[x]["attributes"]["volume"] is None:
-                result[x]["attributes"]["volume"] = 0
-        result = sorted(result, key=lambda x: float(x["attributes"]["volume"]))
+            if result["data"][x]["attributes"]["volume"] is None:
+                result["data"][x]["attributes"]["volume"] = 0
+        result = sorted(result["data"], key=lambda x: (float(x['attributes']['volume'] or 0),
+                                                       float(x['attributes']['chapter'])))
         return list(result)
 
     async def search(

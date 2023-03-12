@@ -11,33 +11,34 @@ from typing import TYPE_CHECKING, Iterable, Union
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
+from typing import Optional
 import aiohttp
 import discord
 from bs4 import BeautifulSoup
 from discord.ext.commands import Context
 from discord.ext.commands import Paginator as CommandPaginator
-
-from src.core.scanlationClasses import SCANLATORS, ABCScan
+from src.scanners import SCANLATORS, ABCScan
 
 
 class PaginatorView(discord.ui.View):
     def __init__(
         self,
-        _iterable: list[Union[str, int, discord.Embed]] = None,
+        items: list[Union[str, int, discord.Embed]] = None,
         interaction: Union[discord.Interaction, Context] = None,
         timeout: float = 60.0,
     ) -> None:
-        self._iterable = _iterable
+        self.items = items
         self.interaction: discord.Interaction = interaction
         self.page: int = 0
-        self.message: discord.Message = None
+        self.message: Optional[discord.Message] = None
 
-        if not self._iterable and not self.interaction:
+        if not self.items and not self.interaction:
             raise AttributeError(
-                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through as well as the interaction."
+                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through as well "
+                "as the interaction."
             )
 
-        elif not _iterable:
+        elif not items:
             raise AttributeError(
                 "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through."
             )
@@ -45,58 +46,58 @@ class PaginatorView(discord.ui.View):
         elif not interaction:
             raise AttributeError("The command interaction was not provided.")
 
-        if not isinstance(_iterable, Iterable):
+        if not isinstance(items, Iterable):
             raise AttributeError(
                 "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
             )
 
         elif False in [
-            isinstance(item, (str, int, discord.Embed)) for item in _iterable
+            isinstance(item, (str, int, discord.Embed)) for item in items
         ]:
             raise AttributeError(
                 "All items within the iterable must be of type 'str', 'int' or 'discord.Embed'."
             )
 
         super().__init__(timeout=timeout)
-        self._iterable = list(self._iterable)
+        self.items = list(self.items)
 
     def __get_response_kwargs(self):
-        if isinstance(self._iterable[self.page], discord.Embed):
-            return {"embed": self._iterable[self.page]}
+        if isinstance(self.items[self.page], discord.Embed):
+            return {"embed": self.items[self.page]}
         else:
-            return {"content": self._iterable[self.page]}
+            return {"content": self.items[self.page]}
 
     @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple)
     async def _first_page(
-        self, interaction: discord.Interaction, btn: discord.ui.Button
+        self, interaction: discord.Interaction, _
     ):
         self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
     @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple)
-    async def back(self, interaction: discord.Interaction, btn: discord.ui.Button):
+    async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
-            self.page = len(self._iterable) - 1
+            self.page = len(self.items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red)
-    async def _stop(self, interaction: discord.Interaction, btn: discord.ui.Button):
+    async def _stop(self, interaction: discord.Interaction, _):
         await interaction.response.edit_message(view=None)
         self.stop()
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple)
-    async def forward(self, interaction: discord.Interaction, btn: discord.ui.Button):
+    async def forward(self, interaction: discord.Interaction, _):
         self.page += 1
-        if self.page == len(self._iterable):
+        if self.page == len(self.items):
             self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple)
     async def _last_page(
-        self, interaction: discord.Interaction, btn: discord.ui.Button
+        self, interaction: discord.Interaction, _
     ):
-        self.page = len(self._iterable) - 1
+        self.page = len(self.items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -185,26 +186,31 @@ class Manga:
         id: str,
         human_name: str,
         manga_url: str,
-        last_chapter: float,
+        last_chapter_url_hash: int,
+        last_chapter_string: str,
         completed: bool,
         scanlator: str,
     ) -> None:
         self._id: str = id
         self._human_name: str = human_name
         self._manga_url: str = manga_url
-        self._last_chapter: float = last_chapter
+        self._last_chapter_url_hash: int = last_chapter_url_hash
+        self._last_chapter_string: str = last_chapter_string
         self._completed: bool = completed
         self._scanlator: str = scanlator
 
     def update(
         self,
-        last_chapter: float = None,
+        last_chapter_url_hash: int = None,
+        last_chapter_string: str = None,
         completed: bool = None,
     ) -> None:
         """Update the manga."""
-        if last_chapter:
-            self._last_chapter = last_chapter
-        if completed:
+        if last_chapter_url_hash is not None:
+            self._last_chapter_url_hash = last_chapter_url_hash
+        if last_chapter_string is not None:
+            self._last_chapter_string = last_chapter_string
+        if completed is not None:
             self._completed = completed
 
     @property
@@ -225,9 +231,9 @@ class Manga:
         return self._manga_url
 
     @property
-    def last_chapter(self) -> float:
-        """Get the last chapter of the manga."""
-        return self._last_chapter
+    def last_chapter_url_hash(self) -> int:
+        """Get the last chapter url hash of the manga."""
+        return self._last_chapter_url_hash
 
     @property
     def completed(self) -> bool:
@@ -238,6 +244,11 @@ class Manga:
     def scanlator(self) -> str:
         """Get the scanlator of the manga."""
         return self._scanlator
+
+    @property
+    def last_chapter_string(self) -> str:
+        """Get the last chapter string of the manga."""
+        return self._last_chapter_string
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Manga":
@@ -255,13 +266,14 @@ class Manga:
             self.id,
             self.human_name,
             self.manga_url,
-            self.last_chapter,
+            self.last_chapter_url_hash,
+            self.last_chapter_string,
             self.completed,
             self.scanlator,
         )
 
     def __repr__(self) -> str:
-        return f"Manga({self.human_name} - {self.last_chapter})"
+        return f"Manga({self.human_name} - {self.last_chapter_string})"
 
 
 class GuildSettings:
@@ -310,11 +322,11 @@ class MangaUpdatesUtils:
     @staticmethod
     async def getMangaUpdatesID(
         session: aiohttp.ClientSession, manga_title: str
-    ) -> tuple[str, str, str] | None:
+    ) -> str | None:
         """Scrape the series ID from MangaUpdates.com
 
         Returns:
-            >>> (name, url, _id)
+            >>> str if found
             >>> None if not found
         """
         encoded_title = urllib.parse.quote(manga_title)
@@ -354,7 +366,8 @@ class RateLimiter:
     def __init__(self):
         self._last_request_times = {}
 
-    def get_scanlator_key(self, manga: Manga):
+    @staticmethod
+    def get_scanlator_key(manga: Manga):
         """
         Returns the scanlator key for a given Manga object, which corresponds to one of the keys in self.SCANLATORS.
         """
@@ -365,10 +378,10 @@ class RateLimiter:
         Delays the current coroutine if the previous request to the same scanlator was made not too long ago.
         """
 
-        scanlators_to_ignore = ["mangadex"]
+        scanlators_to_ignore_rate_limits_for = ["mangadex"]
 
         scanlator_key = self.get_scanlator_key(manga)
-        if scanlator_key in scanlators_to_ignore:
+        if scanlator_key in scanlators_to_ignore_rate_limits_for:
             return
 
         last_request_time = self._last_request_times.get(scanlator_key, None)

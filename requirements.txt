@@ -7,3 +7,5 @@ pyyaml
 beautifulsoup4
 fuzzywuzzy
 python-Levenshtein
+pandas
+openpyxl
