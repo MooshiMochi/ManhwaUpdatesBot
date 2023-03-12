@@ -566,6 +566,19 @@ class Restricted(commands.Cog):
             file=discord.File(io_buffer, filename="manga_db.xlsx")
         )
 
+    @developer.command(
+        name="import_db",
+        help="Import the database from an Excel file.",
+        brief="Import the database from an Excel file.",
+    )
+    async def _import_db(self, ctx: commands.Context) -> None:
+        await ctx.send("```diff\n-<[ Importing database. ]>-```")
+        file_content = await ctx.message.attachments[0].read()
+        buffer_file = io.BytesIO(file_content)
+        buffer_file.seek(0)
+        await self.client.loop.run_in_executor(None, self.client.db.import_data, buffer_file)
+        await ctx.send("```diff\n-<[ Database imported. ]>-```")
+
 
 async def setup(bot: MangaClient) -> None:
     await bot.add_cog(Restricted(bot))

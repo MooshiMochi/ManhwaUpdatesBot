@@ -302,7 +302,7 @@ class TritiniaScans(ABCScan):
             last_chapter_container = soup.find("li", {"class": "wp-manga-chapter"})
             last_chapter_tag = last_chapter_container.find("a")
 
-            new_chapter_text = last_chapter_tag.text.strip()
+            new_chapter_text = last_chapter_tag.text.strip().replace("Ch.", "Chapter")
             return new_chapter_text
 
     @staticmethod

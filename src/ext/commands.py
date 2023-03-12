@@ -164,7 +164,11 @@ class MangaUpdates(commands.Cog):
                 else:
                     self.bot.logger.warning(f"Cant connect to webhook {webhook_url}")
 
-            manga.update(_hash(update_check_result[-1][0]), update_check_result[-1][2])
+            manga.update(
+                update_check_result[-1].url_chapter_hash,
+                update_check_result[-1].new_chapter_string,
+                update_check_result[-1].series_completed
+            )
             await self.bot.db.update_series(manga)
 
     @check_updates_task.before_loop

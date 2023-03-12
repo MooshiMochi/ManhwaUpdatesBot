@@ -81,6 +81,9 @@ class Database:
 
             for table in tables:
                 df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
+                for col in df.columns:
+                    if df[col].dtype == 'int64':  # convert int64 columns to string
+                        df[col] = df[col].astype(str)
                 df.to_excel(writer, sheet_name=table, index=False)
 
             writer.book.save(output)
