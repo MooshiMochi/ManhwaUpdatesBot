@@ -39,7 +39,8 @@ class Database:
                     last_chapter_url_hash INT NOT NULL,
                     last_chapter_string TEXT NOT NULL,
                     completed BOOLEAN NOT NULL DEFAULT false,
-                    scanlator TEXT NOT NULL DEFAULT 'Unknown'
+                    scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                    UNIQUE(id) ON CONFLICT IGNORE
                 )
                 """
             )
@@ -61,7 +62,8 @@ class Database:
                     guild_id INTEGER PRIMARY KEY NOT NULL,
                     channel_id INTEGER NOT NULL,
                     updates_role_id INTEGER NOT NULL,
-                    webhook_url TEXT NOT NULL
+                    webhook_url TEXT NOT NULL,
+                    UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
                 """
             )
