@@ -66,6 +66,10 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
 
       - a command that will show the user all the manga that they have bookmarked
 
+      - a request caching system (most likey a wrapper for aiohttp.get/post) that will cache the requests
+       that are made to the websites. This will be done to prevent the bot from getting rate limited
+       by the websites. Cach time will probably be 20 seconds to avoid missing houlry updates.
+
    ### Issues:
       - when checking for updates, sometimes a manga might be dropped. We need to account for that
         when checking whether to let the user subscribe to that series or not.
