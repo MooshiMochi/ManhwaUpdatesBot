@@ -707,7 +707,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
                 return None
@@ -723,7 +723,7 @@ class FlameScans(ABCScan):
     @classmethod
     async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, url_manga_name: str) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
                 return None
@@ -747,7 +747,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
                 return None
@@ -770,7 +770,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, url_manga_name: str
     ) -> bool:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
         ) as resp:
             if resp.status != 200:
                 raise MangaNotFoundError(manga_url=cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name))
