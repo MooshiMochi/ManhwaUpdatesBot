@@ -67,10 +67,15 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
       - a command that will show the user all the manga that they have bookmarked
 
       - a request caching system (most likey a wrapper for aiohttp.get/post) that will cache the requests
-       that are made to the websites. This will be done to prevent the bot from getting rate limited
-       by the websites. Cach time will probably be 20 seconds to avoid missing houlry updates.
+      that are made to the websites. This will be done to prevent the bot from getting rate limited
+      by the websites. Cach time will probably be 20 seconds to avoid missing houlry updates.
 
    ### Issues:
       - when checking for updates, sometimes a manga might be dropped. We need to account for that
-        when checking whether to let the user subscribe to that series or not.
-        The error message also needs to be updated to say taht the manga is either completed or dropped.
+      when checking whether to let the user subscribe to that series or not.
+      The error message also needs to be updated to say taht the manga is either completed or dropped.
+
+      - the import and export functions from the Database class need to be re-written so the
+      database can be exported to a CSV file and imported from a CSV file.
+      This is to avoid the need to also export/import the database schema, since it
+      would have already been created when the database file was created by the bot.
