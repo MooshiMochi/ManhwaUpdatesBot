@@ -48,7 +48,7 @@ class ABCScan(ABC):
             human_name: str,
             url_manga_name: str,
             manga_id: str,
-            last_chapter_url_hash: int,
+            last_chapter_url_hash: str,
     ) -> list[ChapterUpdate]:
         """
         Summary:
@@ -61,7 +61,7 @@ class ABCScan(ABC):
         session: aiohttp.ClientSession - The session to use for the request.
         manga: str - The name of the manga.
         manga_id: str - The ID of the manga.
-        last_chapter_url_hash: int - The last chapter released last time.
+        last_chapter_url_hash: str - The hash of the last released chapter url (last time).
 
         Returns:
         list[ChapterUpdate] - A list of ChapterUpdate objects containing the following:
@@ -246,7 +246,7 @@ class TritiniaScans(ABCScan):
 
     @classmethod
     async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
-                            last_chapter_url_hash: int) -> list[ChapterUpdate] | None:
+                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
         url_manga_name = RegExpressions.tritinia_url.search(url_manga_name).group(3)
 
         async with bot.session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
@@ -360,7 +360,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
-                            last_chapter_url_hash: int) -> list[ChapterUpdate] | None:
+                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
         async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
             if resp.status != 200:
                 bot.logger.error("Manganato: Failed to get manga page", resp.status)
@@ -479,7 +479,7 @@ class Toonily(ABCScan):
 
     @classmethod
     async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
-                            last_chapter_url_hash: int) -> list[ChapterUpdate] | None:
+                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
 
         url_manga_name = RegExpressions.toonily_url.search(url_manga_name).group(3)
 
@@ -604,7 +604,7 @@ class MangaDex(ABCScan):
 
     @classmethod
     async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
-                            last_chapter_url_hash: int) -> list[ChapterUpdate] | None:
+                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
 
         chapters = await bot.mangadex_api.get_chapters_list(manga_id)
 
@@ -672,7 +672,7 @@ class FlameScans(ABCScan):
 
     @classmethod
     async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
-                            last_chapter_url_hash: int) -> list[ChapterUpdate] | None:
+                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
 
         async with bot.session.get(
                 cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)

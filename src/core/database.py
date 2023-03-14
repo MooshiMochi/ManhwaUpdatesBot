@@ -80,6 +80,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = [table[0] for table in cursor.fetchall()]
+            schemas = []
 
             for table in tables:
                 df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
@@ -90,7 +91,10 @@ class Database:
 
                 # Export table schema
                 schema = pd.read_sql_query(f"PRAGMA table_info({table})", conn)
-                schema.to_excel(writer, sheet_name=f"{table} :schema:", index=False)
+                schemas.append((table, schema))
+
+            for table, schema in schemas:
+                schema.to_excel(writer, sheet_name=f"{table} _schema_", index=False)
 
             writer.book.save(output)
             output.seek(0)
@@ -103,9 +107,15 @@ class Database:
             # Read the Excel file into a dictionary of DataFrames
             dfs = pd.read_excel(file, sheet_name=None)
 
-            # Import each table
+            # Import each table and its schema
             for table_name, df in dfs.items():
-                df.to_sql(table_name, conn, index=False, if_exists="replace")
+                if table_name.endswith(" _schema_"):
+                    continue  # Skip schema tables
+                    # Import table schema
+                    # df.to_sql(table_name[:-9], conn, index=False, if_exists="replace")
+                else:
+                    # Import table data
+                    df.to_sql(table_name, conn, index=False, if_exists="append")
 
     async def add_series(self, manga_obj: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -172,8 +182,8 @@ class Database:
 
     async def get_guild_config(self, guild_id: int) -> GuildSettings | None:
         """
-        Returns a GuildSettings object.
-        >>> GuildSettings(guild_id, channel_id, updates_role_id, webhook_url)
+        Returns:
+             Optional[GuildSettings] object if a config is found for the guild.
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
@@ -201,7 +211,7 @@ class Database:
     async def get_all_series(self) -> list[Manga] | None:
         """
         Returns a list of Manga objects containing all series in the database.
-        >>> [manga_obj, ...)]
+        >>> [Manga, ...)]
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
@@ -215,7 +225,7 @@ class Database:
     async def _get_all_series_autocomplete(self, current: str = None) -> list:
         """
         Returns a list of Manga objects containing all series in the database.
-        >>> [manga_obj, ...)]
+        >>> [Manga, ...)]
         """
         if current is not None:
             async with aiosqlite.connect(self.db_name) as db:
@@ -332,3 +342,15 @@ class Database:
                 """
             ) as cursor:
                 return await cursor.fetchall()
+
+    async def get_webhooks(self) -> set[str]:
+        """
+        Returns a set of all webhook URLs in the config table.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                """
+                SELECT webhook_url FROM config;
+                """
+            ) as cursor:
+                return set([url for url, in await cursor.fetchall()])

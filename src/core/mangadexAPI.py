@@ -1,16 +1,16 @@
 import asyncio
-from typing import Any, Dict, List, Optional
 
-import aiohttp
+from typing import Any, Dict, List, Optional
+from src.cache import CachedClientSession
 
 
 class MangaDexAPI:
     def __init__(
         self,
-        session: Optional[aiohttp.ClientSession] = None,
+        session: Optional[CachedClientSession] = None,
     ):
         self.api_url: str = "https://api.mangadex.org"
-        self.session = session or aiohttp.ClientSession()
+        self.session = session or CachedClientSession()
         self.headers = {
             "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
         }
@@ -37,9 +37,9 @@ class MangaDexAPI:
         ) as response:
             json_data = await response.json()
             self.rate_limit_remaining = int(
-                response.headers.get("X-RateLimit-Remaining", -1)
+                response.headers.get("X-RateLimit-Remaining", "-1")
             )
-            self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", -1))
+            self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
 
             if response.status != 200:
                 raise Exception(
@@ -59,13 +59,16 @@ class MangaDexAPI:
             languages = ["en"]
         endpoint = f"manga/{manga_id}/feed"
         result = await self.__request(
-            "GET", endpoint, params={"translatedLanguage[]": languages}
+            "GET", endpoint, params={
+                "translatedLanguage[]": languages, "order[chapter]": "desc", "order[volume]": "desc", "limit": 50
+            }
         )
         for x in range(len(result.copy())):
             if result["data"][x]["attributes"]["volume"] is None:
                 result["data"][x]["attributes"]["volume"] = 0
-        result = sorted(result["data"], key=lambda x: (float(x['attributes']['volume'] or 0),
-                                                       float(x['attributes']['chapter'])))
+        result = sorted(result["data"], key=lambda _x: (
+            float(_x['attributes']['volume'] or 0), float(_x['attributes']['chapter'])
+        ))
         return list(result)
 
     async def search(

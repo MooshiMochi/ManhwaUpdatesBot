@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import aiohttp
 import discord
@@ -10,6 +10,7 @@ from src.objects import GuildSettings
 
 from .database import Database
 from .mangadexAPI import MangaDexAPI
+from src.cache import CachedClientSession
 
 
 class MangaClient(commands.Bot):
@@ -26,7 +27,7 @@ class MangaClient(commands.Bot):
         self.test_guild_id = None
         self.db = Database(self, "database.db")
         self._logger: logging.Logger = logging.getLogger("bot")
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: Optional[Union[aiohttp.ClientSession, CachedClientSession]] = None
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
         self.mangadex_api: Optional[MangaDexAPI] = None
@@ -34,13 +35,15 @@ class MangaClient(commands.Bot):
     async def setup_hook(self):
         await self.db.async_init()
         if os.name == "nt":
-            self._session = aiohttp.ClientSession()
+            self._session = CachedClientSession()
         else:
-            self._session = aiohttp.ClientSession(trust_env=True)
+            self._session = CachedClientSession(None, trust_env=True)
 
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
+
+        self._session.ignored_urls = self._session.ignored_urls.union(await self.db.get_webhooks())
 
     async def update_restart_message(self):
         await self.wait_until_ready()
@@ -80,8 +83,9 @@ class MangaClient(commands.Bot):
         self.test_guild_id = config["constants"].get("test-guild-id")
         self.log_channel_id: int = config["constants"].get("log-channel-id")
         self._debug_mode: bool = config.get("debug", False)
+
         self.mangadex_api = MangaDexAPI(
-            aiohttp.ClientSession(trust_env=True if os.name != "nt" else False),
+            CachedClientSession(trust_env=True if os.name != "nt" else False)
         )
 
         self._config: dict = config
