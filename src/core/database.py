@@ -88,6 +88,10 @@ class Database:
                         df[col] = df[col].astype(str)
                 df.to_excel(writer, sheet_name=table, index=False)
 
+                # Export table schema
+                schema = pd.read_sql_query(f"PRAGMA table_info({table})", conn)
+                schema.to_excel(writer, sheet_name=f"{table} :schema:", index=False)
+
             writer.book.save(output)
             output.seek(0)
             return output
