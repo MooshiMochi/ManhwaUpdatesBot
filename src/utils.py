@@ -111,6 +111,18 @@ def ensure_configs(logger) -> Optional[dict]:
             config[key] = value
             config_edited = True
 
+        if isinstance(value, dict):
+            for k, v in value.items():
+                if k not in config[key]:
+                    logger.warning(
+                        "    - config.yml file is missing optional key: '"
+                        + k
+                        + "'."
+                        + " Using default configs."
+                    )
+                    config[key][k] = v
+                    config_edited = True
+
     if config_edited:
         logger.warning(
             "    - Using default config values may cause the bot to not function as expected."
