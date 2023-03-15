@@ -23,3 +23,6 @@ class RegExpressions:
     flamescans_url = re.compile(
         r"(https?://)?(www\.)?flamescans.org/series/([0-9]+)-([a-zA-Z0-9-]+)(/.*)?"
     )
+    flamescans_url = re.compile(
+        r"(https?://)?(www\.)?flamescans.org/(series/)?([0-9]+)-([a-zA-Z0-9-]+)(-chapter-\d+-?/?)(/.*)?"
+    )

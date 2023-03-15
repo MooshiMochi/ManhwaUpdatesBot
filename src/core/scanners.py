@@ -11,10 +11,10 @@ from bs4 import BeautifulSoup
 
 from src.static import RegExpressions
 
-from src.core.errors import MangaNotFoundError
+from .errors import MangaNotFoundError
 import hashlib
 from abc import ABC, abstractmethod
-from .utils import _hash
+from src.utils import _hash
 
 
 class ChapterUpdate:
@@ -46,7 +46,7 @@ class ABCScan(ABC):
             cls,
             bot: MangaClient,
             human_name: str,
-            url_manga_name: str,
+            manga_url: str,
             manga_id: str,
             last_chapter_url_hash: str,
     ) -> list[ChapterUpdate]:
@@ -58,8 +58,9 @@ class ABCScan(ABC):
 
         Parameters:
 
-        session: aiohttp.ClientSession - The session to use for the request.
-        manga: str - The name of the manga.
+        bot: MangaClient - The bot instance.
+        human_name: str - The name of the manga.
+        manga_url: str - The URL of the manga's home page.
         manga_id: str - The ID of the manga.
         last_chapter_url_hash: str - The hash of the last released chapter url (last time).
 
@@ -102,7 +103,7 @@ class ABCScan(ABC):
     @classmethod
     @abstractmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         """
         Summary:
@@ -113,7 +114,7 @@ class ABCScan(ABC):
 
         session: aiohttp.ClientSession - The session to use for the request.
         manga_id: str - The ID of the manga.
-        url_manga_name: str - The name of the manga in the scanlator's website.
+        manga_url: str - The URL of the manga's home page.
 
         Returns:
 
@@ -128,7 +129,7 @@ class ABCScan(ABC):
     @classmethod
     @abstractmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str:
         """
         Summary:
@@ -137,9 +138,9 @@ class ABCScan(ABC):
 
         Parameters:
 
-        session: aiohttp.ClientSession - The session to use for the request.
+        bot: MangaClient - The bot instance.
         manga_id: str - The ID of the manga.
-        url_manga_name: str - The name of the manga in the scanlator's website.
+        manga_url: str - The URL of the manga's home page.
 
         Returns:
 
@@ -174,7 +175,7 @@ class ABCScan(ABC):
             cls,
             bot: MangaClient,
             manga_id: str,
-            url_manga_name: str) -> str | None:
+            manga_url: str) -> str | None:
         """
         Summary:
 
@@ -184,7 +185,7 @@ class ABCScan(ABC):
 
         bot: MangaClient - The bot instance.
         manga_id: str - The ID of the manga.
-        url_manga_name: str - The name of the manga in the scanlator's website.
+        manga_url: str - The URL of the manga's home page.
 
         Returns:
 
@@ -198,7 +199,7 @@ class ABCScan(ABC):
             cls,
             bot: MangaClient,
             manga_id: str,
-            url_manga_name: str,
+            manga_url: str,
     ) -> str | None:
         """
         Summary:
@@ -208,32 +209,12 @@ class ABCScan(ABC):
         Parameters:
 
         bot: MangaClient - The bot instance.
-        url_manga_name: str - The name of the manga in the scanlator's website.
         manga_id: str - The ID of the manga.
+        manga_url: str - The URL of the manga's home page.
 
         Returns:
 
         str/None - The hash of the current chapter URL of the manga.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def get_rx_url_name(cls, url: str) -> str | None:
-        """
-        Summary:
-
-        Gets the name of the manga from the URL.
-
-        Parameters:
-
-        url: str - The URL of the manga.
-
-        Returns:
-
-        str - The name of the manga from the URL.
-            Note: This can be the ID of the manga depending on the scanlator (i.e. Mangadex).
-        None - If the URL is not valid.
         """
         raise NotImplementedError
 
@@ -244,18 +225,28 @@ class TritiniaScans(ABCScan):
     fmt_url = base_url + "{manga}/ajax/chapters/"
     name = "tritinia"
 
-    @classmethod
-    async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
-                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
-        url_manga_name = RegExpressions.tritinia_url.search(url_manga_name).group(3)
+    @staticmethod
+    def _ensure_manga_url(url: str) -> str:
+        if url.endswith("/") and "/ajax/chapters/" not in url:
+            url = url[:-1]
+        return url + "/ajax/chapters/"
 
-        async with bot.session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
+    @classmethod
+    async def check_updates(
+            cls,
+            bot: MangaClient,
+            human_name: str,
+            manga_url: str,
+            manga_id: str,
+            last_chapter_url_hash: str,
+    ) -> list[ChapterUpdate] | None:
+        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 bot.logger.error("Tritinia: Failed to get manga page", resp.status)
                 return None
             text = await resp.text()
 
-            completed = await cls.is_series_completed(bot, manga_id, url_manga_name)
+            completed = await cls.is_series_completed(bot, manga_id, manga_url)
 
             soup = BeautifulSoup(text, "html.parser")
             last_chapter_containers = soup.find_all("li", {"class": "wp-manga-chapter"})
@@ -276,9 +267,9 @@ class TritiniaScans(ABCScan):
 
     @classmethod
     async def get_curr_chapter_url_hash(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
+        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 return None
             text = await resp.text()
@@ -292,8 +283,8 @@ class TritiniaScans(ABCScan):
             return last_url_hash
 
     @classmethod
-    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, url_manga_name: str) -> str | None:
-        async with bot.session.post(cls.fmt_url.format(manga=url_manga_name)) as resp:
+    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
+        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 return None
             text = await resp.text()
@@ -317,20 +308,20 @@ class TritiniaScans(ABCScan):
 
     @classmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(cls.base_url + url_manga_name) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
-                raise MangaNotFoundError(manga_url=cls.base_url + url_manga_name)
+                raise MangaNotFoundError(manga_url=manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             return cls._bs_is_series_completed(soup)
 
     @classmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(cls.base_url + url_manga_name) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return None
 
@@ -347,11 +338,6 @@ class TritiniaScans(ABCScan):
         hash_object = hashlib.sha1(manga_url.encode())
         return hash_object.hexdigest()
 
-    @classmethod
-    def get_rx_url_name(cls, url: str) -> str | None:
-        if RegExpressions.tritinia_url.match(url):
-            return RegExpressions.tritinia_url.search(url).group(3)
-
 
 class Manganato(ABCScan):
     base_url = "https://chapmanganato.com/manga-"
@@ -359,9 +345,9 @@ class Manganato(ABCScan):
     name = "manganato"
 
     @classmethod
-    async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
+    async def check_updates(cls, bot: MangaClient, human_name: str, manga_url: str, manga_id: str,
                             last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
-        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 bot.logger.error("Manganato: Failed to get manga page", resp.status)
                 return None
@@ -405,25 +391,25 @@ class Manganato(ABCScan):
 
     @classmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
-                raise MangaNotFoundError(cls.fmt_url.format(manga_id=manga_id))
+                raise MangaNotFoundError(manga_url)
 
             text = await resp.text()
 
             if "404 - PAGE NOT FOUND" in text:
-                raise MangaNotFoundError(cls.fmt_url.format(manga_id=manga_id))
+                raise MangaNotFoundError(manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             return cls._bs_is_series_completed(soup)
 
     @classmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return None
 
@@ -433,9 +419,9 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_curr_chapter_url_hash(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return None
 
@@ -449,8 +435,8 @@ class Manganato(ABCScan):
             return _hash(last_chapter_url) if last_chapter_url else None
 
     @classmethod
-    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, url_manga_name: str) -> str | None:
-        async with bot.session.get(cls.fmt_url.format(manga_id=manga_id)) as resp:
+    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return None
 
@@ -466,11 +452,6 @@ class Manganato(ABCScan):
     def get_manga_id(cls, manga_url: str) -> str:
         return re.search(r"manga-(.*)", manga_url).group(1)
 
-    @classmethod
-    def get_rx_url_name(cls, url: str) -> str | None:
-        if RegExpressions.manganato_url.match(url):
-            return RegExpressions.manganato_url.search(url).group(4)
-
 
 class Toonily(ABCScan):
     base_url = "https://toonily.com/webtoon/"
@@ -478,13 +459,10 @@ class Toonily(ABCScan):
     name = "toonily"
 
     @classmethod
-    async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
+    async def check_updates(cls, bot: MangaClient, human_name: str, manga_url: str, manga_id: str,
                             last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
-
-        url_manga_name = RegExpressions.toonily_url.search(url_manga_name).group(3)
-
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 bot.logger.error("Toonily: Failed to get manga page", resp.status)
@@ -514,10 +492,10 @@ class Toonily(ABCScan):
 
     @classmethod
     async def get_curr_chapter_url_hash(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 return None
@@ -533,9 +511,9 @@ class Toonily(ABCScan):
             return _hash(last_chapter_url) if last_chapter_url else None
 
     @classmethod
-    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, url_manga_name: str) -> str | None:
+    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 return None
@@ -560,22 +538,22 @@ class Toonily(ABCScan):
 
     @classmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(
-                cls.fmt_url.format(manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
-                raise MangaNotFoundError(manga_url=cls.base_url + url_manga_name)
+                raise MangaNotFoundError(manga_url=manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             return cls._bs_is_series_completed(soup)
 
     @classmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(cls.base_url + url_manga_name) as resp:
+        async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return None
 
@@ -591,11 +569,6 @@ class Toonily(ABCScan):
     def get_manga_id(cls, manga_url: str) -> str:
         return super().get_manga_id(manga_url)
 
-    @classmethod
-    def get_rx_url_name(cls, url: str) -> str | None:
-        if RegExpressions.toonily_url.match(url):
-            return RegExpressions.toonily_url.search(url).group(3)
-
 
 class MangaDex(ABCScan):
     base_url = "https://mangadex.org/"
@@ -603,12 +576,12 @@ class MangaDex(ABCScan):
     name = "mangadex"
 
     @classmethod
-    async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
+    async def check_updates(cls, bot: MangaClient, human_name: str, manga_url: str, manga_id: str,
                             last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
 
         chapters = await bot.mangadex_api.get_chapters_list(manga_id)
 
-        completed = await cls.is_series_completed(bot, manga_id, url_manga_name)
+        completed = await cls.is_series_completed(bot, manga_id, manga_url)
         new_updates: list[ChapterUpdate] = []
         high_to_low = reversed(chapters)
 
@@ -627,26 +600,26 @@ class MangaDex(ABCScan):
 
     @classmethod
     async def get_curr_chapter_url_hash(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         chapters = await bot.mangadex_api.get_chapters_list(manga_id)
         return _hash(chapters[-1]["id"]) if chapters else None
 
     @classmethod
-    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, url_manga_name: str) -> str | None:
+    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         chapters = await bot.mangadex_api.get_chapters_list(manga_id)
         return ("Chapter " + chapters[-1]["attributes"]["chapter"]) if chapters else None
 
     @classmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         manga = await bot.mangadex_api.get_manga(manga_id)
         return manga["data"]["attributes"]["status"] == "completed"
 
     @classmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         manga = await bot.mangadex_api.get_manga(manga_id)
         return manga["data"]["attributes"]["title"]["en"]
@@ -654,11 +627,6 @@ class MangaDex(ABCScan):
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
         return RegExpressions.mangadex_url.search(manga_url).group(3)
-
-    @classmethod
-    def get_rx_url_name(cls, url: str) -> str | None:
-        if RegExpressions.mangadex_url.match(url):
-            return RegExpressions.mangadex_url.search(url).group(3)
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
@@ -671,11 +639,11 @@ class FlameScans(ABCScan):
     name = "flamescans"
 
     @classmethod
-    async def check_updates(cls, bot: MangaClient, human_name: str, url_manga_name: str, manga_id: str,
+    async def check_updates(cls, bot: MangaClient, human_name: str, manga_url: str, manga_id: str,
                             last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
 
         async with bot.session.get(
-                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 return None
@@ -685,7 +653,7 @@ class FlameScans(ABCScan):
             chapter_list = chapter_list_container.find_all("a")
             new_updates: list[ChapterUpdate] = []
 
-            for chapter in reversed(chapter_list):
+            for chapter in chapter_list:
                 chapter_url = chapter["href"]
                 chapter_text = chapter.find("span", {"class": "chapternum"}).text.replace("\n", " ").strip()
 
@@ -704,10 +672,10 @@ class FlameScans(ABCScan):
 
     @classmethod
     async def get_curr_chapter_url_hash(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 return None
@@ -721,9 +689,9 @@ class FlameScans(ABCScan):
             return newest_chapter_hash
 
     @classmethod
-    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, url_manga_name: str) -> str | None:
+    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 return None
@@ -744,10 +712,10 @@ class FlameScans(ABCScan):
 
     @classmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(
-                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
                 return None
@@ -758,22 +726,17 @@ class FlameScans(ABCScan):
 
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
-        return RegExpressions.flamescans_url.search(manga_url).group(3)
-
-    @classmethod
-    def get_rx_url_name(cls, url: str) -> str | None:
-        if RegExpressions.flamescans_url.match(url):
-            return RegExpressions.flamescans_url.search(url).group(4)
+        return RegExpressions.flamescans_url.search(manga_url).group(4)
 
     @classmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, url_manga_name: str
+            cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(
-                cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name)
+                manga_url
         ) as resp:
             if resp.status != 200:
-                raise MangaNotFoundError(manga_url=cls.fmt_url.format(manga_id=manga_id, manga_url_name=url_manga_name))
+                raise MangaNotFoundError(manga_url=manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             return cls._bs_is_series_completed(soup)

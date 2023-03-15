@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
-from src.scanners import SCANLATORS, ABCScan
+from src.core.scanners import SCANLATORS, ABCScan
 
 import discord
 from discord import ButtonStyle
 from discord.ui import View, button
 
-from src.objects import Manga
+from src.core.objects import Manga
 from src.utils import get_manga_scanlation_class
 
 
@@ -36,9 +36,8 @@ class SubscribeView(View):
 
         scanlator: ABCScan = get_manga_scanlation_class(SCANLATORS, manga_home_url)
 
-        url_name = scanlator.get_rx_url_name(manga_home_url)
-        series_url: str = manga_home_url
-        series_id = scanlator.get_manga_id(series_url)
+        manga_url: str = manga_home_url
+        series_id = scanlator.get_manga_id(manga_url)
 
         current_user_subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id
@@ -52,7 +51,7 @@ class SubscribeView(View):
                 em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
                 return await interaction.response.send_message(embed=em, ephemeral=True)
 
-        completed = await scanlator.is_series_completed(self.bot, series_id, url_name)
+        completed = await scanlator.is_series_completed(self.bot, series_id, manga_url)
 
         if completed:
             em = discord.Embed(title="Series Completed", color=discord.Color.red())
@@ -61,15 +60,15 @@ class SubscribeView(View):
             return await interaction.response.send_message(embed=em, ephemeral=True)
 
         latest_chapter_url_hash = await scanlator.get_curr_chapter_url_hash(
-            self.bot, series_id, url_name
+            self.bot, series_id, manga_url
         )
         last_chapter_text = await scanlator.get_curr_chapter_text(
-            self.bot, series_id, url_name
+            self.bot, series_id, manga_url
         )
-        series_name = await scanlator.get_human_name(self.bot, series_id, url_name)
+        series_name = await scanlator.get_human_name(self.bot, series_id, manga_url)
 
         manga: Manga = Manga(
-            series_id, series_name, series_url, latest_chapter_url_hash, last_chapter_text, False, scanlator.name
+            series_id, series_name, manga_url, latest_chapter_url_hash, last_chapter_text, False, scanlator.name
         )
 
         await self.bot.db.add_series(manga)

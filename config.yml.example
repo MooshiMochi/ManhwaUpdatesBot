@@ -5,6 +5,7 @@ constants:
     - 383287544336613385
   synced: false
   test-guild-id: 1066891416934023218
+  cache-retention-seconds: 300
 extensions:
   - src.ext.config
   - src.ext.commands

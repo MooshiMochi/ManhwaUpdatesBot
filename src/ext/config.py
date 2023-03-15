@@ -9,7 +9,7 @@ import discord
 from discord import app_commands
 from discord.ext.commands import GroupCog
 
-from src.objects import GuildSettings
+from src.core.objects import GuildSettings
 
 
 class CommandsCog(GroupCog, name="config", description="Config commands."):

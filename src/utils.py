@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .scanners import ABCScan
+    from src.core.scanners import ABCScan
 
 import os
 import re
@@ -95,6 +95,7 @@ def ensure_configs(logger) -> Optional[dict]:
             "log-channel-id": 0,
             "owner-ids": [0],
             "test-guild-id": 0,
+            "cache-retention-seconds": 300,
         },
     }
 

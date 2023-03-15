@@ -22,7 +22,9 @@ class CachedClientSession(aiohttp.ClientSession):
             "Please use the 'set_instance_default_cache_time' method instead."
         )
 
-        self.logger.info("CachedClientSession initialized with default cache time of 5 seconds")
+        self.logger.info(
+            f"CachedClientSession initialized with default cache time of {self._default_cache_time} seconds"
+        )
 
         # Start a background task to periodically clear the cache
         self._clear_cache_task = asyncio.create_task(self._clear_cache_periodically())

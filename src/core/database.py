@@ -9,7 +9,7 @@ from fuzzywuzzy import fuzz
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.objects import GuildSettings, Manga
+from src.core.objects import GuildSettings, Manga
 from io import BytesIO
 import pandas as pd
 import sqlite3

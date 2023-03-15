@@ -19,7 +19,7 @@ import discord
 from discord import Object
 from discord.ext import commands
 
-from src.objects import PaginatorView, TextPageSource
+from src.core.objects import PaginatorView, TextPageSource
 
 
 class Restricted(commands.Cog):

@@ -11,10 +11,9 @@ if TYPE_CHECKING:
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from src.scanners import *
-from src.objects import Manga, PaginatorView, RateLimiter
+from src.core.scanners import *
+from src.core.objects import Manga, PaginatorView, RateLimiter
 from src.views import SubscribeView
-from src.utils import _hash
 
 
 class MangaUpdates(commands.Cog):
@@ -183,7 +182,6 @@ class MangaUpdates(commands.Cog):
             scanlator = Manganato
 
             series_id = RegExpressions.manganato_url.search(manga_url).group(4)
-            url_name = None  # we don't care for it in manganato
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
         elif RegExpressions.tritinia_url.match(manga_url):
@@ -212,7 +210,7 @@ class MangaUpdates(commands.Cog):
         elif RegExpressions.flamescans_url.match(manga_url):
             scanlator = FlameScans
 
-            url_name = RegExpressions.flamescans_url.search(manga_url).group(4)
+            url_name = RegExpressions.flamescans_url.search(manga_url).group(5)
             series_id = FlameScans.get_manga_id(manga_url)
             series_url: str = FlameScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
@@ -225,7 +223,7 @@ class MangaUpdates(commands.Cog):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
-        completed = await scanlator.is_series_completed(self.bot, series_id, url_name)
+        completed = await scanlator.is_series_completed(self.bot, series_id, series_url)
 
         if completed:
             em = discord.Embed(title="Series Completed", color=discord.Color.red())
@@ -234,13 +232,13 @@ class MangaUpdates(commands.Cog):
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         last_chapter_url_hash = await scanlator.get_curr_chapter_url_hash(
-            self.bot, series_id, url_name
+            self.bot, series_id, series_url
         )
 
         last_chapter_text = await scanlator.get_curr_chapter_text(
-            self.bot, series_id, url_name
+            self.bot, series_id, series_url
         )
-        series_name = await scanlator.get_human_name(self.bot, series_id, url_name)
+        series_name = await scanlator.get_human_name(self.bot, series_id, series_url)
 
         manga: Manga = Manga(
             series_id, series_name, series_url, last_chapter_url_hash, last_chapter_text, False, scanlator.name
@@ -445,7 +443,7 @@ class MangaUpdates(commands.Cog):
     async def dex_search(self, interaction: discord.Interaction, query: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if manga_id := MangaDex.get_rx_url_name(query):
+        if manga_id := MangaDex.get_manga_id(query):
             response: dict[str, Any] = await self.bot.mangadex_api.get_manga(manga_id)
         else:
             response: dict[str, Any] = await self.bot.mangadex_api.search(

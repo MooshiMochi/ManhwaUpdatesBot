@@ -17,7 +17,7 @@ import discord
 from bs4 import BeautifulSoup
 from discord.ext.commands import Context
 from discord.ext.commands import Paginator as CommandPaginator
-from src.scanners import SCANLATORS, ABCScan
+from src.core.scanners import SCANLATORS, ABCScan
 
 
 class PaginatorView(discord.ui.View):

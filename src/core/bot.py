@@ -6,11 +6,11 @@ import aiohttp
 import discord
 from discord import Intents
 from discord.ext import commands
-from src.objects import GuildSettings
 
 from .database import Database
 from .mangadexAPI import MangaDexAPI
-from src.cache import CachedClientSession
+from .cache import CachedClientSession
+from .objects import GuildSettings
 
 
 class MangaClient(commands.Bot):

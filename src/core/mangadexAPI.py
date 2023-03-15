@@ -1,7 +1,7 @@
 import asyncio
 
 from typing import Any, Dict, List, Optional
-from src.cache import CachedClientSession
+from src.core.cache import CachedClientSession
 
 
 class MangaDexAPI:
