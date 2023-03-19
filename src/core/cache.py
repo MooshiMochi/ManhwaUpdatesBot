@@ -34,7 +34,12 @@ class CachedClientSession(aiohttp.ClientSession):
             await asyncio.sleep(self._default_cache_time + 0.5)
             if self._cache:
                 self.logger.info("Clearing cache...")
-            self._cache = {}
+                for url in self._cache.copy():
+                    if self._cache[url]['expires'] < asyncio.get_event_loop().time():
+                        del self._cache[url]
+                self.logger.info("Cache cleared")
+            else:
+                self.logger.info("Cache is empty, not clearing")
 
     @staticmethod
     def _is_discord_api_url(url: str) -> bool:

@@ -626,7 +626,7 @@ class MangaDex(ABCScan):
 
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
-        return RegExpressions.mangadex_url.search(manga_url).group(3)
+        return RegExpressions.mangadex_url.search(manga_url).group(1)
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
@@ -726,7 +726,7 @@ class FlameScans(ABCScan):
 
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
-        return RegExpressions.flamescans_url.search(manga_url).group(4)
+        return RegExpressions.flamescans_url.search(manga_url).group(1)
 
     @classmethod
     async def is_series_completed(
@@ -742,10 +742,111 @@ class FlameScans(ABCScan):
             return cls._bs_is_series_completed(soup)
 
 
+class AsuraScans(ABCScan):
+    base_url = "https://www.asurascans.com/"
+    fmt_url = base_url + "manga/{manga_id}-{manga_url_name}"
+    name = "asurascans"
+
+    @classmethod
+    async def check_updates(cls, bot: MangaClient, human_name: str, manga_url: str, manga_id: str,
+                            last_chapter_url_hash: str) -> list[ChapterUpdate] | None:
+
+        content = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not content or "Ray ID" in content:
+            return None
+
+        soup = BeautifulSoup(content, "html.parser")
+        chapter_list_container = soup.find("div", {"class": "eplister"})
+        chapter_list = chapter_list_container.find_all("a")
+        new_updates: list[ChapterUpdate] = []
+
+        for chapter in chapter_list:
+            chapter_url = chapter["href"]
+            chapter_text = chapter.find("span", {"class": "chapternum"}).text.replace("\n", " ").strip()
+
+            new_chapter_url_hash = _hash(chapter_url)
+            if new_chapter_url_hash == last_chapter_url_hash:
+                break
+            new_chapter_update = ChapterUpdate(
+                chapter_url,
+                chapter_text,
+                cls._bs_is_series_completed(soup),
+            )
+            new_updates.append(
+                new_chapter_update
+            )
+        return list(reversed(new_updates))
+
+    @classmethod
+    async def get_curr_chapter_url_hash(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            return None
+
+        soup = BeautifulSoup(text, "html.parser")
+        chapter_list_container = soup.find("div", {"class": "eplister"})
+        chapters_list = chapter_list_container.find_all("a")
+        newest_chapter = chapters_list[0]
+        newest_chapter_url = newest_chapter["href"]
+        newest_chapter_hash = _hash(newest_chapter_url)
+        return newest_chapter_hash
+
+    @classmethod
+    async def get_curr_chapter_text(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            return None
+
+        soup = BeautifulSoup(text, "html.parser")
+        chapter_list_container = soup.find("div", {"class": "eplister"})
+        chapters_list = chapter_list_container.find_all("a")
+        newest_chapter = chapters_list[0]
+        newest_chapter_text = newest_chapter.find("span", {"class": "chapternum"}).text.replace("\n", " ").strip()
+        return newest_chapter_text if newest_chapter_text else None
+
+    @classmethod
+    def _bs_is_series_completed(cls, soup: BeautifulSoup) -> bool:
+        """Returns whether the series is completed or not."""
+        status_div = soup.find("div", {"class": "imptdt"})
+        status = status_div.find("i").text.strip()
+        return status.lower() == "completed" or status.lower() == "dropped"
+
+    @classmethod
+    async def get_human_name(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            return None
+
+        soup = BeautifulSoup(text, "html.parser")
+        title_tag = soup.find("h1", {"class": "entry-title"})
+        return title_tag.text.strip()
+
+    @classmethod
+    def get_manga_id(cls, manga_url: str) -> str:
+        return RegExpressions.asurascans_url.search(manga_url).group(1)
+
+    @classmethod
+    async def is_series_completed(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> bool:
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            raise MangaNotFoundError(manga_url=manga_url)
+
+        soup = BeautifulSoup(text, "html.parser")
+        return cls._bs_is_series_completed(soup)
+
+
 SCANLATORS: dict[str, ABCScan] = {
     Toonily.name: Toonily,
     TritiniaScans.name: TritiniaScans,
     Manganato.name: Manganato,
     MangaDex.name: MangaDex,
     FlameScans.name: FlameScans,
+    AsuraScans.name: AsuraScans,
 }

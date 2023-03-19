@@ -9,7 +9,7 @@ from discord.utils import setup_logging
 from src.core import MangaClient
 from src.core import BotCommandTree
 from src.utils import ensure_configs, ensure_environment, exit_bot
-from src.core.cache import CachedClientSession
+from src.core import CachedClientSession, ProtectedRequest
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -35,6 +35,8 @@ async def main():
     ensure_logs()
 
     CachedClientSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
+    ProtectedRequest.set_default_cache_time(config["constants"]["cache-retention-seconds"])
+        
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
     client.load_config(config)

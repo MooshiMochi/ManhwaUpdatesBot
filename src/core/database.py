@@ -153,20 +153,23 @@ class Database:
 
             await db.commit()
 
+    # noinspection PyUnresolvedReferences
     async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
+        """
+        Returns a list of Manga class objects each representing a manga the user is subscribed to.
+        >>> [Manga, ...]
+        >>> None if no manga is found.
+        """
         async with aiosqlite.connect(self.db_name) as db:
-            """
-            Returns a list of Manga class objects each representing a manga the user is subscribed to.
-            >>> [manga: Manga, ...]
-            >>> None if no manga is found.
-            """
-
+            await db.create_function("levenshtein", 2, _levenshtein_distance)
             if current is not None:
                 query = """
-                        SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = ?
-                        ) AND series.human_name LIKE ? LIMIT 25;
+                        SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = $1
+                        ) 
+                        ORDER BY levenshtein(human_name, $2) 
+                        LIMIT 25;
                         """
-                params = (user_id, f"%{current}%")
+                params = (user_id, current)
 
             else:
                 query = """

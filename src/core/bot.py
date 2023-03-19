@@ -11,6 +11,7 @@ from .database import Database
 from .mangadexAPI import MangaDexAPI
 from .cache import CachedClientSession
 from .objects import GuildSettings
+from .cf_bypass import ProtectedRequest
 
 
 class MangaClient(commands.Bot):
@@ -28,6 +29,7 @@ class MangaClient(commands.Bot):
         self.db = Database(self, "database.db")
         self._logger: logging.Logger = logging.getLogger("bot")
         self._session: Optional[Union[aiohttp.ClientSession, CachedClientSession]] = None
+        self._cf_scraper: Optional[ProtectedRequest] = None
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
         self.mangadex_api: Optional[MangaDexAPI] = None
@@ -38,7 +40,7 @@ class MangaClient(commands.Bot):
             self._session = CachedClientSession()
         else:
             self._session = CachedClientSession(None, trust_env=True)
-
+        self._cf_scraper = ProtectedRequest()
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
@@ -96,6 +98,7 @@ class MangaClient(commands.Bot):
     async def close(self):
         await self._session.close() if self._session else None
         await self.mangadex_api.session.close() if self.mangadex_api else None
+        await self._cf_scraper.close() if self._cf_scraper else None
         await super().close()
 
     async def log_to_discord(self, **kwargs) -> None:
@@ -157,3 +160,7 @@ class MangaClient(commands.Bot):
     @property
     def config(self):
         return self._config
+
+    @property
+    def cf_scraper(self):
+        return self._cf_scraper

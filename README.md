@@ -16,6 +16,7 @@ This bot currently only supports the following websites:
 - https://tritinia.org
 - https://mangadex.org
 - https://flamescans.org
+- https://asurascans.com
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
 
@@ -59,6 +60,10 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
       drakescans.com
       nitroscans.com
 
+   ### Cloudflare protected websites to add:
+      reaperscans.com
+      aquamanga.com
+
    ### Features to add:
       - a bookmark feature where the user can bookmark both a completed manga and an ongoing manga
       the user will be able to edit the chapter that they've read for each bookmarked manga.
@@ -70,3 +75,6 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
       - when checking for updates, sometimes a manga might be dropped. We need to account for that
       when checking whether to let the user subscribe to that series or not.
       The error message also needs to be updated to say taht the manga is either completed or dropped.
+
+      - Rearrange the function order in each of the scanlators.py classes to follow that of the
+      ABCScan class

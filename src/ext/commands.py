@@ -181,20 +181,20 @@ class MangaUpdates(commands.Cog):
         if RegExpressions.manganato_url.match(manga_url):
             scanlator = Manganato
 
-            series_id = RegExpressions.manganato_url.search(manga_url).group(4)
+            series_id = RegExpressions.manganato_url.search(manga_url).group(1)
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
         elif RegExpressions.tritinia_url.match(manga_url):
             scanlator = TritiniaScans
 
-            url_name = RegExpressions.tritinia_url.search(manga_url).group(3)
+            url_name = RegExpressions.tritinia_url.search(manga_url).group(1)
             series_url: str = TritiniaScans.base_url + url_name
             series_id = TritiniaScans.get_manga_id(series_url)
 
         elif RegExpressions.toonily_url.match(manga_url):
             scanlator = Toonily
 
-            url_name = RegExpressions.toonily_url.search(manga_url).group(3)
+            url_name = RegExpressions.toonily_url.search(manga_url).group(1)
             series_url: str = Toonily.base_url + url_name
             series_id = Toonily.get_manga_id(series_url)
 
@@ -202,7 +202,7 @@ class MangaUpdates(commands.Cog):
             scanlator = MangaDex
 
             url_name = RegExpressions.mangadex_url.search(manga_url).group(
-                3
+                1
             )  # this is the manga id, but who cares
             series_url: str = MangaDex.fmt_url.format(manga_id=url_name)
             series_id = MangaDex.get_manga_id(series_url)
@@ -210,9 +210,16 @@ class MangaUpdates(commands.Cog):
         elif RegExpressions.flamescans_url.match(manga_url):
             scanlator = FlameScans
 
-            url_name = RegExpressions.flamescans_url.search(manga_url).group(5)
+            url_name = RegExpressions.flamescans_url.search(manga_url).group(2)
             series_id = FlameScans.get_manga_id(manga_url)
             series_url: str = FlameScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
+
+        elif RegExpressions.asurascans_url.match(manga_url):
+            scanlator = AsuraScans
+
+            url_name = RegExpressions.asurascans_url.search(manga_url).group(2)
+            series_id = AsuraScans.get_manga_id(manga_url)
+            series_url: str = AsuraScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
@@ -266,6 +273,7 @@ class MangaUpdates(commands.Cog):
         subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id, current
         )
+        subs = list(reversed(subs))
 
         return [
             discord.app_commands.Choice(
@@ -284,6 +292,7 @@ class MangaUpdates(commands.Cog):
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /latest command"""
         subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
+        subs = list(reversed(subs))
         return [
             discord.app_commands.Choice(
                 name=(
@@ -307,6 +316,12 @@ class MangaUpdates(commands.Cog):
 
         manga: Manga = await self.bot.db.get_series(manga_id)
 
+        if not manga:
+            em = discord.Embed(title="Invalid Manga", color=discord.Color.red())
+            em.description = "The manga you provided is not in the database."
+            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+            return await interaction.followup.send(embed=em, ephemeral=True)
+
         await self.bot.db.unsub_user(interaction.user.id, manga_id)
 
         em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
@@ -321,6 +336,7 @@ class MangaUpdates(commands.Cog):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         subs: list[Manga] = await self.bot.db.get_user_subs(interaction.user.id)
+        subs = sorted(subs, key=lambda x: x.human_name)
 
         if not subs:
             em = discord.Embed(title="No Subscriptions", color=discord.Color.red())
@@ -347,7 +363,7 @@ class MangaUpdates(commands.Cog):
             em.description = "• " + "\n• ".join(
                 [
                     f"[{x.human_name}]({x.manga_url}) - {x.last_chapter_string}"
-                    for x in subs[i : i + 25]
+                    for x in subs[i: i + 25]
                 ]
             )
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
@@ -394,6 +410,8 @@ class MangaUpdates(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://tritinia.org/manga/manga-title/`
             • [FlameScans](https://flamescans.org/)
             \u200b \u200b \u200b \↪ Format -> `https://flamescans.org/series/12351-manga-title/`
+            • [AsuraScans](https://asurascans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
             \n__**Note:**__
             More websites will be added in the future, however websites such as AsuraScans and ReaperScans \
             are not supported due to their anti-bot measures.
