@@ -61,8 +61,7 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
       nitroscans.com
 
    ### Cloudflare protected websites to add:
-      reaperscans.com
-      aquamanga.com
+      ...
 
    ### Features to add:
       - a bookmark feature where the user can bookmark both a completed manga and an ongoing manga

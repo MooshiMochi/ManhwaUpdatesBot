@@ -223,6 +223,20 @@ class MangaUpdates(commands.Cog):
             series_id = AsuraScans.get_manga_id(manga_url)
             series_url: str = AsuraScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
+        elif RegExpressions.reaperscans_url.match(manga_url):
+            scanlator = ReaperScans
+
+            url_name = RegExpressions.reaperscans_url.search(manga_url).group(2)
+            series_id = ReaperScans.get_manga_id(manga_url)
+            series_url: str = ReaperScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
+
+        elif RegExpressions.aquamanga_url.match(manga_url):
+            scanlator = Aquamanga
+
+            url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
+            series_id = Aquamanga.get_manga_id(manga_url)
+            series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
+
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
             em.description = (
@@ -414,9 +428,12 @@ class MangaUpdates(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://flamescans.org/series/12351-manga-title/`
             • [AsuraScans](https://asurascans.com/)
             \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
+            • [ReaperScans](https://reaperscans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
+            • [Aquamanga](https://aquamanga.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
             \n__**Note:**__
-            More websites will be added in the future, however websites such as AsuraScans and ReaperScans \
-            are not supported due to their anti-bot measures.
+            More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)

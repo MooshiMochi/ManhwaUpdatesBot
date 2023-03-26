@@ -101,16 +101,20 @@ class MangaClient(commands.Bot):
         await self._cf_scraper.close() if self._cf_scraper else None
         await super().close()
 
-    async def log_to_discord(self, **kwargs) -> None:
+    async def log_to_discord(self, content: Union[str, None], **kwargs) -> None:
         """Log a message to a discord log channel."""
         if not self.is_ready():
             await self.wait_until_ready()
 
         channel = self.get_channel(self.log_channel_id)
+
         if not channel:
             return
         try:
-            await channel.send(**kwargs)
+            if len(content) > 1997:
+                content = content[:1997] + "..."
+                
+            await channel.send(content, **kwargs)
         except Exception as e:
             self._logger.error(f"Error while logging: {e}")
 
