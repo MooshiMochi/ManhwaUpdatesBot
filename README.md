@@ -48,7 +48,7 @@ How to set up the bot:
 
 _P.S: I am already hosting a version of this bot, so if you want to invite it to your server, here's the URL:_
 
-   • https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands
+   • [Invite the Bot to your server!](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands)
   
 
 ## Todo:
@@ -70,6 +70,9 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
       This will most likely be done through a view.
 
       - a command that will show the user all the manga that they have bookmarked
+
+      - When a series has been marked complete/dropped, send a notification in the updates
+      channel that the series has been marked as such.
 
    ### Issues:
       - when checking for updates, sometimes a manga might be dropped. We need to account for that

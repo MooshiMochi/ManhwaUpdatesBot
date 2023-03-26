@@ -106,7 +106,9 @@ class MangaUpdates(commands.Cog):
                 )
                 log_em = discord.Embed(
                     title="Unknown Scanlator",
-                    description=f"```diff\n- Scanlator: {manga.scanlator}\n- Name: {manga.human_name}\n- ID: {manga.id}```",
+                    description=(f"```diff\n- Scanlator: {manga.scanlator}\n- Name: {manga.human_name}\n- "
+                                 "ID: {manga.id}```"
+                                 )
                 )
                 log_em.set_footer(
                     text="Manga Updates Logs", icon_url=self.bot.user.avatar_url
@@ -267,7 +269,7 @@ class MangaUpdates(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def manga_autocomplete(
-        self, interaction: discord.Interaction, current: str
+            self, interaction: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /unsubscribe command."""
         subs: list[Manga] = await self.bot.db.get_user_subs(
@@ -276,34 +278,34 @@ class MangaUpdates(commands.Cog):
         subs = list(reversed(subs))
 
         return [
-            discord.app_commands.Choice(
-                name=(
-                    x.human_name[:97] + "..."
-                    if len(x.human_name) > 100
-                    else x.human_name
-                ),
-                value=x.id,
-            )
-            for x in subs
-        ][:25]
+                   discord.app_commands.Choice(
+                       name=(
+                           x.human_name[:97] + "..."
+                           if len(x.human_name) > 100
+                           else x.human_name
+                       ),
+                       value=x.id,
+                   )
+                   for x in subs
+               ][:25]
 
     async def latest_chapters_autocomplete(
-        self, interaction: discord.Interaction, current: str
+            self, interaction: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /latest command"""
         subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
         subs = list(reversed(subs))
         return [
-            discord.app_commands.Choice(
-                name=(
-                    x.human_name[:97] + "..."
-                    if len(x.human_name) > 100
-                    else x.human_name
-                ),
-                value=x.id,
-            )
-            for x in subs
-        ][:25]
+                   discord.app_commands.Choice(
+                       name=(
+                           x.human_name[:97] + "..."
+                           if len(x.human_name) > 100
+                           else x.human_name
+                       ),
+                       value=x.id,
+                   )
+                   for x in subs
+               ][:25]
 
     @app_commands.command(
         name="unsubscribe", description="Unsubscribe from a series on Manganato."

@@ -150,5 +150,5 @@ def get_manga_scanlation_class(scanlators: dict[str, ABCScan], url: str = None, 
                 return d[name.split("_")[0]]
 
 
-def _hash(s: str) -> str:
+def sha_hash(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
