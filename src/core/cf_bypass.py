@@ -85,9 +85,9 @@ class ProtectedRequest:
         page = await self.browser.newPage()
 
         scanlator = get_manga_scanlation_class(SCANLATORS, url)
-        # cookie = await self.bot.db.get_cookie(scanlator.name)
-        # if cookie:
-        #     await page.setCookie(*cookie)
+        cookie = await self.bot.db.get_cookie(scanlator.name)
+        if cookie:
+            await page.setCookie(*cookie)
 
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
