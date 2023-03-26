@@ -78,3 +78,5 @@ _P.S: I am already hosting a version of this bot, so if you want to invite it to
 
       - Rearrange the function order in each of the scanlators.py classes to follow that of the
       ABCScan class
+
+      - Create a .sh file that will configure the system for pypetteer. 

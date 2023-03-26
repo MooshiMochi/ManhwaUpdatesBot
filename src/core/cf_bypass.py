@@ -35,10 +35,10 @@ class ProtectedRequest:
                 self.logger.info("Browser cache is empty, not clearing")
 
     async def async_init(self):
-        self.browser = await launch(headless=self._headless)
+        self.browser = await launch(headless=self._headless, args=['--no-sandbox'])
 
     async def __aenter__(self):
-        self.browser = await launch(headless=self._headless)
+        self.browser = await launch(headless=self._headless, args=['--no-sandbox'])
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
