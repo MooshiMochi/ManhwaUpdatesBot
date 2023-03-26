@@ -1,17 +1,27 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.core import MangaClient
+
 import asyncio
 from pyppeteer import launch
 from pyppeteer.network_manager import Request
 import logging
 from typing import Dict, Any, Optional, Set
+from src.utils import get_manga_scanlation_class
+from src.core.scanners import SCANLATORS
 
 
 class ProtectedRequest:
     _default_cache_time: int = 5
     logger = logging.getLogger(__name__)
 
-    def __init__(self, headless: bool = True, ignored_urls: Optional[Set[str]] = None, *args, **kwargs) -> None:
+    def __init__(self, bot: MangaClient, headless: bool = True, ignored_urls: Optional[Set[str]] = None, *args, **kwargs) -> None:
+        self.bot: MangaClient = bot
         self.browser = None
         self._headless: bool = headless
+
+        self._user_data_dir: str = "browser_data"
 
         self._ignored_urls = set(ignored_urls) if ignored_urls else set()
         self._cache: Dict[str, Dict[str, Any]] = {}
@@ -35,10 +45,10 @@ class ProtectedRequest:
                 self.logger.info("Browser cache is empty, not clearing")
 
     async def async_init(self):
-        self.browser = await launch(headless=self._headless, args=['--no-sandbox'])
+        self.browser = await launch(headless=self._headless, args=['--no-sandbox'], userDataDir=self._user_data_dir)
 
     async def __aenter__(self):
-        self.browser = await launch(headless=self._headless, args=['--no-sandbox'])
+        self.browser = await launch(headless=self._headless, args=['--no-sandbox'], userDataDir=self._user_data_dir)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -74,6 +84,11 @@ class ProtectedRequest:
 
         page = await self.browser.newPage()
 
+        scanlator = get_manga_scanlation_class(SCANLATORS, url)
+        # cookie = await self.bot.db.get_cookie(scanlator.name)
+        # if cookie:
+        #     await page.setCookie(*cookie)
+
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
                      'Chrome/93.0.4577.63 Safari/537.36'
@@ -99,6 +114,10 @@ class ProtectedRequest:
 
         await page.goto(url, wait_until="domcontentloaded")
         content = await page.content()
+        page_cookie = await page.cookies()
+        if page_cookie:
+            await self.bot.db.set_cookie(scanlator.name, page_cookie)
+
         if url not in self._ignored_urls:
             self._cache[url] = {
                 "content": content,
@@ -107,6 +126,7 @@ class ProtectedRequest:
                 )
             }
         self.logger.info(f"Cached response for {url}")
+        await asyncio.sleep(0.5)
         await page.close()
         return content
 

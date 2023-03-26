@@ -40,7 +40,7 @@ class MangaClient(commands.Bot):
             self._session = CachedClientSession()
         else:
             self._session = CachedClientSession(None, trust_env=True)
-        self._cf_scraper = ProtectedRequest()
+        self._cf_scraper = ProtectedRequest(self)
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
