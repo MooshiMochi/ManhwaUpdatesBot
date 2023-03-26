@@ -1043,6 +1043,9 @@ class Aquamanga(ABCScan):
     ) -> bool:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            with open("result.html", "w", encoding="utf-8") as f:
+                f.write(text)
+
             raise MangaNotFoundError(manga_url=manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
