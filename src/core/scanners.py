@@ -743,12 +743,15 @@ class FlameScans(ABCScan):
             chapter_list = chapter_list_container.find_all("a")
             new_updates: list[ChapterUpdate] = []
 
+            print(f"Checking against {last_chapter_url_hash}")
+
             for chapter in chapter_list:
                 chapter_url = chapter["href"]
                 chapter_url_hash = sha_hash(chapter_url)
 
                 chapter_title = chapter.find("span", {"class": "chapternum"})
                 chapter_title = chapter_title.text.replace("\n", " ").strip()
+                print("Checking chapter: " + chapter_title + " (" + chapter_url + ")")
 
                 if chapter_url_hash == last_chapter_url_hash:
                     break
@@ -757,7 +760,7 @@ class FlameScans(ABCScan):
                     chapter_url, chapter_title, cls._bs_is_series_completed(soup)
                 )
                 new_updates.append(new_chapter_update)
-
+            print(list(reversed(new_updates)))
             return list(reversed(new_updates))
 
     @classmethod
