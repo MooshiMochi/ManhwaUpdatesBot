@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 
 from src.static import RegExpressions
-from src.utils import sha_hash
+from src.utils import sha_hash, write_to_discord_file
 
 from .errors import MangaNotFoundError
 
@@ -46,9 +46,9 @@ class ABCScan(ABC):
     name: str = "Unknown"
 
     @classmethod
-    async def report_error(cls, bot: MangaClient, error: Exception):
+    async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
         message: str = f"Error in {cls.name} scan: {error}"
-        await bot.log_to_discord(message)
+        await bot.log_to_discord(message, **kwargs)
 
     @classmethod
     @abstractmethod
@@ -251,7 +251,9 @@ class TritiniaScans(ABCScan):
             if resp.status != 200:
                 bot.logger.error("Tritinia: Failed to get manga page", resp.status)
                 return await cls.report_error(
-                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
             text = await resp.text()
 
@@ -281,7 +283,9 @@ class TritiniaScans(ABCScan):
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
             text = await resp.text()
 
@@ -300,7 +304,9 @@ class TritiniaScans(ABCScan):
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
             text = await resp.text()
 
@@ -339,7 +345,9 @@ class TritiniaScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -374,7 +382,9 @@ class Manganato(ABCScan):
             if resp.status != 200:
                 bot.logger.error("Manganato: Failed to get manga page", resp.status)
                 return await cls.report_error(
-                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -440,7 +450,9 @@ class Manganato(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -454,7 +466,9 @@ class Manganato(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -473,7 +487,9 @@ class Manganato(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -507,7 +523,9 @@ class Toonily(ABCScan):
             if resp.status != 200:
                 bot.logger.error("Toonily: Failed to get manga page", resp.status)
                 return await cls.report_error(
-                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             text = await resp.text()
@@ -541,7 +559,9 @@ class Toonily(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -561,7 +581,9 @@ class Toonily(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -600,7 +622,9 @@ class Toonily(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -708,7 +732,10 @@ class FlameScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status))
+                    bot, Exception(
+                        "Failed to run check_updates func. Status: " + str(resp.status)
+                        + f"\nJSON = {await resp.json()}"
+                    )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -740,7 +767,9 @@ class FlameScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -755,7 +784,9 @@ class FlameScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -777,7 +808,9 @@ class FlameScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 await cls.report_error(
-                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
                 raise MangaNotFoundError(manga_url=manga_url)
 
@@ -818,7 +851,8 @@ class AsuraScans(ABCScan):
         content = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not content or "Ray ID" in content:
             return await cls.report_error(
-                bot, Exception("Failed to run check_updates func. Status: N/A")
+                bot, Exception("Failed to run check_updates func. Status: N/A"),
+                file=write_to_discord_file("asurascans.html", content)
             )
 
         soup = BeautifulSoup(content, "html.parser")
@@ -853,7 +887,8 @@ class AsuraScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: N/A")
+                bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: N/A"),
+                file=write_to_discord_file("asurascans.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -869,7 +904,8 @@ class AsuraScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_curr_chapter_text func. Status: N/A")
+                bot, Exception("Failed to run get_curr_chapter_text func. Status: N/A"),
+                file=write_to_discord_file("asurascans.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -893,7 +929,8 @@ class AsuraScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_human_name func. Status: N/A")
+                bot, Exception("Failed to run get_human_name func. Status: N/A"),
+                file=write_to_discord_file("asurascans.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -934,7 +971,8 @@ class Aquamanga(ABCScan):
         content = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not content or "Ray ID" in content:
             return await cls.report_error(
-                bot, Exception("Failed to run check_updates func. Status: N/A")
+                bot, Exception("Failed to run check_updates func. Status: N/A"),
+                file=write_to_discord_file("aquamanga.html", content)
             )
 
         soup = BeautifulSoup(content, "html.parser")
@@ -966,7 +1004,8 @@ class Aquamanga(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: N/A")
+                bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: N/A"),
+                file=write_to_discord_file("aquamanga.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -984,7 +1023,8 @@ class Aquamanga(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_curr_chapter_text func. Status: N/A")
+                bot, Exception("Failed to run get_curr_chapter_text func. Status: N/A"),
+                file=write_to_discord_file("aquamanga.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -1009,7 +1049,8 @@ class Aquamanga(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_human_name func. Status: N/A")
+                bot, Exception("Failed to run get_human_name func. Status: N/A"),
+                file=write_to_discord_file("aquamanga.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -1051,7 +1092,8 @@ class ReaperScans(ABCScan):
         content = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not content or "Ray ID" in content:
             return await cls.report_error(
-                bot, Exception("Failed to run check_updates func. Status: N/A")
+                bot, Exception("Failed to run check_updates func. Status: N/A"),
+                file=write_to_discord_file("reaperscans.html", content)
             )
 
         soup = BeautifulSoup(content, "html.parser")
@@ -1082,7 +1124,8 @@ class ReaperScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: N/A")
+                bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: N/A"),
+                file=write_to_discord_file("reaperscans.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -1100,7 +1143,8 @@ class ReaperScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_curr_chapter_text func. Status: N/A")
+                bot, Exception("Failed to run get_curr_chapter_text func. Status: N/A"),
+                file=write_to_discord_file("reaperscans.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -1129,7 +1173,8 @@ class ReaperScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_human_name func. Status: N/A")
+                bot, Exception("Failed to run get_human_name func. Status: N/A"),
+                file=write_to_discord_file("reaperscans.html", text)
             )
 
         soup = BeautifulSoup(text, "html.parser")
@@ -1170,7 +1215,9 @@ class AniglisScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run check_updates func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -1205,7 +1252,9 @@ class AniglisScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_url_hash func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -1223,7 +1272,9 @@ class AniglisScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_curr_chapter_text func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -1249,7 +1300,9 @@ class AniglisScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 return await cls.report_error(
-                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -1267,7 +1320,9 @@ class AniglisScans(ABCScan):
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
                 await cls.report_error(
-                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status))
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + f"\nJSON = {await resp.json()}"
+                                   )
                 )
                 return False
 

@@ -1,6 +1,11 @@
 
 from __future__ import annotations
+
+import io
 from typing import TYPE_CHECKING
+
+import discord
+
 if TYPE_CHECKING:
     from src.core.scanners import ABCScan
 
@@ -152,3 +157,10 @@ def get_manga_scanlation_class(scanlators: dict[str, ABCScan], url: str = None, 
 
 def sha_hash(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
+
+
+def write_to_discord_file(filename: str, content: str) -> discord.File:
+    stream = io.BytesIO()
+    stream.write(content.encode())
+    stream.seek(0)
+    return discord.File(stream, filename=filename)
