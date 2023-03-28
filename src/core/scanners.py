@@ -720,6 +720,10 @@ class FlameScans(ABCScan):
         """
         if not re.match(r"flamescans\.org/\d+-", chapter_url):
             return re.sub(r"flamescans\.org/", f"flamescans.org/{manga_id}-", chapter_url)
+
+        elif not re.match(r"flamescans\.org/series/\d+-", chapter_url):
+            return re.sub(r"flamescans\.org/", f"flamescans.org/series/{manga_id}-", chapter_url)
+
         return chapter_url
 
     @classmethod
