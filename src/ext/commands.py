@@ -382,7 +382,7 @@ class MangaUpdates(commands.Cog):
 
         pages = []
         for i in range(0, len(subs), 25):
-            em = discord.Embed(title="Your Subscriptions", color=discord.Color.green())
+            em = discord.Embed(title=f"Your Subscriptions ({len(subs)})", color=discord.Color.green())
             em.description = "• " + "\n• ".join(
                 [
                     f"[{x.human_name}]({x.manga_url}) - {x.last_chapter_string}"
