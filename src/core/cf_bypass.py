@@ -1,5 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
+import pyppeteer.errors
+
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -112,7 +115,14 @@ class ProtectedRequest:
         await page.setRequestInterception(True)
         page.on("request", on_request)
 
-        await page.goto(url, wait_until="domcontentloaded")
+        for i in range(3):
+            try:
+                await page.goto(url, wait_until="domcontentloaded")
+                break
+            except pyppeteer.errors.PageError as e:
+                if i == 2:
+                    return f"Ray ID\n{str(e)}"
+
         content = await page.content()
         page_cookie = await page.cookies()
         if page_cookie:

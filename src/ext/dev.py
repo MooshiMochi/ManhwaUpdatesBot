@@ -161,7 +161,7 @@ class Restricted(commands.Cog):
         if out.decode("utf8").strip() == "Already up to date.":
             return
 
-        for ext_name, ext in self.client.extensions:
+        for ext_name, ext in self.client.extensions.items():
             try:
                 await self.client.unload_extension(ext_name)
             except commands.ExtensionNotLoaded:
