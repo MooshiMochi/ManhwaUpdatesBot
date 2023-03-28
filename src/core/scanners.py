@@ -720,6 +720,15 @@ class FlameScans(ABCScan):
     name = "flamescans"
 
     @classmethod
+    def _fix_chapter_url(cls, manga_id: str, chapter_url: str) -> str:
+        """This will add the ID to the URL all the time for consistency.
+        Mainly doing this bc flamescans are cheeky and are changing the URLs from time to time...
+        """
+        if not re.match(r"flamescans\.org/\d+-", chapter_url):
+            return re.sub(r"flamescans\.org/", f"flamescans.org/{manga_id}-", chapter_url)
+        return chapter_url
+
+    @classmethod
     async def check_updates(
             cls,
             bot: MangaClient,
@@ -743,15 +752,13 @@ class FlameScans(ABCScan):
             chapter_list = chapter_list_container.find_all("a")
             new_updates: list[ChapterUpdate] = []
 
-            print(f"Checking against {last_chapter_url_hash}")
-
             for chapter in chapter_list:
                 chapter_url = chapter["href"]
+                chapter_url = cls._fix_chapter_url(manga_id, chapter_url)
                 chapter_url_hash = sha_hash(chapter_url)
 
                 chapter_title = chapter.find("span", {"class": "chapternum"})
                 chapter_title = chapter_title.text.replace("\n", " ").strip()
-                print("Checking chapter: " + chapter_title + " (" + chapter_url + ")")
 
                 if chapter_url_hash == last_chapter_url_hash:
                     break
@@ -760,7 +767,6 @@ class FlameScans(ABCScan):
                     chapter_url, chapter_title, cls._bs_is_series_completed(soup)
                 )
                 new_updates.append(new_chapter_update)
-            print(list(reversed(new_updates)))
             return list(reversed(new_updates))
 
     @classmethod
@@ -778,7 +784,9 @@ class FlameScans(ABCScan):
             soup = BeautifulSoup(await resp.text(), "html.parser")
             chapter_list_container = soup.find("div", {"class": "eplister"})
             chapter_list = chapter_list_container.find("a")
-            return sha_hash(chapter_list["href"])
+            chapter_url = chapter_list["href"]
+            chapter_url = cls._fix_chapter_url(manga_id, chapter_url)
+            return sha_hash(chapter_url)
 
     @classmethod
     async def get_curr_chapter_text(
