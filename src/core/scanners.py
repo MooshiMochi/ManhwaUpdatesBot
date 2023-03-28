@@ -84,12 +84,6 @@ class ABCScan(ABC):
         Raises:
 
         MangaNotFoundError - If the manga is not found in the scanlator's website.
-
-        Notes:
-            After looking at more manga and their chapter lists, I've noticed that the chapter numbers are not always
-            present. Moving forward the chapter number will be the hash of the chapter URL. This will be used to
-            determine whether a new chapter has been released or not.
-            This also means that the behaviour of the "check_updates" task needs to be changed as well.
         """
         raise NotImplementedError
 

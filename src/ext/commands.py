@@ -25,6 +25,8 @@ class MangaUpdates(commands.Cog):
     async def cog_load(self):
         self.bot.logger.info("Loaded Manga Updates Cog...")
         self.bot.add_view(SubscribeView(self.bot))
+
+        self.check_updates_task.add_exception_type(Exception)
         self.check_updates_task.start()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
