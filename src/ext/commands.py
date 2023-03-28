@@ -298,7 +298,7 @@ class MangaUpdates(commands.Cog):
         subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id, current
         )
-        subs = list(reversed(subs))
+        # subs = list(reversed(subs))
 
         return [
                    discord.app_commands.Choice(
@@ -317,7 +317,7 @@ class MangaUpdates(commands.Cog):
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /latest command"""
         subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
-        subs = list(reversed(subs))
+        # subs = list(reversed(subs))
         return [
                    discord.app_commands.Choice(
                        name=(

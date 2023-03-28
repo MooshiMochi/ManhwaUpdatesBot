@@ -201,7 +201,7 @@ class Database:
                 query = """
                         SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = $1
                         ) 
-                        ORDER BY levenshtein(human_name, $2) 
+                        ORDER BY levenshtein(human_name, $2) DESC
                         LIMIT 25;
                         """
                 params = (user_id, current)
@@ -272,7 +272,7 @@ class Database:
                 async with db.execute(
                     """
                     SELECT * FROM series
-                    ORDER BY levenshtein(human_name, ?)
+                    ORDER BY levenshtein(human_name, ?) DESC
                     LIMIT 25;
                     """,
                     (current,),

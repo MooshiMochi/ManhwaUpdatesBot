@@ -115,7 +115,8 @@ class PaginatorView(discord.ui.View):
             return False
 
     async def on_timeout(self) -> None:
-        await self.message.edit(view=None)
+        if self.message is not None:
+            await self.message.edit(view=None)
         self.stop()
 
     async def on_error(
