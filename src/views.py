@@ -54,8 +54,8 @@ class SubscribeView(View):
         completed = await scanlator.is_series_completed(self.bot, series_id, manga_url)
 
         if completed:
-            em = discord.Embed(title="Series Completed", color=discord.Color.red())
-            em.description = "This series has already been completed."
+            em = discord.Embed(title="Series Completed/Dropped", color=discord.Color.red())
+            em.description = "This series has already been completed or dropped."
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.response.send_message(embed=em, ephemeral=True)
 

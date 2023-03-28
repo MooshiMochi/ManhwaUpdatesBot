@@ -230,12 +230,19 @@ class MangaUpdates(commands.Cog):
             series_id = ReaperScans.get_manga_id(manga_url)
             series_url: str = ReaperScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
-        elif RegExpressions.aquamanga_url.match(manga_url):
-            scanlator = Aquamanga
+        # elif RegExpressions.aquamanga_url.match(manga_url):  # temporarily disabled till i fix it on Linux
+        #     scanlator = Aquamanga
+        #
+        #     url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
+        #     series_id = Aquamanga.get_manga_id(manga_url)
+        #     series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
 
-            url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
-            series_id = Aquamanga.get_manga_id(manga_url)
-            series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
+        elif RegExpressions.aniglisscans_url.match(manga_url):
+            scanlator = AniglisScans
+
+            url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
+            series_id = AniglisScans.get_manga_id(manga_url)
+            series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
@@ -249,8 +256,8 @@ class MangaUpdates(commands.Cog):
         completed = await scanlator.is_series_completed(self.bot, series_id, series_url)
 
         if completed:
-            em = discord.Embed(title="Series Completed", color=discord.Color.red())
-            em.description = "This series has already been completed."
+            em = discord.Embed(title="Series Completed/Dropped", color=discord.Color.red())
+            em.description = "This series has already been completed or dropped."
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
@@ -432,6 +439,8 @@ class MangaUpdates(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
             • [Aquamanga](https://aquamanga.com/)
             \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
+            • [AniglisScans](https://anigliscans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """

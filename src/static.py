@@ -34,3 +34,7 @@ class RegExpressions:
     aquamanga_url = re.compile(
         r"(?:https?://)?(?:www\.)?aquamanga.com/read/([a-zA-Z0-9-]+)(/.*)?"
     )
+
+    aniglisscans_url = re.compile(
+        r"^(?:https?://)?(?:www\.)?anigliscans\.com/(?:series/)?([\w-]+?)(?:-chapter-[\d-]+)?/?(/.*)?$"
+    )
