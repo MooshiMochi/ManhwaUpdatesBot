@@ -74,6 +74,9 @@ How to set up the bot:
       - When a series has been marked complete/dropped, send a notification in the updates
       channel that the series has been marked as such.
 
+      - in /list command, categorize the series into their scanlators
+      perhaps add a select menu that will allow the user to view series for a selected scanlator.
+
    ### Issues:
       - Rearrange the function order in each of the scanlators.py classes to follow that of the
       ABCScan class
