@@ -438,13 +438,14 @@ class MangaUpdates(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
             • [ReaperScans](https://reaperscans.com/)
             \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
-            • [Aquamanga](https://aquamanga.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
             • [AniglisScans](https://anigliscans.com/)
             \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """
+
+            # •[Aquamanga](https: // aquamanga.com /)
+            # \u200b \u200b \u200b \↪ Format -> `https: // aquamanga.com / read / manga - title / `
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
