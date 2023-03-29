@@ -1217,7 +1217,7 @@ class ReaperScans(ABCScan):
 
 
 class AniglisScans(ABCScan):
-    base_url = "https://aniglis.com/"
+    base_url = "https://anigliscans.com/"
     fmt_url = base_url + "series/{manga_url_name}"
     name = "aniglisscans"
 
