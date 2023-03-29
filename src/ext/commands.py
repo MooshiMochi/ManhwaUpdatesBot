@@ -180,6 +180,7 @@ class MangaUpdates(commands.Cog):
         await self.bot.wait_until_ready()
 
     @app_commands.command(name="subscribe", description="Subscribe to a manga series.")
+    @app_commands.describe(manga_url="The URL of the manga series you want to subscribe to.")
     async def subscribe(self, interaction: discord.Interaction, manga_url: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
 
