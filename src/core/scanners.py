@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
+import discord
 import hashlib
 import re
 from abc import ABC, abstractmethod
@@ -23,10 +24,12 @@ class ChapterUpdate:
             new_chapter_url: str,
             new_chapter_string: str,
             series_completed: bool = False,
+            **extra_kwargs
     ):
         self.new_chapter_url = new_chapter_url
         self.new_chapter_string = self._fix_chapter_string(new_chapter_string)
         self.series_completed = series_completed
+        self.extra_kwargs = extra_kwargs
 
     @staticmethod
     def _fix_chapter_string(chapter_string: str) -> str:
@@ -1079,6 +1082,16 @@ class ReaperScans(ABCScan):
     fmt_url = base_url + "comics/{manga_id}-{manga_url_name}"
     name = "reaperscans"
 
+    @staticmethod
+    def _create_chapter_embed(img_url: str, human_name: str, chapter_url: str, chapter_text: str) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"{human_name} - {chapter_text}",
+            url=chapter_url)
+        embed.set_author(name="Reaper Scans")
+        embed.description = f"Read {human_name} online for free on Reaper Scans!"
+        embed.set_image(url=img_url)
+        return embed
+
     @classmethod
     async def check_updates(
             cls,
@@ -1101,6 +1114,12 @@ class ReaperScans(ABCScan):
         chapter_list = chapter_list_container.find_all("a")
         new_updates: list[ChapterUpdate] = []
 
+        # Get the image URL and alt text (aka the manga title) for the Embed
+        img_container = soup.find("main", {"class": "mb-auto"})
+        img = img_container.find("img")
+        img_url = img["src"]
+        img_alt = img["alt"]
+
         for chapter in chapter_list:
             chapter_url = chapter["href"]
             chapter_text = chapter.find("p").text.strip()
@@ -1111,6 +1130,9 @@ class ReaperScans(ABCScan):
                 chapter_url,
                 chapter_text,
                 cls._bs_is_series_completed(soup),
+                embed=cls._create_chapter_embed(
+                    img_url, img_alt, chapter_url, chapter_text
+                )
             )
             new_updates.append(new_chapter_update)
         return list(reversed(new_updates))

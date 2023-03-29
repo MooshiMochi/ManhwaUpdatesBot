@@ -158,6 +158,7 @@ class MangaUpdates(commands.Cog):
                                     f" has been released!\n{update.new_chapter_url}"
                                 ),
                                 allowed_mentions=discord.AllowedMentions(roles=True),
+                                **update.extra_kwargs
                             )
                             await asyncio.sleep(1)
                         except discord.HTTPException:
