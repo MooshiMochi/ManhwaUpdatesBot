@@ -11,7 +11,7 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?toonily.com/webtoon/([a-zA-Z0-9-]+)(/.*)?"
     )
     manganato_url = re.compile(
-        r"(?:https?://)?(?:www\.)?(?:chap)?manganato.com/manga-([a-zA-Z0-9-]+)(/.*)?"
+        r"(?:https?://)?(?:www\.)?(?:chap)?manganato.com/manga-([a-zA-Z0-9]+)(?:/.*)?"
     )
     tritinia_url = re.compile(
         r"(?:https?://)?(?:www\.)?tritinia.org/manga/([a-zA-Z0-9-]+)(/.*)?"
@@ -20,7 +20,7 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?mangadex.org/title/([a-zA-Z0-9-]+)(/.*)?"
     )
     flamescans_url = re.compile(
-        r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(\d+)-([\w-]+?)(?:-chapter-[\d-]+)?/?$"
+        r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?([\w-]+?)(?:-chapter-[\d-]+)?/?$"
     )
 
     asurascans_url = re.compile(

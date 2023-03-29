@@ -12,7 +12,7 @@ from discord import ButtonStyle
 from discord.ui import View, button
 
 from src.core.objects import Manga
-from src.utils import get_manga_scanlation_class
+from src.utils import get_manga_scanlator_class
 
 
 class SubscribeView(View):
@@ -34,7 +34,7 @@ class SubscribeView(View):
         message: discord.Message = interaction.message
         manga_home_url = message.embeds[0].fields[-1].value
 
-        scanlator: ABCScan = get_manga_scanlation_class(SCANLATORS, manga_home_url)
+        scanlator: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_home_url)
 
         manga_url: str = manga_home_url
         series_id = scanlator.get_manga_id(manga_url)
@@ -59,7 +59,7 @@ class SubscribeView(View):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.response.send_message(embed=em, ephemeral=True)
 
-        latest_chapter_url_hash = await scanlator.get_curr_chapter_url_hash(
+        latest_chapter_url = await scanlator.get_curr_chapter_url(
             self.bot, series_id, manga_url
         )
         last_chapter_text = await scanlator.get_curr_chapter_text(
@@ -68,7 +68,7 @@ class SubscribeView(View):
         series_name = await scanlator.get_human_name(self.bot, series_id, manga_url)
 
         manga: Manga = Manga(
-            series_id, series_name, manga_url, latest_chapter_url_hash, last_chapter_text, False, scanlator.name
+            series_id, series_name, manga_url, latest_chapter_url, last_chapter_text, False, scanlator.name
         )
 
         await self.bot.db.add_series(manga)

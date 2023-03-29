@@ -123,7 +123,7 @@ class MangaUpdates(commands.Cog):
             update_check_result: list[
                 ChapterUpdate
             ] = await scanner.check_updates(
-                self.bot, manga.human_name, manga.manga_url, manga.id, manga.last_chapter_url_hash
+                self.bot, manga.human_name, manga.manga_url, manga.id, manga.last_chapter_url
             )
 
             if not update_check_result:
@@ -145,7 +145,7 @@ class MangaUpdates(commands.Cog):
                 if webhook:
 
                     for update in update_check_result:
-                        manga.update(update.url_chapter_hash, update.new_chapter_string, update.series_completed)
+                        manga.update(update.new_chapter_url, update.new_chapter_string, update.series_completed)
 
                         self.bot.logger.info(
                             f"Sending update for {manga.human_name}. {update.new_chapter_string}"
@@ -168,7 +168,7 @@ class MangaUpdates(commands.Cog):
                     self.bot.logger.warning(f"Cant connect to webhook {webhook_url}")
 
             manga.update(
-                update_check_result[-1].url_chapter_hash,
+                update_check_result[-1].new_chapter_url,
                 update_check_result[-1].new_chapter_string,
                 update_check_result[-1].series_completed
             )
@@ -182,69 +182,66 @@ class MangaUpdates(commands.Cog):
     async def subscribe(self, interaction: discord.Interaction, manga_url: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if RegExpressions.manganato_url.match(manga_url):
+        if RegExpressions.manganato_url.search(manga_url):
             scanlator = Manganato
 
-            series_id = RegExpressions.manganato_url.search(manga_url).group(1)
+            series_id = Manganato.get_manga_id(manga_url)
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
-        elif RegExpressions.tritinia_url.match(manga_url):
+        elif RegExpressions.tritinia_url.search(manga_url):
             scanlator = TritiniaScans
 
             url_name = RegExpressions.tritinia_url.search(manga_url).group(1)
             series_url: str = TritiniaScans.base_url + url_name
             series_id = TritiniaScans.get_manga_id(series_url)
 
-        elif RegExpressions.toonily_url.match(manga_url):
+        elif RegExpressions.toonily_url.search(manga_url):
             scanlator = Toonily
 
             url_name = RegExpressions.toonily_url.search(manga_url).group(1)
             series_url: str = Toonily.base_url + url_name
             series_id = Toonily.get_manga_id(series_url)
 
-        elif RegExpressions.mangadex_url.match(manga_url):
+        elif RegExpressions.mangadex_url.search(manga_url):
             scanlator = MangaDex
 
-            url_name = RegExpressions.mangadex_url.search(manga_url).group(
-                1
-            )  # this is the manga id, but who cares
-            series_url: str = MangaDex.fmt_url.format(manga_id=url_name)
-            series_id = MangaDex.get_manga_id(series_url)
+            series_id = MangaDex.get_manga_id(manga_url)
+            series_url: str = MangaDex.fmt_url.format(manga_id=series_id)
 
-        elif RegExpressions.flamescans_url.match(manga_url):
+        elif RegExpressions.flamescans_url.search(manga_url):
             scanlator = FlameScans
 
-            url_name = RegExpressions.flamescans_url.search(manga_url).group(2)
-            series_id = FlameScans.get_manga_id(manga_url)
-            series_url: str = FlameScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
+            url_name = RegExpressions.flamescans_url.search(manga_url).group(1)
+            series_url: str = FlameScans.fmt_url.format(manga_url_name=url_name)
+            series_id = FlameScans.get_manga_id(series_url)
 
-        elif RegExpressions.asurascans_url.match(manga_url):
+        elif RegExpressions.asurascans_url.search(manga_url):
             scanlator = AsuraScans
 
             url_name = RegExpressions.asurascans_url.search(manga_url).group(2)
             series_id = AsuraScans.get_manga_id(manga_url)
             series_url: str = AsuraScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
-        elif RegExpressions.reaperscans_url.match(manga_url):
+        elif RegExpressions.reaperscans_url.search(manga_url):
             scanlator = ReaperScans
 
             url_name = RegExpressions.reaperscans_url.search(manga_url).group(2)
             series_id = ReaperScans.get_manga_id(manga_url)
             series_url: str = ReaperScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
-        # elif RegExpressions.aquamanga_url.match(manga_url):  # temporarily disabled till i fix it on Linux
+        # elif RegExpressions.aquamanga_url.search(manga_url):  # temporarily disabled till i fix it on Linux
         #     scanlator = Aquamanga
         #
         #     url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
         #     series_id = Aquamanga.get_manga_id(manga_url)
         #     series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
 
-        elif RegExpressions.aniglisscans_url.match(manga_url):
+        elif RegExpressions.aniglisscans_url.search(manga_url):
             scanlator = AniglisScans
 
             url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
-            series_id = AniglisScans.get_manga_id(manga_url)
             series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
+            series_id = AniglisScans.get_manga_id(series_url)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
@@ -263,7 +260,7 @@ class MangaUpdates(commands.Cog):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
-        last_chapter_url_hash = await scanlator.get_curr_chapter_url_hash(
+        last_chapter_url = await scanlator.get_curr_chapter_url(
             self.bot, series_id, series_url
         )
 
@@ -273,7 +270,7 @@ class MangaUpdates(commands.Cog):
         series_name = await scanlator.get_human_name(self.bot, series_id, series_url)
 
         manga: Manga = Manga(
-            series_id, series_name, series_url, last_chapter_url_hash, last_chapter_text, False, scanlator.name
+            series_id, series_name, series_url, last_chapter_url, last_chapter_text, False, scanlator.name
         )
 
         await self.bot.db.add_series(manga)

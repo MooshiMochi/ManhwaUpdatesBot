@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 import os
 import re
 from typing import Optional
-import hashlib
 
 import yaml
 
+# noinspection PyPackages
 from .static import RegExpressions
 
 
@@ -139,7 +139,7 @@ def ensure_configs(logger) -> Optional[dict]:
     return config
 
 
-def get_manga_scanlation_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:
+def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:
     if url is None and key is None:
         raise ValueError("Either URL or key must be provided.")
 
@@ -151,12 +151,8 @@ def get_manga_scanlation_class(scanlators: dict[str, ABCScan], url: str = None, 
 
     for name, obj in RegExpressions.__dict__.items():
         if isinstance(obj, re.Pattern) and name.count("_") == 1:
-            if obj.match(url):
+            if obj.search(url):
                 return d[name.split("_")[0]]
-
-
-def sha_hash(s: str) -> str:
-    return hashlib.sha256(s.encode()).hexdigest()
 
 
 def write_to_discord_file(filename: str, content: str) -> discord.File:

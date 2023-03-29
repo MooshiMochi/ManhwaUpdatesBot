@@ -37,7 +37,7 @@ class Database:
                     id TEXT PRIMARY KEY NOT NULL,
                     human_name TEXT NOT NULL,
                     manga_url TEXT NOT NULL,
-                    last_chapter_url_hash INT NOT NULL,
+                    last_chapter_url INT NOT NULL,
                     last_chapter_string TEXT NOT NULL,
                     completed BOOLEAN NOT NULL DEFAULT false,
                     scanlator TEXT NOT NULL DEFAULT 'Unknown',
@@ -133,7 +133,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, manga_url, last_chapter_url_hash, last_chapter_string, completed, 
+                INSERT INTO series (id, human_name, manga_url, last_chapter_url, last_chapter_string, completed, 
                 scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(id) DO NOTHING;
                 """,
                 (manga_obj.to_tuple()),
@@ -312,9 +312,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                UPDATE series SET last_chapter_url_hash = ? WHERE id = ?;
+                UPDATE series SET last_chapter_url = $1, last_chapter_string = $2 WHERE id = $3;
                 """,
-                (manga.last_chapter_url_hash, manga.id),
+                (manga.last_chapter_url, manga.last_chapter_string, manga.id),
             )
             if result.rowcount < 1:
                 raise ValueError(f"No series with ID {manga.id} was found.")

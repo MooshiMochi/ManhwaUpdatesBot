@@ -11,7 +11,7 @@ from pyppeteer import launch
 from pyppeteer.network_manager import Request
 import logging
 from typing import Dict, Any, Optional, Set
-from src.utils import get_manga_scanlation_class
+from src.utils import get_manga_scanlator_class
 from src.core.scanners import SCANLATORS
 
 
@@ -87,7 +87,7 @@ class ProtectedRequest:
 
         page = await self.browser.newPage()
 
-        scanlator = get_manga_scanlation_class(SCANLATORS, url)
+        scanlator = get_manga_scanlator_class(SCANLATORS, url)
         cookie = await self.bot.db.get_cookie(scanlator.name)
         if cookie:
             await page.setCookie(*cookie)

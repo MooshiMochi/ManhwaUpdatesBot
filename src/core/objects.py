@@ -187,7 +187,7 @@ class Manga:
         id: str,
         human_name: str,
         manga_url: str,
-        last_chapter_url_hash: str,
+        last_chapter_url: str,
         last_chapter_string: str,
         completed: bool,
         scanlator: str,
@@ -195,20 +195,20 @@ class Manga:
         self._id: str = id
         self._human_name: str = human_name
         self._manga_url: str = manga_url
-        self._last_chapter_url_hash: str = last_chapter_url_hash
+        self._last_chapter_url: str = last_chapter_url
         self._last_chapter_string: str = last_chapter_string
         self._completed: bool = completed
         self._scanlator: str = scanlator
 
     def update(
         self,
-        last_chapter_url_hash: int = None,
+        last_chapter_url: str = None,
         last_chapter_string: str = None,
         completed: bool = None,
     ) -> None:
         """Update the manga."""
-        if last_chapter_url_hash is not None:
-            self._last_chapter_url_hash = last_chapter_url_hash
+        if last_chapter_url is not None:
+            self._last_chapter_url = last_chapter_url
         if last_chapter_string is not None:
             self._last_chapter_string = last_chapter_string
         if completed is not None:
@@ -232,9 +232,9 @@ class Manga:
         return self._manga_url
 
     @property
-    def last_chapter_url_hash(self) -> str:
-        """Get the last chapter url hash of the manga."""
-        return self._last_chapter_url_hash
+    def last_chapter_url(self) -> str:
+        """Get the last chapter url of the manga."""
+        return self._last_chapter_url
 
     @property
     def completed(self) -> bool:
@@ -267,7 +267,7 @@ class Manga:
             self.id,
             self.human_name,
             self.manga_url,
-            self.last_chapter_url_hash,
+            self.last_chapter_url,
             self.last_chapter_string,
             self.completed,
             self.scanlator,
