@@ -77,6 +77,9 @@ How to set up the bot:
       - in /list command, categorize the series into their scanlators
       perhaps add a select menu that will allow the user to view series for a selected scanlator.
 
+      - optimize the check_updates function so that it requests multiple series at once.
+      Also make it so that sending updates to different webhooks happens simultaneously (probably 5 at a time)
+
    ### Issues:
       - Rearrange the function order in each of the scanlators.py classes to follow that of the
       ABCScan class
