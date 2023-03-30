@@ -17,6 +17,8 @@ class MangaDexAPI:
         self.rate_limit_remaining = None
         self.rate_limit_reset = None
 
+        self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
+
     async def __request(
         self,
         method: str,

@@ -136,8 +136,6 @@ dmypy.json
 
 test.py
 
-*.log
-
 **/database.db
 config.yml
 result.html
@@ -145,3 +143,5 @@ result.html
 logs/restart.txt
 
 browser_data/
+
+local/
