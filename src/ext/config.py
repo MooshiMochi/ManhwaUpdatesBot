@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from core.bot import MangaClient
+    from src.core import MangaClient
 
 import discord
 from discord import app_commands
@@ -17,7 +17,7 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
         self.bot: MangaClient = bot
 
     async def cog_load(self):
-        self.bot._logger.info("Loaded Commands Cog...")
+        self.bot.logger.info("Loaded Commands Cog...")
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.guild_id is None:
@@ -63,13 +63,13 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
     @app_commands.command(name="setup", description="Setup the bot for this server.")
     @app_commands.describe(
         channel="The channel to send updates to.",
-        updates_role="The role to ping for updates.",
+        role="The role to ping when a new update is released.",
     )
     async def setup(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-        updates_role: discord.Role,
+        role: Optional[discord.Role],
     ):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -88,8 +88,9 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
             avatar=await self.bot.user.avatar.read(),
             reason="Manga Bot",
         )
+        role_id = role.id if role else None
         guild_config: GuildSettings = GuildSettings(
-            self.bot, interaction.guild_id, channel.id, updates_role.id, webhook.url
+            self.bot, interaction.guild_id, channel.id, role_id, webhook.url
         )
         await self.bot.db.upsert_config(guild_config)
 
@@ -98,12 +99,12 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
             description=(
                 "Setup complete!\n\n"
                 "> **Channel:** <#{}>\n"
-                "> **Updates Role:** <@&{}>\n"
+                "> **Updates Role:** {}\n"
                 "> **Webhook Details:**\n"
                 "> \u200b \u200b- ID: {}"
             ).format(
                 guild_config.channel.id,
-                guild_config.role.id,
+                f'<@&{guild_config.role.id}>' if guild_config.role else "`None set`",
                 guild_config.webhook.id,
             ),
         )
@@ -134,12 +135,12 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
             title="Config",
             description=(
                 "> **Channel:** <#{}>\n"
-                "> **Updates Role:** <@&{}>\n"
+                "> **Updates Role:** {}\n"
                 "> **Webhook Details:**\n"
                 "> \u200b \u200b- ID: {}"
             ).format(
                 guild_config.channel.id,
-                guild_config.role.id,
+                f'<@&{guild_config.role.id}>' if guild_config.role else "`None set`",
                 guild_config.webhook.id,
             ),
         )

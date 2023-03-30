@@ -291,7 +291,7 @@ class GuildSettings:
         self._bot: MangaClient = bot
         self.guild: discord.Guild = bot.get_guild(guild_id)
         self.channel: discord.TextChannel = self.guild.get_channel(channel_id)
-        self.role: discord.Role = self.guild.get_role(updates_role_id)
+        self.role: Optional[discord.Role] = self.guild.get_role(updates_role_id)
         self.webhook: discord.Webhook = discord.Webhook.from_url(
             webhook_url, session=bot.session
         )
@@ -314,7 +314,7 @@ class GuildSettings:
         return (
             self.guild.id,
             self.channel.id,
-            self.role.id,
+            self.role.id if hasattr(self.role, "id") else None,
             self.webhook.url,
         )
 

@@ -127,8 +127,8 @@ class MangaClient(commands.Bot):
             return
 
         if (
-                guild_config.channel is None or guild_config.role is None
-        ):  # if we can't find the channel or role, we can't send updates so delete guild config entirely
+                guild_config.channel is None
+        ):  # if we can't find the channel, we can't send updates so delete guild config entirely
             await self.db.delete_config(guild.id)
             return
 

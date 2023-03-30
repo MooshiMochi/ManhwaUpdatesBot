@@ -62,7 +62,7 @@ class Database:
                 """CREATE TABLE IF NOT EXISTS config (
                     guild_id INTEGER PRIMARY KEY NOT NULL,
                     channel_id INTEGER NOT NULL,
-                    updates_role_id INTEGER NOT NULL,
+                    updates_role_id INTEGER DEFAULT NULL,
                     webhook_url TEXT NOT NULL,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )

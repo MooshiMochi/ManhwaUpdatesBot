@@ -152,9 +152,10 @@ class MangaUpdates(commands.Cog):
                         )
 
                         try:
+                            role_ping = "" if not role_id else f"<@&{role_id}> "
                             await webhook.send(
                                 (
-                                    f"<@&{role_id}> **{manga.human_name}** **{update.new_chapter_string}**"
+                                    f"{role_ping}**{manga.human_name}** **{update.new_chapter_string}**"
                                     f" has been released!\n{update.new_chapter_url}"
                                 ),
                                 allowed_mentions=discord.AllowedMentions(roles=True),

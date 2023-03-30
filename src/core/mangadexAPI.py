@@ -17,7 +17,7 @@ class MangaDexAPI:
         self.rate_limit_remaining = None
         self.rate_limit_reset = None
 
-        self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
+        # self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
 
     async def __request(
         self,
@@ -26,6 +26,7 @@ class MangaDexAPI:
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, Any]] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         url = f"{self.api_url}/{endpoint}"
         if not headers:
@@ -35,7 +36,7 @@ class MangaDexAPI:
             await asyncio.sleep(self.rate_limit_reset)
 
         async with self.session.request(
-            method, url, params=params, json=data, headers=headers
+            method, url, params=params, json=data, headers=headers, **kwargs
         ) as response:
             json_data = await response.json()
             self.rate_limit_remaining = int(
@@ -60,10 +61,11 @@ class MangaDexAPI:
         if languages is None:
             languages = ["en"]
         endpoint = f"manga/{manga_id}/feed"
+        params = {
+            "translatedLanguage[]": languages, "order[chapter]": "desc", "order[volume]": "desc", "limit": 50
+        }
         result = await self.__request(
-            "GET", endpoint, params={
-                "translatedLanguage[]": languages, "order[chapter]": "desc", "order[volume]": "desc", "limit": 50
-            }
+            "GET", endpoint, params=params
         )
         for x in range(len(result.copy())):
             if result["data"][x]["attributes"]["volume"] is None:
@@ -100,7 +102,10 @@ class MangaDexAPI:
             "limit": limit,
         }
         params = {k: v for k, v in params.items() if v is not None}
-        return await self.__request("GET", endpoint, params=params)
+        kwargs = {}
+        if isinstance(self.session, CachedClientSession):
+            kwargs["cache_time"] = 0
+        return await self.__request("GET", endpoint, params=params, **kwargs)
 
     async def get_cover(self, manga_id: str, cover_id: str) -> str:
         endpoint = f"cover/{cover_id}"
