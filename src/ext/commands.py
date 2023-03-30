@@ -491,7 +491,7 @@ class MangaUpdates(commands.Cog):
     async def dex_search(self, interaction: discord.Interaction, query: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if manga_id := MangaDex.get_manga_id(query):
+        if RegExpressions.mangadex_url.search(query) and (manga_id := MangaDex.get_manga_id(query)):
             response: dict[str, Any] = await self.bot.mangadex_api.get_manga(manga_id)
         else:
             response: dict[str, Any] = await self.bot.mangadex_api.search(
