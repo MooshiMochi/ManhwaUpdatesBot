@@ -635,6 +635,7 @@ class Toonily(ABCScan):
 class MangaDex(ABCScan):
     base_url = "https://mangadex.org/"
     fmt_url = base_url + "title/{manga_id}"
+    chp_url_fmt = base_url + "chapter/{chapter_id}"
     name = "mangadex"
 
     @classmethod
@@ -655,7 +656,8 @@ class MangaDex(ABCScan):
 
         for new_chp in high_to_low:
             chp_id = new_chp["id"]
-            if chp_id == last_chapter_url:
+            new_chp_url = cls.chp_url_fmt.format(chapter_id=chp_id)
+            if new_chp_url == last_chapter_url:
                 break
             new_chapter_update = ChapterUpdate(
                 "https://mangadex.org/chapter/" + new_chp["id"],
@@ -671,7 +673,11 @@ class MangaDex(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         chapters = await bot.mangadex_api.get_chapters_list(manga_id)
-        return chapters[-1]["id"] if chapters else None
+        if chapters:
+            chp_id = chapters[-1]["id"]
+            return cls.chp_url_fmt.format(chapter_id=chp_id)
+        else:
+            return None
 
     @classmethod
     async def get_curr_chapter_text(
@@ -703,7 +709,7 @@ class MangaDex(ABCScan):
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
-        pass
+        return super()._bs_is_series_completed(soup)
 
 
 class FlameScans(ABCScan):
