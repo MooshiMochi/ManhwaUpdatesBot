@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-import discord
 
 if TYPE_CHECKING:
     from src.core import MangaClient

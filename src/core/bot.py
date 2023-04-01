@@ -101,10 +101,13 @@ class MangaClient(commands.Bot):
         await self._cf_scraper.close() if self._cf_scraper else None
         await super().close()
 
-    async def log_to_discord(self, content: Union[str, None], **kwargs) -> None:
+    async def log_to_discord(self, content: Union[str, None] = None, **kwargs) -> None:
         """Log a message to a discord log channel."""
         if not self.is_ready():
             await self.wait_until_ready()
+
+        if not content and not kwargs:
+            return
 
         channel = self.get_channel(self.log_channel_id)
 

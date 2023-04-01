@@ -25,6 +25,7 @@ from src.core.objects import PaginatorView, TextPageSource
 class Restricted(commands.Cog):
     def __init__(self, client: MangaClient) -> None:
         self.client: MangaClient = client
+        self.bot: MangaClient = self.client
         self._last_result = None
 
     @staticmethod
@@ -33,10 +34,10 @@ class Restricted(commands.Cog):
         return str(discord.PartialEmoji(animated=animated, name="", id=_id).url)
 
     async def cog_load(self):
-        self.client._logger.info("Loaded Restricted Cog...")
+        self.client.logger.info("Loaded Restricted Cog...")
 
     async def grab_emoji(self, url: str):
-        async with self.client._session.get(url) as r:
+        async with self.client.session.get(url) as r:
             empty_bytes = b""
             result = empty_bytes
 
@@ -61,7 +62,8 @@ class Restricted(commands.Cog):
 
         return [output.decode() for output in result]
 
-    async def restart_bot(self, message_url: str = None):
+    @staticmethod
+    async def restart_bot(message_url: str = None):
         with open("logs/restart.txt", "w") as f:
             f.write(message_url)
 
@@ -194,7 +196,7 @@ class Restricted(commands.Cog):
         #                 )
         #                 skipped += 1
 
-        self.client._logger.info("Client reloaded.")
+        self.client.logger.info("Client reloaded.")
 
     @developer.command(
         name="loaded_cogs",
