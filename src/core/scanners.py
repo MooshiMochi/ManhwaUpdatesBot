@@ -638,6 +638,15 @@ class MangaDex(ABCScan):
     name = "mangadex"
 
     @classmethod
+    def _ensure_chp_url_was_in_chapters_list(cls, last_chapter_url: str, chapters_list: list[dict[str, str]]) -> bool:
+        for chp in chapters_list:
+            chp_id = chp["id"]
+            curr_chp_url = cls.chp_url_fmt.format(chapter_id=chp_id)
+            if curr_chp_url == last_chapter_url:
+                return True
+        return False
+
+    @classmethod
     async def check_updates(
             cls,
             bot: MangaClient,
@@ -653,13 +662,21 @@ class MangaDex(ABCScan):
         new_updates: list[ChapterUpdate] = []
         high_to_low = reversed(chapters)
 
+        if not cls._ensure_chp_url_was_in_chapters_list(last_chapter_url, chapters):
+            # this is dirty work, but I can't think of any other way to fix it.
+            latest_chapter_available = list(high_to_low)[0]
+            chp_url = cls.chp_url_fmt.format(chapter_id=latest_chapter_available["id"])
+            chp_text = f'Chapter {latest_chapter_available["attributes"]["chapter"]}'
+            new_updates.append(ChapterUpdate(chp_url, chp_text, completed))
+            return new_updates
+
         for new_chp in high_to_low:
             chp_id = new_chp["id"]
             new_chp_url = cls.chp_url_fmt.format(chapter_id=chp_id)
             if new_chp_url == last_chapter_url:
                 break
             new_chapter_update = ChapterUpdate(
-                "https://mangadex.org/chapter/" + new_chp["id"],
+                new_chp_url,
                 f'Chapter {new_chp["attributes"]["chapter"]}',
                 completed,
             )

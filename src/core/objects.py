@@ -51,9 +51,7 @@ class PaginatorView(discord.ui.View):
                 "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
             )
 
-        elif False in [
-            isinstance(item, (str, int, discord.Embed)) for item in items
-        ]:
+        elif not all(isinstance(item, (str, int, discord.Embed)) for item in items):
             raise AttributeError(
                 "All items within the iterable must be of type 'str', 'int' or 'discord.Embed'."
             )
@@ -101,7 +99,6 @@ class PaginatorView(discord.ui.View):
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        author = None
         if isinstance(self.interaction, discord.Interaction):
             author = self.interaction.user
         else:
