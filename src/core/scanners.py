@@ -1007,7 +1007,7 @@ class AsuraScans(ABCScan):
 
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
-        return RegExpressions.asurascans_url.search(manga_url).group(1)
+        return super().get_manga_id(manga_url)
 
     @classmethod
     async def is_series_completed(
