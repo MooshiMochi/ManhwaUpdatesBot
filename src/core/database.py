@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, List, Dict, Any
 
 import aiosqlite
 from fuzzywuzzy import fuzz
@@ -9,7 +9,7 @@ from fuzzywuzzy import fuzz
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga
+from src.core.objects import GuildSettings, Manga, Bookmark, Chapter
 from io import BytesIO
 import pandas as pd
 import sqlite3
@@ -59,6 +59,26 @@ class Database:
             )
 
             await db.execute(
+                # available_chapters will have to be a list of strings. can store the json.dumps string
+                """
+                CREATE TABLE IF NOT EXISTS bookmarks (
+                    user_id INTEGER NOT NULL,
+                    series_id TEXT NOT NULL,
+                    
+                    last_read_chapter TEXT DEFAULT NULL,
+                    series_cover_url TEXT NOT NULL,
+                    available_chapters TEXT NOT NULL,
+                    guild_id INTEGER NOT NULL,
+                    
+                    FOREIGN KEY (series_id) REFERENCES series (id),
+                    FOREIGN KEY (user_id) REFERENCES users (id),
+                    FOREIGN KEY (guild_id) REFERENCES config (guild_id),
+                    UNIQUE (user_id, series_id) ON CONFLICT IGNORE
+                    )
+                """
+            )
+
+            await db.execute(
                 """CREATE TABLE IF NOT EXISTS config (
                     guild_id INTEGER PRIMARY KEY NOT NULL,
                     channel_id INTEGER NOT NULL,
@@ -80,6 +100,12 @@ class Database:
                 """
             )
             await db.commit()
+
+    async def execute(self, query: str, *args) -> Any:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(query, *args)
+            await db.commit()
+            return await cursor.fetchall()
 
     def export(self) -> BytesIO:
         """As this function carries out non-async operations, it must be run in a thread executor."""
@@ -139,6 +165,40 @@ class Database:
                 (manga_obj.to_tuple()),
             )
 
+            await db.commit()
+
+    async def upsert_bookmark(self, bookmark: Bookmark) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute(
+                """
+                INSERT INTO series (id, human_name, manga_url, last_chapter_url, last_chapter_string, completed,
+                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(id) DO NOTHING;
+                """,
+                (bookmark.manga.to_tuple()),
+            )
+            # await db.execute(
+            #     """
+            #     INSERT INTO users (id, series_id, guild_id) VALUES ($1, $2, $3) ON CONFLICT(id, series_id, guild_id)
+            #     DO NOTHING;
+            #     """,
+            #     (bookmark.user_id, bookmark.manga.id, bookmark.guild_id),
+            # )
+            await db.execute(
+                """
+                INSERT INTO bookmarks (
+                    user_id,
+                    series_id, 
+                    last_read_chapter,
+                    series_cover_url, 
+                    available_chapters, 
+                    guild_id
+                    ) 
+                VALUES ($1, $2, $3, $4, $5, $6) 
+                ON CONFLICT(user_id, series_id) DO 
+                UPDATE SET last_read_chapter=$3, series_cover_url=$4, available_chapters=$5
+                """,
+                (bookmark.to_tuple()),
+            )
             await db.commit()
 
     async def set_cookie(self, scanlator: str, cookie: List[Dict]) -> None:
@@ -218,6 +278,145 @@ class Database:
                     return Manga.from_tuples(result)
                 return []
 
+    async def get_user_bookmark(self, user_id: int, series_id: str) -> Bookmark | None:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT
+                    b.user_id,
+                    b.series_id,
+                    b.last_read_chapter,
+                    b.series_cover_url,
+                    b.available_chapters,
+                    b.guild_id,
+                    
+                    s.id,
+                    s.human_name,
+                    s.manga_url,
+                    s.last_chapter_url,
+                    s.last_chapter_string,
+                    s.completed,
+                    s.scanlator
+                    
+                FROM bookmarks AS b
+                INNER JOIN series AS s ON b.series_id = s.id
+                WHERE user_id = $1 AND series_id = $2;
+                """,
+                (user_id, series_id),
+            )
+            result = await cursor.fetchone()
+            if result is not None:
+                result = list(result)
+                bookmark_params, manga_params = result[:-7], tuple(result[-7:])
+
+                manga = Manga.from_tuple(manga_params)
+                # replace series_id with a manga object
+                bookmark_params[1] = manga
+                return Bookmark.from_tuple(tuple(bookmark_params))
+
+    async def get_user_bookmarks(self, user_id: int) -> list[Bookmark] | None:
+        """
+        Summary:
+            Returns a list of Bookmark class objects each representing a manga the user is subscribed to.
+
+        Args:
+            user_id: The user's id.
+
+        Returns:
+            List[Bookmark] if bookmarks are found.
+            None if no bookmarks are found.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT
+                    b.user_id,
+                    b.series_id,
+                    b.last_read_chapter,
+                    b.series_cover_url,
+                    b.available_chapters,
+                    b.guild_id,
+                    
+                    s.id,
+                    s.human_name,
+                    s.manga_url,
+                    s.last_chapter_url,
+                    s.last_chapter_string,
+                    s.completed,
+                    s.scanlator
+                    
+                FROM bookmarks AS b
+                INNER JOIN series AS s
+                ON b.series_id = s.id
+                WHERE b.user_id = $1
+                """,
+                (user_id,),
+            )
+            # INNER JOIN users
+            # ON b.user_id = u.id AND b.series_id = u.series_id
+            result = await cursor.fetchall()
+            if result:
+                # change all the series_id to manga objects
+                new_result: list = []
+                for result_tup in list(result):
+                    manga_params = result_tup[-7:]
+                    manga = Manga.from_tuple(manga_params)
+                    bookmark_params = result_tup[:-7]
+                    bookmark_params = list(bookmark_params)
+                    bookmark_params[1] = manga
+                    new_result.append(tuple(bookmark_params))
+                return Bookmark.from_tuples(new_result)
+
+    async def get_user_bookmarks_autocomplete(self, user_id: int, current: str = None) -> list[tuple[int, str]]:
+        async with aiosqlite.connect(self.db_name) as db:
+            if current is not None:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+                cursor = await db.execute(
+                    """
+                    SELECT id, human_name FROM series
+                    WHERE series.id IN (SELECT series_id FROM bookmarks WHERE user_id = $1)
+                    ORDER BY levenshtein(human_name, $2) DESC
+                    LIMIT 25;
+                    """,
+                    (user_id, current),
+                )
+            else:
+                cursor = await db.execute(
+                    """
+                    SELECT id, human_name 
+                    FROM series 
+                    WHERE series.id IN (SELECT series_id FROM bookmarks WHERE user_id = $1);
+                    """,
+                    (user_id,),
+                )
+            result = await cursor.fetchall()
+            if result:
+                return [tuple(result) for result in result]
+
+    async def get_bookmark_chapters(
+            self, user_id: int, series_id: str, current: str = None
+    ) -> list[Chapter]:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT available_chapters FROM bookmarks
+                WHERE user_id = $1 AND series_id = $2;
+                """,
+                (user_id, series_id),
+            )
+            result = await cursor.fetchone()
+            if result:
+                result = result[0]
+                chapters_list = loads(result)
+                chapters = Chapter.from_many_dict(chapters_list)
+                if current is not None:
+                    return list(
+                        sorted(
+                            chapters, key=lambda x: _levenshtein_distance(x.chapter_string, current), reverse=True
+                        )
+                    )
+                return chapters
+
     async def get_guild_config(self, guild_id: int) -> GuildSettings | None:
         """
         Returns:
@@ -260,35 +459,6 @@ class Database:
                 if result := await cursor.fetchall():
                     return Manga.from_tuples(result)
 
-    async def _get_all_series_autocomplete(self, current: str = None) -> list:
-        """
-        Returns a list of Manga objects containing all series in the database.
-        >>> [Manga, ...)]
-        """
-        if current is not None:
-            async with aiosqlite.connect(self.db_name) as db:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-
-                async with db.execute(
-                    """
-                    SELECT * FROM series
-                    ORDER BY levenshtein(human_name, ?) DESC
-                    LIMIT 25;
-                    """,
-                    (current,),
-                ) as cursor:
-                    if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)
-        else:
-            async with aiosqlite.connect(self.db_name) as db:
-                async with db.execute(
-                    """
-                    SELECT * FROM series LIMIT 25;
-                    """,
-                ) as cursor:
-                    if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)
-
     async def get_all_subscribed_series(self) -> list[Manga]:
         """
         Returns a list of tuples containing all series that are subscribed to by at least one user.
@@ -320,6 +490,16 @@ class Database:
                 raise ValueError(f"No series with ID {manga.id} was found.")
             await db.commit()
 
+    async def update_last_read_chapter(self, user_id: int, series_id: str, last_read_chapter: Chapter) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute(
+                """
+                UPDATE bookmarks SET last_read_chapter = $1 WHERE user_id = $2 AND series_id = $3;
+                """,
+                (last_read_chapter.to_json(), user_id, series_id),
+            )
+            await db.commit()
+
     async def delete_cookie(self, scanlator: str) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
@@ -341,6 +521,36 @@ class Database:
             )
 
             await db.commit()
+
+    async def delete_bookmark(self, user_id: int, series_id: str) -> bool:
+        """
+        Summary:
+            Deletes a bookmark from the database.
+
+        Parameters:
+            user_id: The ID of the user whose bookmark is to be deleted.
+            series_id: The ID of the series to be deleted.
+
+        Returns:
+            True if the bookmark was deleted successfully, False otherwise.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            success = await db.execute(
+                """
+                DELETE FROM bookmarks WHERE user_id = $1 and series_id = $2;
+                """,
+                (user_id, series_id),
+            )
+            await db.execute(
+                """
+                DELETE FROM series WHERE id = $1 AND id NOT IN (
+                    SELECT series_id FROM users
+                );
+                """,
+                (series_id,),
+            )
+            await db.commit()
+            return success.rowcount > 0
 
     async def unsub_user(self, user_id: int, series_id: str) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -403,3 +613,32 @@ class Database:
                 """
             ) as cursor:
                 return set([url for url, in await cursor.fetchall()])
+
+    async def _get_all_series_autocomplete(self, current: str = None) -> list:
+        """
+        Returns a list of Manga objects containing all series in the database.
+        >>> [Manga, ...)]
+        """
+        if current is not None:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+
+                async with db.execute(
+                    """
+                    SELECT * FROM series
+                    ORDER BY levenshtein(human_name, ?) DESC
+                    LIMIT 25;
+                    """,
+                    (current,),
+                ) as cursor:
+                    if result := await cursor.fetchall():
+                        return Manga.from_tuples(result)
+        else:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute(
+                    """
+                    SELECT * FROM series LIMIT 25;
+                    """,
+                ) as cursor:
+                    if result := await cursor.fetchall():
+                        return Manga.from_tuples(result)

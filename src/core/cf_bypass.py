@@ -8,6 +8,8 @@ if TYPE_CHECKING:
 
 import asyncio
 from pyppeteer import launch
+from pyppeteer.launcher import Launcher
+from pyppeteer.browser import Browser
 from pyppeteer.network_manager import Request
 import logging
 from typing import Dict, Any, Optional, Set
@@ -20,14 +22,21 @@ class ProtectedRequest:
     logger = logging.getLogger(__name__)
 
     def __init__(self, bot: MangaClient, headless: bool = True, ignored_urls: Optional[Set[str]] = None, *args, **kwargs) -> None:
+
         self.bot: MangaClient = bot
-        self.browser = None
-        self._headless: bool = headless
-
         self._user_data_dir: str = "browser_data"
-
+        self._headless: bool = headless
         self._ignored_urls = set(ignored_urls) if ignored_urls else set()
         self._cache: Dict[str, Dict[str, Any]] = {}
+        self.browser: Browser | None = None
+
+        options = {
+            "headless": self._headless,
+            "args": ['--no-sandbox'],
+            "userDataDir": self._user_data_dir,
+            # "ignoreHTTPSErrors": True,
+        }
+        self._launcher: Launcher | None = Launcher(**options)
 
         self._clear_cache_task = asyncio.create_task(self._clear_cache())
 
@@ -48,19 +57,22 @@ class ProtectedRequest:
                 self.logger.info("Browser cache is empty, not clearing")
 
     async def async_init(self):
-        self.browser = await launch(headless=self._headless, args=['--no-sandbox'], userDataDir=self._user_data_dir)
+        self.browser = await self._launcher.launch()
 
     async def __aenter__(self):
-        self.browser = await launch(headless=self._headless, args=['--no-sandbox'], userDataDir=self._user_data_dir)
+        await self.async_init()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.browser:
-            await self.browser.close()
+        await self.close()
 
     async def close(self):
-        if self.browser:
-            await self.browser.close()
+        if self._launcher:
+            try:
+                await self._launcher.killChrome()
+            except AttributeError:
+                pass
+            self._launcher.chromeClosed = True
 
     @staticmethod
     async def check_request(req: Request):
@@ -123,6 +135,7 @@ class ProtectedRequest:
                 if i == 2:
                     return f"Ray ID\n{str(e)}"
 
+        # await asyncio.sleep(5)  # wait 5 sec in hopes that cloudflare will be done.
         content = await page.content()
         page_cookie = await page.cookies()
         if page_cookie:

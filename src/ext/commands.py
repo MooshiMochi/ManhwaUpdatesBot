@@ -11,7 +11,8 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from src.core.scanners import *
-from src.core.objects import Manga, PaginatorView, RateLimiter
+from src.core.objects import Manga, PaginatorView
+from src.core.ratelimiter import RateLimiter
 from src.views import SubscribeView
 
 

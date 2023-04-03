@@ -18,6 +18,7 @@ class MangaClient(commands.Bot):
     def __init__(
             self, prefix: str = "!", intents: Intents = Intents.default(), *args, **kwargs
     ):
+        # noinspection PyTypeChecker
         super().__init__(
             command_prefix=commands.when_mentioned_or(prefix or "!"),
             intents=intents,
@@ -41,6 +42,7 @@ class MangaClient(commands.Bot):
         else:
             self._session = CachedClientSession(None, trust_env=True)
         self._cf_scraper = ProtectedRequest(self)
+        await self._cf_scraper.async_init()
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())

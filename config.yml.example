@@ -10,6 +10,7 @@ extensions:
   - src.ext.config
   - src.ext.commands
   - src.ext.dev
+  - src.ext.bookmark
 prefix: '?'
 privileged-intents:
   members: false

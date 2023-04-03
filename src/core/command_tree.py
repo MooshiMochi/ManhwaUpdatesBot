@@ -71,7 +71,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=f"Sorry, you need to have the role <@&{error.missing_role}> to execute that command.",
             )
 
-        elif isinstance(error, MangaNotFoundError):
+        elif isinstance(error, MangaNotFound):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Manga not found!",
                 color=0xFF0000,

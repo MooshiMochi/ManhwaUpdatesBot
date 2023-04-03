@@ -80,6 +80,17 @@ How to set up the bot:
       - optimize the check_updates function so that it requests multiple series at once.
       Also make it so that sending updates to different webhooks happens simultaneously (probably 5 at a time)
 
+      - when a user leaves the server, check if they are in any other server that the bot is also in
+      and update the guild_id in the database in the users and bookmarsk table to that guild id.
+
+      - make a cache decorator for the database autocomplete functions.
+      note: should add a global variable that will let us know wheter the db has a new entry to know whether to use cahce or not
+
+      - add a command that will let the user know when the updates will be checked next.
+
+      - when the user marks the latest read chapter of a bookmark to be the same as the latest release, subscribe
+      the user to the series if it is not complete.
+
    ### Issues:
       - Rearrange the function order in each of the scanlators.py classes to follow that of the
       ABCScan class
@@ -87,7 +98,10 @@ How to set up the bot:
       - Create a .sh file that will configure the system for pypetteer.
 
       - aquamanga.org is not working on Linux. it returns 5001 error with text "enable cookies"
+   
+      - autocomplete database functions should include user ID as well.
 
+      - reaperscans has pagination for chapters, so I need to add some code to grab all chapters...
 
 ## Contributing:
    ```
