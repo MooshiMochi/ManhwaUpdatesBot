@@ -24,7 +24,7 @@ class RegExpressions:
     )
 
     asurascans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?asurascans.com/manga/([0-9]+)-([a-zA-Z0-9-]+)(/.*)?"
+        r"(?:https?://)?(?:www\.)?asurascans.com/manga/(?:\d+-)?([a-zA-Z0-9-]+)(/.*)?"
     )
 
     reaperscans_url = re.compile(

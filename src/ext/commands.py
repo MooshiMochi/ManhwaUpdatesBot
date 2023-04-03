@@ -221,7 +221,7 @@ class MangaUpdates(commands.Cog):
         elif RegExpressions.asurascans_url.search(manga_url):
             scanlator = AsuraScans
 
-            url_name = RegExpressions.asurascans_url.search(manga_url).group(2)
+            url_name = RegExpressions.asurascans_url.search(manga_url).group(1)
             series_id = AsuraScans.get_manga_id(manga_url)
             series_url: str = AsuraScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 

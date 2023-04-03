@@ -843,6 +843,7 @@ class FlameScans(ABCScan):
 
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
+        manga_url = cls.fmt_manga_url("", manga_url)
         return super().get_manga_id(manga_url)
 
     @classmethod
@@ -868,7 +869,7 @@ class FlameScans(ABCScan):
 class AsuraScans(ABCScan):
     icon_url = "https://www.asurascans.com/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
     base_url = "https://www.asurascans.com/"
-    fmt_url = base_url + "manga/{manga_id}-{manga_url_name}"
+    fmt_url = base_url + "manga/{manga_url_name}"
     name = "asurascans"
 
     @staticmethod
@@ -1007,6 +1008,7 @@ class AsuraScans(ABCScan):
 
     @classmethod
     def get_manga_id(cls, manga_url: str) -> str:
+        manga_url = cls.fmt_manga_url("", manga_url)
         return super().get_manga_id(manga_url)
 
     @classmethod
@@ -1022,10 +1024,8 @@ class AsuraScans(ABCScan):
 
     @classmethod
     def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
-        if manga_id is None and manga_url is not None:
-            manga_id = cls.get_manga_id(manga_url)
-        manga_url_name = RegExpressions.asurascans_url.search(manga_url).group(2)
-        return cls.fmt_url.format(manga_id=manga_id, manga_url_name=manga_url_name)
+        manga_url_name = RegExpressions.asurascans_url.search(manga_url).group(1)
+        return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
