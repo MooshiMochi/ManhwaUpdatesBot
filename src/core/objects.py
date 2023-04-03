@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Iterable, Union
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
+from datetime import datetime
 from typing import Optional
 import aiohttp
 import discord
@@ -310,7 +311,8 @@ class ABCScan(ABC):
             available_chapters[0],  # last_read_chapter
             cover_url,
             available_chapters,
-            guild_id
+            guild_id,
+            datetime.utcnow().timestamp(),
         )
 
     @classmethod
@@ -625,7 +627,8 @@ class Bookmark:
             last_read_chapter: Chapter,
             series_cover_url: str,
             available_chapters: list[Chapter],
-            guild_id: int
+            guild_id: int,
+            last_updated_ts: float = None,
     ):
         if isinstance(available_chapters, str):
             available_chapters = Chapter.from_many_dict(json.loads(available_chapters))
@@ -636,6 +639,7 @@ class Bookmark:
         self.last_read_chapter: Chapter = last_read_chapter
         self.available_chapters: list[Chapter] = available_chapters
         self.guild_id: int = guild_id
+        self.last_updated_ts: float = last_updated_ts
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Bookmark":
@@ -646,6 +650,7 @@ class Bookmark:
         # 3 = cover_image
         # 4 = available_chapters
         # 5 = guild_id
+        # 6 = last_updated_ts
         chapters_json = data[4]
         all_chapters: list[dict] = json.loads(chapters_json)
         all_chapters: list[Chapter] = Chapter.from_many_dict(all_chapters)
@@ -669,7 +674,8 @@ class Bookmark:
             json.dumps(self.last_read_chapter.to_dict()),
             self.series_cover_url,
             json.dumps(list(map(lambda x: x.to_dict(), self.available_chapters))),
-            self.guild_id
+            self.guild_id,
+            self.last_updated_ts,
         )
 
     def __repr__(self) -> str:

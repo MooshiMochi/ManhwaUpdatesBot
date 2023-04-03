@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List, Dict, Any
 
 import aiosqlite
 from fuzzywuzzy import fuzz
+from datetime import datetime
 
 if TYPE_CHECKING:
     from .bot import MangaClient
@@ -69,6 +70,7 @@ class Database:
                     series_cover_url TEXT NOT NULL,
                     available_chapters TEXT NOT NULL,
                     guild_id INTEGER NOT NULL,
+                    last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     
                     FOREIGN KEY (series_id) REFERENCES series (id),
                     FOREIGN KEY (user_id) REFERENCES users (id),
@@ -191,11 +193,12 @@ class Database:
                     last_read_chapter,
                     series_cover_url, 
                     available_chapters, 
-                    guild_id
+                    guild_id,
+                    last_updated_ts
                     ) 
-                VALUES ($1, $2, $3, $4, $5, $6) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7) 
                 ON CONFLICT(user_id, series_id) DO 
-                UPDATE SET last_read_chapter=$3, series_cover_url=$4, available_chapters=$5
+                UPDATE SET last_read_chapter=$3, series_cover_url=$4, available_chapters=$5, last_updated_ts=$7;
                 """,
                 (bookmark.to_tuple()),
             )
@@ -289,6 +292,7 @@ class Database:
                     b.series_cover_url,
                     b.available_chapters,
                     b.guild_id,
+                    b.last_updated_ts,
                     
                     s.id,
                     s.human_name,
@@ -336,6 +340,7 @@ class Database:
                     b.series_cover_url,
                     b.available_chapters,
                     b.guild_id,
+                    b.last_updated_ts,
                     
                     s.id,
                     s.human_name,
@@ -494,9 +499,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                UPDATE bookmarks SET last_read_chapter = $1 WHERE user_id = $2 AND series_id = $3;
+                UPDATE bookmarks SET last_read_chapter = $1, last_updated_ts = $2 WHERE user_id = $3 AND series_id = $4;
                 """,
-                (last_read_chapter.to_json(), user_id, series_id),
+                (last_read_chapter.to_json(), datetime.utcnow().timestamp(), user_id, series_id),
             )
             await db.commit()
 
