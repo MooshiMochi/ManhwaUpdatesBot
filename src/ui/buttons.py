@@ -5,8 +5,6 @@ if TYPE_CHECKING:
     from src.core.objects import Bookmark
     from . import BookmarkView
 
-from src.core.scanners import SCANLATORS
-from src.utils import create_bookmark_embed, get_manga_scanlator_class
 
 import discord
 
@@ -15,42 +13,40 @@ from .selects import ChapterSelect
 
 
 class CustomButtonCallbacks:
-    def __init__(self, bot: MangaClient, view: BookmarkView, bookmarks: list[Bookmark]):
+    def __init__(self, bot: MangaClient, view: BookmarkView):
         self.bot: MangaClient = bot
-        self.bookmarks: list[bookmarks] = bookmarks
         self.view: BookmarkView = view
 
     async def search_button_callback(self, interaction: discord.Interaction):
         modal: SearchModal = SearchModal(
             self.bot.logger,
             self.view,
-            self.bookmarks,
         )
         await interaction.response.send_modal(modal)
-        # await modal.wait()
 
     async def delete_button_callback(self, interaction: discord.Interaction):
-        bookmark: Bookmark = self.view.bookmarks[self.view.page]
+        bookmark: Bookmark = self.view.bookmarks[self.view.visual_item_index]
+        # noinspection PyProtectedMember
+        bookmark_embed = self.view._get_display_embed()
         await bookmark.delete(self.view.bot)
         self.view.bookmarks = [x for x in self.view.bookmarks if x.manga.id != bookmark.manga.id]
-        self.view.page -= 1
         # noinspection PyProtectedMember
-        self.view._handle_page_change()
-        scanlator = get_manga_scanlator_class(SCANLATORS, key=bookmark.manga.scanlator)
-        embed = create_bookmark_embed(
-            self.bot, self.view.bookmarks[self.view.page], scanlator.icon_url
-        )
-        await interaction.response.edit_message(embed=embed, view=self.view)
+        self.view._increment_index(-1)
+
+        await self.view.update(interaction)
+
         await interaction.followup.send(
             f"Bookmark [{bookmark.manga.human_name}]({bookmark.manga.manga_url}) deleted successfully.",
+            embed=bookmark_embed,
             ephemeral=True
         )
 
     async def update_button_callback(self, interaction: discord.Interaction):
-        curr_bookmark: Bookmark = self.view.bookmarks[self.view.page]
-        for child in self.view.children:
-            if child.row is not None and child.row == 4:
-                self.view.remove_item(child)
+        curr_bookmark: Bookmark = self.view.bookmarks[self.view.visual_item_index]
+
+        self.view.clear_components()
+
+        self.view.toggle_nav_buttons(False)
 
         self.view.add_item(
             ChapterSelect(curr_bookmark)

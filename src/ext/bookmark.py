@@ -14,6 +14,7 @@ from src.utils import get_manga_scanlator_class, create_bookmark_embed
 from discord import app_commands
 from src.core.errors import MangaNotFound, BookmarkNotFound, ChapterNotFound
 from src.ui import BookmarkView
+from src.enums import BookmarkViewType
 
 
 class BookmarkCog(commands.Cog):
@@ -41,13 +42,14 @@ class BookmarkCog(commands.Cog):
         if series_id is None:
             return []
         chapters = await self.bot.db.get_bookmark_chapters(interaction.user.id, series_id, argument)
+        print(chapters)
         if not chapters:
             return []
 
         return [
             discord.app_commands.Choice(
-                name=chp.chapter_string,
-                value=chp.url
+                name=chp.chapter_string[:97] + ("..." if len(chp.chapter_string) > 100 else ''),
+                value=str(chp.index)
             ) for chp in chapters
         ][:25]
 
@@ -90,39 +92,39 @@ class BookmarkCog(commands.Cog):
     @app_commands.autocomplete(series_id=bookmark_autocomplete)
     async def bookmark_view(self, interaction: discord.Interaction, series_id: Optional[str] = None):
         await interaction.response.defer(ephemeral=True, thinking=True)
-        if not series_id:
-            bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
-            if not bookmarks:
-                return await interaction.followup.send("You have no bookmarks", ephemeral=True)
+        bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
+        if not bookmarks:
+            return await interaction.followup.send("You have no bookmarks", ephemeral=True)
 
-            view = BookmarkView(self.bot, interaction, bookmarks)
-            view.bookmarks_to_text_embeds()
+        view = BookmarkView(self.bot, interaction, bookmarks, BookmarkViewType.VISUAL)
 
-            view.message = await interaction.followup.send(embed=view.items[0], view=view, ephemeral=True)
-            return
+        if series_id:
+            bookmark_index = next((i for i, x in enumerate(view.bookmarks) if x.manga.id == series_id), None)
+            if bookmark_index is None:
+                raise BookmarkNotFound()
+            view.visual_item_index = bookmark_index
 
-        else:
-            bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
-            scanner = SCANLATORS[bookmark.manga.scanlator]
-            em = create_bookmark_embed(self.bot, bookmark, scanner.icon_url)
-            return await interaction.followup.send(embed=em, ephemeral=True)
+        # noinspection PyProtectedMember
+        em = view._get_display_embed()
+        view.message = await interaction.followup.send(embed=em, view=view, ephemeral=True)
+        return
 
     @bookmark_group.command(name="update", description="Update a bookmark")
     @app_commands.rename(series_id="manga")
-    @app_commands.rename(chapter_url="chapter")
+    @app_commands.rename(chapter_index="chapter")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to update")
-    @app_commands.describe(chapter_url="The chapter you want to update the bookmark to")
+    @app_commands.describe(chapter_index="The chapter you want to update the bookmark to")
     @app_commands.autocomplete(series_id=bookmark_autocomplete)
-    @app_commands.autocomplete(chapter_url=chapter_autocomplete)
-    async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_url: str):
+    @app_commands.autocomplete(chapter_index=chapter_autocomplete)
+    async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
         chapters = await self.bot.db.get_bookmark_chapters(interaction.user.id, series_id)
         if not chapters:
             raise BookmarkNotFound()
 
-        chapter = next((x for x in chapters if x.url == chapter_url), None)
+        chapter = chapters[int(chapter_index)]
         if not chapter:
-            raise ChapterNotFound(chapter_url)
+            raise ChapterNotFound()
         await self.bot.db.update_last_read_chapter(interaction.user.id, series_id, chapter)
         await interaction.followup.send(f"Successfully updated bookmark to {chapter.chapter_string}", ephemeral=True)
         return

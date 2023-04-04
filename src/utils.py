@@ -19,6 +19,8 @@ import yaml
 
 # noinspection PyPackages
 from .static import RegExpressions
+# noinspection PyPackages
+from .enums import BookmarkSortType
 
 
 def exit_bot() -> None:
@@ -280,7 +282,7 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
         f"**Last Read Chapter:** [{bookmark.last_read_chapter.chapter_string}]({bookmark.last_read_chapter.url})\n"
 
         "**Next chapter:** "
-        f"{f'[{next_chapter.chapter_string}]({next_chapter.url})' if next_chapter else '`Finished`'}\n"
+        f"{f'[{next_chapter.chapter_string}]({next_chapter.url})' if next_chapter else '`Wait for updates`'}\n"
 
         "**Available Chapters:** Up to "
         f"[{bookmark.available_chapters[-1].chapter_string}]({bookmark.available_chapters[-1].url})\n"
@@ -293,7 +295,7 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
     return em
 
 
-def sort_bookmarks(bookmarks: list[Bookmark], sort_type: str) -> list[Bookmark]:
+def sort_bookmarks(bookmarks: list[Bookmark], sort_type: BookmarkSortType) -> list[Bookmark]:
     """
     Summary:
         Sorts a list of bookmarks by a sort type.
@@ -306,12 +308,14 @@ def sort_bookmarks(bookmarks: list[Bookmark], sort_type: str) -> list[Bookmark]:
         list[Bookmark]: The sorted bookmarks.
     """
     ctype = type(bookmarks)
-    if sort_type == "a-z":
+    # sort alphabetically first, then sort by whatever the sort type is.
+    bookmarks = sorted(bookmarks, key=lambda b: b.manga.human_name.lower())
+    if sort_type == BookmarkSortType.ALPHABETICAL:
         return ctype(sorted(bookmarks, key=lambda b: b.manga.human_name.lower()))
-    elif sort_type == "last_updated":
+    elif sort_type == BookmarkSortType.LAST_UPDATED_TIMESTAMP:
         return ctype(sorted(bookmarks, key=lambda b: b.last_updated_ts, reverse=True))
     else:
-        raise ValueError(f"Invalid sort type: {sort_type}")
+        raise ValueError(f"Invalid sort type: {sort_type.value}")
 
 
 def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:

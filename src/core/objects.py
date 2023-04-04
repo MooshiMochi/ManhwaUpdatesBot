@@ -639,7 +639,7 @@ class Bookmark:
         self.last_read_chapter: Chapter = last_read_chapter
         self.available_chapters: list[Chapter] = available_chapters
         self.guild_id: int = guild_id
-        self.last_updated_ts: float = last_updated_ts
+        self.last_updated_ts: float = float(last_updated_ts)
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Bookmark":

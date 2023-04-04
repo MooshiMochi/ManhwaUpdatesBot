@@ -22,8 +22,9 @@ class BaseView(View):
     def __init__(
             self, bot: MangaClient,
             interaction: discord.Interaction | Context = None,
+            timeout: float = 60.0
     ):
-        super().__init__()
+        super().__init__(timeout=timeout)
         self.bot = bot
         self.interaction_or_ctx: discord.Interaction | Context = interaction
         self.message: discord.Message | None = None
@@ -65,142 +66,77 @@ class BaseView(View):
 
 
 class BookmarkView(BaseView):
-    def __init__(self, bot: MangaClient, interaction: discord.Interaction, bookmarks: list[Bookmark]):
-        super().__init__(bot, interaction)
+    def __init__(
+            self,
+            bot: MangaClient,
+            interaction: discord.Interaction,
+            bookmarks: list[Bookmark],
+            view_type: BookmarkViewType = BookmarkViewType.VISUAL,
+    ):
+        super().__init__(bot, interaction, timeout=60 * 60 * 1)  # 1 hour timeout
         self.bot: MangaClient = bot
         self.message: discord.Message | None = None
-        self.bookmarks: list[Bookmark] = sort_bookmarks(bookmarks, BookmarkSortType.LAST_UPDATED_TIMESTAMP.value)
 
-        self.page: int = 0
-        self.view_type: Literal["visual", "text"] = BookmarkViewType.TEXT.value
-        self.sort_type: Literal["a-z", "last_updated"] = BookmarkSortType.ALPHABETICAL.value
+        self.view_type: BookmarkViewType = view_type
+        self.sort_type: BookmarkSortType = BookmarkSortType.LAST_UPDATED_TIMESTAMP
 
-        self.external_components: dict[str, ...] = {}
+        self.bookmarks: list[Bookmark] = bookmarks
+        # the method below will sort the bookmarks by the sort_type
+        self.text_view_embeds: list[discord.Embed] = self._bookmarks_to_text_embeds()
 
-        self.items: list[discord.Embed] = []
+        self.text_page_index = 0
+        self.visual_item_index = 0
 
-        self._btn_callbacks = CustomButtonCallbacks(self.bot, self, self.bookmarks)
-        self.init_external_components()
-        self.update_view_components()
+        self._btn_callbacks = CustomButtonCallbacks(self.bot, self)
+        self.load_components()
 
-        # free rows: 3, 4, 5
+    def _load_visual_components_preset(self) -> Self:
+        self.clear_components()
+        self.add_item(ViewTypeSelect(self.view_type, row=2))
 
-    def init_external_components(self):
-        self.external_components["select"] = [
-            [
-                SortTypeSelect(row=1), True
-            ],
-            [
-                ViewTypeSelect(
-                    partial(create_bookmark_embed, self.bot),
-                    partial(get_manga_scanlator_class, SCANLATORS),
-                    row=2
-                ), True
-            ]
-        ]
-        self.external_components["button"] = [
-            [self.make_empty_button(), True],
-            [self.make_empty_button(), True],
-            [Button(label="Search", style=ButtonStyle.blurple, row=3, custom_id="btn_search"), True],
-            [self.make_empty_button(), True],
-            [self.make_empty_button(), True],
-        ]
-        self.external_components["button"][2][0].callback = self._btn_callbacks.search_button_callback
+        self.add_item(Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3))
+        update_btn = Button(style=ButtonStyle.blurple, label="Update", custom_id="update_btn", row=3)
+        update_btn.callback = partial(self._btn_callbacks.update_button_callback)
 
-    def update_view_components(self) -> "BookmarkView":
-        for item in self.children:
-            if item.row is not None and item.row > 0:
-                self.remove_item(item)
+        search_btn = Button(style=ButtonStyle.blurple, label="Search", custom_id="search_btn", row=3)
+        search_btn.callback = partial(self._btn_callbacks.search_button_callback)
 
-        for key, components in self.external_components.items():
-            for component, show in components:
-                if not show or not component:
-                    continue
-                self.add_item(component)
+        delete_btn = Button(style=ButtonStyle.red, label="Delete", custom_id="delete_btn", row=3)
+        delete_btn.callback = partial(self._btn_callbacks.delete_button_callback)
 
+        self.add_item(update_btn)
+        self.add_item(search_btn)
+        self.add_item(delete_btn)
+
+        self.add_item(Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3))
         return self
 
-    @staticmethod
-    def make_empty_button() -> discord.Button:
-        return Button(label="\u200b", style=ButtonStyle.grey, disabled=True, row=3)
+    def _load_text_components_preset(self) -> Self:
+        self.clear_components()
+        self.add_item(SortTypeSelect(self.sort_type, row=1))
+        self.add_item(ViewTypeSelect(self.view_type, row=2))
 
-    def to_visual_view(self) -> "BookmarkView":
-        # if self.view_type == "visual":
-        #     return self
+        def _add_blank_buttons():
+            for _ in range(2):
+                self.add_item(Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3))
 
-        # items required:
-        #   + [0] --> nav buttons (reserved)
-        #   - [1] --> /sort_type select (hidden)/
-        #   + [2] --> view_type select
-        #   + [3] --> <empty>, <update>, <search>, <delete>, <empty> buttons
-        #   - [4] --> /-----------------------/
-        #   - [5] --> /-----------------------/
+        _add_blank_buttons()
+        search_btn = Button(style=ButtonStyle.blurple, label="Search", custom_id="search_btn", row=3)
+        search_btn.callback = partial(self._btn_callbacks.search_button_callback)
+        self.add_item(search_btn)
+        _add_blank_buttons()
+        return self
 
-        self.view_type = BookmarkViewType.VISUAL.value
+    def load_components(self) -> Self:
+        if self.view_type == BookmarkViewType.VISUAL:
+            self._load_visual_components_preset()
+        else:
+            self._load_text_components_preset()
+        return self
 
-        self.external_components["button"][1] = [
-            Button(
-                label="Update", style=ButtonStyle.blurple, row=3, custom_id="btn_update"
-                ), True
-        ]
-        self.external_components["button"][1][0].callback = self._btn_callbacks.update_button_callback
-
-        self.external_components["button"][3] = [
-            Button(
-                label="Delete", style=ButtonStyle.blurple, row=3, custom_id="btn_delete"
-            ), True
-        ]
-        self.external_components["button"][3][0].callback = self._btn_callbacks.delete_button_callback
-
-        self.external_components["select"][0][1] = False
-        self.sort_type = BookmarkSortType.LAST_UPDATED_TIMESTAMP.value
+    def _bookmarks_to_text_embeds(self) -> list[discord.Embed]:
         self.bookmarks = sort_bookmarks(self.bookmarks, self.sort_type)
-
-        return self.update_view_components()
-
-    def to_text_view(self) -> "BookmarkView":
-        # if self.view_type == "text":
-        #     return self
-
-        # items required:
-        #   + [0] --> nav buttons (reserved)
-        #   + [1] --> sort_type select
-        #   + [2] --> view_type select
-        #   + [3] --> <empty>, <empty>, <search>, <empty>, <empty> buttons
-        #   - [4] --> /-----------------------/
-        #   - [5] --> /-----------------------/
-
-        self.view_type = BookmarkViewType.TEXT.value
-
-        self.external_components["button"][1] = [
-            self.make_empty_button(), True
-        ]
-        self.external_components["button"][3] = [
-            self.make_empty_button(), True
-        ]
-
-        self.external_components["select"][0][1] = True
-        return self.update_view_components()
-
-    async def update_current_text_embed(self, interaction: discord.Interaction, view: Self | None = None):
-        if self.view_type != BookmarkViewType.TEXT.value:
-            return
-
-        self.items = self.bookmarks_to_text_embeds()
-        await interaction.response.edit_message(embed=self.items[self.page], view=self if view is None else view)
-
-    async def update_current_visual_embed(self, interaction: discord.Interaction, view: Self | None = None):
-        if self.view_type != BookmarkViewType.VISUAL.value:
-            return
-
-        self._handle_page_change()
-        scanlator = get_manga_scanlator_class(SCANLATORS, key=self.bookmarks[self.page].manga.scanlator)
-        em = create_bookmark_embed(self.bot, self.bookmarks[self.page], scanlator.icon_url)
-        await interaction.response.edit_message(embed=em, view=self if view is None else view)
-
-    def bookmarks_to_text_embeds(self) -> list[discord.Embed]:
-        _sorted = sort_bookmarks(self.bookmarks, self.sort_type)
-        grouped = group_items_by(_sorted, ["manga.scanlator"])
+        grouped = group_items_by(self.bookmarks, ["manga.scanlator"])
         embeds: list[discord.Embed] = []
 
         em = discord.Embed(title="Bookmarks", color=discord.Color.blurple())
@@ -230,36 +166,115 @@ class BookmarkView(BaseView):
         self.items = embeds
         return embeds
 
-    def _get_display_embed(self) -> discord.Embed:
-        if self.view_type == "text":
-            return self.items[self.page]
-        else:
-            scanlator = get_manga_scanlator_class(SCANLATORS, key=self.bookmarks[self.page].manga.scanlator)
-            return create_bookmark_embed(self.bot, self.bookmarks[self.page], scanlator.icon_url)
+    def toggle_nav_buttons(self, on: bool = True):
+        for item in self.children:
+            if item.row is not None and item.row == 0:
+                item.disabled = not on
 
-    def _handle_page_change(self):
-        if self.view_type == "text":
-            if self.page > len(self.items) - 1:
-                self.page = 0
-            elif self.page < 0:
-                self.page = len(self.items) - 1
+    def clear_components(self) -> Self:
+        """
+        Summary:
+            Clears all components from the view. (Except the navigation buttons)
+
+        Returns:
+            self (BookmarkView)
+        """
+        for item in self.children:
+            if item.row is not None and item.row == 0:
+                continue
+            self.remove_item(item)
+        return self
+
+    async def update(self, interaction: discord.Interaction, view: Self | None = None):
+        if view is None:
+            view = self
+        if len(self.bookmarks) == 0:
+            await interaction.response.edit_message(
+                view=None, embed=discord.Embed(title="You have no more bookmarks.")
+            )
+            self.stop()
+            return
+
+        await interaction.response.edit_message(view=view, embed=self._get_display_embed())
+
+    def change_view_type(self, new_view_type: BookmarkViewType) -> bool:
+        """
+        Summary:
+            Changes the view type of the view.
+
+        Parameters:
+            new_view_type (BookmarkViewType): The new view type to change to.
+
+        Returns:
+            bool: True if the view type was changed, False if it was not.
+        """
+        if self.view_type == new_view_type:
+            return False
+
+        self.view_type = new_view_type
+        self.clear_components()
+        self.load_components()
+        return True
+
+    def change_sort_type(self, new_sort_type: BookmarkSortType) -> bool:
+        """
+        Summary:
+            Changes the sort type of the view.
+
+        Parameters:
+            new_sort_type (BookmarkSortType): The new sort type to change to.
+
+        Returns:
+            bool: True if the sort type was changed, False if it was not.
+        """
+        if self.sort_type == new_sort_type:
+            return False
+
+        self.sort_type = new_sort_type
+
+        # no need to manually sort bookmarks, the method below will do it for us...
+        self.text_view_embeds = self._bookmarks_to_text_embeds()
+
+        self.clear_components()
+        self.load_components()
+        return True
+
+    def _get_display_embed(self) -> discord.Embed:
+        if self.view_type == BookmarkViewType.TEXT:
+            return self.text_view_embeds[self.text_page_index]
         else:
-            if self.page > len(self.bookmarks) - 1:
-                self.page = 0
-            elif self.page < 0:
-                self.page = len(self.bookmarks) - 1
+            idx = self.visual_item_index
+            scanlator = get_manga_scanlator_class(SCANLATORS, key=self.bookmarks[idx].manga.scanlator)
+            return create_bookmark_embed(self.bot, self.bookmarks[idx], scanlator.icon_url)
+
+    def _handle_index_change(self):
+        if self.text_page_index > len(self.text_view_embeds) - 1:
+            self.text_page_index = 0
+        elif self.text_page_index < 0:
+            self.text_page_index = len(self.text_view_embeds) - 1
+
+        if self.visual_item_index > len(self.bookmarks) - 1:
+            self.visual_item_index = 0
+        elif self.visual_item_index < 0:
+            self.visual_item_index = len(self.bookmarks) - 1
+
+    def _increment_index(self, increment: int | float):
+        if self.view_type == BookmarkViewType.TEXT:
+            self.text_page_index += increment
+        else:
+            self.visual_item_index += increment
+        self._handle_index_change()
 
     @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, row=0)
     async def _first_page(
             self, interaction: discord.Interaction, _
     ):
-        self.page = 0
+        self._increment_index(float("inf"))  # this will set index to 0 internally
         await interaction.response.edit_message(embed=self._get_display_embed())
 
     @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, row=0)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page -= 1
-        self._handle_page_change()
+        self._increment_index(-1)
         await interaction.response.edit_message(embed=self._get_display_embed())
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, row=0)
@@ -269,17 +284,12 @@ class BookmarkView(BaseView):
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, row=0)
     async def forward(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page += 1
-        self._handle_page_change()
+        self._increment_index(1)
         await interaction.response.edit_message(embed=self._get_display_embed())
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, row=0)
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
-        if self.view_type == "text":
-            self.page = len(self.items) - 1
-        else:
-            self.page = len(self.bookmarks) - 1
-        self._handle_page_change()
+        self._increment_index(float("-inf"))  # this will set index to max internally
         await interaction.response.edit_message(embed=self._get_display_embed())

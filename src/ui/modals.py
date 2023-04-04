@@ -9,22 +9,22 @@ import discord
 from logging import Logger
 # noinspection PyProtectedMember
 from src.core.database import _levenshtein_distance
+from src.enums import BookmarkViewType
 
 
 class SearchModal(discord.ui.Modal, title='Search Bookmark'):
     query = discord.ui.TextInput(
         label='Query',
-        placeholder='Enter the query here...',
+        placeholder='Enter the manga name here...',
     )
 
-    def __init__(self, logger: Logger, view: BookmarkView, bookmarks: list[Bookmark]):
+    def __init__(self, logger: Logger, view: BookmarkView):
         super().__init__()
         self.logger: Logger = logger
         self.view = view
-        self.bookmarks: list[Bookmark] = bookmarks
+        self.bookmarks: list[Bookmark] = self.view.bookmarks
 
     async def on_submit(self, interaction: discord.Interaction):
-        print("Works!")
         bookmark = next(
             (x for x in self.bookmarks if x.manga.human_name.lower().startswith(self.query.value.lower())), None
         )
@@ -33,9 +33,10 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
                 self.bookmarks,
                 key=lambda x: _levenshtein_distance(x.manga.human_name.lower(), self.query.value.lower())
             )
-        self.view.page = self.bookmarks.index(bookmark)
-        new_view = self.view.to_visual_view()
-        await self.view.update_current_visual_embed(interaction, new_view)
+        self.view.visual_item_index = self.bookmarks.index(bookmark)
+        self.view.change_view_type(BookmarkViewType.VISUAL)
+        self.view.load_components()
+        await self.view.update(interaction)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         # Make sure we know what the error actually is
