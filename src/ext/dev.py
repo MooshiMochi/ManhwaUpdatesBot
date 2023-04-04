@@ -163,38 +163,11 @@ class Restricted(commands.Cog):
         if out.decode("utf8").strip() == "Already up to date.":
             return
 
-        for ext_name, ext in self.client.extensions.items():
+        for ext_name, ext in dict(self.client.extensions).copy().items():
             try:
                 await self.client.unload_extension(ext_name)
             except commands.ExtensionNotLoaded:
                 pass
-
-        # for dir_name in ["events"]:
-        #     for file in os.listdir(dir_name):
-        #         if file.endswith(".py"):
-        #             await self.client.unload_extension(
-        #                 f"{dir_name}.{file}".replace(".py", "")
-        #             )
-        #             await self.client.load_extension(
-        #                 f"{dir_name}.{file}".replace(".py", "")
-        #             )
-
-        # skipped = 0
-        # for dir_name in ["utils"]:
-        #     for file in os.listdir(dir_name):
-        #         if file.endswith(".py"):
-        #             try:
-        #                 await self.client.load_extension(
-        #                     f"{dir_name}.{file}".replace(".py", "")
-        #                 )
-        #             except (
-        #                 commands.NoEntryPointError,
-        #                 commands.ExtensionAlreadyLoaded,
-        #             ) as e:
-        #                 self.client.logger.debug(
-        #                     f"Extension {dir_name}.{file.replace('.py', '')} not loaded: {e}"
-        #                 )
-        #                 skipped += 1
 
         self.client.logger.info("Client reloaded.")
 
