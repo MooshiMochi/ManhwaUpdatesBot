@@ -37,9 +37,13 @@ class Database:
                 CREATE TABLE IF NOT EXISTS series (
                     id TEXT PRIMARY KEY NOT NULL,
                     human_name TEXT NOT NULL,
-                    manga_url TEXT NOT NULL,
-                    last_chapter_url INT NOT NULL,
-                    last_chapter_string TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    
+                    series_cover_url TEXT NOT NULL,
+                    
+                    last_chapter TEXT NOT NULL,
+                    available_chapters TEXT NOT NULL,
+                    
                     completed BOOLEAN NOT NULL DEFAULT false,
                     scanlator TEXT NOT NULL DEFAULT 'Unknown',
                     UNIQUE(id) ON CONFLICT IGNORE
@@ -65,10 +69,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS bookmarks (
                     user_id INTEGER NOT NULL,
                     series_id TEXT NOT NULL,
-                    
                     last_read_chapter TEXT DEFAULT NULL,
-                    series_cover_url TEXT NOT NULL,
-                    available_chapters TEXT NOT NULL,
                     guild_id INTEGER NOT NULL,
                     last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     
@@ -161,8 +162,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, manga_url, last_chapter_url, last_chapter_string, completed, 
-                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, url, series_cover_url, last_chapter, available_chapters, completed, 
+                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(id) DO NOTHING;
                 """,
                 (manga_obj.to_tuple()),
             )
@@ -173,8 +174,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, manga_url, last_chapter_url, last_chapter_string, completed,
-                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, url, series_cover_url, last_chapter, available_chapters, completed, 
+                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(id) DO NOTHING;
                 """,
                 (bookmark.manga.to_tuple()),
             )
@@ -191,14 +192,12 @@ class Database:
                     user_id,
                     series_id, 
                     last_read_chapter,
-                    series_cover_url, 
-                    available_chapters, 
                     guild_id,
                     last_updated_ts
                     ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                VALUES ($1, $2, $3, $4, $5) 
                 ON CONFLICT(user_id, series_id) DO 
-                UPDATE SET last_read_chapter=$3, series_cover_url=$4, available_chapters=$5, last_updated_ts=$7;
+                UPDATE SET last_read_chapter=$3, last_updated_ts=$5;
                 """,
                 (bookmark.to_tuple()),
             )
@@ -282,6 +281,50 @@ class Database:
                     return Manga.from_tuples(result)
                 return []
 
+    async def get_series_to_delete(self) -> list[Manga] | None:
+        """
+        Summary:
+            Returns a list of Manga class objects that needs to be deleted.
+            It needs to be deleted when:
+                - no user is subscribed to the manga
+                - no user has bookmarked the manga
+
+        Returns:
+            list[Manga] | None: list of Manga class objects that needs to be deleted.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                """
+                SELECT * FROM series WHERE series.id NOT IN (SELECT series_id FROM users)
+                AND series.id NOT IN (SELECT series_id FROM bookmarks);
+                """
+            ) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return Manga.from_tuples(result)
+                return None
+
+    async def get_series_to_update(self) -> list[Manga] | None:
+        """
+        Summary:
+            Returns a list of Manga class objects that needs to be updated.
+            It needs to be updated when:
+                - the manga is not completed
+
+        Returns:
+            list[Manga] | None: list of Manga class objects that needs to be updated.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                """
+                SELECT * FROM series WHERE completed = 0;
+                """
+            ) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return Manga.from_tuples(result)
+                return None
+
     async def get_user_bookmark(self, user_id: int, series_id: str) -> Bookmark | None:
         async with aiosqlite.connect(self.db_name) as db:
             cursor = await db.execute(
@@ -290,16 +333,15 @@ class Database:
                     b.user_id,
                     b.series_id,
                     b.last_read_chapter,
-                    b.series_cover_url,
-                    b.available_chapters,
                     b.guild_id,
                     b.last_updated_ts,
                     
                     s.id,
                     s.human_name,
-                    s.manga_url,
-                    s.last_chapter_url,
-                    s.last_chapter_string,
+                    s.url,
+                    s.series_cover_url,
+                    s.last_chapter,
+                    s.available_chapters,
                     s.completed,
                     s.scanlator
                     
@@ -312,7 +354,7 @@ class Database:
             result = await cursor.fetchone()
             if result is not None:
                 result = list(result)
-                bookmark_params, manga_params = result[:-7], tuple(result[-7:])
+                bookmark_params, manga_params = result[:-8], tuple(result[-8:])
 
                 manga = Manga.from_tuple(manga_params)
                 # replace series_id with a manga object
@@ -338,16 +380,15 @@ class Database:
                     b.user_id,
                     b.series_id,
                     b.last_read_chapter,
-                    b.series_cover_url,
-                    b.available_chapters,
                     b.guild_id,
                     b.last_updated_ts,
                     
                     s.id,
                     s.human_name,
-                    s.manga_url,
-                    s.last_chapter_url,
-                    s.last_chapter_string,
+                    s.url,
+                    s.series_cover_url,
+                    s.last_chapter,
+                    s.available_chapters,
                     s.completed,
                     s.scanlator
                     
@@ -365,9 +406,9 @@ class Database:
                 # change all the series_id to manga objects
                 new_result: list = []
                 for result_tup in list(result):
-                    manga_params = result_tup[-7:]
+                    manga_params = result_tup[-8:]
                     manga = Manga.from_tuple(manga_params)
-                    bookmark_params = result_tup[:-7]
+                    bookmark_params = result_tup[:-8]
                     bookmark_params = list(bookmark_params)
                     bookmark_params[1] = manga
                     new_result.append(tuple(bookmark_params))
@@ -399,26 +440,25 @@ class Database:
             if result:
                 return [tuple(result) for result in result]
 
-    async def get_bookmark_chapters(
-            self, user_id: int, series_id: str, current: str = None
+    async def get_series_chapters(
+            self, series_id: str, current: str = None
     ) -> list[Chapter]:
         async with aiosqlite.connect(self.db_name) as db:
             cursor = await db.execute(
                 """
-                SELECT available_chapters FROM bookmarks
-                WHERE user_id = $1 AND series_id = $2;
+                SELECT available_chapters FROM series
+                WHERE id = $1;
                 """,
-                (user_id, series_id),
+                (series_id, ),
             )
             result = await cursor.fetchone()
             if result:
                 result = result[0]
-                chapters_list = loads(result)
-                chapters = Chapter.from_many_dict(chapters_list)
+                chapters = Chapter.from_many_json(result)
                 if current is not None:
                     return list(
                         sorted(
-                            chapters, key=lambda x: _levenshtein_distance(x.chapter_string, current), reverse=True
+                            chapters, key=lambda x: _levenshtein_distance(x.name, current), reverse=True
                         )
                     )
                 return chapters
@@ -449,7 +489,8 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
-                    return Manga(*result)
+                    print(result)
+                    return Manga.from_tuple(result)
 
     async def get_all_series(self) -> list[Manga] | None:
         """
@@ -488,9 +529,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                UPDATE series SET last_chapter_url = $1, last_chapter_string = $2 WHERE id = $3;
+                UPDATE series SET last_chapter = $1, series_cover_url = $2 WHERE id = $3;
                 """,
-                (manga.last_chapter_url, manga.last_chapter_string, manga.id),
+                (manga.last_chapter.to_json(), manga.cover_url, manga.id),
             )
             if result.rowcount < 1:
                 raise ValueError(f"No series with ID {manga.id} was found.")
@@ -521,7 +562,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                DELETE FROM series WHERE id = ?;
+                DELETE FROM series WHERE id = $1;
                 """,
                 (series_id,),
             )
@@ -562,7 +603,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                DELETE FROM users WHERE id = ? and series_id = ?;
+                DELETE FROM users WHERE id = $1 and series_id = $2;
                 """,
                 (user_id, series_id),
             )

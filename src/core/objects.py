@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import urllib
 from asyncio import TimeoutError
-from typing import TYPE_CHECKING, Iterable, Union
+from typing import TYPE_CHECKING, Iterable, Union, Any
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
@@ -24,30 +24,24 @@ import json
 class ChapterUpdate:
     def __init__(
             self,
-            new_chapter_url: str,
-            new_chapter_string: str,
+            new_chapters: list[Chapter],
+            new_cover_url: Optional[str] = None,
             series_completed: bool = False,
-            **extra_kwargs
+            *extra_kwargs: list[dict[str, Any]]
     ):
-        self.new_chapter_url = new_chapter_url
-        self.new_chapter_string = self._fix_chapter_string(new_chapter_string)
+        self.new_chapters = new_chapters
+        self.new_cover_url = new_cover_url
         self.series_completed = series_completed
         self.extra_kwargs = extra_kwargs
 
-    @staticmethod
-    def _fix_chapter_string(chapter_string: str) -> str:
-        """Fixes the chapter string to be more readable."""
-        result = chapter_string.replace("\n", " ").replace("Ch.", "Chapter")
-        return re.sub(r"\s+", " ", result).strip()
-
     def __repr__(self):
-        return f"UpdateResult({self.new_chapter_string} - {self.new_chapter_url})"
+        return f"UpdateResult({len(self.new_chapters)} new chapters, series_completed={self.series_completed})"
 
 
 class Chapter:
-    def __init__(self, url: str, chapter_string: str, index: int):
+    def __init__(self, url: str, name: str, index: int):
         self.url = url
-        self.chapter_string = self._fix_chapter_string(chapter_string)
+        self.name = self._fix_chapter_string(name)
         self.index = index
 
     @staticmethod
@@ -57,12 +51,12 @@ class Chapter:
         return re.sub(r"\s+", " ", result).strip()
 
     def __repr__(self):
-        return f"[{self.chapter_string}]({self.url})"
+        return f"[{self.name}]({self.url})"
 
     def to_dict(self):
         return {
             "url": self.url,
-            "chapter_string": self.chapter_string,
+            "name": self.name,
             "index": self.index
         }
 
@@ -103,11 +97,9 @@ class ABCScan(ABC):
     async def check_updates(
             cls,
             bot: MangaClient,
-            human_name: str,
-            manga_url: str,
-            manga_id: str,
-            last_chapter_url: str,
-    ) -> list[ChapterUpdate]:
+            manga: Manga,
+            _manga_request_url: str | None = None
+    ) -> ChapterUpdate:
         """
         Summary:
             Checks whether any new releases have appeared on the scanlator's website.
@@ -115,22 +107,25 @@ class ABCScan(ABC):
 
         Parameters:
             bot: MangaClient - The bot instance.
-            human_name: str - The name of the manga.
-            manga_url: str - The URL of the manga's home page.
-            manga_id: str - The ID of the manga.
-            last_chapter_url: str - The last released chapter url (last time).
+            manga: Manga - The manga object to check for updates.
+            _manga_request_url: str - The URL to request the manga's page.
 
         Returns:
-            list[ChapterUpdate] - A list of ChapterUpdate objects containing the following:
-                :str/None: - The `url` of the new chapter if a new release appeared, otherwise `None`.
-                :str/None: - The `chapter text` of the new chapter if a new release appeared, otherwise `None`.
-                :bool: - `True` if the series is completed, otherwise `False`.
-                :str/None: - The new chapter url if a new release appeared, otherwise `None`.
+            ChapterUpdate - The update result.
 
         Raises:
             MangaNotFound - If the manga is not found in the scanlator's website.
         """
-        raise NotImplementedError
+        request_url = _manga_request_url or manga.url
+        all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
+        completed: bool = await cls.is_series_completed(bot, manga.id, request_url)
+        cover_url: str = await cls.get_cover_image(bot, manga.id, request_url)
+        if all_chapters is None:
+            return ChapterUpdate([], cover_url, completed)
+        new_chapters: list[Chapter] = [
+            chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
+        ]
+        return ChapterUpdate(new_chapters, cover_url, completed)
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
@@ -206,9 +201,9 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    async def get_curr_chapter_text(
+    async def get_curr_chapter(
             cls, bot: MangaClient, manga_id: str, manga_url: str
-    ) -> str | None:
+    ) -> Chapter | None:
         """
         Summary:
             Gets the current chapter text of the manga.
@@ -219,29 +214,7 @@ class ABCScan(ABC):
             manga_url: str - The URL of the manga's home page.
 
         Returns
-            str/None - The current chapter text of the manga.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    async def get_curr_chapter_url(
-            cls,
-            bot: MangaClient,
-            manga_id: str,
-            manga_url: str,
-    ) -> str | None:
-        """
-        Summary:
-            Gets the latest chapter URL of the manga.
-
-        Parameters:
-            bot: MangaClient - The bot instance.
-            manga_id: str - The ID of the manga.
-            manga_url: str - The URL of the manga's home page.
-
-        Returns:
-            str/None - The current chapter URL of the manga.
+            Chapter/None - The current chapter text of the manga.
         """
         raise NotImplementedError
 
@@ -261,15 +234,17 @@ class ABCScan(ABC):
         """
         manga_url = cls.fmt_manga_url(manga_id, manga_url)
         human_name = await cls.get_human_name(bot, manga_id, manga_url)
-        curr_chapter_url = await cls.get_curr_chapter_url(bot, manga_id, manga_url)
-        curr_chapter_text = await cls.get_curr_chapter_text(bot, manga_id, manga_url)
+        cover_url = await cls.get_cover_image(bot, manga_id, manga_url)
+        curr_chapter = await cls.get_curr_chapter(bot, manga_id, manga_url)
+        available_chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
         is_completed = await cls.is_series_completed(bot, manga_id, manga_url)
         return Manga(
             manga_id,
             human_name,
             manga_url,
-            curr_chapter_url,
-            curr_chapter_text,
+            cover_url,
+            curr_chapter,
+            available_chapters,
             is_completed,
             cls.name,
         )
@@ -303,14 +278,10 @@ class ABCScan(ABC):
         if manga is None:
             return None
 
-        available_chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
-        cover_url = await cls.get_cover_image(bot, manga_id, manga_url)
         return Bookmark(
             user_id,
             manga,
-            available_chapters[0],  # last_read_chapter
-            cover_url,
-            available_chapters,
+            manga.available_chapters[0],  # last_read_chapter
             guild_id,
             datetime.utcnow().timestamp(),
         )
@@ -528,33 +499,44 @@ class Manga:
         self,
         id: str,
         human_name: str,
-        manga_url: str,
-        last_chapter_url: str,
-        last_chapter_string: str,
+        url: str,
+        cover_url: str,
+        last_chapter: Chapter,
+        available_chapters: list[Chapter],
         completed: bool,
         scanlator: str,
     ) -> None:
         self._id: str = id
         self._human_name: str = human_name
-        self._manga_url: str = manga_url
-        self._last_chapter_url: str = last_chapter_url
-        self._last_chapter_string: str = last_chapter_string
+        self._url: str = url
+        self._cover_url: str = cover_url
+        self._last_chapter: Chapter = last_chapter
+        self._available_chapters: list[Chapter] = available_chapters
+        if isinstance(last_chapter, str):
+            self._last_chapter: Chapter = Chapter.from_json(last_chapter)
+        if isinstance(available_chapters, list):
+            if len(available_chapters) > 0 and isinstance(available_chapters[0], str):
+                self._available_chapters: list[Chapter] = [
+                    Chapter.from_json(chapter) for chapter in available_chapters
+                ]
+        elif isinstance(available_chapters, str):
+            self._available_chapters: list[Chapter] = Chapter.from_many_json(available_chapters)
+
         self._completed: bool = completed
         self._scanlator: str = scanlator
 
     def update(
         self,
-        last_chapter_url: str = None,
-        last_chapter_string: str = None,
+        new_latest_chapter: Chapter,
         completed: bool = None,
+        new_cover_url: str = None,
     ) -> None:
         """Update the manga."""
-        if last_chapter_url is not None:
-            self._last_chapter_url = last_chapter_url
-        if last_chapter_string is not None:
-            self._last_chapter_string = last_chapter_string
+        self._last_chapter = new_latest_chapter
         if completed is not None:
             self._completed = completed
+        if new_cover_url is not None:
+            self._cover_url = new_cover_url
 
     @property
     def id(self) -> str:
@@ -567,16 +549,26 @@ class Manga:
         return self._human_name
 
     @property
-    def manga_url(self) -> str:
+    def url(self) -> str:
         """Get the URL of the manga.
         Example: https://toonily.net/webtoon/what-do-i-do-now/
         """
-        return self._manga_url
+        return self._url
 
     @property
-    def last_chapter_url(self) -> str:
-        """Get the last chapter url of the manga."""
-        return self._last_chapter_url
+    def cover_url(self) -> str:
+        """Get the cover URL of the manga."""
+        return self._cover_url
+
+    @property
+    def last_chapter(self) -> Chapter:
+        """Get the last chapter of the manga."""
+        return self._last_chapter
+
+    @property
+    def available_chapters(self) -> list[Chapter]:
+        """Get the available chapters of the manga."""
+        return self._available_chapters
 
     @property
     def completed(self) -> bool:
@@ -588,10 +580,10 @@ class Manga:
         """Get the scanlator of the manga."""
         return self._scanlator
 
-    @property
-    def last_chapter_string(self) -> str:
-        """Get the last chapter string of the manga."""
-        return self._last_chapter_string
+    # @property
+    # def last_chapter_string(self) -> str:
+    #     """Get the last chapter string of the manga."""
+    #     return self._last_chapter_string
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Manga":
@@ -608,15 +600,16 @@ class Manga:
         return (
             self.id,
             self.human_name,
-            self.manga_url,
-            self.last_chapter_url,
-            self.last_chapter_string,
+            self.url,
+            self.cover_url,
+            self.last_chapter.to_json(),
+            json.dumps([x.to_dict() for x in self.available_chapters]),
             self.completed,
             self.scanlator,
         )
 
     def __repr__(self) -> str:
-        return f"Manga({self.human_name} - {self.last_chapter_string})"
+        return f"Manga({self.human_name} - {self.last_chapter.name})"
 
 
 class Bookmark:
@@ -625,19 +618,13 @@ class Bookmark:
             user_id: int,
             manga: Manga,
             last_read_chapter: Chapter,
-            series_cover_url: str,
-            available_chapters: list[Chapter],
             guild_id: int,
             last_updated_ts: float = None,
     ):
-        if isinstance(available_chapters, str):
-            available_chapters = Chapter.from_many_dict(json.loads(available_chapters))
 
         self.user_id: int = user_id
         self.manga: Manga = manga
-        self.series_cover_url: str = series_cover_url
         self.last_read_chapter: Chapter = last_read_chapter
-        self.available_chapters: list[Chapter] = available_chapters
         self.guild_id: int = guild_id
         self.last_updated_ts: float = float(last_updated_ts)
 
@@ -647,18 +634,11 @@ class Bookmark:
         # 0 = user_id
         # 1 = manga
         # 2 = last_read_chapter
-        # 3 = cover_image
-        # 4 = available_chapters
-        # 5 = guild_id
-        # 6 = last_updated_ts
-        chapters_json = data[4]
-        all_chapters: list[dict] = json.loads(chapters_json)
-        all_chapters: list[Chapter] = Chapter.from_many_dict(all_chapters)
+        # 3 = guild_id
+        # 4 = last_updated_ts
         last_read_chapter: Chapter = Chapter.from_dict(json.loads(data[2]))
-
         parsed_data = list(data)
         parsed_data[2] = last_read_chapter
-        parsed_data[4] = all_chapters
         return cls(*parsed_data)
 
     @classmethod
@@ -671,9 +651,7 @@ class Bookmark:
         return (
             self.user_id,
             self.manga.id,
-            json.dumps(self.last_read_chapter.to_dict()),
-            self.series_cover_url,
-            json.dumps(list(map(lambda x: x.to_dict(), self.available_chapters))),
+            self.last_read_chapter.to_json(),
             self.guild_id,
             self.last_updated_ts,
         )

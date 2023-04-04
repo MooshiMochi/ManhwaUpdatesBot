@@ -272,26 +272,26 @@ def modify_embeds(
 
 def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_url: str) -> discord.Embed:
     em = discord.Embed(
-        title=f"Bookmark: {bookmark.manga.human_name}", color=discord.Color.blurple(), url=bookmark.manga.manga_url
+        title=f"Bookmark: {bookmark.manga.human_name}", color=discord.Color.blurple(), url=bookmark.manga.url
     )
     last_read_index = bookmark.last_read_chapter.index
-    next_chapter = next((x for x in bookmark.available_chapters if x.index > last_read_index), None)
+    next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
 
     em.description = (
         f"**Scanlator:** {bookmark.manga.scanlator.title()}\n"
-        f"**Last Read Chapter:** [{bookmark.last_read_chapter.chapter_string}]({bookmark.last_read_chapter.url})\n"
+        f"**Last Read Chapter:** [{bookmark.last_read_chapter.name}]({bookmark.last_read_chapter.url})\n"
 
         "**Next chapter:** "
-        f"{f'[{next_chapter.chapter_string}]({next_chapter.url})' if next_chapter else '`Wait for updates`'}\n"
+        f"{f'[{next_chapter.name}]({next_chapter.url})' if next_chapter else '`Wait for updates`'}\n"
 
         "**Available Chapters:** Up to "
-        f"[{bookmark.available_chapters[-1].chapter_string}]({bookmark.available_chapters[-1].url})\n"
+        f"[{bookmark.manga.available_chapters[-1].name}]({bookmark.manga.available_chapters[-1].url})\n"
     )
     em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
     em.set_author(
-        name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.manga_url, icon_url=scanlator_icon_url
+        name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.url, icon_url=scanlator_icon_url
     )
-    em.set_image(url=bookmark.series_cover_url)
+    em.set_image(url=bookmark.manga.cover_url)
     return em
 
 

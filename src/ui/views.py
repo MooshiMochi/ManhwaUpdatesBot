@@ -10,12 +10,13 @@ from discord.ui import View, Button
 import discord
 from discord import ButtonStyle
 from src.utils import create_bookmark_embed, sort_bookmarks, group_items_by, get_manga_scanlator_class
-from src.core.objects import Bookmark
+from src.core.objects import Bookmark, ABCScan, Manga
 from .selects import SortTypeSelect, ViewTypeSelect
 from src.core.scanners import SCANLATORS
 from functools import partial
 from .buttons import CustomButtonCallbacks
 from src.enums import BookmarkSortType, BookmarkViewType
+from src.core.errors import MangaCompletedOrDropped
 
 
 class BaseView(View):
@@ -146,7 +147,7 @@ class BookmarkView(BaseView):
             for index in range(0, len(bookmark_group), 10):
                 bookmark = bookmark_group[index]
                 field_text = "\n".join(
-                    f"**{i + (index * 10) + 1}.** [{bookmark.manga.human_name}]({bookmark.manga.manga_url})"
+                    f"**{i + (index * 10) + 1}.** [{bookmark.manga.human_name}]({bookmark.manga.url})"
                     f" - {bookmark.last_read_chapter}"
                     for i, bookmark in enumerate(bookmark_group[index:index + 10])
                 )
@@ -293,3 +294,61 @@ class BookmarkView(BaseView):
     ):
         self._increment_index(float("-inf"))  # this will set index to max internally
         await interaction.response.edit_message(embed=self._get_display_embed())
+
+
+class SubscribeView(View):
+    def __init__(
+        self,
+        bot: MangaClient,
+    ):
+        super().__init__(timeout=None)
+        self.bot: MangaClient = bot
+
+    @discord.ui.button(
+        label="Subscribe",
+        style=ButtonStyle.blurple,
+        emoji="📚",
+        custom_id="search_subscribe",
+    )
+    async def subscribe(self, interaction: discord.Interaction, _):
+
+        message: discord.Message = interaction.message
+        manga_home_url = message.embeds[0].fields[-1].value
+
+        scanlator: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_home_url)
+
+        manga_url: str = manga_home_url
+        series_id = scanlator.get_manga_id(manga_url)
+
+        current_user_subs: list[Manga] = await self.bot.db.get_user_subs(
+            interaction.user.id
+        )
+        for manga in current_user_subs:
+            if manga.id == series_id:
+                em = discord.Embed(
+                    title="Already Subscribed", color=discord.Color.red()
+                )
+                em.description = "You are already subscribed to this series."
+                em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+                return await interaction.response.send_message(embed=em, ephemeral=True)
+
+        manga: Manga = await scanlator.make_manga_object(self.bot, series_id, manga_url)
+
+        if manga.completed:
+            raise MangaCompletedOrDropped(manga.url)
+
+        await self.bot.db.add_series(manga)
+
+        await self.bot.db.subscribe_user(
+            interaction.user.id, interaction.guild_id, manga.id
+        )
+
+        embed = discord.Embed(
+            title="Subscribed to Series",
+            color=discord.Color.green(),
+            description=f"Successfully subscribed to **[{manga.human_name}]({manga.url})!**",
+        )
+        embed.set_image(url=manga.cover_url)
+        embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)

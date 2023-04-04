@@ -41,14 +41,13 @@ class BookmarkCog(commands.Cog):
         series_id = interaction.namespace["manga"]
         if series_id is None:
             return []
-        chapters = await self.bot.db.get_bookmark_chapters(interaction.user.id, series_id, argument)
-        print(chapters)
+        chapters = await self.bot.db.get_series_chapters(series_id, argument)
         if not chapters:
             return []
 
         return [
             discord.app_commands.Choice(
-                name=chp.chapter_string[:97] + ("..." if len(chp.chapter_string) > 100 else ''),
+                name=chp.name[:97] + ("..." if len(chp.name) > 100 else ''),
                 value=str(chp.index)
             ) for chp in chapters
         ][:25]
@@ -77,7 +76,7 @@ class BookmarkCog(commands.Cog):
         if not bookmark:
             raise MangaNotFound(manga_url)
 
-        bookmark.last_read_chapter = bookmark.available_chapters[0]
+        bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
 
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanner.icon_url)
@@ -118,7 +117,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.autocomplete(chapter_index=chapter_autocomplete)
     async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
-        chapters = await self.bot.db.get_bookmark_chapters(interaction.user.id, series_id)
+        chapters = await self.bot.db.get_series_chapters(series_id)
         if not chapters:
             raise BookmarkNotFound()
 
@@ -126,7 +125,7 @@ class BookmarkCog(commands.Cog):
         if not chapter:
             raise ChapterNotFound()
         await self.bot.db.update_last_read_chapter(interaction.user.id, series_id, chapter)
-        await interaction.followup.send(f"Successfully updated bookmark to {chapter.chapter_string}", ephemeral=True)
+        await interaction.followup.send(f"Successfully updated bookmark to {chapter.name}", ephemeral=True)
         return
 
     @bookmark_group.command(name="delete", description="Delete a bookmark")

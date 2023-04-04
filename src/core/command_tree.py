@@ -78,6 +78,27 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
+        elif isinstance(error, MangaCompletedOrDropped):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Manga already completed or dropped!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, BookmarkNotFound):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Bookmark not found!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, ChapterNotFound):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Chapter not found!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
         elif isinstance(error, app_commands.errors.MissingAnyRole):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Hey, you can't do that!",

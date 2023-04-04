@@ -34,3 +34,13 @@ class ChapterNotFound(BaseError):
             self.error_msg = "You have not bookmarked that chapter."
         else:
             self.error_msg = f"You have not bookmarked [this chapter]({self.chapter_url})."
+
+
+class MangaCompletedOrDropped(BaseError):
+    """Raised when a manga is completed or dropped."""
+    def __init__(self, manga_url: str):
+        self.manga_url = manga_url
+        self.error_msg = f"""
+        [This manga]({self.manga_url}) has already been completed or dropped.
+        Consider using `/bookmark new` to bookmark the manga instead.
+        """

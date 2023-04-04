@@ -83,10 +83,10 @@ class ViewTypeSelect(Select):
 class ChapterSelect(Select):
     def __init__(self, bookmark: Bookmark, row: int = 4):
 
-        chapter_options = self.create_chapter_options(bookmark.last_read_chapter, bookmark.available_chapters)
+        chapter_options = self.create_chapter_options(bookmark.last_read_chapter, bookmark.manga.available_chapters)
         print(len(chapter_options))
         options = [
-            discord.SelectOption(label=chapter.chapter_string, value=str(chapter.index))
+            discord.SelectOption(label=chapter.name, value=str(chapter.index))
             for chapter in chapter_options
         ]
 
@@ -117,14 +117,14 @@ class ChapterSelect(Select):
         return [chapters[0], *chapters[start_index + 1:end_index], chapters[-1]]
 
     def create_placeholder(self):
-        placeholder = f"Last read chapter: {self.bookmark.last_read_chapter.chapter_string}"[:100]
+        placeholder = f"Last read chapter: {self.bookmark.last_read_chapter.name}"[:100]
         if len(placeholder) == 100:
             placeholder = placeholder[:-3] + "..."
         return placeholder
 
     async def callback(self, interaction: discord.Interaction):
         chapter_index: int = int(self.values[0])
-        new_last_read_chapter = self.bookmark.available_chapters[chapter_index]
+        new_last_read_chapter = self.bookmark.manga.available_chapters[chapter_index]
         self.bookmark.last_read_chapter = new_last_read_chapter
         await self.bookmark.update_last_read_chapter(self.view.bot, new_last_read_chapter)
 

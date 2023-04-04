@@ -36,7 +36,7 @@ class CustomButtonCallbacks:
         await self.view.update(interaction)
 
         await interaction.followup.send(
-            f"Bookmark [{bookmark.manga.human_name}]({bookmark.manga.manga_url}) deleted successfully.",
+            f"Bookmark [{bookmark.manga.human_name}]({bookmark.manga.url}) deleted successfully.",
             embed=bookmark_embed,
             ephemeral=True
         )

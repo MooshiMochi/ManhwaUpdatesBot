@@ -10,10 +10,11 @@ if TYPE_CHECKING:
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from src.core.errors import MangaCompletedOrDropped
 from src.core.scanners import *
 from src.core.objects import Manga, PaginatorView
 from src.core.ratelimiter import RateLimiter
-from src.views import SubscribeView
+from src.ui.views import SubscribeView
 
 
 class MangaUpdates(commands.Cog):
@@ -59,25 +60,21 @@ class MangaUpdates(commands.Cog):
 
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
-        subscribed_series: list[Manga] = await self.bot.db.get_all_subscribed_series()
-        if not subscribed_series:
-            return
 
-        all_series: list[Manga] = await self.bot.db.get_all_series()
-
-        series_to_delete_ids = [
-            m.id for m in all_series if m.id not in [m2.id for m2 in subscribed_series]
-        ]
-
-        if series_to_delete_ids:
-            self.bot.logger.info(f"All series: ({len(all_series)}) ->> {all_series}")
-            self.bot.logger.info(
-                f"Subscribed series: ({len(subscribed_series)}) ->> {subscribed_series}"
-            )
+        series_to_delete: list[Manga] = await self.bot.db.get_series_to_delete()
+        if series_to_delete:
             self.bot.logger.warning(
-                f"Series to delete: ({len(series_to_delete_ids)}) ->> {series_to_delete_ids}"
+                "Deleting the following series: ================="
+                + "\n".join(
+                    f'({x.scanlator})' + x.human_name for x in series_to_delete
+                )
             )
-            await self.bot.db.bulk_delete_series(series_to_delete_ids)
+            await self.bot.db.bulk_delete_series([m.id for m in series_to_delete])
+
+        series_to_update: list[Manga] = await self.bot.db.get_series_to_update()
+
+        if not series_to_update:
+            return
 
         series_webhook_roles: list[
             tuple[str, str, str]
@@ -94,12 +91,11 @@ class MangaUpdates(commands.Cog):
                     (webhook_url, role_id)
                 )
 
-        for manga in subscribed_series:
+        for manga in series_to_update:
             if manga.completed:
                 self.bot.logger.warning(
-                    f"Deleting completed series {manga.human_name}"
+                    f"({manga.scanlator}) {manga.human_name} ====> COMPLETED"
                 )
-                await self.bot.db.delete_series(manga.id)
 
             scanner = self.SCANLATORS.get(manga.scanlator, None)
             if scanner is None:
@@ -120,10 +116,8 @@ class MangaUpdates(commands.Cog):
 
             await self.rate_limiter.delay_if_necessary(manga)
 
-            update_check_result: list[
-                ChapterUpdate
-            ] = await scanner.check_updates(
-                self.bot, manga.human_name, manga.manga_url, manga.id, manga.last_chapter_url
+            update_check_result: ChapterUpdate = await scanner.check_updates(
+                self.bot, manga
             )
 
             if not update_check_result:
@@ -131,48 +125,51 @@ class MangaUpdates(commands.Cog):
                 continue
 
             wh_n_role = series_webhooks_roles.get(manga.id, None)
-            if wh_n_role is None:
+            if wh_n_role is not None:
+
+                for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
+
+                    webhook = discord.Webhook.from_url(
+                        webhook_url, session=self.bot.session
+                    )
+
+                    if webhook:
+
+                        for i, new_chapter in enumerate(update_check_result.new_chapters):
+                            manga.update(
+                                new_chapter, update_check_result.series_completed, update_check_result.new_cover_url
+                            )
+
+                            self.bot.logger.info(
+                                f"Sending update for {manga.human_name}|====> Chapter {new_chapter.name} released!"
+                            )
+
+                            try:
+                                role_ping = "" if not role_id else f"<@&{role_id}> "
+                                await webhook.send(
+                                    (
+                                        f"{role_ping}**{manga.human_name}** **{new_chapter.name}**"
+                                        f" has been released!\n{new_chapter.url}"
+                                    ),
+                                    allowed_mentions=discord.AllowedMentions(roles=True),
+                                    **update_check_result.extra_kwargs[i]
+                                )
+                                # await asyncio.sleep(1)
+                            except discord.HTTPException:
+                                self.bot.logger.error(
+                                    f"Failed to send update for {manga.human_name}| {new_chapter.name}"
+                                )
+                    else:
+                        self.bot.logger.error(f"Can't connect to webhook {webhook_url}")
+            else:
                 self.bot.logger.warning(
-                    f"No webhook/role pairs for {manga.human_name} ({manga.id})"
+                    f"No webhook found for ({manga.scanlator}) {manga.human_name} =====> updating silently"
                 )
-                continue
-            for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
-
-                webhook = discord.Webhook.from_url(
-                    webhook_url, session=self.bot.session
-                )
-
-                if webhook:
-
-                    for update in update_check_result:
-                        manga.update(update.new_chapter_url, update.new_chapter_string, update.series_completed)
-
-                        self.bot.logger.info(
-                            f"Sending update for {manga.human_name}. {update.new_chapter_string}"
-                        )
-
-                        try:
-                            role_ping = "" if not role_id else f"<@&{role_id}> "
-                            await webhook.send(
-                                (
-                                    f"{role_ping}**{manga.human_name}** **{update.new_chapter_string}**"
-                                    f" has been released!\n{update.new_chapter_url}"
-                                ),
-                                allowed_mentions=discord.AllowedMentions(roles=True),
-                                **update.extra_kwargs
-                            )
-                            await asyncio.sleep(1)
-                        except discord.HTTPException:
-                            self.bot.logger.warning(
-                                f"Failed to send update for {manga.human_name}. {update.new_chapter_string}"
-                            )
-                else:
-                    self.bot.logger.warning(f"Cant connect to webhook {webhook_url}")
 
             manga.update(
-                update_check_result[-1].new_chapter_url,
-                update_check_result[-1].new_chapter_string,
-                update_check_result[-1].series_completed
+                update_check_result.new_chapters[-1],
+                update_check_result.series_completed,
+                update_check_result.new_cover_url
             )
             await self.bot.db.update_series(manga)
 
@@ -232,11 +229,11 @@ class MangaUpdates(commands.Cog):
             series_id = ReaperScans.get_manga_id(manga_url)
             series_url: str = ReaperScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
-        # elif RegExpressions.aquamanga_url.search(manga_url):  # temporarily disabled till i fix it on Linux
+        # elif RegExpressions.aquamanga_url.search(url):  # temporarily disabled till i fix it on Linux
         #     scanlator = Aquamanga
         #
-        #     url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
-        #     series_id = Aquamanga.get_manga_id(manga_url)
+        #     url_name = RegExpressions.aquamanga_url.search(url).group(1)
+        #     series_id = Aquamanga.get_manga_id(url)
         #     series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
 
         elif RegExpressions.aniglisscans_url.search(manga_url):
@@ -255,26 +252,10 @@ class MangaUpdates(commands.Cog):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
-        completed = await scanlator.is_series_completed(self.bot, series_id, series_url)
+        manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
 
-        if completed:
-            em = discord.Embed(title="Series Completed/Dropped", color=discord.Color.red())
-            em.description = "This series has already been completed or dropped."
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.followup.send(embed=em, ephemeral=True)
-
-        last_chapter_url = await scanlator.get_curr_chapter_url(
-            self.bot, series_id, series_url
-        )
-
-        last_chapter_text = await scanlator.get_curr_chapter_text(
-            self.bot, series_id, series_url
-        )
-        series_name = await scanlator.get_human_name(self.bot, series_id, series_url)
-
-        manga: Manga = Manga(
-            series_id, series_name, series_url, last_chapter_url, last_chapter_text, False, scanlator.name
-        )
+        if manga.completed:
+            raise MangaCompletedOrDropped(series_url)
 
         await self.bot.db.add_series(manga)
 
@@ -285,8 +266,9 @@ class MangaUpdates(commands.Cog):
         embed = discord.Embed(
             title="Subscribed to Series",
             color=discord.Color.green(),
-            description=f"Successfully subscribed to **{series_name}!**",
+            description=f"Successfully subscribed to **[{manga.human_name}]({manga.url})!**",
         )
+        embed.set_image(url=manga.cover_url)
         embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
@@ -375,7 +357,7 @@ class MangaUpdates(commands.Cog):
             )
             em.description = "• " + "\n• ".join(
                 [
-                    f"[{x.human_name}]({x.manga_url}) - {x.last_chapter_string}"
+                    f"[{x.human_name}]({x.url}) - {x.last_chapter_string}"
                     for x in subs
                 ]
             )
@@ -387,7 +369,7 @@ class MangaUpdates(commands.Cog):
             em = discord.Embed(title=f"Your Subscriptions ({len(subs)})", color=discord.Color.green())
             em.description = "• " + "\n• ".join(
                 [
-                    f"[{x.human_name}]({x.manga_url}) - {x.last_chapter_string}"
+                    f"[{x.human_name}]({x.url}) - {x.last_chapter_string}"
                     for x in subs[i: i + 25]
                 ]
             )
@@ -464,14 +446,24 @@ class MangaUpdates(commands.Cog):
             "To get started, the bot needs to be set up first. This can be done by using the `/config setup` command.\n"
             "Note that this command can only be used by a server moderator that has the manage_channels/manage_roles "
             "permissions.\n\n"
-            "**Commands:**\n"
-            "`/subscribe` - Subscribe to a series.\n"
-            "`/unsubscribe` - Unsubscribe from a series.\n"
-            "`/list` - List all your subscribed series.\n"
+            
+            "**General Commands:**\n"
+            "`/help` - Get started with Manga Updates Bot (this message).\n"
             "`/search` - Search for a series on MangaDex.\n"
             "`/latest` - Get the latest chapter of a series.\n"
-            "`/supported_websites` - Get a list of websites supported by the bot.\n"
-            "`/help` - Get started with Manga Updates Bot.\n\n"
+            "`/supported_websites` - Get a list of websites supported by the bot.\n\n"
+            
+            "**Subscription Commands:**\n"
+            "`/subscribe` - Subscribe to a series.\n"
+            "`/unsubscribe` - Unsubscribe from a series.\n"
+            "`/list` - List all your subscribed series.\n\n"
+            
+            "**Bookmark Commands:**\n"
+            "`/bookmark new` - Bookmark a manga.\n"
+            "`/bookmark view` - View your bookmarked manga.\n"
+            "`/bookmark delete` - Delete a bookmark.\n"
+            "`/bookmark update` - Update a bookmark.\n\n"
+            
             "**Permissions:**\n"
             "The bot needs the following permissions to function properly:\n"
             "• Send Messages\n"
