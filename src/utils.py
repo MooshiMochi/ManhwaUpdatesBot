@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import io
-import typing
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Any
 
 import discord
 
@@ -232,7 +231,7 @@ def modify_embeds(
         >>> modify_embeds(
                 embeds,
                 title_kwargs={"name": "MangaDex"},
-                author_kwargs={"name": "John Doe", "icon_url": "https://example.com/icon.png"},
+                author_kwargs={"name": "John Doe", "scanlator_icon_url": "https://example.com/icon.png"},
                 footer_kwargs={"text": "MangaDex"},
                 thumbnail_image_url="https://example.com/thumbnail.png",
                 image_url="https://example.com/image.png",
@@ -269,7 +268,7 @@ def modify_embeds(
     return embeds
 
 
-def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, icon_url: str) -> discord.Embed:
+def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_url: str) -> discord.Embed:
     em = discord.Embed(
         title=f"Bookmark: {bookmark.manga.human_name}", color=discord.Color.blurple(), url=bookmark.manga.manga_url
     )
@@ -288,22 +287,43 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, icon_url: str) -
     )
     em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
     em.set_author(
-        name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.manga_url, icon_url=icon_url
+        name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.manga_url, icon_url=scanlator_icon_url
     )
     em.set_image(url=bookmark.series_cover_url)
     return em
 
 
-def group_items_by(items: typing.Iterable, key_path: list[str]) -> list[typing.Iterable]:
+def sort_bookmarks(bookmarks: list[Bookmark], sort_type: str) -> list[Bookmark]:
+    """
+    Summary:
+        Sorts a list of bookmarks by a sort type.
+
+    Parameters:
+        bookmarks: The bookmarks to sort.
+        sort_type: The sort type to use.
+
+    Returns:
+        list[Bookmark]: The sorted bookmarks.
+    """
+    ctype = type(bookmarks)
+    if sort_type == "a-z":
+        return ctype(sorted(bookmarks, key=lambda b: b.manga.human_name.lower()))
+    elif sort_type == "last_updated":
+        return ctype(sorted(bookmarks, key=lambda b: b.last_updated_ts, reverse=True))
+    else:
+        raise ValueError(f"Invalid sort type: {sort_type}")
+
+
+def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
     """
     Groups items by a key path.
 
     Parameters:
-        items (Iterable): The items to group.
+        items (List): The items to group.
         key_path (List[str]): The key path to use, where each element is an attribute name.
 
     Returns:
-        List[Iterable]: The grouped items.
+        List[List[Any]]: The grouped items.
 
     Examples:
         >>> from enum import Enum

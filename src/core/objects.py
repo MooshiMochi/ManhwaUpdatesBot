@@ -57,7 +57,7 @@ class Chapter:
         return re.sub(r"\s+", " ", result).strip()
 
     def __repr__(self):
-        return f"Chapter([{self.index}]{self.chapter_string} - {self.url})"
+        return f"[{self.chapter_string}]({self.url})"
 
     def to_dict(self):
         return {
@@ -677,6 +677,15 @@ class Bookmark:
             self.guild_id,
             self.last_updated_ts,
         )
+
+    async def delete(self, bot: MangaClient) -> bool:
+        """Delete the bookmark from the database."""
+        return await bot.db.delete_bookmark(self.user_id, self.manga.id)
+
+    async def update_last_read_chapter(self, bot: MangaClient, chapter: Chapter) -> bool:
+        """Update the last read chapter of the bookmark."""
+        self.last_read_chapter = chapter
+        return await bot.db.upsert_bookmark(self)
 
     def __repr__(self) -> str:
         return f"Bookmark({self.user_id} - {self.manga.human_name} - {self.manga.id})"

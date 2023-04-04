@@ -169,7 +169,7 @@ class Database:
 
             await db.commit()
 
-    async def upsert_bookmark(self, bookmark: Bookmark) -> None:
+    async def upsert_bookmark(self, bookmark: Bookmark) -> bool:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
@@ -203,6 +203,7 @@ class Database:
                 (bookmark.to_tuple()),
             )
             await db.commit()
+            return True
 
     async def set_cookie(self, scanlator: str, cookie: List[Dict]) -> None:
         async with aiosqlite.connect(self.db_name) as db:
