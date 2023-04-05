@@ -165,8 +165,8 @@ class Restricted(commands.Cog):
 
         for ext_name, ext in dict(self.client.extensions).copy().items():
             try:
-                await self.client.unload_extension(ext_name)
-            except commands.ExtensionNotLoaded:
+                await self.client.reload_extension(ext_name)
+            except (commands.ExtensionNotLoaded, commands.ExtensionAlreadyLoaded, commands.ExtensionNotFound):
                 pass
 
         self.client.logger.info("Client reloaded.")
