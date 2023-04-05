@@ -489,7 +489,6 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
-                    print(result)
                     return Manga.from_tuple(result)
 
     async def get_all_series(self) -> list[Manga] | None:

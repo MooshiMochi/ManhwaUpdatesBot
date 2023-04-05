@@ -84,7 +84,6 @@ class ChapterSelect(Select):
     def __init__(self, bookmark: Bookmark, row: int = 4):
 
         chapter_options = self.create_chapter_options(bookmark.last_read_chapter, bookmark.manga.available_chapters)
-        print(len(chapter_options))
         options = [
             discord.SelectOption(label=chapter.name, value=str(chapter.index))
             for chapter in chapter_options

@@ -64,13 +64,6 @@ How to set up the bot:
       Nothing at the moment...
 
    ### Features to add:
-      - a bookmark feature where the user can bookmark both a completed manga and an ongoing manga
-      the user will be able to edit the chapter that they've read for each bookmarked manga.
-      This will most likely be done through a view.
-      Note: for this to work, the auto delete feature of series from database will need to be removed.
-
-      - a command that will show the user all the manga that they have bookmarked
-
       - When a series has been marked complete/dropped, send a notification in the updates
       channel that the series has been marked as such.
 
