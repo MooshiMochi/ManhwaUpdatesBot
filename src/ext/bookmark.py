@@ -21,6 +21,9 @@ class BookmarkCog(commands.Cog):
     def __init__(self, bot: MangaClient):
         self.bot: MangaClient = bot
 
+    async def cog_load(self):
+        self.bot.logger.info("Loaded Bookmarks Cog...")
+
     async def bookmark_autocomplete(
             self, interaction: discord.Interaction, argument: str
     ) -> list[discord.app_commands.Choice]:
