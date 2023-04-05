@@ -90,7 +90,10 @@ class ABCScan(ABC):
     @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
         message: str = f"Error in {cls.name} scan: {error}"
-        await bot.log_to_discord(message, **kwargs)
+        try:
+            await bot.log_to_discord(message, **kwargs)
+        except AttributeError:
+            print(message)
 
     @classmethod
     @abstractmethod
@@ -118,8 +121,8 @@ class ABCScan(ABC):
         """
         request_url = _manga_request_url or manga.url
         all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
-        completed: bool = await cls.is_series_completed(bot, manga.id, request_url)
-        cover_url: str = await cls.get_cover_image(bot, manga.id, request_url)
+        completed: bool = await cls.is_series_completed(bot, manga.id, manga.url)
+        cover_url: str = await cls.get_cover_image(bot, manga.id, manga.url)
         if all_chapters is None:
             return ChapterUpdate([], cover_url, completed)
         new_chapters: list[Chapter] = [

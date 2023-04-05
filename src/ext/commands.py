@@ -15,6 +15,7 @@ from src.core.scanners import *
 from src.core.objects import Manga, PaginatorView
 from src.core.ratelimiter import RateLimiter
 from src.ui.views import SubscribeView
+from src.utils import group_items_by
 
 
 class MangaUpdates(commands.Cog):
@@ -76,9 +77,7 @@ class MangaUpdates(commands.Cog):
         if not series_to_update:
             return
 
-        series_webhook_roles: list[
-            tuple[str, str, str]
-        ] = await self.bot.db.get_series_webhook_role_pairs()
+        series_webhook_roles: list[tuple[str, str, str]] = await self.bot.db.get_series_webhook_role_pairs()
 
         series_webhooks_roles: dict[str, dict[str, list[tuple[str, str]]]] = {}
         for series_id, webhook_url, role_id in series_webhook_roles:
@@ -120,7 +119,7 @@ class MangaUpdates(commands.Cog):
                 self.bot, manga
             )
 
-            if not update_check_result:
+            if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
                 # self.bot._logger.info(f"No updates for {manga.human_name} ({manga.id})")
                 continue
 
@@ -351,33 +350,48 @@ class MangaUpdates(commands.Cog):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
-        if len(subs) <= 25:
-            em = discord.Embed(
-                title=f"Your Subscriptions ({len(subs)})", color=discord.Color.green()
-            )
-            em.description = "• " + "\n• ".join(
-                [
-                    f"[{x.human_name}]({x.url}) - {x.last_chapter_string}"
-                    for x in subs
-                ]
-            )
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.followup.send(embed=em, ephemeral=True)
+        grouped = group_items_by(subs, ["scanlator"])
+        embeds: list[discord.Embed] = []
 
-        pages = []
-        for i in range(0, len(subs), 25):
-            em = discord.Embed(title=f"Your Subscriptions ({len(subs)})", color=discord.Color.green())
-            em.description = "• " + "\n• ".join(
-                [
-                    f"[{x.human_name}]({x.url}) - {x.last_chapter_string}"
-                    for x in subs[i: i + 25]
-                ]
+        def _make_embed(subs_count: int) -> discord.Embed:
+            return discord.Embed(
+                title=f"Your Subscriptions ({subs_count})",
+                description="",
+                color=discord.Color.blurple()
             )
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            pages.append(em)
 
-        view = PaginatorView(pages, interaction, 60)
-        await interaction.followup.send(embed=pages[0], view=view)
+        num_subs = len(subs)
+
+        em = _make_embed(num_subs)
+        line_index = 0
+        for manga_group in grouped:
+            scanlator_title_added = False
+
+            for manga in manga_group:
+                line_index += 1
+                to_add = f"**{line_index}.** [{manga.human_name}]({manga.url}) - {manga.last_chapter}\n"
+
+                if not scanlator_title_added:
+                    if len(em.description) + len(manga.scanlator) + 6 > 4096:
+                        embeds.append(em)
+                        em = _make_embed(num_subs)
+                        em.description += f"**\n{manga.scanlator.title()}**\n"
+                        scanlator_title_added = True
+                    else:
+                        em.description += f"**\n{manga.scanlator.title()}**\n"
+                        scanlator_title_added = True
+
+                if len(em.description) + len(to_add) > 4096:
+                    embeds.append(em)
+                    em = _make_embed(num_subs)
+
+                em.description += to_add
+
+                if line_index == num_subs:
+                    embeds.append(em)
+
+        view = PaginatorView(embeds, interaction)
+        view.message = await interaction.followup.send(embed=embeds[0], view=view)
 
     @app_commands.command(
         name="latest", description="Get the latest chapter of a series."

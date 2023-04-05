@@ -36,17 +36,19 @@ class TritiniaScans(ABCScan):
             manga: Manga,
             _manga_request_url: str | None = None
     ) -> ChapterUpdate | None:
-        return await super().check_updates(bot, manga, cls._ensure_manga_url(manga.url))
+        return await super().check_updates(bot, manga)
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
-                return await cls.report_error(
+                await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
+                raise MangaNotFound(manga_url=manga_url)
 
             text = await resp.text()
             soup = BeautifulSoup(text, "html.parser")
@@ -85,9 +87,16 @@ class TritiniaScans(ABCScan):
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
                 raise MangaNotFound(manga_url=manga_url)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            text = await resp.text()
+            soup = BeautifulSoup(text, "html.parser")
             return cls._bs_is_series_completed(soup)
 
     @classmethod
@@ -98,6 +107,7 @@ class TritiniaScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -125,6 +135,7 @@ class TritiniaScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -173,6 +184,12 @@ class Manganato(ABCScan):
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
                 raise MangaNotFound(manga_url)
 
             text = await resp.text()
@@ -191,6 +208,7 @@ class Manganato(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -205,6 +223,7 @@ class Manganato(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -245,11 +264,13 @@ class Manganato(ABCScan):
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
-                return await cls.report_error(
+                await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
+                raise MangaNotFound(manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             img = soup.find("span", {"class": "info-image"}).find("img", {"class": "img-loading"})
@@ -277,6 +298,7 @@ class Toonily(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -323,6 +345,12 @@ class Toonily(ABCScan):
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
                 raise MangaNotFound(manga_url=manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -336,6 +364,7 @@ class Toonily(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -363,6 +392,7 @@ class Toonily(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -455,9 +485,9 @@ class MangaDex(ABCScan):
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         manga = await bot.mangadex_api.get_manga(manga_id)
         cover_id = [
-            x["id"] for x in manga["relationships"] if x["type"] == "cover_art"
+            x["id"] for x in manga["data"]["relationships"] if x["type"] == "cover_art"
         ][0]
-        cover_url = await bot.mangadex_api.get_cover(manga["id"], cover_id)
+        cover_url = await bot.mangadex_api.get_cover(manga["data"]["id"], cover_id)
         return cover_url
 
 
@@ -496,6 +526,7 @@ class FlameScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -537,6 +568,7 @@ class FlameScans(ABCScan):
             if resp.status != 200:
                 await cls.report_error(
                     bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -551,6 +583,12 @@ class FlameScans(ABCScan):
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
             if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL:" + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
                 raise MangaNotFound(manga_url=manga_url)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
@@ -572,6 +610,7 @@ class FlameScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -615,7 +654,10 @@ class AsuraScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_all_chapters func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_all_chapters func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -653,7 +695,10 @@ class AsuraScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_human_name func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_human_name func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -672,6 +717,12 @@ class AsuraScans(ABCScan):
     ) -> bool:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            await cls.report_error(
+                bot, Exception("Failed to run is_series_completed func. Status: N/A"
+                               + " Request URL: " + str(manga_url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
             raise MangaNotFound(manga_url=manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
@@ -687,7 +738,10 @@ class AsuraScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_cover_image func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_cover_image func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -716,7 +770,10 @@ class Aquamanga(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_all_chapters func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_all_chapters func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -754,7 +811,10 @@ class Aquamanga(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_human_name func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_human_name func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -773,6 +833,12 @@ class Aquamanga(ABCScan):
     ) -> bool:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            await cls.report_error(
+                bot, Exception("Failed to run is_series_completed func. Status: N/A"
+                               + " Request URL: " + str(manga_url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
             raise MangaNotFound(manga_url=manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
@@ -788,7 +854,10 @@ class Aquamanga(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_cover_image func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_cover_image func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -841,7 +910,10 @@ class ReaperScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_all_chapters func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_all_chapters func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -883,7 +955,10 @@ class ReaperScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_human_name func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_human_name func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -901,6 +976,12 @@ class ReaperScans(ABCScan):
     ) -> bool:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            await cls.report_error(
+                bot, Exception("Failed to run is_series_completed func. Status: N/A"
+                               + " Request URL: " + str(manga_url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
             raise MangaNotFound(manga_url=manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
@@ -918,7 +999,10 @@ class ReaperScans(ABCScan):
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
             return await cls.report_error(
-                bot, Exception("Failed to run get_cover_image func. Status: N/A"),
+                bot, Exception(
+                    "Failed to run get_cover_image func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
                 file=write_to_discord_file(cls.name + ".html", text)
             )
 
@@ -949,6 +1033,7 @@ class AniglisScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -997,6 +1082,7 @@ class AniglisScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -1017,6 +1103,7 @@ class AniglisScans(ABCScan):
             if resp.status != 200:
                 await cls.report_error(
                     bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
@@ -1036,6 +1123,7 @@ class AniglisScans(ABCScan):
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )

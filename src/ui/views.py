@@ -140,30 +140,39 @@ class BookmarkView(BaseView):
         grouped = group_items_by(self.bookmarks, ["manga.scanlator"])
         embeds: list[discord.Embed] = []
 
-        em = discord.Embed(title="Bookmarks", color=discord.Color.blurple())
+        def _make_embed() -> discord.Embed:
+            return discord.Embed(title=f"Bookmarks ({len(self.bookmarks)})", color=discord.Color.blurple(), description="")
 
+        em = _make_embed()
+        line_index = 0
         for bookmark_group in grouped:
             scanlator_title_added = False
-            for index in range(0, len(bookmark_group), 10):
-                bookmark = bookmark_group[index]
-                field_text = "\n".join(
-                    f"**{i + (index * 10) + 1}.** [{bookmark.manga.human_name}]({bookmark.manga.url})"
-                    f" - {bookmark.last_read_chapter}"
-                    for i, bookmark in enumerate(bookmark_group[index:index + 10])
+
+            for bookmark in bookmark_group:
+                line_index += 1
+                to_add = (
+                         f"**{line_index}.** "
+                         f"[{bookmark.manga.human_name}]({bookmark.manga.url}) - {bookmark.last_read_chapter}\n"
                 )
                 if not scanlator_title_added:
-                    field_name = bookmark.manga.scanlator.title()
-                    scanlator_title_added = True
-                else:
-                    field_name = "\u200b"
-                em.add_field(name=field_name, value=field_text, inline=False)
+                    if len(em.description) + len(bookmark.manga.scanlator) + 6 > 4096:
+                        embeds.append(em)
+                        em = _make_embed()
+                        em.description += f"**\n{bookmark.manga.scanlator.title()}**\n"
+                        scanlator_title_added = True
+                    else:
+                        em.description += f"**\n{bookmark.manga.scanlator.title()}**\n"
+                        scanlator_title_added = True
 
-                if len(em.fields) == 25:
+                if len(em.description) + len(to_add) > 4096:
                     embeds.append(em)
-                    em = discord.Embed(title="Bookmarks", color=discord.Color.blurple())
-                    scanlator_title_added = False
-        if em.fields:
-            embeds.append(em)
+                    em = _make_embed()
+
+                em.description += to_add
+
+                if line_index == len(self.bookmarks):
+                    embeds.append(em)
+
         self.items = embeds
         return embeds
 
