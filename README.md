@@ -59,6 +59,8 @@ How to set up the bot:
       void-scans.com
       drakescans.com
       nitroscans.com
+      mangapill.com
+      comick.app
 
    ### Cloudflare protected websites to add:
       Nothing at the moment...
