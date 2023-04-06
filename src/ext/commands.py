@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -18,14 +17,14 @@ from src.ui.views import SubscribeView
 from src.utils import group_items_by
 
 
-class MangaUpdates(commands.Cog):
+class CommandsCog(commands.Cog):
     def __init__(self, bot: MangaClient):
         self.bot: MangaClient = bot
         self.SCANLATORS: dict[str, ABCScan] = SCANLATORS
         self.rate_limiter: RateLimiter = RateLimiter()
 
     async def cog_load(self):
-        self.bot.logger.info("Loaded Manga Updates Cog...")
+        self.bot.logger.info("Loaded Commands Cog...")
         self.bot.add_view(SubscribeView(self.bot))
 
         self.check_updates_task.add_exception_type(Exception)
@@ -129,7 +128,7 @@ class MangaUpdates(commands.Cog):
                 for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
 
                     webhook = discord.Webhook.from_url(
-                        webhook_url, session=self.bot.session
+                        webhook_url, session=self.bot.session, client=self.bot
                     )
 
                     if webhook:
@@ -139,8 +138,11 @@ class MangaUpdates(commands.Cog):
                                 new_chapter, update_check_result.series_completed, update_check_result.new_cover_url
                             )
 
+                            extra_kwargs = update_check_result.extra_kwargs[i] if len(
+                                update_check_result.extra_kwargs) > i else {}
+
                             self.bot.logger.info(
-                                f"Sending update for {manga.human_name}|====> Chapter {new_chapter.name} released!"
+                                f"Sending update for {manga.human_name} ====> Chapter {new_chapter.name} released!"
                             )
 
                             try:
@@ -151,12 +153,12 @@ class MangaUpdates(commands.Cog):
                                         f" has been released!\n{new_chapter.url}"
                                     ),
                                     allowed_mentions=discord.AllowedMentions(roles=True),
-                                    **update_check_result.extra_kwargs[i]
+                                    **extra_kwargs
                                 )
                                 # await asyncio.sleep(1)
-                            except discord.HTTPException:
+                            except discord.HTTPException as e:
                                 self.bot.logger.error(
-                                    f"Failed to send update for {manga.human_name}| {new_chapter.name}"
+                                    f"Failed to send update for {manga.human_name}| {new_chapter.name}", exc_info=e
                                 )
                     else:
                         self.bot.logger.error(f"Can't connect to webhook {webhook_url}")
@@ -176,9 +178,24 @@ class MangaUpdates(commands.Cog):
     async def before_check_updates_task(self):
         await self.bot.wait_until_ready()
 
-    @app_commands.command(name="subscribe", description="Subscribe to a manga series.")
+    @app_commands.command(name="next_update_check", description="Get the time of the next update check.")
+    async def next_update_check(self, interaction: discord.Interaction) -> None:
+        # await interaction.response.defer(ephemeral=True, thinking=True)
+        em = discord.Embed(
+            title="Next Update Check",
+            description=(
+                f"The next update check is scheduled for "
+                f"<t:{int(self.check_updates_task.next_iteration.timestamp())}:T>"
+            ),
+            color=discord.Color.blurple()
+        )
+        await interaction.response.send_message(embed=em, ephemeral=True)
+
+    subscribe = app_commands.Group(name="subscribe", description="Subscribe to a manga to get notifications.")
+
+    @subscribe.command(name="new", description="Subscribe to a manga to get new release notifications.")
     @app_commands.describe(manga_url="The URL of the manga series you want to subscribe to.")
-    async def subscribe(self, interaction: discord.Interaction, manga_url: str) -> None:
+    async def subscribe_new(self, interaction: discord.Interaction, manga_url: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         if RegExpressions.manganato_url.search(manga_url):
@@ -311,13 +328,13 @@ class MangaUpdates(commands.Cog):
                    for x in subs
                ][:25]
 
-    @app_commands.command(
-        name="unsubscribe", description="Unsubscribe from a series on Manganato."
+    @subscribe.command(
+        name="delete", description="Unsubscribe from a currently subscribed manga."
     )
-    @app_commands.describe(manga_id="The name of the series.")
+    @app_commands.describe(manga_id="The name of the manga.")
     @app_commands.autocomplete(manga_id=manga_autocomplete)
     @app_commands.rename(manga_id="manga")
-    async def unsubscribe(self, interaction: discord.Interaction, manga_id: str):
+    async def subscribe_delete(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         manga: Manga = await self.bot.db.get_series(manga_id)
@@ -337,8 +354,8 @@ class MangaUpdates(commands.Cog):
         await interaction.followup.send(embed=em, ephemeral=True)
         return
 
-    @app_commands.command(name="list", description="List all your subscribed series.")
-    async def list_subs(self, interaction: discord.Interaction):
+    @subscribe.command(name="list", description="List all the manga you're subscribed to.")
+    async def subscribe_list(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         subs: list[Manga] = await self.bot.db.get_user_subs(interaction.user.id)
@@ -406,7 +423,7 @@ class MangaUpdates(commands.Cog):
 
         em = discord.Embed(title="Latest Chapter", color=discord.Color.green())
         em.description = (
-            f"The latest chapter of `{manga.human_name}` is `{manga.last_chapter_string}`."
+            f"The latest chapter of `{manga.human_name}` is `{manga.last_chapter}`."
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
@@ -460,24 +477,24 @@ class MangaUpdates(commands.Cog):
             "To get started, the bot needs to be set up first. This can be done by using the `/config setup` command.\n"
             "Note that this command can only be used by a server moderator that has the manage_channels/manage_roles "
             "permissions.\n\n"
-            
+
             "**General Commands:**\n"
             "`/help` - Get started with Manga Updates Bot (this message).\n"
             "`/search` - Search for a series on MangaDex.\n"
             "`/latest` - Get the latest chapter of a series.\n"
             "`/supported_websites` - Get a list of websites supported by the bot.\n\n"
-            
+
             "**Subscription Commands:**\n"
-            "`/subscribe` - Subscribe to a series.\n"
-            "`/unsubscribe` - Unsubscribe from a series.\n"
-            "`/list` - List all your subscribed series.\n\n"
-            
+            "`/subscribe new` - Subscribe to a series.\n"
+            "`/subscribe delete` - Unsubscribe from a series.\n"
+            "`/subscribe list` - List all your subscribed series.\n\n"
+
             "**Bookmark Commands:**\n"
             "`/bookmark new` - Bookmark a manga.\n"
             "`/bookmark view` - View your bookmarked manga.\n"
             "`/bookmark delete` - Delete a bookmark.\n"
             "`/bookmark update` - Update a bookmark.\n\n"
-            
+
             "**Permissions:**\n"
             "The bot needs the following permissions to function properly:\n"
             "• Send Messages\n"
@@ -589,6 +606,6 @@ class MangaUpdates(commands.Cog):
 
 async def setup(bot: MangaClient) -> None:
     if bot._debug_mode and bot.test_guild_id:
-        await bot.add_cog(MangaUpdates(bot), guild=discord.Object(id=bot.test_guild_id))
+        await bot.add_cog(CommandsCog(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
-        await bot.add_cog(MangaUpdates(bot))
+        await bot.add_cog(CommandsCog(bot))
