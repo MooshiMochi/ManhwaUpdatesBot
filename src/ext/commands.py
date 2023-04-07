@@ -34,7 +34,7 @@ class CommandsCog(commands.Cog):
         commands_to_check = [
             "subscribe",
         ]
-        if interaction.command.qualified_name not in commands_to_check:
+        if str(interaction.command.qualified_name).split(" ")[0] not in commands_to_check:
             return True
         if interaction.guild_id is None:
             em = discord.Embed(
