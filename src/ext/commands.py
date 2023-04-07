@@ -201,7 +201,7 @@ class CommandsCog(commands.Cog):
         if RegExpressions.manganato_url.search(manga_url):
             scanlator = Manganato
 
-            series_id = Manganato.get_manga_id(manga_url)
+            series_id = await Manganato.get_manga_id(self.bot, manga_url)
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
         elif RegExpressions.tritinia_url.search(manga_url):
@@ -209,19 +209,19 @@ class CommandsCog(commands.Cog):
 
             url_name = RegExpressions.tritinia_url.search(manga_url).group(1)
             series_url: str = TritiniaScans.base_url + url_name
-            series_id = TritiniaScans.get_manga_id(series_url)
+            series_id = await TritiniaScans.get_manga_id(self.bot, series_url)
 
         elif RegExpressions.toonily_url.search(manga_url):
             scanlator = Toonily
 
             url_name = RegExpressions.toonily_url.search(manga_url).group(1)
             series_url: str = Toonily.base_url + url_name
-            series_id = Toonily.get_manga_id(series_url)
+            series_id = await Toonily.get_manga_id(self.bot, series_url)
 
         elif RegExpressions.mangadex_url.search(manga_url):
             scanlator = MangaDex
 
-            series_id = MangaDex.get_manga_id(manga_url)
+            series_id = await MangaDex.get_manga_id(self.bot, manga_url)
             series_url: str = MangaDex.fmt_url.format(manga_id=series_id)
 
         elif RegExpressions.flamescans_url.search(manga_url):
@@ -229,21 +229,28 @@ class CommandsCog(commands.Cog):
 
             url_name = RegExpressions.flamescans_url.search(manga_url).group(1)
             series_url: str = FlameScans.fmt_url.format(manga_url_name=url_name)
-            series_id = FlameScans.get_manga_id(series_url)
+            series_id = await FlameScans.get_manga_id(self.bot, series_url)
 
         elif RegExpressions.asurascans_url.search(manga_url):
             scanlator = AsuraScans
 
             url_name = RegExpressions.asurascans_url.search(manga_url).group(1)
-            series_id = AsuraScans.get_manga_id(manga_url)
+            series_id = await AsuraScans.get_manga_id(self.bot, manga_url)
             series_url: str = AsuraScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
 
         elif RegExpressions.reaperscans_url.search(manga_url):
             scanlator = ReaperScans
 
             url_name = RegExpressions.reaperscans_url.search(manga_url).group(2)
-            series_id = ReaperScans.get_manga_id(manga_url)
+            series_id = await ReaperScans.get_manga_id(self.bot, manga_url)
             series_url: str = ReaperScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
+
+        elif RegExpressions.comick_url.search(manga_url):
+            scanlator = Comick
+
+            url_name = RegExpressions.comick_url.search(manga_url).group(1)
+            series_id = await Comick.get_manga_id(self.bot, manga_url)
+            series_url: str = Comick.fmt_url.format(manga_url_name=url_name)
 
         # elif RegExpressions.aquamanga_url.search(url):  # temporarily disabled till i fix it on Linux
         #     scanlator = Aquamanga
@@ -257,7 +264,7 @@ class CommandsCog(commands.Cog):
 
             url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
             series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
-            series_id = AniglisScans.get_manga_id(series_url)
+            series_id = await AniglisScans.get_manga_id(self.bot, series_url)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
@@ -454,6 +461,8 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
             • [AniglisScans](https://anigliscans.com/)
             \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
+            • [Comick](https://comick.app/)
+            \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """
@@ -515,7 +524,7 @@ class CommandsCog(commands.Cog):
     async def dex_search(self, interaction: discord.Interaction, query: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if RegExpressions.mangadex_url.search(query) and (manga_id := MangaDex.get_manga_id(query)):
+        if RegExpressions.mangadex_url.search(query) and (manga_id := await MangaDex.get_manga_id(self.bot, query)):
             response: dict[str, Any] = await self.bot.mangadex_api.get_manga(manga_id)
         else:
             response: dict[str, Any] = await self.bot.mangadex_api.search(

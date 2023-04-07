@@ -189,12 +189,13 @@ class ABCScan(ABC):
         raise NotImplementedError
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
         """
         Summary:
             Gets the ID of the manga.
 
         Parameters:
+            bot: MangaClient - The bot instance.
             manga_url: str - The URL of the manga.
 
         Returns:
@@ -235,7 +236,7 @@ class ABCScan(ABC):
         Returns:
             Manga/None - The Manga object if the manga is found, otherwise `None`.
         """
-        manga_url = cls.fmt_manga_url(manga_id, manga_url)
+        manga_url = await cls.fmt_manga_url(bot, manga_id, manga_url)
         human_name = await cls.get_human_name(bot, manga_id, manga_url)
         cover_url = await cls.get_cover_image(bot, manga_id, manga_url)
         curr_chapter = await cls.get_curr_chapter(bot, manga_id, manga_url)
@@ -275,8 +276,8 @@ class ABCScan(ABC):
         Returns:
             Bookmark/None - The Bookmark object if the manga is found, otherwise `None`.
         """
-        manga_url = cls.fmt_manga_url(manga_id, manga_url)
-        manga_id = cls.get_manga_id(manga_url)
+        manga_url = await cls.fmt_manga_url(bot, manga_id, manga_url)
+        manga_id = await cls.get_manga_id(bot, manga_url)
         manga = await cls.make_manga_object(bot, manga_id, manga_url)
         if manga is None:
             return None
@@ -291,11 +292,12 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         """
         Summary:
             Creates the home page URL of the manga using the class format.
         Parameters:
+            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -719,7 +721,7 @@ class MangaUpdatesUtils:
     async def getMangaUpdatesID(
         session: aiohttp.ClientSession, manga_title: str
     ) -> str | None:
-        """Scrape the series ID from MangaUpdates.com
+        """Scrape the series ID from CommandsCog.com
 
         Returns:
             >>> str if found

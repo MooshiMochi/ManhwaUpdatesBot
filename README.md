@@ -18,6 +18,7 @@ This bot currently only supports the following websites:
 - https://asurascans.com
 - https://reaperscans.com
 - https://anigliscans.com
+- https://comick.app
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
 Additionally, websites that are heavily protected by Cloudflare will also not be added (I will list the ones I tried to 
@@ -60,7 +61,6 @@ How to set up the bot:
       drakescans.com
       nitroscans.com
       mangapill.com
-      comick.app
 
    ### Cloudflare protected websites to add:
       Nothing at the moment...
@@ -81,22 +81,19 @@ How to set up the bot:
       - make a cache decorator for the database autocomplete functions.
       note: should add a global variable that will let us know wheter the db has a new entry to know whether to use cahce or not
 
-      - add a command that will let the user know when the updates will be checked next.
-
       - when the user marks the latest read chapter of a bookmark to be the same as the latest release, subscribe
       the user to the series if it is not complete.
 
-   ### Issues:
-      - Rearrange the function order in each of the scanlators.py classes to follow that of the
-      ABCScan class
+      - /info command that will display the currently available info on a manga.
 
+   ### Issues:
       - Create a .sh file that will configure the system for pypetteer.
 
       - aquamanga.org is not working on Linux. it returns 5001 error with text "enable cookies"
    
-      - autocomplete database functions should include user ID as well.
-
       - reaperscans has pagination for chapters, so I need to add some code to grab all chapters...
+
+      - flamescans sometimes returns 404 when requesting. Considering switching to grabbing data with pyppeteer instead
 
 ## Contributing:
    ```

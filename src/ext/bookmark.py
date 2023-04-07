@@ -72,7 +72,7 @@ class BookmarkCog(commands.Cog):
             em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
-        manga_id = scanner.get_manga_id(manga_url)
+        manga_id = await scanner.get_manga_id(self.bot, manga_url)
         bookmark = await scanner.make_bookmark_object(
             self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
         )

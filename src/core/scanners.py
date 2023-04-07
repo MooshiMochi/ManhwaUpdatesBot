@@ -121,11 +121,11 @@ class TritiniaScans(ABCScan):
             return title.text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
-        return super().get_manga_id(manga_url)
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(bot, manga_url)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str | None, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         url_name = RegExpressions.tritinia_url.search(manga_url).group(1)
         return cls.base_url + url_name
 
@@ -251,13 +251,11 @@ class Manganato(ABCScan):
         return None
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
         return RegExpressions.manganato_url.search(manga_url).group(1)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
-        if manga_id is None and manga_url is not None:
-            manga_id = cls.get_manga_id(manga_url)
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         return cls.fmt_url.format(manga_id=manga_id)
 
     @classmethod
@@ -378,11 +376,11 @@ class Toonily(ABCScan):
             return title.text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
-        return super().get_manga_id(manga_url)
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(manga_url)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str | None, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         manga_url_name = RegExpressions.toonily_url.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
@@ -468,7 +466,7 @@ class MangaDex(ABCScan):
         return manga["data"]["attributes"]["title"]["en"]
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
         return RegExpressions.mangadex_url.search(manga_url).group(1)
 
     @staticmethod
@@ -476,9 +474,9 @@ class MangaDex(ABCScan):
         return super()._bs_is_series_completed(soup)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         if manga_id is None and manga_url is not None:
-            manga_id = cls.get_manga_id(manga_url)
+            manga_id = await cls.get_manga_id(bot, manga_url)
         return cls.fmt_url.format(manga_id=manga_id)
 
     @classmethod
@@ -595,12 +593,12 @@ class FlameScans(ABCScan):
             return soup.find("h1", {"class": "entry-title"}).text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
-        manga_url = cls.fmt_manga_url("", manga_url)
-        return super().get_manga_id(manga_url)
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        manga_url = await cls.fmt_manga_url(bot, "", manga_url)
+        return await super().get_manga_id(bot, manga_url)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         manga_url_name = RegExpressions.flamescans_url.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
@@ -707,9 +705,9 @@ class AsuraScans(ABCScan):
         return title_tag.text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
-        manga_url = cls.fmt_manga_url("", manga_url)
-        return super().get_manga_id(manga_url)
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        manga_url = await cls.fmt_manga_url(bot, "", manga_url)
+        return await super().get_manga_id(bot, manga_url)
 
     @classmethod
     async def is_series_completed(
@@ -729,7 +727,7 @@ class AsuraScans(ABCScan):
         return cls._bs_is_series_completed(soup)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         manga_url_name = RegExpressions.asurascans_url.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
@@ -824,8 +822,8 @@ class Aquamanga(ABCScan):
         return title.text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
-        return super().get_manga_id(manga_url)
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(bot, manga_url)
 
     @classmethod
     async def is_series_completed(
@@ -845,7 +843,7 @@ class Aquamanga(ABCScan):
         return cls._bs_is_series_completed(soup)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         manga_url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
@@ -967,7 +965,7 @@ class ReaperScans(ABCScan):
         return title_tag.text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
         return RegExpressions.reaperscans_url.search(manga_url).group(1)
 
     @classmethod
@@ -988,9 +986,9 @@ class ReaperScans(ABCScan):
         return cls._bs_is_series_completed(soup)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         if manga_id is None and manga_url is not None:
-            manga_id = cls.get_manga_id(manga_url)
+            manga_id = await cls.get_manga_id(bot, manga_url)
         manga_url_name = RegExpressions.reaperscans_url.search(manga_url).group(2)
         return cls.fmt_url.format(manga_id=manga_id, manga_url_name=manga_url_name)
 
@@ -1092,8 +1090,8 @@ class AniglisScans(ABCScan):
             return title_tag.text.strip()
 
     @classmethod
-    def get_manga_id(cls, manga_url: str) -> str:
-        return super().get_manga_id(manga_url)
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(bot, manga_url)
 
     @classmethod
     async def is_series_completed(
@@ -1113,7 +1111,7 @@ class AniglisScans(ABCScan):
             return cls._bs_is_series_completed(soup)
 
     @classmethod
-    def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         manga_url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
@@ -1133,6 +1131,88 @@ class AniglisScans(ABCScan):
             return cover_image["src"] if cover_image else None
 
 
+class Comick(ABCScan):
+    icon_url = "https://comick.app/static/icons/unicorn-256_maskable.png"
+    base_url = "https://comick.app"
+    fmt_url = base_url + "/comic/{manga_url_name}?lang=en"
+    chp_url_fmt = base_url + "/comic/{manga_url_name}/{chapter_id}"
+    name = "comick"
+
+    @classmethod
+    async def check_updates(
+            cls,
+            bot: MangaClient,
+            manga: Manga,
+            _manga_request_url: str | None = None
+    ) -> ChapterUpdate:
+        return await super().check_updates(bot, manga, _manga_request_url)
+
+    @classmethod
+    async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
+        chapters = await bot.comick_api.get_chapters_list(manga_id)
+        if chapters:
+            url_name = RegExpressions.comick_url.search(manga_url).group(1)
+            return [
+                Chapter(
+                    cls.chp_url_fmt.format(manga_url_name=url_name, chapter_id=chp["hid"]),
+                    f'Chapter {chp["chap"]}',
+                    i
+                )
+                for i, chp in enumerate(chapters)
+            ]
+        else:
+            return None
+
+    @classmethod
+    async def get_curr_chapter(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> Chapter | None:
+        chapters: list[Chapter] = await cls.get_all_chapters(bot, manga_id, manga_url)
+        if chapters:
+            return chapters[-1]
+        return None
+
+    @classmethod
+    async def get_human_name(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        manga = await bot.comick_api.get_manga(manga_id)
+        if manga.get("statusCode", 200) == 404:
+            return None
+        return manga["comic"]["title"]
+
+    @classmethod
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str | None:
+        async with bot.session.get(manga_url) as resp:
+            if resp.status != 200:
+                return await cls.report_error(
+                    bot, Exception("Failed to run get_manga_id func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
+            manga_id = re.search(r"\"hid\":\"(\w+\d*)\"", await resp.text()).group(1)
+            return manga_id
+
+    @classmethod
+    async def is_series_completed(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> bool:
+        manga = await bot.comick_api.get_manga(manga_id)
+        if manga.get("statusCode", 200) == 404:
+            return False
+        return manga["comic"]["status"] == 2
+
+    @classmethod
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
+        manga_url_name = RegExpressions.comick_url.search(manga_url).group(1)
+        return cls.fmt_url.format(manga_url_name=manga_url_name)
+
+    @classmethod
+    async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
+        return await bot.comick_api.get_cover(manga_id)
+
+
 SCANLATORS: dict[str, ABCScan] = {
     Toonily.name: Toonily,
     TritiniaScans.name: TritiniaScans,
@@ -1143,4 +1223,5 @@ SCANLATORS: dict[str, ABCScan] = {
     Aquamanga.name: Aquamanga,
     ReaperScans.name: ReaperScans,
     AniglisScans.name: AniglisScans,
+    Comick.name: Comick
 }

@@ -12,12 +12,12 @@ from discord.ext.commands import GroupCog
 from src.core.objects import GuildSettings
 
 
-class CommandsCog(GroupCog, name="config", description="Config commands."):
+class ConfigCog(GroupCog, name="config", description="Config commands."):
     def __init__(self, bot):
         self.bot: MangaClient = bot
 
     async def cog_load(self):
-        self.bot.logger.info("Loaded Commands Cog...")
+        self.bot.logger.info("Loaded Config Cog...")
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.guild_id is None:
@@ -192,6 +192,6 @@ class CommandsCog(GroupCog, name="config", description="Config commands."):
 
 async def setup(bot: MangaClient) -> None:
     if bot._debug_mode and bot.test_guild_id:
-        await bot.add_cog(CommandsCog(bot), guild=discord.Object(id=bot.test_guild_id))
+        await bot.add_cog(ConfigCog(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
-        await bot.add_cog(CommandsCog(bot))
+        await bot.add_cog(ConfigCog(bot))

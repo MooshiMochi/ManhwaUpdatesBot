@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from .database import Database
 from .mangadexAPI import MangaDexAPI
+from .comickAPI import ComickAppAPI
 from .cache import CachedClientSession
 from .objects import GuildSettings
 from .cf_bypass import ProtectedRequest
@@ -34,6 +35,7 @@ class MangaClient(commands.Bot):
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
         self.mangadex_api: Optional[MangaDexAPI] = None
+        self.comick_api: Optional[ComickAppAPI] = None
 
     async def setup_hook(self):
         await self.db.async_init()
@@ -48,6 +50,12 @@ class MangaClient(commands.Bot):
         self.loop.create_task(self.update_restart_message())
 
         self._session.ignored_urls = self._session.ignored_urls.union(await self.db.get_webhooks())
+        self.mangadex_api = MangaDexAPI(
+            CachedClientSession(trust_env=True if os.name != "nt" else False)
+        )
+        self.comick_api = ComickAppAPI(
+            CachedClientSession(trust_env=True if os.name != "nt" else False)
+        )
 
     async def update_restart_message(self):
         await self.wait_until_ready()
@@ -87,10 +95,6 @@ class MangaClient(commands.Bot):
         self.test_guild_id = config["constants"].get("test-guild-id")
         self.log_channel_id: int = config["constants"].get("log-channel-id")
         self._debug_mode: bool = config.get("debug", False)
-
-        self.mangadex_api = MangaDexAPI(
-            CachedClientSession(trust_env=True if os.name != "nt" else False)
-        )
 
         self._config: dict = config
 

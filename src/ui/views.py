@@ -327,7 +327,7 @@ class SubscribeView(View):
         scanlator: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_home_url)
 
         manga_url: str = manga_home_url
-        series_id = scanlator.get_manga_id(manga_url)
+        series_id = await scanlator.get_manga_id(self.bot, manga_url)
 
         current_user_subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id
