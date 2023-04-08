@@ -266,6 +266,13 @@ class CommandsCog(commands.Cog):
             series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
             series_id = await AniglisScans.get_manga_id(self.bot, series_url)
 
+        elif RegExpressions.voidscans_url.search(manga_url):
+            scanlator = VoidScans
+
+            url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
+            series_url: str = VoidScans.fmt_url.format(manga_url_name=url_name)
+            series_id = await VoidScans.get_manga_id(self.bot, series_url)
+
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
             em.description = (
@@ -463,6 +470,8 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
             • [Comick](https://comick.app/)
             \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
+            • [Void-Scans](https://void-scans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """

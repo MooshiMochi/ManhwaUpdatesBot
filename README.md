@@ -19,6 +19,7 @@ This bot currently only supports the following websites:
 - https://reaperscans.com
 - https://anigliscans.com
 - https://comick.app
+- https://void-scans.com
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
 Additionally, websites that are heavily protected by Cloudflare will also not be added (I will list the ones I tried to 
@@ -55,9 +56,8 @@ How to set up the bot:
 
 ## Todo:
    ### Websites to add: 
-      en.leviathanscans.com
+      en.leviatanscans.com
       luminousscans.com (maybe)
-      void-scans.com
       drakescans.com
       nitroscans.com
       mangapill.com

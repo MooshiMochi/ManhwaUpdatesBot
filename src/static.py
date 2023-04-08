@@ -20,7 +20,7 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?mangadex.org/title/([a-zA-Z0-9-]+)(/.*)?"
     )
     flamescans_url = re.compile(
-        r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?([\w-]+?)(?:-chapter-[\d-]+)?/?$"
+        r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?([\w-]+?)(?:-chapter-[\d-]+)?/?(/.*)?$"
     )
 
     asurascans_url = re.compile(
@@ -41,4 +41,8 @@ class RegExpressions:
 
     comick_url = re.compile(
         r"(?:https?://)?(?:www\.)?comick.app/comic/([a-zA-Z0-9-]+)(?:\??/.*)?"
+    )
+
+    voidscans_url = re.compile(
+        r"(?:https?://)?(?:www\.)?void-scans\.com/(?:manga/)?([\w-]+?)(?:-chapter-[\d-]+)?/?(/.*)?$"
     )

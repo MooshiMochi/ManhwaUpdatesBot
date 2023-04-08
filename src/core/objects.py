@@ -220,7 +220,10 @@ class ABCScan(ABC):
         Returns
             Chapter/None - The current chapter text of the manga.
         """
-        raise NotImplementedError
+        chapters = (await cls.get_all_chapters(bot, manga_id, manga_url))
+        if chapters:
+            return chapters[-1]
+        return None
 
     @classmethod
     async def make_manga_object(cls, bot: MangaClient, manga_id: str, manga_url: str) -> Manga | None:
