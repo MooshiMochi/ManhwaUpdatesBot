@@ -1216,7 +1216,7 @@ class Comick(ABCScan):
 class VoidScans(ABCScan):
     icon_url = "https://void-scans.com/wp-content/uploads/cropped-cropped-weblogo-1-2-192x192.png"
     base_url = "https://void-scans.com"
-    fmt_url = base_url + "/{manga_url_name}"
+    fmt_url = base_url + "/manga/{manga_url_name}"
     name = "voidscans"
 
     @classmethod
