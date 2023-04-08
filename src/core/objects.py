@@ -285,10 +285,15 @@ class ABCScan(ABC):
         if manga is None:
             return None
 
+        if manga.available_chapters:
+            last_read_chapter = manga.available_chapters[0]
+        else:
+            last_read_chapter = None
+
         return Bookmark(
             user_id,
             manga,
-            manga.available_chapters[0],  # last_read_chapter
+            last_read_chapter,  # last_read_chapter
             guild_id,
             datetime.utcnow().timestamp(),
         )

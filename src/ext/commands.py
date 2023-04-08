@@ -204,6 +204,20 @@ class CommandsCog(commands.Cog):
             series_id = await Manganato.get_manga_id(self.bot, manga_url)
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
+        # elif RegExpressions.aquamanga_url.search(url):  # temporarily disabled till i fix it on Linux
+        #     scanlator = Aquamanga
+        #
+        #     url_name = RegExpressions.aquamanga_url.search(url).group(1)
+        #     series_id = Aquamanga.get_manga_id(url)
+        #     series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
+
+        # elif RegExpressions.voidscans_url.search(manga_url):
+        #     scanlator = VoidScans
+        #
+        #     url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
+        #     series_url: str = VoidScans.fmt_url.format(manga_url_name=url_name)
+        #     series_id = await VoidScans.get_manga_id(self.bot, series_url)
+
         elif RegExpressions.tritinia_url.search(manga_url):
             scanlator = TritiniaScans
 
@@ -252,26 +266,12 @@ class CommandsCog(commands.Cog):
             series_id = await Comick.get_manga_id(self.bot, manga_url)
             series_url: str = Comick.fmt_url.format(manga_url_name=url_name)
 
-        # elif RegExpressions.aquamanga_url.search(url):  # temporarily disabled till i fix it on Linux
-        #     scanlator = Aquamanga
-        #
-        #     url_name = RegExpressions.aquamanga_url.search(url).group(1)
-        #     series_id = Aquamanga.get_manga_id(url)
-        #     series_url: str = Aquamanga.fmt_url.format(manga_url_name=url_name)
-
         elif RegExpressions.aniglisscans_url.search(manga_url):
             scanlator = AniglisScans
 
             url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
             series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
             series_id = await AniglisScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.voidscans_url.search(manga_url):
-            scanlator = VoidScans
-
-            url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
-            series_url: str = VoidScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await VoidScans.get_manga_id(self.bot, series_url)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
@@ -470,14 +470,14 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
             • [Comick](https://comick.app/)
             \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
-            • [Void-Scans](https://void-scans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """
 
             # •[Aquamanga](https: // aquamanga.com /)
             # \u200b \u200b \u200b \↪ Format -> `https: // aquamanga.com / read / manga - title / `
+            # •[Void-Scans](https: // void-scans.com/)
+            # \u200b \u200b \u200b \↪ Format -> `https: // void - scans.com / manga / manga - title / `
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 

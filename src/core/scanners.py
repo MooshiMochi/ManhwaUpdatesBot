@@ -1323,9 +1323,9 @@ SCANLATORS: dict[str, ABCScan] = {
     MangaDex.name: MangaDex,
     FlameScans.name: FlameScans,
     AsuraScans.name: AsuraScans,
-    Aquamanga.name: Aquamanga,
+    # Aquamanga.name: Aquamanga,
     ReaperScans.name: ReaperScans,
     AniglisScans.name: AniglisScans,
     Comick.name: Comick,
-    VoidScans.name: VoidScans
+    # VoidScans.name: VoidScans
 }
