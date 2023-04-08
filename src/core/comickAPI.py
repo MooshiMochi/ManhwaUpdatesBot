@@ -69,7 +69,7 @@ class ComickAppAPI:
 
             chap_number = chapter['chap']
             is_official = False
-            for group in chapter['group_name']:
+            for group in (chapter['group_name'] or []):
                 if group == 'Official':
                     is_official = True
                     break
