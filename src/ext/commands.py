@@ -273,6 +273,32 @@ class CommandsCog(commands.Cog):
             series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
             series_id = await AniglisScans.get_manga_id(self.bot, series_url)
 
+        elif RegExpressions.luminousscans_url.search(manga_url):
+            scanlator = LuminousScans
+
+            series_id = await LuminousScans.get_manga_id(self.bot, manga_url)
+            series_url: str = await LuminousScans.fmt_manga_url(self.bot, series_id, manga_url)
+
+        elif RegExpressions.drakescans_url.search(manga_url):
+            scanlator = DrakeScans
+
+            url_name = RegExpressions.drakescans_url.search(manga_url).group(1)
+            series_url: str = DrakeScans.fmt_url.format(manga_url_name=url_name)
+            series_id = await DrakeScans.get_manga_id(self.bot, series_url)
+
+        elif RegExpressions.nitroscans_url.search(manga_url):
+            scanlator = NitroScans
+
+            url_name = RegExpressions.nitroscans_url.search(manga_url).group(1)
+            series_url: str = NitroScans.fmt_url.format(manga_url_name=url_name)
+            series_id = await NitroScans.get_manga_id(self.bot, series_url)
+
+        elif RegExpressions.mangapill_url.search(manga_url):
+            scanlator = Mangapill
+
+            series_id = await Mangapill.get_manga_id(self.bot, manga_url)
+            series_url: str = await Mangapill.fmt_manga_url(self.bot, series_id, manga_url)
+
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
             em.description = (
@@ -470,6 +496,14 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
             • [Comick](https://comick.app/)
             \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
+            • [Luminous](https://luminousscans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://luminousscans.com/series/12351-manga-title/`
+            • [DrakeScans](https://drakescans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://drakescans.com/series/manga-title/`
+            • [NitroScans](https://nitroscans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://nitroscans.com/series/manga-title/`
+            • [Mangapill](https://mangapill.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """
