@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import io
-from typing import TYPE_CHECKING, Literal, Any
-
+from typing import TYPE_CHECKING, Any
+from datetime import datetime, timedelta, timezone
 import discord
 
 if TYPE_CHECKING:
@@ -336,6 +336,7 @@ def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
         ...     GREEN = 2
         ...     BLUE = 3
         ...
+        >>> # noinspection PyShadowingNames
         >>> items = [Color.RED, Color.GREEN, Color.BLUE, Color.RED]
         >>> group_items_by(items, ["value"])
         [[<Color.RED: 1>, <Color.RED: 1>], [<Color.GREEN: 2>], [<Color.BLUE: 3>]]
@@ -365,3 +366,31 @@ def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
         sub_groups.extend(group_items_by(group, sub_key_path))
 
     return sub_groups
+
+
+def relative_time_to_seconds(time_string) -> int:
+    time_regex = r'(?P<value>\d+)\s+(?P<unit>[a-z]+)\s+ago'
+    match = re.match(time_regex, time_string.strip(), re.I)
+    if not match:
+        raise ValueError('Invalid time string')
+    value, unit = match.groups()
+    value = int(value)
+    unit = unit.lower()
+    unit_timedelta = {
+        'second': timedelta(seconds=1),
+        'minute': timedelta(minutes=1),
+        'hour': timedelta(hours=1),
+        'day': timedelta(days=1),
+        'week': timedelta(weeks=1),
+        'month': timedelta(days=30),
+        'year': timedelta(days=365)
+    }.get(unit[:-1] if unit.endswith("s") else unit, None)
+    if not unit_timedelta:
+        raise ValueError(f'Invalid time unit: {unit}')
+    return int((datetime.now() - (value * unit_timedelta)).timestamp())
+
+
+def time_string_to_seconds(time_str: str) -> int:
+    """Convert a time string to seconds since the epoch"""
+    dt = datetime.strptime(time_str, '%b %d, %Y')
+    return int(dt.timestamp())

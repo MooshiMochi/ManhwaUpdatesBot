@@ -23,6 +23,7 @@ This bot currently only supports the following websites:
 - https://drakescans.com
 - https://nitroscans.com
 - https://mangapill.com
+- https://en.leviatanscans.com
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
 Additionally, websites that are heavily protected by Cloudflare will also not be added (I will list the ones I tried to 
@@ -59,7 +60,7 @@ How to set up the bot:
 
 ## Todo:
    ### Websites to add: 
-      en.leviatanscans.com
+      Nothing at the moment...
 
    ### Cloudflare protected websites to add:
       Nothing at the moment...

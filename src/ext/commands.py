@@ -304,6 +304,13 @@ class CommandsCog(commands.Cog):
             series_id = await Mangapill.get_manga_id(self.bot, manga_url)
             series_url: str = await Mangapill.fmt_manga_url(self.bot, series_id, manga_url)
 
+        elif RegExpressions.leviatanscans_url.search(manga_url):
+            scanlator = LeviatanScans
+
+            url_name = RegExpressions.leviatanscans_url.search(manga_url).group(1)
+            series_url: str = LeviatanScans.fmt_url.format(manga_url_name=url_name)
+            series_id = await LeviatanScans.get_manga_id(self.bot, series_url)
+
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
             em.description = (
@@ -509,6 +516,8 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://nitroscans.com/series/manga-title/`
             • [Mangapill](https://mangapill.com/)
             \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
+            • [LeviatanScans](https://en.leviatanscans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """

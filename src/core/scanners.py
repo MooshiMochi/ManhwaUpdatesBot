@@ -9,9 +9,9 @@ import discord
 import re
 
 from bs4 import BeautifulSoup
-
+from datetime import datetime
 from src.static import RegExpressions
-from src.utils import write_to_discord_file
+from src.utils import write_to_discord_file, relative_time_to_seconds, time_string_to_seconds
 
 from .errors import MangaNotFound
 from .objects import ChapterUpdate, Chapter, ABCScan, Manga
@@ -1421,9 +1421,15 @@ class LuminousScans(ABCScan):
 
 class LeviatanScans(ABCScan):
     icon_url = "https://en.leviatanscans.com/wp-content/uploads/2022/08/cropped-isotiponegro-192x192.png"
-    base_url = "https://en.leviatanscans.com"
-    fmt_url = base_url + "/home/manga/{manga_url_name}"
+    base_url = "https://en.leviatanscans.com/home/manga/"
+    fmt_url = base_url + "{manga_url_name}/ajax/chapters/"
     name = "leviatanscans"
+
+    @staticmethod
+    def _ensure_manga_url(url: str) -> str:
+        if url.endswith("/") and "/ajax/chapters/" not in url:
+            url = url[:-1]
+        return url + "/ajax/chapters/"
 
     @classmethod
     async def check_updates(
@@ -1436,7 +1442,7 @@ class LeviatanScans(ABCScan):
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
@@ -1444,9 +1450,9 @@ class LeviatanScans(ABCScan):
                                    ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
-
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            chapters = soup.find("ul", {"class": "main"}).find_all("a")
+            text = await resp.text()
+            soup = BeautifulSoup(text, "html.parser")
+            chapters = soup.find("div", {"class": "listing-chapters_wrap"}).find_all("a")
 
             return [
                 Chapter(
@@ -1476,7 +1482,7 @@ class LeviatanScans(ABCScan):
                 )
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
-            return soup.find("h1", {"class": "entry-title"}).text
+            return soup.find("div", {"class": "post-title"}).find("h1").text.strip()
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str | None:
@@ -1486,7 +1492,7 @@ class LeviatanScans(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
@@ -1496,15 +1502,26 @@ class LeviatanScans(ABCScan):
                 )
                 return False
 
+            def date_str_to_timestamp(date_str: str) -> int:
+                try:
+                    return relative_time_to_seconds(date_str)
+                except ValueError:
+                    return time_string_to_seconds(date_str)
+
             soup = BeautifulSoup(await resp.text(), "html.parser")
-            status_div = soup.find("div", {"class": "imptdt"})
-            status = status_div.find("i").text.strip().lower()
-            return status == "completed" or status == "dropped" or status == "canceled"
+            release_dates = soup.find("ul", {"class": "main"}).find_all("span", {"class": "chapter-release-date"})
+            date_strings = [_date.find("i").text for _date in release_dates]
+            if date_strings:
+                date_to_check = date_strings[0]
+                timestamp = date_str_to_timestamp(date_to_check)
+                if datetime.now().timestamp() - timestamp > 60 * 60 * 24 * 30:  # 30 days
+                    return True
+            return False
 
     @classmethod
     async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
         manga_url_name = RegExpressions.leviatanscans_url.search(manga_url).group(1)
-        return cls.fmt_url.format(manga_url_name=manga_url_name)
+        return cls.base_url + manga_url_name
 
     @classmethod
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
@@ -1519,7 +1536,8 @@ class LeviatanScans(ABCScan):
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             img_div = soup.find("div", {"class": "summary_image"})
-            return img_div.find("img")["src"]
+            img_url = img_div.find("img")["src"].strip()
+            return img_url if img_url else None
 
 
 class DrakeScans(ABCScan):
@@ -1907,7 +1925,7 @@ SCANLATORS: dict[str, ABCScan] = {
     AniglisScans.name: AniglisScans,
     Comick.name: Comick,
     LuminousScans.name: LuminousScans,
-    # LeviatanScans.name: LeviatanScans,
+    LeviatanScans.name: LeviatanScans,
     DrakeScans.name: DrakeScans,
     NitroScans.name: NitroScans,
     Mangapill.name: Mangapill,
