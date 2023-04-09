@@ -114,9 +114,21 @@ class CommandsCog(commands.Cog):
 
             await self.rate_limiter.delay_if_necessary(manga)
 
-            update_check_result: ChapterUpdate = await scanner.check_updates(
-                self.bot, manga
-            )
+            try:
+                # task = self.bot.loop.create_task(scanner.check_updates(self.bot, manga))
+                # task.add_done_callback(
+                #     lambda x: self.bot.logger.error(
+                #         f"Error while checking updates for {manga.human_name} ({manga.id})\n{x.exception()}"
+                #     ) if x.exception() else None
+                # )
+                update_check_result: ChapterUpdate = await scanner.check_updates(
+                    self.bot, manga
+                )
+            except Exception as e:
+                self.bot.logger.error(
+                    f"Error while checking updates for {manga.human_name} ({manga.id})\n{e}"
+                )
+                continue
 
             if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
                 # self.bot._logger.info(f"No updates for {manga.human_name} ({manga.id})")
