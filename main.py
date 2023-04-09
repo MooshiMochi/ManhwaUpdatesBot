@@ -26,7 +26,7 @@ def ensure_logs() -> None:
 
 
 async def main():
-    setup_logging()
+    setup_logging(level=logging.INFO)
 
     _logger = logging.getLogger("main")
 
