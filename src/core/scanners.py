@@ -1536,8 +1536,7 @@ class LeviatanScans(ABCScan):
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             img_div = soup.find("div", {"class": "summary_image"})
-            img_url = img_div.find("img")["src"].strip()
-            return img_url if img_url else None
+            return img_div.find("img")["src"].strip()
 
 
 class DrakeScans(ABCScan):
