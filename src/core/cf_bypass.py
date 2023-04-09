@@ -48,13 +48,13 @@ class ProtectedRequest:
         while True:
             await asyncio.sleep(self._default_cache_time + 0.5)
             if self._cache:
-                self.logger.info("Clearing browser cache...")
+                self.logger.debug("Clearing browser cache...")
                 for url in self._cache.copy():
                     if self._cache[url]['expires'] < asyncio.get_event_loop().time():
                         del self._cache[url]
-                self.logger.info("Browser cache cleared")
+                self.logger.debug("Browser cache cleared")
             else:
-                self.logger.info("Browser cache is empty, not clearing")
+                self.logger.debug("Browser cache is empty, not clearing")
 
     async def async_init(self):
         self.browser = await self._launcher.launch()
@@ -94,7 +94,7 @@ class ProtectedRequest:
             await self.async_init()
 
         if url in self._cache and self._cache[url]["expires"] > asyncio.get_event_loop().time():
-            self.logger.info(f"Using cached response for {url}")
+            self.logger.debug(f"Using cached response for {url}")
             return self._cache[url]["content"]
 
         page = await self.browser.newPage()
@@ -148,7 +148,7 @@ class ProtectedRequest:
                     self._default_cache_time if cache_time is None else cache_time
                 )
             }
-        self.logger.info(f"Cached response for {url}")
+        self.logger.debug(f"Cached response for {url}")
         await asyncio.sleep(0.5)
         await page.close()
         return content
