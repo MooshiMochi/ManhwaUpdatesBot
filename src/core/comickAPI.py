@@ -97,14 +97,10 @@ class ComickAppAPI:
             result["chapters"].extend(await self.get_chapters_list(manga_id, language, page + 1))
 
         result = sorted(result["chapters"], key=lambda _x: float(_x['chap']))
-            # float(_x['vol'] or 0),
-
         return list(result)
 
     async def get_cover(self, manga_id: str) -> str | None:
         data = await self.get_manga(manga_id)
-        import pprint
-        pprint.pprint(data["comic"]["md_covers"])
         covers = data["comic"]["md_covers"]
         if not covers:
             return None

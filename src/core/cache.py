@@ -33,13 +33,13 @@ class CachedClientSession(aiohttp.ClientSession):
         while True:
             await asyncio.sleep(self._default_cache_time + 0.5)
             if self._cache:
-                self.logger.info("Clearing cache...")
+                self.logger.debug("Clearing cache...")
                 for url in self._cache.copy():
                     if self._cache[url]['expires'] < asyncio.get_event_loop().time():
                         del self._cache[url]
-                self.logger.info("Cache cleared")
+                self.logger.debug("Cache cleared")
             else:
-                self.logger.info("Cache is empty, not clearing")
+                self.logger.debug("Cache is empty, not clearing")
 
     @staticmethod
     def _is_discord_api_url(url: str) -> bool:
@@ -54,7 +54,7 @@ class CachedClientSession(aiohttp.ClientSession):
 
         if url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
-            self.logger.info(f"Requesting {url} without caching")
+            self.logger.debug(f"Requesting {url} without caching")
             if kwargs.get("headers", None) is None:
                 kwargs["headers"] = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -66,7 +66,7 @@ class CachedClientSession(aiohttp.ClientSession):
             # Use cached response
             response = self._cache[url]['response']
             # response.cached = True
-            self.logger.info(f"Using cached response for {url}")
+            self.logger.debug(f"Using cached response for {url}")
             return response
 
         # Cache miss, fetch and cache response
@@ -78,7 +78,7 @@ class CachedClientSession(aiohttp.ClientSession):
                 cache_time if cache_time is not None else self._default_cache_time
             )
         }
-        self.logger.info(f"Cached response for {url}")
+        self.logger.debug(f"Cached response for {url}")
         return response
 
     def get(

@@ -60,6 +60,7 @@ class CommandsCog(commands.Cog):
 
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
+        self.bot.logger.info("Checking for updates...")
         try:
             series_to_delete: list[Manga] = await self.bot.db.get_series_to_delete()
             if series_to_delete:
@@ -176,6 +177,7 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             self.bot.logger.error("Error while checking updates", exc_info=e)
             await self.bot.log_to_discord(str(e)[:2000])
+        self.bot.logger.info("Update check finished =================")
 
     @check_updates_task.before_loop
     async def before_check_updates_task(self):
