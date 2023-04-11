@@ -14,7 +14,7 @@ from src.core.scanners import *
 from src.core.objects import Manga, PaginatorView
 from src.core.ratelimiter import RateLimiter
 from src.ui.views import SubscribeView
-from src.utils import group_items_by
+from src.utils import group_items_by, create_embeds, modify_embeds
 
 
 class CommandsCog(commands.Cog):
@@ -199,7 +199,7 @@ class CommandsCog(commands.Cog):
     subscribe = app_commands.Group(name="subscribe", description="Subscribe to a manga to get notifications.")
 
     @subscribe.command(name="new", description="Subscribe to a manga to get new release notifications.")
-    @app_commands.describe(manga_url="The URL of the manga series you want to subscribe to.")
+    @app_commands.describe(manga_url="The URL of the manga you want to subscribe to.")
     async def subscribe_new(self, interaction: discord.Interaction, manga_url: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -463,9 +463,9 @@ class CommandsCog(commands.Cog):
         view.message = await interaction.followup.send(embed=embeds[0], view=view)
 
     @app_commands.command(
-        name="latest", description="Get the latest chapter of a series."
+        name="latest", description="Get the latest chapter of a manga."
     )
-    @app_commands.describe(manga_id="The name of the series.")
+    @app_commands.describe(manga_id="The name of the manga.")
     @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
     @app_commands.rename(manga_id="manga")
     async def latest_chapter(self, interaction: discord.Interaction, manga_id: str):
@@ -483,6 +483,31 @@ class CommandsCog(commands.Cog):
         return
 
     @app_commands.command(
+        name="chapters", description="Get a list of chapters for a manga."
+    )
+    @app_commands.describe(manga_id="The name of the manga.")
+    @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
+    @app_commands.rename(manga_id="manga")
+    async def chapters(self, interaction: discord.Interaction, manga_id: str):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        manga: Manga = await self.bot.db.get_series(manga_id)
+
+        embeds = create_embeds(
+            "{chapter}",
+            [
+                {"chapter": chapter}
+                for chapter in manga.available_chapters],
+            per_page=20,
+        )
+        modify_embeds(embeds,
+                      title_kwargs={"title": f"Chapters for {manga.human_name}", "color": discord.Color.green()}
+                      )
+
+        view = PaginatorView(embeds, interaction)
+        view.message = await interaction.followup.send(embed=embeds[0], view=view)
+
+    @app_commands.command(
         name="supported_websites", description="Get a list of supported websites."
     )
     async def supported_websites(self, interaction: discord.Interaction) -> None:
@@ -492,7 +517,7 @@ class CommandsCog(commands.Cog):
             Manga Updates Bot currently supports the following websites:
             • [MangaDex](https://mangadex.org/)
              \u200b \u200b \u200b \↪ Format -> `https://mangadex.org/title/1b2c3d/`
-            • [MangaNato](https://manganato.com/)
+            • [Manganato](https://manganato.com/)
             \u200b \u200b \u200b \↪ Format -> `https://manganato.com/manga-m123456` 
             • [Toonily](https://toonily.com)
             \u200b \u200b \u200b \↪ Format -> `https://toonily.net/manga/manga-title/`
@@ -538,7 +563,7 @@ class CommandsCog(commands.Cog):
     async def help(self, interaction: discord.Interaction) -> None:
         em = discord.Embed(title="Manga Updates Bot", color=discord.Color.green())
         em.description = (
-            "Manga Updates Bot is a bot that allows you to subscribe to your favorite manga series and get notified "
+            "Manga Updates Bot is a bot that allows you to subscribe to your favorite manga and get notified "
             "when a new chapter is released.\n\n"
             "To get started, the bot needs to be set up first. This can be done by using the `/config setup` command.\n"
             "Note that this command can only be used by a server moderator that has the manage_channels/manage_roles "
@@ -546,20 +571,26 @@ class CommandsCog(commands.Cog):
 
             "**General Commands:**\n"
             "`/help` - Get started with Manga Updates Bot (this message).\n"
-            "`/search` - Search for a series on MangaDex.\n"
-            "`/latest` - Get the latest chapter of a series.\n"
+            "`/search` - Search for a manga on MangaDex.\n"
+            "`/latest` - Get the latest chapter of a manga.\n"
+            "`/chapters` - Get a list of chapters of a manga.\n"
             "`/supported_websites` - Get a list of websites supported by the bot.\n\n"
 
             "**Subscription Commands:**\n"
-            "`/subscribe new` - Subscribe to a series.\n"
-            "`/subscribe delete` - Unsubscribe from a series.\n"
-            "`/subscribe list` - List all your subscribed series.\n\n"
+            "`/subscribe new` - Subscribe to a manga.\n"
+            "`/subscribe delete` - Unsubscribe from a manga.\n"
+            "`/subscribe list` - List all your subscribed manga.\n\n"
 
             "**Bookmark Commands:**\n"
             "`/bookmark new` - Bookmark a manga.\n"
             "`/bookmark view` - View your bookmarked manga.\n"
             "`/bookmark delete` - Delete a bookmark.\n"
             "`/bookmark update` - Update a bookmark.\n\n"
+            
+            "**Config Commands:**\n"
+            "`/config setup` - Set up the bot.\n"
+            "`/config show` - Show the current configuration.\n"
+            "`/config delete` - Delete the current configuration.\n\n"
 
             "**Permissions:**\n"
             "The bot needs the following permissions to function properly:\n"
@@ -575,7 +606,7 @@ class CommandsCog(commands.Cog):
         return
 
     @app_commands.command(
-        name="search", description="Search for a manga series on Mangadex."
+        name="search", description="Search for a manga on Mangadex."
     )
     @app_commands.describe(query="The name of the manga.")
     async def dex_search(self, interaction: discord.Interaction, query: str):

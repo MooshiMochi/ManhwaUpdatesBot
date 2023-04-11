@@ -677,6 +677,7 @@ class Bookmark:
     async def update_last_read_chapter(self, bot: MangaClient, chapter: Chapter) -> bool:
         """Update the last read chapter of the bookmark."""
         self.last_read_chapter = chapter
+        self.last_updated_ts = datetime.utcnow().timestamp()
         return await bot.db.upsert_bookmark(self)
 
     def __repr__(self) -> str:

@@ -223,7 +223,7 @@ def write_to_discord_file(filename: str, content: str) -> discord.File:
     return discord.File(stream, filename=filename)
 
 
-def create_embeds(fmt_line: str, arguments: list[dict]) -> list[discord.Embed] | None:
+def create_embeds(fmt_line: str, arguments: list[dict], per_page: Optional[int] = None) -> list[discord.Embed] | None:
     """
     Summary:
         Creates a list of embeds from a list of arguments.
@@ -231,12 +231,13 @@ def create_embeds(fmt_line: str, arguments: list[dict]) -> list[discord.Embed] |
     Parameters:
         fmt_line: The format line to use.
         arguments: The arguments to use.
+        per_page: The number of arguments to put in each embed.
 
     Returns:
         list[discord.Embed]: A list of embeds.
 
     Examples:
-        >>> create_embeds("Hello {name}!", [{"name": "John"}, {"name": "Jane"}, ...])
+        >>> create_embeds("Hello {name}!", [{"name": "John"}, {"name": "Jane"}, ...], per_page=10)
         [<discord.embeds.Embed object at 0x000001F5B1B5B4C0>, ...]
     """
     if not arguments:
@@ -246,11 +247,15 @@ def create_embeds(fmt_line: str, arguments: list[dict]) -> list[discord.Embed] |
     max_desc_length = 4096
     append_last = False
     embed = discord.Embed(title="", description="", color=0x00FF00)
-
     for i, arg in enumerate(arguments):
         if len(embed.description) + len(fmt_line.format(**arg)) + 1 > max_desc_length:
             embeds.append(embed)
             embed = discord.Embed(title="", description="", color=0x00FF00)
+
+        elif per_page is not None and i > 0 and i % per_page == 0:
+            embeds.append(embed)
+            embed = discord.Embed(title="", description="", color=0x00FF00)
+
         embed.description += fmt_line.format(**arg) + "\n"
         if i == len(arguments) - 1:
             append_last = True
@@ -336,13 +341,15 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
 
     em.description = (
         f"**Scanlator:** {bookmark.manga.scanlator.title()}\n"
-        f"**Last Read Chapter:** [{bookmark.last_read_chapter.name}]({bookmark.last_read_chapter.url})\n"
+        f"**Last Read Chapter:** {bookmark.last_read_chapter}\n"
 
         "**Next chapter:** "
-        f"{f'[{next_chapter.name}]({next_chapter.url})' if next_chapter else '`Wait for updates`'}\n"
+        f"{next_chapter if next_chapter else '`Wait for updates`'}\n"
 
         "**Available Chapters:** Up to "
-        f"[{bookmark.manga.available_chapters[-1].name}]({bookmark.manga.available_chapters[-1].url})\n"
+        
+        f"{bookmark.manga.available_chapters[-1]}\n"
+        if bookmark.manga.available_chapters else "`Wait for updates`\n"
     )
     em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
     em.set_author(
@@ -449,5 +456,11 @@ def relative_time_to_seconds(time_string) -> int:
 
 def time_string_to_seconds(time_str: str) -> int:
     """Convert a time string to seconds since the epoch"""
-    dt = datetime.strptime(time_str, '%b %d, %Y')
-    return int(dt.timestamp())
+    formats = ["%b %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(time_str, fmt)
+            return int(dt.timestamp())
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid time string: {time_str}")
