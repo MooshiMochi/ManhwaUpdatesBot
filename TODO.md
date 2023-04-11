@@ -26,13 +26,12 @@
 
       - /info command that will display the currently available info on a manga.
 
-      - /chapters command that will display all the chapters of a manga.
+      - Create a .sh file that will configure the system for pypetteer. (installing dependencies, etc)
 
    ### Issues:
-      - Create a .sh file that will configure the system for pypetteer.
+
+      - reaperscans has pagination for chapters, so I need to add some code to grab all chapters...
+   
+      - flamescans sometimes returns 404 when requesting. Considering switching to grabbing data with pyppeteer instead
 
       - aquamanga.org is not working on Linux. it returns 5001 error with text "enable cookies"
-   
-      - reaperscans has pagination for chapters, so I need to add some code to grab all chapters...
-
-      - flamescans sometimes returns 404 when requesting. Considering switching to grabbing data with pyppeteer instead
