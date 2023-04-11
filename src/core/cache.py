@@ -73,7 +73,7 @@ class CachedClientSession(aiohttp.ClientSession):
                 self.logger.debug(f"Making request through proxy: {self._proxy}")
             else:
                 kwargs.pop("proxy")
-                kwargs.pop("verify_ssl")
+                kwargs.pop("verify_ssl", None)
 
         if url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
