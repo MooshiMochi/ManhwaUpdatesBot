@@ -12,10 +12,21 @@ class CachedClientSession(aiohttp.ClientSession):
     logger = logging.getLogger(__name__)
     _default_cache_time: int = 5
 
-    def __init__(self, ignored_urls: Optional[Set[str]] = None, *args, **kwargs) -> None:
+    def __init__(
+            self,
+            ignored_urls: Optional[Set[str]] = None,
+            *args,
+            name: str = None,
+            proxy: str = None,
+            **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._ignored_urls = set(ignored_urls) if ignored_urls else set()
         self._cache: Dict[str, Dict[str, Any]] = {}
+        self._proxy = proxy
+        self._name = name or __name__
+
+        self.logger.name = self._name
 
         self.set_default_cache_time = lambda *_, **k: self.logger.error(
             "Error: The 'set_default_cache_time' method can only be called on the class, not an instance.\n"
@@ -25,6 +36,9 @@ class CachedClientSession(aiohttp.ClientSession):
         self.logger.info(
             f"CachedClientSession initialized with default cache time of {self._default_cache_time} seconds"
         )
+
+        if self._proxy:
+            self.logger.info("Using proxy: " + self._proxy)
 
         # Start a background task to periodically clear the cache
         self._clear_cache_task = asyncio.create_task(self._clear_cache_periodically())
@@ -45,12 +59,16 @@ class CachedClientSession(aiohttp.ClientSession):
     def _is_discord_api_url(url: str) -> bool:
         return url.startswith("https://discord.com/api")
 
-    # async def request(self, method, url, *, cache_time: Optional[int] = None, **kwargs):
-    #     return await self._request(method, url, cache_time, **kwargs)
-
     async def _request(
             self, method: str, url: str, cache_time: Optional[int] = None, *args, **kwargs
     ) -> Union[Coroutine[Any, Any, aiohttp.ClientResponse], _RequestContextManager, Any]:
+
+        if self._proxy and kwargs.get("proxy") is None:
+            kwargs["proxy"] = self._proxy
+            kwargs["verify_ssl"] = False
+
+        if kwargs.get("proxy") is not None:
+            self.logger.debug(f"Making request through proxy: {self._proxy}")
 
         if url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs

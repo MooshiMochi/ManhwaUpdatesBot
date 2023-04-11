@@ -8,7 +8,7 @@ from discord.utils import setup_logging
 
 from src.core import MangaClient
 from src.core import BotCommandTree
-from src.utils import ensure_configs, ensure_environment, exit_bot
+from src.utils import ensure_configs, ensure_environment, exit_bot, ensure_proxy
 from src.core import CachedClientSession, ProtectedRequest
 
 
@@ -42,6 +42,7 @@ async def main():
     client.load_config(config)
 
     await ensure_environment(client, _logger)
+    await ensure_proxy(config, _logger)
 
     async with client:
         await load_extensions(client, config["extensions"])

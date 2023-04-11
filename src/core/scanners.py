@@ -1913,7 +1913,8 @@ class Mangapill(ABCScan):
 
 SCANLATORS: dict[str, ABCScan] = {
     # Aquamanga.name: Aquamanga,
-    # VoidScans.name: VoidScans,
+    VoidScans.name: VoidScans,
+
     Toonily.name: Toonily,
     TritiniaScans.name: TritiniaScans,
     Manganato.name: Manganato,

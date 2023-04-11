@@ -16,3 +16,7 @@ privileged-intents:
   members: false
   message_content: true
   presences: false
+proxy:
+    enabled: true
+    ip: 0.0.0.0
+    port: 8080

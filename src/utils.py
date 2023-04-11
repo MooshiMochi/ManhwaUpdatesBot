@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import io
+import aiohttp
 from typing import TYPE_CHECKING, Any
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import discord
 
 if TYPE_CHECKING:
@@ -26,6 +27,57 @@ from .enums import BookmarkSortType
 def exit_bot() -> None:
     input("Press enter to continue...")
     exit(1)
+
+
+async def ensure_proxy(config, logger) -> None:
+    async with aiohttp.ClientSession() as session:
+        proxy_ip = config["proxy"]["ip"]
+        proxy_port = config["proxy"]["port"]
+        proxy_enabled: bool = config["proxy"]["enabled"]
+
+        if proxy_enabled:
+            if not proxy_ip or not proxy_port:
+                logger.critical(
+                    "- Proxy is enabled but IP or PORT is not specified. Please provide both the PORT and IP of the "
+                    "proxy or disable the proxy."
+                )
+                exit_bot()
+                return
+            else:
+                try:
+                    int(proxy_port)
+                except ValueError:
+                    logger.critical(
+                        "   - Proxy PORT is not a valid integer. Please provide a valid proxy PORT."
+                    )
+                    exit_bot()
+                    return
+
+                try:
+                    proxy_url = f"http://{proxy_ip}:{proxy_port}"
+                    logger.info(f"   - Testing proxy {proxy_url}...")
+                    async with session.get("https://www.youtube.com", proxy=proxy_url, ssl=False) as r:
+                        if r.status == 200:
+                            logger.info(
+                                f"   - Proxy is working..."
+                            )
+                        else:
+                            logger.critical(
+                                "   - Proxy is not valid. Please use a different proxy and try again!"
+                            )
+                            exit_bot()
+                            return
+                except aiohttp.ClientConnectorError:
+                    logger.critical(
+                        "   - Proxy is not valid. Please use a different proxy and try again!"
+                    )
+                    exit_bot()
+                    return
+        else:
+            if proxy_ip or proxy_port:
+                logger.warning(
+                    "   - Proxy is DISABLED but IP or port is specified."
+                )
 
 
 async def ensure_environment(bot, logger) -> None:
@@ -106,6 +158,11 @@ def ensure_configs(logger) -> Optional[dict]:
             "test-guild-id": 0,
             "cache-retention-seconds": 300,
         },
+        "proxy": {
+            "enabled": True,
+            "ip": "210.148.141.4",  # japanese proxy with HTTPS support
+            "port": 8080,
+        }
     }
 
     config_edited: bool = False

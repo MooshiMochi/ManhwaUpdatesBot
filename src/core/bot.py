@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 
 import aiohttp
 import discord
@@ -37,13 +37,16 @@ class MangaClient(commands.Bot):
         self.mangadex_api: Optional[MangaDexAPI] = None
         self.comick_api: Optional[ComickAppAPI] = None
 
+        self.proxy_addr: Optional[str] = None
+
     async def setup_hook(self):
         await self.db.async_init()
-        if os.name == "nt":
-            self._session = CachedClientSession()
-        else:
-            self._session = CachedClientSession(None, trust_env=True)
+        if self._config["proxy"]["enabled"]:
+            self.proxy_addr = f"http://{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
+
+        self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self._cf_scraper = ProtectedRequest(self)
+
         await self._cf_scraper.async_init()
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
@@ -51,10 +54,10 @@ class MangaClient(commands.Bot):
 
         self._session.ignored_urls = self._session.ignored_urls.union(await self.db.get_webhooks())
         self.mangadex_api = MangaDexAPI(
-            CachedClientSession(trust_env=True if os.name != "nt" else False)
+            CachedClientSession(proxy=self.proxy_addr, name="cache.dex", trust_env=True)
         )
         self.comick_api = ComickAppAPI(
-            CachedClientSession(trust_env=True if os.name != "nt" else False)
+            CachedClientSession(proxy=self.proxy_addr, name="cache.comick", trust_env=True)
         )
 
     async def update_restart_message(self):
