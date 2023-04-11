@@ -518,8 +518,8 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
             • [LeviatanScans](https://en.leviatanscans.com/)
             \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
-            •[Void-Scans](https: // void-scans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https: // void - scans.com / manga / manga - title / `
+            •[Void-Scans](https://void-scans.com/)
+            \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """

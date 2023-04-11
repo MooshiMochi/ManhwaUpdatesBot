@@ -18,5 +18,5 @@ privileged-intents:
   presences: false
 proxy:
     enabled: true
-    ip: 0.0.0.0
+    ip: 210.148.141.4
     port: 8080
