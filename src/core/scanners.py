@@ -10,7 +10,7 @@ import re
 
 from bs4 import BeautifulSoup
 from datetime import datetime
-from src.static import RegExpressions
+from src.static import RegExpressions, EMPTY
 from src.utils import write_to_discord_file, relative_time_to_seconds, time_string_to_seconds
 
 from .errors import MangaNotFound
@@ -182,7 +182,7 @@ class Manganato(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, proxy=EMPTY) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
@@ -204,7 +204,7 @@ class Manganato(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, proxy=EMPTY) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
@@ -219,7 +219,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, proxy=EMPTY) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
@@ -260,7 +260,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, proxy=EMPTY) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)

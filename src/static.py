@@ -5,6 +5,13 @@ class Emotes:
     warning = "⚠️"
 
 
+class EMPTY:
+    """
+    A class that represents an empty object.
+    """
+    pass
+
+
 class RegExpressions:
     chapter_num_from_url = re.compile(r"(\d+([.]\d+)?)/?$")
     toonily_url = re.compile(

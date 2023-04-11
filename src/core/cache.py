@@ -6,6 +6,7 @@ import logging
 from aiohttp.client import _RequestContextManager
 from aiohttp import hdrs
 from aiohttp.typedefs import StrOrURL
+from src.static import EMPTY
 
 
 class CachedClientSession(aiohttp.ClientSession):
@@ -67,8 +68,12 @@ class CachedClientSession(aiohttp.ClientSession):
             kwargs["proxy"] = self._proxy
             kwargs["verify_ssl"] = False
 
-        if kwargs.get("proxy") is not None:
-            self.logger.debug(f"Making request through proxy: {self._proxy}")
+        if (used_proxy := kwargs.get("proxy")) is not None:
+            if used_proxy is not EMPTY:
+                self.logger.debug(f"Making request through proxy: {self._proxy}")
+            else:
+                kwargs.pop("proxy")
+                kwargs.pop("verify_ssl")
 
         if url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
