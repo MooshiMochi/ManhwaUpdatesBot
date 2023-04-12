@@ -352,7 +352,7 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
 
         f"**Available Chapters:** Up to {available_chapters_str}"
 
-        f"**Completed:** `{bookmark.manga.completed}`\n"
+        f"**Completed:** `{bool(bookmark.manga.completed)}`\n"
     )
     em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
     em.set_author(
