@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import io
@@ -125,9 +124,9 @@ def ensure_configs(logger) -> Optional[dict]:
         missing_required_keys = [key for key in required_keys if key not in config]
         missing_required_keys_str = (
             (
-                "'"
-                + "', '".join([key for key in required_keys if key not in config])
-                + "'"
+                    "'"
+                    + "', '".join([key for key in required_keys if key not in config])
+                    + "'"
             )
             if len(missing_required_keys) > 1
             else "'" + missing_required_keys[0] + "'"
@@ -339,6 +338,10 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
     )
     last_read_index = bookmark.last_read_chapter.index
     next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
+    if bookmark.manga.available_chapters:
+        available_chapters_str = f"{bookmark.manga.available_chapters[-1]} ({len(bookmark.manga.available_chapters)})\n"
+    else:
+        available_chapters_str = "`Wait for updates`\n"
 
     em.description = (
         f"**Scanlator:** {bookmark.manga.scanlator.title()}\n"
@@ -347,10 +350,8 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
         "**Next chapter:** "
         f"{next_chapter if next_chapter else '`Wait for updates`'}\n"
 
-        "**Available Chapters:** Up to "
-        f"{bookmark.manga.available_chapters[-1]} ({len(bookmark.manga.available_chapters)})\n"
-        if bookmark.manga.available_chapters else "`Wait for updates`\n"
-        
+        f"**Available Chapters:** Up to {available_chapters_str}"
+
         f"**Completed:** `{bookmark.manga.completed}`\n"
     )
     em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
