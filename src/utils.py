@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import io
-import aiohttp
-from typing import TYPE_CHECKING, Any
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any
+
+import aiohttp
 import discord
 
 if TYPE_CHECKING:
@@ -347,9 +348,10 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
         f"{next_chapter if next_chapter else '`Wait for updates`'}\n"
 
         "**Available Chapters:** Up to "
-        
-        f"{bookmark.manga.available_chapters[-1]}\n"
+        f"{bookmark.manga.available_chapters[-1]} ({len(bookmark.manga.available_chapters)})\n"
         if bookmark.manga.available_chapters else "`Wait for updates`\n"
+        
+        f"**Completed:** `{bookmark.manga.completed}`\n"
     )
     em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
     em.set_author(

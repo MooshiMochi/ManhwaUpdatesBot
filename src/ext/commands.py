@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -186,11 +185,12 @@ class CommandsCog(commands.Cog):
     @app_commands.command(name="next_update_check", description="Get the time of the next update check.")
     async def next_update_check(self, interaction: discord.Interaction) -> None:
         # await interaction.response.defer(ephemeral=True, thinking=True)
+        next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
         em = discord.Embed(
             title="Next Update Check",
             description=(
                 f"The next update check is scheduled for "
-                f"<t:{int(self.check_updates_task.next_iteration.timestamp())}:T>"
+                f"<t:{next_update_ts}:T> (<t:{next_update_ts}:R>)."
             ),
             color=discord.Color.blurple()
         )

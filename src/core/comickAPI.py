@@ -1,6 +1,6 @@
 import asyncio
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from src.core.cache import CachedClientSession
 
 
@@ -98,6 +98,24 @@ class ComickAppAPI:
 
         result = sorted(result["chapters"], key=lambda _x: float(_x['chap']))
         return list(result)
+
+    async def search(
+        self,
+        query: str = None,
+        page: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        endpoint = "v1.0/search"
+        params = {
+            "q": query,
+            "limit": limit,
+            "page": 1 if page is None else page,
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        kwargs = {}
+        if isinstance(self.session, CachedClientSession):
+            kwargs["cache_time"] = 0
+        return await self.__request("GET", endpoint, params=params, **kwargs)
 
     async def get_cover(self, manga_id: str) -> str | None:
         data = await self.get_manga(manga_id)
