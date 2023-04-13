@@ -1230,25 +1230,26 @@ class VoidScans(ABCScan):
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                return await cls.report_error(
-                    bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            return await cls.report_error(
+                bot, Exception(
+                    "Failed to run get_all_chapters func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            chapters = soup.find("div", {"class": "eplister"}).find_all("a")
+        soup = BeautifulSoup(text, "html.parser")
+        chapters = soup.find("div", {"class": "eplister"}).find_all("a")
 
-            return [
-                Chapter(
-                    chapter["href"],
-                    chapter.find("span", {"class": "chapternum"}).text,
-                    i
-                ) for i, chapter in enumerate(reversed(chapters))
-            ]
+        return [
+            Chapter(
+                chapter["href"],
+                chapter.find("span", {"class": "chapternum"}).text,
+                i
+            ) for i, chapter in enumerate(reversed(chapters))
+        ]
 
     @classmethod
     async def get_curr_chapter(
@@ -1260,17 +1261,18 @@ class VoidScans(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                return await cls.report_error(
-                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            return await cls.report_error(
+                bot, Exception(
+                    "Failed to run get_human_name func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            return soup.find("h1", {"class": "entry-title"}).text
+        soup = BeautifulSoup(text, "html.parser")
+        return soup.find("h1", {"class": "entry-title"}).text
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str | None:
@@ -1280,20 +1282,20 @@ class VoidScans(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                await cls.report_error(
-                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
-                return False
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            await cls.report_error(
+                bot, Exception("Failed to run is_series_completed func. Status: N/A"
+                               + " Request URL: " + str(manga_url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
+            raise MangaNotFound(manga_url=manga_url)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            status_div = soup.find("div", {"class": "imptdt"})
-            status = status_div.find("i").text.strip().lower()
-            return status == "completed" or status == "dropped" or status == "canceled"
+        soup = BeautifulSoup(text, "html.parser")
+        status_div = soup.find("div", {"class": "imptdt"})
+        status = status_div.find("i").text.strip().lower()
+        return status == "completed" or status == "dropped" or status == "canceled"
 
     @classmethod
     async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
@@ -1302,18 +1304,19 @@ class VoidScans(ABCScan):
 
     @classmethod
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                return await cls.report_error(
-                    bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
+        text = await bot.cf_scraper.bypass_cloudflare(manga_url)
+        if not text or "Ray ID" in text:
+            return await cls.report_error(
+                bot, Exception(
+                    "Failed to run get_cover_image func. Status: N/A"
+                    + " Request URL: " + str(manga_url)
+                ),
+                file=write_to_discord_file(cls.name + ".html", text)
+            )
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            img_div = soup.find("div", {"class": "thumb"})
-            return img_div.find("img")["src"]
+        soup = BeautifulSoup(text, "html.parser")
+        img_div = soup.find("div", {"class": "thumb"})
+        return img_div.find("img")["src"]
 
 
 class LuminousScans(ABCScan):
