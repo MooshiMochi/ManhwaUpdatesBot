@@ -33,6 +33,8 @@ async def ensure_proxy(config, logger) -> None:
     async with aiohttp.ClientSession() as session:
         proxy_ip = config["proxy"]["ip"]
         proxy_port = config["proxy"]["port"]
+        proxy_user = config["proxy"]["username"]
+        proxy_password = config["proxy"]["password"]
         proxy_enabled: bool = config["proxy"]["enabled"]
 
         if proxy_enabled:
@@ -54,7 +56,10 @@ async def ensure_proxy(config, logger) -> None:
                     return
 
                 try:
-                    proxy_url = f"http://{proxy_ip}:{proxy_port}"
+                    if proxy_user and proxy_password:
+                        proxy_url = f"http://{proxy_user}:{proxy_password}@{proxy_ip}:{proxy_port}"
+                    else:
+                        proxy_url = f"http://{proxy_ip}:{proxy_port}"
                     logger.info(f"   - Testing proxy {proxy_url}...")
                     async with session.get("https://www.youtube.com", proxy=proxy_url, ssl=False) as r:
                         if r.status == 200:

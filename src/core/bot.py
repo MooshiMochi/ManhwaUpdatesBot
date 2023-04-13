@@ -1,18 +1,18 @@
 import logging
 import os
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union
 
 import aiohttp
 import discord
 from discord import Intents
 from discord.ext import commands
 
+from .cache import CachedClientSession
+from .cf_bypass import ProtectedRequest
+from .comickAPI import ComickAppAPI
 from .database import Database
 from .mangadexAPI import MangaDexAPI
-from .comickAPI import ComickAppAPI
-from .cache import CachedClientSession
 from .objects import GuildSettings
-from .cf_bypass import ProtectedRequest
 
 
 class MangaClient(commands.Bot):
@@ -42,7 +42,13 @@ class MangaClient(commands.Bot):
     async def setup_hook(self):
         await self.db.async_init()
         if self._config["proxy"]["enabled"]:
-            self.proxy_addr = f"http://{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
+            if self.config["proxy"]["username"] and self.config["proxy"]["password"]:
+                self.proxy_addr = (
+                    f"http://{self._config['proxy']['username']}:{self._config['proxy']['password']}@"
+                    f"{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
+                )
+            else:
+                self.proxy_addr = f"http://{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
 
         self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self._cf_scraper = ProtectedRequest(self)
@@ -125,7 +131,7 @@ class MangaClient(commands.Bot):
         try:
             if len(content) > 1997:
                 content = content[:1997] + "..."
-                
+
             await channel.send(content, **kwargs)
         except Exception as e:
             self._logger.error(f"Error while logging: {e}")
