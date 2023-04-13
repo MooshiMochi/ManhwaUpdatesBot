@@ -20,3 +20,5 @@ proxy:
     enabled: true
     ip: 210.148.141.4
     port: 8080
+    username: null
+    password: null
