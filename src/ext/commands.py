@@ -114,9 +114,17 @@ class CommandsCog(commands.Cog):
 
                 await self.rate_limiter.delay_if_necessary(manga)
 
-                update_check_result: ChapterUpdate = await scanner.check_updates(
-                    self.bot, manga
-                )
+                try:
+                    update_check_result: ChapterUpdate = await scanner.check_updates(
+                        self.bot, manga
+                    )
+                except Exception as e:
+                    self.bot.logger.warning(
+                        f"Error while checking for updates for {manga.human_name} ({manga.id})",
+                        exc_info=e,
+                    )
+                    await self.bot.log_to_discord(f"Error when checking updates: {e.__traceback__}"[:-2000])
+                    continue
 
                 if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
                     # self.bot._logger.info(f"No updates for {manga.human_name} ({manga.id})")
@@ -175,7 +183,7 @@ class CommandsCog(commands.Cog):
                 await self.bot.db.update_series(manga)
         except Exception as e:
             self.bot.logger.error("Error while checking updates", exc_info=e)
-            await self.bot.log_to_discord(str(e)[:2000])
+            await self.bot.log_to_discord(("Error while checking updates:\n" + str(e.__traceback__))[:2000])
         self.bot.logger.info("Update check finished =================")
 
     @check_updates_task.before_loop
@@ -586,7 +594,7 @@ class CommandsCog(commands.Cog):
             "`/bookmark view` - View your bookmarked manga.\n"
             "`/bookmark delete` - Delete a bookmark.\n"
             "`/bookmark update` - Update a bookmark.\n\n"
-            
+
             "**Config Commands:**\n"
             "`/config setup` - Set up the bot.\n"
             "`/config show` - Show the current configuration.\n"

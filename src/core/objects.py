@@ -89,7 +89,7 @@ class ABCScan(ABC):
 
     @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
-        message: str = f"Error in {cls.name} scan: {error}"
+        message: str = f"Error in {cls.name} scan: {error.__traceback__}"
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
@@ -351,10 +351,10 @@ class ABCScan(ABC):
 
 class PaginatorView(discord.ui.View):
     def __init__(
-        self,
-        items: list[Union[str, int, discord.Embed]] = None,
-        interaction: Union[discord.Interaction, Context] = None,
-        timeout: float = 3 * 3600  # 3 hours
+            self,
+            items: list[Union[str, int, discord.Embed]] = None,
+            interaction: Union[discord.Interaction, Context] = None,
+            timeout: float = 3 * 3600  # 3 hours
     ) -> None:
         self.items = items
         self.interaction: discord.Interaction = interaction
@@ -396,7 +396,7 @@ class PaginatorView(discord.ui.View):
 
     @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple)
     async def _first_page(
-        self, interaction: discord.Interaction, _
+            self, interaction: discord.Interaction, _
     ):
         self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())
@@ -422,7 +422,7 @@ class PaginatorView(discord.ui.View):
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple)
     async def _last_page(
-        self, interaction: discord.Interaction, _
+            self, interaction: discord.Interaction, _
     ):
         self.page = len(self.items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())
@@ -446,7 +446,7 @@ class PaginatorView(discord.ui.View):
         self.stop()
 
     async def on_error(
-        self, interaction: discord.Interaction, error: Exception, item
+            self, interaction: discord.Interaction, error: Exception, item
     ) -> None:
         if isinstance(error, TimeoutError):
             pass
@@ -463,14 +463,14 @@ class TextPageSource:
     """Get pages for text paginator"""
 
     def __init__(
-        self,
-        text,
-        *,
-        prefix="```",
-        suffix="```",
-        max_size=2000,
-        code_block=False,
-        block_prefix="py",
+            self,
+            text,
+            *,
+            prefix="```",
+            suffix="```",
+            max_size=2000,
+            code_block=False,
+            block_prefix="py",
     ):
         self._max_size = max_size
 
@@ -503,21 +503,21 @@ class TextPageSource:
         """Convert the text to chunks of size max_size-300"""
         chunks = []
         for i in range(0, len(text), self._max_size - 300):
-            chunks.append(text[i : i + self._max_size - 300])
+            chunks.append(text[i: i + self._max_size - 300])
         return chunks
 
 
 class Manga:
     def __init__(
-        self,
-        id: str,
-        human_name: str,
-        url: str,
-        cover_url: str,
-        last_chapter: Chapter,
-        available_chapters: list[Chapter],
-        completed: bool,
-        scanlator: str,
+            self,
+            id: str,
+            human_name: str,
+            url: str,
+            cover_url: str,
+            last_chapter: Chapter,
+            available_chapters: list[Chapter],
+            completed: bool,
+            scanlator: str,
     ) -> None:
         self._id: str = id
         self._human_name: str = human_name
@@ -539,10 +539,10 @@ class Manga:
         self._scanlator: str = scanlator
 
     def update(
-        self,
-        new_latest_chapter: Chapter,
-        completed: bool = None,
-        new_cover_url: str = None,
+            self,
+            new_latest_chapter: Chapter,
+            completed: bool = None,
+            new_cover_url: str = None,
     ) -> None:
         """Update the manga."""
         if new_latest_chapter is not None:
@@ -635,7 +635,6 @@ class Bookmark:
             guild_id: int,
             last_updated_ts: float = None,
     ):
-
         self.user_id: int = user_id
         self.manga: Manga = manga
         self.last_read_chapter: Chapter = last_read_chapter
@@ -686,14 +685,14 @@ class Bookmark:
 
 class GuildSettings:
     def __init__(
-        self,
-        bot: MangaClient,
-        guild_id: int,
-        channel_id: int,
-        updates_role_id: int,
-        webhook_url: str,
-        *args,
-        **kwargs,
+            self,
+            bot: MangaClient,
+            guild_id: int,
+            channel_id: int,
+            updates_role_id: int,
+            webhook_url: str,
+            *args,
+            **kwargs,
     ) -> None:
         self._bot: MangaClient = bot
         self.guild: discord.Guild = bot.get_guild(guild_id)
@@ -729,7 +728,7 @@ class GuildSettings:
 class MangaUpdatesUtils:
     @staticmethod
     async def getMangaUpdatesID(
-        session: aiohttp.ClientSession, manga_title: str
+            session: aiohttp.ClientSession, manga_title: str
     ) -> str | None:
         """Scrape the series ID from CommandsCog.com
 
@@ -739,7 +738,7 @@ class MangaUpdatesUtils:
         """
         encoded_title = urllib.parse.quote(manga_title)
         async with session.get(
-            f"https://www.mangaupdates.com/search.html?search={encoded_title}"
+                f"https://www.mangaupdates.com/search.html?search={encoded_title}"
         ) as resp:
             if resp.status != 200:
                 return None
@@ -754,7 +753,7 @@ class MangaUpdatesUtils:
 
     @staticmethod
     async def is_series_completed(
-        session: aiohttp.ClientSession, manga_id: str
+            session: aiohttp.ClientSession, manga_id: str
     ) -> bool:
         """Check if the series is completed or not."""
         api_url = "https://api.mangaupdates.com/v1/series/{id}"
@@ -765,4 +764,3 @@ class MangaUpdatesUtils:
 
             data = await resp.json()
             return data["completed"]
-
