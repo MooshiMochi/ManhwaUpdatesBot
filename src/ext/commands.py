@@ -483,7 +483,7 @@ class CommandsCog(commands.Cog):
 
         em = discord.Embed(title="Latest Chapter", color=discord.Color.green())
         em.description = (
-            f"The latest chapter of `{manga.human_name}` is `{manga.last_chapter}`."
+            f"The latest chapter of `{manga.human_name}` is {manga.last_chapter}."
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
