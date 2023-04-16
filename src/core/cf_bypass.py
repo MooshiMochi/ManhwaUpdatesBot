@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pyppeteer.errors
@@ -7,7 +8,6 @@ if TYPE_CHECKING:
     from src.core import MangaClient
 
 import asyncio
-from pyppeteer import launch
 from pyppeteer.launcher import Launcher
 from pyppeteer.browser import Browser
 from pyppeteer.network_manager import Request
@@ -21,7 +21,8 @@ class ProtectedRequest:
     _default_cache_time: int = 5
     logger = logging.getLogger(__name__)
 
-    def __init__(self, bot: MangaClient, headless: bool = True, ignored_urls: Optional[Set[str]] = None, *args, **kwargs) -> None:
+    def __init__(self, bot: MangaClient, headless: bool = True, ignored_urls: Optional[Set[str]] = None, *args,
+                 **kwargs) -> None:
 
         self.bot: MangaClient = bot
         self._user_data_dir: str = "browser_data"
@@ -137,6 +138,11 @@ class ProtectedRequest:
 
         # await asyncio.sleep(5)  # wait 5 sec in hopes that cloudflare will be done.
         content = await page.content()
+        if "Just a moment..." in content:
+            # wait 10 sec in hopes that cloudflare will be done.
+            await asyncio.sleep(10)
+            content = await page.content()
+
         page_cookie = await page.cookies()
         if page_cookie:
             await self.bot.db.set_cookie(scanlator.name, page_cookie)
@@ -194,4 +200,3 @@ class ProtectedRequest:
         """
         self._default_cache_time = cache_time
         self.logger.info(f"Set instance default cache time to {cache_time}")
-
