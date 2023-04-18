@@ -1,11 +1,15 @@
 ## Todo:
-   ### Websites to add: 
+
+### Websites to add:
+
       omegascans.org
 
-   ### Cloudflare protected websites to add:
+### Cloudflare protected websites to add:
+
       Nothing at the moment...
 
-   ### Features to add:
+### Features to add:
+
       - When a series has been marked complete/dropped, send a notification in the updates
       channel that the series has been marked as such.
 
@@ -28,10 +32,8 @@
 
       - Create a .sh file that will configure the system for pypetteer. (installing dependencies, etc)
 
-   ### Issues:
+### Issues:
 
       - reaperscans has pagination for chapters, so I need to add some code to grab all chapters...
    
       - flamescans sometimes returns 404 when requesting. Considering switching to grabbing data with pyppeteer instead
-
-      - aquamanga.org is not working on Linux. it returns 5001 error with text "enable cookies"

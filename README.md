@@ -2,7 +2,8 @@
 
 ## About:
 
-This is a bot that will periodically check for updates on the manga that you have subscribed to and alert you when there is a new chapter available.
+This is a bot that will periodically check for updates on the manga that you have subscribed to and alert you when there
+is a new chapter available.
 
 ## Requirements:
 
@@ -25,16 +26,19 @@ This bot currently only supports the following websites:
 - https://mangapill.com
 - https://en.leviatanscans.com
 - https://void-scans.com
+- https://aquamanga.com
 
-Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope for too much.
-Additionally, websites that are heavily protected by Cloudflare will also not be added (I will list the ones I tried to 
+Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope
+for too much.
+Additionally, websites that are heavily protected by Cloudflare will also not be added (I will list the ones I tried to
 add that fit these criteria at the bottom of this file).
 
-If you want to leave a suggesting of a website that I should implement for this, send me a DM over on Mooshi#6669 on discord!
+If you want to leave a suggesting of a website that I should implement for this, send me a DM over on Mooshi#6669 on
+discord!
 Or you can contact me through my email at rchiriac16@gmail.com
 
 ### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands)
-  
+
 How to set up the bot:
 
 1. Cloning the repository
@@ -59,12 +63,14 @@ How to set up the bot:
    ```
 
 ## Contributing:
+
    ```
    If you want to contribute to this project, feel free to fork the repository and make a pull request.
    I will review the changes and merge them if they are good.
    ``` 
 
 ### Websites heavily protected by Cloudflare (won't be considered for this project)
+
    ```
-   https://aquamanga.com
+   Nothing at the moment...
    ```
