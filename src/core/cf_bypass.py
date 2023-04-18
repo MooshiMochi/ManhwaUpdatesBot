@@ -33,7 +33,10 @@ class ProtectedRequest:
 
         options = {
             "headless": self._headless,
-            "args": ['--no-sandbox'],
+            "args": [
+                '--no-sandbox',
+
+            ],
             "userDataDir": self._user_data_dir,
             # "ignoreHTTPSErrors": True,
         }
@@ -140,7 +143,7 @@ class ProtectedRequest:
         content = await page.content()
         if "Just a moment..." in content:
             # wait 10 sec in hopes that cloudflare will be done.
-            await asyncio.sleep(10)
+            await page.waitFor(10000)
             content = await page.content()
 
         page_cookie = await page.cookies()
