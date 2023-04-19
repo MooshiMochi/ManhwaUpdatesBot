@@ -123,7 +123,7 @@ class CommandsCog(commands.Cog):
                         f"Error while checking for updates for {manga.human_name} ({manga.id})",
                         exc_info=e,
                     )
-                    await self.bot.log_to_discord(f"Error when checking updates: {e.__traceback__}"[:-2000])
+                    await self.bot.log_to_discord(f"Error when checking updates: {str(e.__traceback__)}"[:-2000])
                     continue
 
                 if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:

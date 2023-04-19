@@ -89,7 +89,7 @@ class ABCScan(ABC):
 
     @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
-        message: str = f"Error in {cls.name} scan: {error.__traceback__}"
+        message: str = f"Error in {cls.name} scan: {str(error.__traceback__)}"
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:

@@ -572,7 +572,7 @@ class Restricted(commands.Cog):
         try:
             result = await self.bot.db.execute(query, *args)
         except Exception as e:
-            await ctx.send(f"```diff\n-<[ {e.__traceback__} ]>-```".strip()[-2000:])
+            await ctx.send(f"```diff\n-<[ {str(e.__traceback__)} ]>-```".strip()[-2000:])
             return
         if result:
             msg = f"{result}"
