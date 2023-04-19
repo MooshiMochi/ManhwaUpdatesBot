@@ -224,12 +224,12 @@ class CommandsCog(commands.Cog):
             series_url = Aquamanga.fmt_url.format(manga_url_name=url_name)
             series_id = await Aquamanga.get_manga_id(self.bot, series_url)
 
-        elif RegExpressions.voidscans_url.search(manga_url):
-            scanlator = VoidScans
-
-            url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
-            series_url: str = VoidScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await VoidScans.get_manga_id(self.bot, series_url)
+        # elif RegExpressions.voidscans_url.search(manga_url):
+        #     scanlator = VoidScans
+        #
+        #     url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
+        #     series_url: str = VoidScans.fmt_url.format(manga_url_name=url_name)
+        #     series_id = await VoidScans.get_manga_id(self.bot, series_url)
 
         elif RegExpressions.tritinia_url.search(manga_url):
             scanlator = TritiniaScans
@@ -551,13 +551,14 @@ class CommandsCog(commands.Cog):
             \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
             • [LeviatanScans](https://en.leviatanscans.com/)
             \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
-            •[Void-Scans](https://void-scans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
             •[Aquamanga](https://aquamanga.com/)
             \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
             \n__**Note:**__
             More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
             """
+
+            # •[Void-Scans](https://void-scans.com/)
+            # \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
