@@ -107,7 +107,7 @@ class CommandsCog(commands.Cog):
                                      )
                     )
                     log_em.set_footer(
-                        text="Manga Updates Logs", icon_url=self.bot.user.avatar_url
+                        text="Manga Updates Logs", icon_url=self.bot.user.avatar.url
                     )
                     await self.bot.log_to_discord(embed=log_em)
                     continue

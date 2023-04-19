@@ -559,7 +559,9 @@ class Restricted(commands.Cog):
         help="Execute SQL queries.",
         brief="Execute SQL queries.",
     )
-    async def _sql(self, ctx: commands.Context, query: str, *args: list[str]) -> None:
+    async def _sql(self, ctx: commands.Context, *, query_n_args: str) -> None:
+        query, args = query_n_args.split(", ", 1)
+        args = args.split(", ")
         result = await self.bot.db.execute(query, *args)
         if result:
             await ctx.send(f"```diff\n-<[ {result} ]>-```")
