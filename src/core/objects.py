@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Iterable, Union, Any
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
+import traceback as tb
 from datetime import datetime
 from typing import Optional
 import aiohttp
@@ -89,7 +90,10 @@ class ABCScan(ABC):
 
     @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
-        message: str = f"Error in {cls.name} scan: {str(error.__traceback__)}"
+        traceback = "".join(
+            tb.format_exception(type(error), error, error.__traceback__)
+        )
+        message: str = f"Error in {cls.name} scan: {traceback}"
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:

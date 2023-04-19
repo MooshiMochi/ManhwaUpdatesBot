@@ -12,7 +12,7 @@ import os
 import subprocess
 import sys
 import textwrap
-import traceback
+import traceback as tb
 from contextlib import redirect_stdout
 
 import discord
@@ -431,7 +431,7 @@ class Restricted(commands.Cog):
                 value = stdout.getvalue()
                 pages = TextPageSource(
                     value
-                    + str("".join(traceback.format_exception(e, e, e.__traceback__))),
+                    + str("".join(tb.format_exception(e, e, e.__traceback__))),  # type: ignore
                     code_block=True,
                 ).getPages()
                 if len(pages) == 1:
@@ -572,7 +572,10 @@ class Restricted(commands.Cog):
         try:
             result = await self.bot.db.execute(query, *args)
         except Exception as e:
-            await ctx.send(f"```diff\n-<[ {str(e.__traceback__)} ]>-```".strip()[-2000:])
+            traceback = "".join(
+                tb.format_exception(type(e), e, e.__traceback__)
+            )
+            await ctx.send(f"```diff\n-<[ {traceback} ]>-```".strip()[-2000:])
             return
         if result:
             msg = f"{result}"

@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 from discord import app_commands
 from discord.ext import commands, tasks
+import traceback as tb
 
 from src.core.errors import MangaCompletedOrDropped
 from src.core.scanners import *
@@ -123,7 +124,10 @@ class CommandsCog(commands.Cog):
                         f"Error while checking for updates for {manga.human_name} ({manga.id})",
                         exc_info=e,
                     )
-                    await self.bot.log_to_discord(f"Error when checking updates: {str(e.__traceback__)}"[:-2000])
+                    traceback = "".join(
+                        tb.format_exception(type(e), e, e.__traceback__)
+                    )
+                    await self.bot.log_to_discord(f"Error when checking updates: {traceback}"[:-2000])
                     continue
 
                 if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
@@ -183,7 +187,10 @@ class CommandsCog(commands.Cog):
                 await self.bot.db.update_series(manga)
         except Exception as e:
             self.bot.logger.error("Error while checking updates", exc_info=e)
-            await self.bot.log_to_discord(("Error while checking updates:\n" + str(e.__traceback__))[:2000])
+            traceback = "".join(
+                tb.format_exception(type(e), e, e.__traceback__)
+            )
+            await self.bot.log_to_discord(("Error while checking updates:\n" + traceback)[:2000])
         self.bot.logger.info("Update check finished =================")
 
     @check_updates_task.before_loop
