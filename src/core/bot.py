@@ -49,7 +49,7 @@ class MangaClient(commands.Bot):
                 )
             else:
                 self.proxy_addr = f"http://{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
-    
+
         self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self._cf_scraper = ProtectedRequest(self)
 
@@ -129,7 +129,7 @@ class MangaClient(commands.Bot):
         if not channel:
             return
         try:
-            if len(content) > 1997:
+            if content and len(content) > 1997:
                 content = content[:1997] + "..."
 
             await channel.send(content, **kwargs)

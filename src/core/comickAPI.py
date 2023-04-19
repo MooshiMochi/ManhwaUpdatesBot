@@ -1,13 +1,13 @@
 import asyncio
-
 from typing import Any, Dict, Optional
+
 from src.core.cache import CachedClientSession
 
 
 class ComickAppAPI:
     def __init__(
-        self,
-        session: Optional[CachedClientSession] = None,
+            self,
+            session: Optional[CachedClientSession] = None,
     ):
         self.api_url: str = "https://api.comick.app"
         self.session = session or CachedClientSession()
@@ -20,13 +20,13 @@ class ComickAppAPI:
         # self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
 
     async def __request(
-        self,
-        method: str,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, Any]] = None,
-        **kwargs
+            self,
+            method: str,
+            endpoint: str,
+            params: Optional[Dict[str, Any]] = None,
+            data: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, Any]] = None,
+            **kwargs
     ) -> Dict[str, Any]:
         url = f"{self.api_url}/{endpoint}"
         if not headers:
@@ -36,7 +36,7 @@ class ComickAppAPI:
             await asyncio.sleep(self.rate_limit_reset)
 
         async with self.session.request(
-            method, url, params=params, json=data, headers=headers, **kwargs
+                method, url, params=params, json=data, headers=headers, **kwargs
         ) as response:
             json_data = await response.json()
             self.rate_limit_remaining = int(
@@ -46,7 +46,7 @@ class ComickAppAPI:
 
             if response.status != 200:
                 raise Exception(
-                    f"Request failed with status {response.status}: {json_data}"
+                    f"Request failed with status {response.status}: {json_data}\nURL: {response.url}"
                 )
             return json_data
 
@@ -100,10 +100,10 @@ class ComickAppAPI:
         return list(result)
 
     async def search(
-        self,
-        query: str = None,
-        page: Optional[int] = None,
-        limit: Optional[int] = None,
+            self,
+            query: str = None,
+            page: Optional[int] = None,
+            limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         endpoint = "v1.0/search"
         params = {
