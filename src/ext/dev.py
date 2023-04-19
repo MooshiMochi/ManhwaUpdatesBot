@@ -561,6 +561,8 @@ class Restricted(commands.Cog):
     )
     async def _sql(self, ctx: commands.Context, *, query_n_args: str) -> None:
         query, args = query_n_args.split(", ", 1)
+        if query.startswith("\"") and query.endswith("\""):
+            query = query[1:-1]
         args = args.split(", ")
         result = await self.bot.db.execute(query, *args)
         if result:
