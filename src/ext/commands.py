@@ -103,7 +103,7 @@ class CommandsCog(commands.Cog):
                     log_em = discord.Embed(
                         title="Unknown Scanlator",
                         description=(f"```diff\n- Scanlator: {manga.scanlator}\n- Name: {manga.human_name}\n- "
-                                     "ID: {manga.id}```"
+                                     f"ID: {manga.id}```"
                                      )
                     )
                     log_em.set_footer(
