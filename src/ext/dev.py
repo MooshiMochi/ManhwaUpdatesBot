@@ -554,6 +554,18 @@ class Restricted(commands.Cog):
         await self.client.loop.run_in_executor(None, self.client.db.import_data, buffer_file)
         await ctx.send("```diff\n-<[ Database imported. ]>-```")
 
+    @developer.command(
+        name="sql",
+        help="Execute SQL queries.",
+        brief="Execute SQL queries.",
+    )
+    async def _sql(self, ctx: commands.Context, query: str, *args: list[str]) -> None:
+        result = await self.bot.db.execute(query, *args)
+        if result:
+            await ctx.send(f"```diff\n-<[ {result} ]>-```")
+            return
+        await ctx.send("```diff\n-<[ Query executed. ]>-```")
+
 
 async def setup(bot: MangaClient) -> None:
     await bot.add_cog(Restricted(bot))
