@@ -106,13 +106,10 @@ class Database:
 
     async def execute(self, query: str, *args) -> Any:
         async with aiosqlite.connect(self.db_name) as db:
-            if query.startswith("SELECT"):
-                async with db.execute(query, args) as cursor:
-                    result = await cursor.fetchall()
-                    return result
-            else:
-                await db.execute(query, args)
+            async with db.execute(query, args) as cursor:
+                result = await cursor.fetchall()
                 await db.commit()
+                return result
 
     def export(self) -> BytesIO:
         """As this function carries out non-async operations, it must be run in a thread executor."""
