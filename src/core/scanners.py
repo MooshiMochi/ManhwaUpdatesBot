@@ -1192,6 +1192,7 @@ class Comick(ABCScan):
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
             manga_id = re.search(r"\"hid\":\"([^\"]+)\"", await resp.text()).group(1)
+            print(f"Got manga ID {manga_id} for {manga_url}")
             return manga_id
 
     @classmethod
