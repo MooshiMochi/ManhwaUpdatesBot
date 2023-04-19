@@ -560,13 +560,25 @@ class Restricted(commands.Cog):
         brief="Execute SQL queries.",
     )
     async def _sql(self, ctx: commands.Context, *, query_n_args: str) -> None:
-        query, args = query_n_args.split(", ", 1)
+        query_n_args = query_n_args.split(", ", 1)
+        if len(query_n_args) > 1:
+            query, args = query_n_args
+        else:
+            query = query_n_args[0]
+            args = None
         if query.startswith("\"") and query.endswith("\""):
             query = query[1:-1]
-        args = args.split(", ")
+        args = args.split(", ") if args else []
         result = await self.bot.db.execute(query, *args)
         if result:
-            await ctx.send(f"```diff\n-<[ {result} ]>-```")
+            msg = f"{result}"
+            if len(msg) > 2000:
+                pages = TextPageSource(msg, code_block=True).getPages()
+                print(pages[0])
+                view = PaginatorView(pages, ctx)
+                view.message = await ctx.send(pages[0], view=view)
+            else:
+                await ctx.send(f"```diff\n-<[ {result} ]>-```")
             return
         await ctx.send("```diff\n-<[ Query executed. ]>-```")
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from typing import TYPE_CHECKING, List, Dict, Any
 
 import aiosqlite
 from fuzzywuzzy import fuzz
-from datetime import datetime
 
 if TYPE_CHECKING:
     from .bot import MangaClient
@@ -106,9 +106,13 @@ class Database:
 
     async def execute(self, query: str, *args) -> Any:
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(query, *args)
-            await db.commit()
-            return await cursor.fetchall()
+            if query.startswith("SELECT"):
+                async with db.execute(query, args) as cursor:
+                    result = await cursor.fetchall()
+                    return result
+            else:
+                await db.execute(query, args)
+                await db.commit()
 
     def export(self) -> BytesIO:
         """As this function carries out non-async operations, it must be run in a thread executor."""
@@ -294,10 +298,10 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT * FROM series WHERE series.id NOT IN (SELECT series_id FROM users)
-                AND series.id NOT IN (SELECT series_id FROM bookmarks);
-                """
+                    """
+                    SELECT * FROM series WHERE series.id NOT IN (SELECT series_id FROM users)
+                    AND series.id NOT IN (SELECT series_id FROM bookmarks);
+                    """
             ) as cursor:
                 result = await cursor.fetchall()
                 if result:
@@ -316,9 +320,9 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT * FROM series WHERE completed = 0;
-                """
+                    """
+                    SELECT * FROM series WHERE completed = 0;
+                    """
             ) as cursor:
                 result = await cursor.fetchall()
                 if result:
@@ -449,7 +453,7 @@ class Database:
                 SELECT available_chapters FROM series
                 WHERE id = $1;
                 """,
-                (series_id, ),
+                (series_id,),
             )
             result = await cursor.fetchone()
             if result:
@@ -470,10 +474,10 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT * FROM config WHERE guild_id = ?;
-                """,
-                (guild_id,),
+                    """
+                    SELECT * FROM config WHERE guild_id = ?;
+                    """,
+                    (guild_id,),
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
@@ -482,10 +486,10 @@ class Database:
     async def get_series(self, series_id: str) -> Manga | None:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT * FROM series WHERE id = ?;
-                """,
-                (series_id,),
+                    """
+                    SELECT * FROM series WHERE id = ?;
+                    """,
+                    (series_id,),
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
@@ -498,9 +502,9 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT * FROM series;
-                """
+                    """
+                    SELECT * FROM series;
+                    """
             ) as cursor:
                 if result := await cursor.fetchall():
                     return Manga.from_tuples(result)
@@ -512,11 +516,11 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT * FROM series WHERE series.id IN (
-                    SELECT series_id FROM users
-                );
-                """
+                    """
+                    SELECT * FROM series WHERE series.id IN (
+                        SELECT series_id FROM users
+                    );
+                    """
             ) as cursor:
                 result = await cursor.fetchall()
                 if not result:
@@ -621,7 +625,7 @@ class Database:
             await db.commit()
 
     async def bulk_delete_series(
-        self, series_ids: list[str] | tuple[str] | set[str]
+            self, series_ids: list[str] | tuple[str] | set[str]
     ) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             id_list = ",".join([f"'{_id}'" for _id in series_ids])
@@ -639,12 +643,12 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT series.id, config.webhook_url, config.updates_role_id FROM series
-                INNER JOIN config ON series.id IN (
-                    SELECT series_id FROM users WHERE guild_id = config.guild_id
-                );
-                """
+                    """
+                    SELECT series.id, config.webhook_url, config.updates_role_id FROM series
+                    INNER JOIN config ON series.id IN (
+                        SELECT series_id FROM users WHERE guild_id = config.guild_id
+                    );
+                    """
             ) as cursor:
                 return await cursor.fetchall()
 
@@ -654,9 +658,9 @@ class Database:
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
-                """
-                SELECT webhook_url FROM config;
-                """
+                    """
+                    SELECT webhook_url FROM config;
+                    """
             ) as cursor:
                 return set([url for url, in await cursor.fetchall()])
 
@@ -670,21 +674,21 @@ class Database:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
 
                 async with db.execute(
-                    """
-                    SELECT * FROM series
-                    ORDER BY levenshtein(human_name, ?) DESC
-                    LIMIT 25;
-                    """,
-                    (current,),
+                        """
+                        SELECT * FROM series
+                        ORDER BY levenshtein(human_name, ?) DESC
+                        LIMIT 25;
+                        """,
+                        (current,),
                 ) as cursor:
                     if result := await cursor.fetchall():
                         return Manga.from_tuples(result)
         else:
             async with aiosqlite.connect(self.db_name) as db:
                 async with db.execute(
-                    """
-                    SELECT * FROM series LIMIT 25;
-                    """,
+                        """
+                        SELECT * FROM series LIMIT 25;
+                        """,
                 ) as cursor:
                     if result := await cursor.fetchall():
                         return Manga.from_tuples(result)
