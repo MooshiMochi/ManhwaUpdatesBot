@@ -574,7 +574,6 @@ class Restricted(commands.Cog):
             msg = f"{result}"
             if len(msg) > 2000:
                 pages = TextPageSource(msg, code_block=True).getPages()
-                print(pages[0])
                 view = PaginatorView(pages, ctx)
                 view.message = await ctx.send(pages[0], view=view)
             else:
