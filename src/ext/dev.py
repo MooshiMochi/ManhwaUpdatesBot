@@ -569,7 +569,11 @@ class Restricted(commands.Cog):
         if query.startswith("\"") and query.endswith("\""):
             query = query[1:-1]
         args = args.split(", ") if args else []
-        result = await self.bot.db.execute(query, *args)
+        try:
+            result = await self.bot.db.execute(query, *args)
+        except Exception as e:
+            await ctx.send(f"```diff\n-<[ {e.__traceback__} ]>-```".strip()[-2000:])
+            return
         if result:
             msg = f"{result}"
             if len(msg) > 2000:
