@@ -22,3 +22,4 @@ proxy:
     port: 8080
     username: null
     password: null
+aqua-manga-user-agent: null
