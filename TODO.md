@@ -16,7 +16,7 @@
       - in /list command, categorize the series into their scanlators
       perhaps add a select menu that will allow the user to view series for a selected scanlator.
 
-      - optimize the check_updates function so that it requests multiple series at once.
+      - optimize the check_updates function so that it requests multiple series at once (from different websites).
       Also make it so that sending updates to different webhooks happens simultaneously (probably 5 at a time)
 
       - when a user leaves the server, check if they are in any other server that the bot is also in

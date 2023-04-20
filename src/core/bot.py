@@ -13,6 +13,7 @@ from .comickAPI import ComickAppAPI
 from .database import Database
 from .mangadexAPI import MangaDexAPI
 from .objects import GuildSettings
+from .scanners import SCANLATORS
 
 
 class MangaClient(commands.Bot):
@@ -49,6 +50,10 @@ class MangaClient(commands.Bot):
                 )
             else:
                 self.proxy_addr = f"http://{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
+
+        if self._config["aqua-manga-user-agent"] is None:
+            if SCANLATORS.pop("aquamanga", None) is not None:
+                self._logger.warning(f"Removed aquamanga from scanlators (it is not available).")
 
         self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self._cf_scraper = ProtectedRequest(self)
