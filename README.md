@@ -25,7 +25,7 @@ This bot currently only supports the following websites:
 - https://nitroscans.com
 - https://mangapill.com
 - https://en.leviatanscans.com
-- https://aquamanga.com
+- https://aquamanga.com (requires explicit permission from the website owner)
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope
 for too much.
@@ -59,6 +59,12 @@ How to set up the bot:
    ```bash
    chmod +x run.sh setup.sh
    ./run.sh
+   ```
+
+## Notes
+
+   ```
+   If you are hosting the bot yourself Aquamanga will not work. You will require permission from the website owner! 
    ```
 
 ## Contributing:
