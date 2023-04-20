@@ -18,7 +18,7 @@ This bot currently only supports the following websites:
 - https://flamescans.org
 - https://asurascans.com
 - https://reaperscans.com
-- https://anigliscans.com
+- https://anigliscans.com (requires explicit permission from the website owner)
 - https://comick.app
 - https://luminousscans.com
 - https://drakescans.com
@@ -63,9 +63,9 @@ How to set up the bot:
 
 ## Notes
 
-   ```
-   If you are hosting the bot yourself Aquamanga will not work. You will require permission from the website owner! 
-   ```
+The following websites will not work unless a custom user-agent allowed by the owner is used:
+https://aquamanga.com
+https://anigliscans.com
 
 ## Contributing:
 
