@@ -64,8 +64,9 @@ How to set up the bot:
 ## Notes
 
 The following websites will not work unless a custom user-agent allowed by the owner is used:
-https://aquamanga.com
-https://anigliscans.com
+
+- https://aquamanga.com
+- https://anigliscans.com
 
 ## Contributing:
 
