@@ -754,9 +754,9 @@ class Aquamanga(ABCScan):
     fmt_url = base_url + "read/{manga_url_name}"
     name = "aquamanga"
 
-    @staticmethod
-    def _make_headers(bot: MangaClient):
-        user_agent = bot.config.get("aqua-manga-user-agent")
+    @classmethod
+    def _make_headers(cls, bot: MangaClient):
+        user_agent = bot.config['user-agents'].get(cls.name)
         if not user_agent:
             return {}
         return {"User-Agent": user_agent}
@@ -1030,6 +1030,13 @@ class AniglisScans(ABCScan):
     name = "aniglisscans"
 
     @classmethod
+    def _make_headers(cls, bot: MangaClient):
+        user_agent = bot.config['user-agents'].get(cls.name)
+        if not user_agent:
+            return {}
+        return {"User-Agent": user_agent}
+
+    @classmethod
     async def check_updates(
             cls,
             bot: MangaClient,
@@ -1040,7 +1047,7 @@ class AniglisScans(ABCScan):
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
@@ -1089,7 +1096,7 @@ class AniglisScans(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
@@ -1110,7 +1117,7 @@ class AniglisScans(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
@@ -1130,7 +1137,7 @@ class AniglisScans(ABCScan):
 
     @classmethod
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)

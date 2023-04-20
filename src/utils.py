@@ -168,7 +168,10 @@ def ensure_configs(logger) -> Optional[dict]:
             "ip": "210.148.141.4",  # japanese proxy with HTTPS support
             "port": 8080,
         },
-        "aqua-manga-user-agent": None,
+        "user-agents": {
+            "aquamanga": None,
+            "aniglisscans": None,
+        },
     }
 
     config_edited: bool = False
@@ -195,11 +198,12 @@ def ensure_configs(logger) -> Optional[dict]:
                     config[key][k] = v
                     config_edited = True
 
-    if config["aqua-manga-user-agent"] is None:
-        logger.warning(
-            "- Aquamanga WILL NOT WORK without a valid user-agent. Please contact the website owner to get a valid "
-            "user-agent."
-        )
+    for key, value in config["user-agents"].items():
+        if value is None:
+            logger.warning(
+                f"- {str(key).capitalize()} WILL NOT WORK without a valid user-agent. Please contact the website "
+                f"owner to get a valid user-agent."
+            )
 
     if config_edited:
         logger.warning(

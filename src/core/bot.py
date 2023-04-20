@@ -51,9 +51,7 @@ class MangaClient(commands.Bot):
             else:
                 self.proxy_addr = f"http://{self._config['proxy']['ip']}:{self._config['proxy']['port']}"
 
-        if self._config["aqua-manga-user-agent"] is None:
-            if SCANLATORS.pop("aquamanga", None) is not None:
-                self._logger.warning(f"Removed aquamanga from scanlators (it is not available).")
+        self._remove_unavailable_scanlators()
 
         self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self._cf_scraper = ProtectedRequest(self)
@@ -70,6 +68,11 @@ class MangaClient(commands.Bot):
         self.comick_api = ComickAppAPI(
             CachedClientSession(proxy=self.proxy_addr, name="cache.comick", trust_env=True)
         )
+
+    def _remove_unavailable_scanlators(self):
+        for scanlator, user_agent in self._config["user-agents"].items():
+            if user_agent is None and SCANLATORS.pop(scanlator, None) is not None:
+                self._logger.warning(f"Removed {scanlator} from scanlators (requires approved user agent).")
 
     async def update_restart_message(self):
         await self.wait_until_ready()

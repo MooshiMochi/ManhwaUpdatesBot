@@ -224,7 +224,10 @@ class CommandsCog(commands.Cog):
             series_id = await Manganato.get_manga_id(self.bot, manga_url)
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
-        elif RegExpressions.aquamanga_url.search(manga_url) and self.bot.config["aqua-manga-user-agent"] is not None:
+        elif (
+                RegExpressions.aquamanga_url.search(manga_url) and
+                self.bot.config["user-agents"][Aquamanga.name] is not None
+        ):
             scanlator = Aquamanga
 
             url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
@@ -286,7 +289,10 @@ class CommandsCog(commands.Cog):
             series_id = await Comick.get_manga_id(self.bot, manga_url)
             series_url: str = Comick.fmt_url.format(manga_url_name=url_name)
 
-        elif RegExpressions.aniglisscans_url.search(manga_url):
+        elif (
+                RegExpressions.aniglisscans_url.search(manga_url) and
+                self.bot.config["user-agents"][AniglisScans.name] is not None
+        ):
             scanlator = AniglisScans
 
             url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
@@ -544,8 +550,6 @@ class CommandsCog(commands.Cog):
                 \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
                 • [ReaperScans](https://reaperscans.com/)
                 \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
-                • [AniglisScans](https://anigliscans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
                 • [Comick](https://comick.app/)
                 \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
                 • [Luminous](https://luminousscans.com/)
@@ -562,10 +566,18 @@ class CommandsCog(commands.Cog):
                 """
                 + (
                     f"""
-                            •[Aquamanga](https://aquamanga.com/)
-                            \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
-                            """
-                    if self.bot.config["aqua-manga-user-agent"] is not None else ""
+                    •[Aquamanga](https://aquamanga.com/)
+                    \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
+                    """
+                    if self.bot.config["user-agents"][Aquamanga.name] is not None else ""
+                )
+
+                + (
+                    f"""
+                    • [AniglisScans](https://anigliscans.com/)
+                    \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
+                    """
+                    if self.bot.config["user-agents"][AniglisScans.name] is not None else ""
                 )
 
                 + (
