@@ -224,7 +224,7 @@ class CommandsCog(commands.Cog):
             series_id = await Manganato.get_manga_id(self.bot, manga_url)
             series_url: str = Manganato.fmt_url.format(manga_id=series_id)
 
-        elif RegExpressions.aquamanga_url.search(manga_url):
+        elif RegExpressions.aquamanga_url.search(manga_url) and self.bot.config["aqua-manga-user-agent"] is not None:
             scanlator = Aquamanga
 
             url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
@@ -528,41 +528,52 @@ class CommandsCog(commands.Cog):
     async def supported_websites(self, interaction: discord.Interaction) -> None:
         em = discord.Embed(title="Supported Websites", color=discord.Color.green())
         em.description = (
-            """
-            Manga Updates Bot currently supports the following websites:
-            • [MangaDex](https://mangadex.org/)
-             \u200b \u200b \u200b \↪ Format -> `https://mangadex.org/title/1b2c3d/`
-            • [Manganato](https://manganato.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://manganato.com/manga-m123456` 
-            • [Toonily](https://toonily.com)
-            \u200b \u200b \u200b \↪ Format -> `https://toonily.net/manga/manga-title/`
-            • [TritiniaScans](https://tritinia.org)
-            \u200b \u200b \u200b \↪ Format -> `https://tritinia.org/manga/manga-title/`
-            • [FlameScans](https://flamescans.org/)
-            \u200b \u200b \u200b \↪ Format -> `https://flamescans.org/series/12351-manga-title/`
-            • [AsuraScans](https://asurascans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
-            • [ReaperScans](https://reaperscans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
-            • [AniglisScans](https://anigliscans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
-            • [Comick](https://comick.app/)
-            \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
-            • [Luminous](https://luminousscans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://luminousscans.com/series/12351-manga-title/`
-            • [DrakeScans](https://drakescans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://drakescans.com/series/manga-title/`
-            • [NitroScans](https://nitroscans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://nitroscans.com/series/manga-title/`
-            • [Mangapill](https://mangapill.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
-            • [LeviatanScans](https://en.leviatanscans.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
-            •[Aquamanga](https://aquamanga.com/)
-            \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
-            \n__**Note:**__
-            More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
-            """
+                """
+                Manga Updates Bot currently supports the following websites:
+                • [MangaDex](https://mangadex.org/)
+                 \u200b \u200b \u200b \↪ Format -> `https://mangadex.org/title/1b2c3d/`
+                • [Manganato](https://manganato.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://manganato.com/manga-m123456` 
+                • [Toonily](https://toonily.com)
+                \u200b \u200b \u200b \↪ Format -> `https://toonily.net/manga/manga-title/`
+                • [TritiniaScans](https://tritinia.org)
+                \u200b \u200b \u200b \↪ Format -> `https://tritinia.org/manga/manga-title/`
+                • [FlameScans](https://flamescans.org/)
+                \u200b \u200b \u200b \↪ Format -> `https://flamescans.org/series/12351-manga-title/`
+                • [AsuraScans](https://asurascans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
+                • [ReaperScans](https://reaperscans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
+                • [AniglisScans](https://anigliscans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
+                • [Comick](https://comick.app/)
+                \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
+                • [Luminous](https://luminousscans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://luminousscans.com/series/12351-manga-title/`
+                • [DrakeScans](https://drakescans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://drakescans.com/series/manga-title/`
+                • [NitroScans](https://nitroscans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://nitroscans.com/series/manga-title/`
+                • [Mangapill](https://mangapill.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
+                • [LeviatanScans](https://en.leviatanscans.com/)
+                \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
+                
+                """
+                + (
+                    f"""
+                            •[Aquamanga](https://aquamanga.com/)
+                            \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
+                            """
+                    if self.bot.config["aqua-manga-user-agent"] is not None else ""
+                )
+
+                + (
+                    """
+                    \n__**Note:**__
+                    More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
+                    """
+                )
 
             # •[Void-Scans](https://void-scans.com/)
             # \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
