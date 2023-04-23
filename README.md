@@ -11,7 +11,7 @@ is a new chapter available.
 
 This bot currently only supports the following websites:
 
-- https://toonily.com
+- https://toonily.com (requires explicit permission from the website owner)
 - https://manganato.com (alternatively known as https://chapmanganato.com)
 - https://tritinia.org
 - https://mangadex.org
@@ -67,6 +67,7 @@ The following websites will not work unless a custom user-agent allowed by the o
 
 - https://aquamanga.com
 - https://anigliscans.com
+- https://toonily.com
 
 ## Contributing:
 

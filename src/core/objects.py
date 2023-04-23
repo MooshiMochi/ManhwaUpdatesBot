@@ -89,6 +89,13 @@ class ABCScan(ABC):
     name: str = "Unknown"
 
     @classmethod
+    def _make_headers(cls, bot: MangaClient):
+        user_agent = bot.config['user-agents'].get(cls.name)
+        if not user_agent:
+            return {}
+        return {"User-Agent": user_agent}
+
+    @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
         traceback = "".join(
             tb.format_exception(type(error), error, error.__traceback__)
