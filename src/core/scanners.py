@@ -280,6 +280,7 @@ class Toonily(ABCScan):
     base_url = "https://toonily.com/webtoon/"
     fmt_url = base_url + "{manga_url_name}"
     name = "toonily"
+    MIN_TIME_BETWEEN_REQUESTS = 30
 
     @classmethod
     async def check_updates(
