@@ -145,6 +145,8 @@ class ProtectedRequest:
             # wait 10 sec in hopes that cloudflare will be done.
             await page.waitFor(10000)
             content = await page.content()
+            if "Verify you are human" in content:
+                await self.click_cloudflare_checkbox(page)
 
         page_cookie = await page.cookies()
         if page_cookie:
@@ -158,9 +160,17 @@ class ProtectedRequest:
                 )
             }
         self.logger.debug(f"Cached response for {url}")
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(5)
         await page.close()
         return content
+
+    async def click_cloudflare_checkbox(self, page):
+        checkbox = await page.querySelector('input[type="checkbox"]')
+        if checkbox:
+            await checkbox.click()
+            self.logger.debug("Clicked 'Verify you are human' checkbox.")
+        else:
+            self.logger.debug("Could not find 'Verify you are human' checkbox.")
 
     @property
     def ignored_urls(self) -> Set[str]:
