@@ -97,9 +97,7 @@ async def ensure_environment(bot, logger) -> None:
         exit_bot()
 
 
-def ensure_configs(logger) -> Optional[dict]:
-    required_keys = ["token"]
-
+def load_config(logger) -> Optional[dict]:
     if not os.path.exists("config.yml"):
         logger.critical(
             "   - config.yml file not found. Please follow the instructions listed in the README.md file."
@@ -108,7 +106,7 @@ def ensure_configs(logger) -> Optional[dict]:
 
     with open("config.yml", "r") as f:
         try:
-            config = yaml.safe_load(f)
+            return yaml.safe_load(f)
         except yaml.YAMLError as e:
             logger.critical(
                 "   - config.yml file is not a valid YAML file. Please follow the instructions "
@@ -118,6 +116,9 @@ def ensure_configs(logger) -> Optional[dict]:
             exit_bot()
             return
 
+
+def ensure_configs(logger, config) -> Optional[dict]:
+    required_keys = ["token"]
     if not config:
         logger.critical(
             "   - config.yml file is empty. Please follow the instructions listed in the README.md file."
@@ -198,13 +199,6 @@ def ensure_configs(logger) -> Optional[dict]:
                     config[key][k] = v
                     config_edited = True
 
-    for key, value in config["user-agents"].items():
-        if value is None:
-            logger.warning(
-                f"- {str(key).capitalize()} WILL NOT WORK without a valid user-agent. Please contact the website "
-                f"owner to get a valid user-agent."
-            )
-
     if config_edited:
         logger.warning(
             "    - Using default config values may cause the bot to not function as expected."
@@ -213,7 +207,18 @@ def ensure_configs(logger) -> Optional[dict]:
             yaml.safe_dump(config, f)
         logger.warning("    - config.yml file has been updated with default configs.")
 
+    del_unavailable_scanlators(config, logger)
+
     return config
+
+
+def del_unavailable_scanlators(config, logger):
+    for key, value in config["user-agents"].items():
+        if value is None:
+            logger.warning(
+                f"- {str(key).capitalize()} WILL NOT WORK without a valid user-agent. Please contact the website "
+                f"owner to get a valid user-agent."
+            )
 
 
 def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:

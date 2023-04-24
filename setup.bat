@@ -14,11 +14,11 @@ REM Check if token key exists in config.yml file
 findstr /B "token:" %CONFIG_FILE_NAME% >nul && (
   REM Replace token value if new value is not None/Empty
   if not "%BOT_TOKEN%"=="" (
-    powershell -Command "(gc %CONFIG_FILE_NAME%) -replace 'token:.+', 'token: %BOT_TOKEN%' | Out-File %CONFIG_FILE_NAME% -Encoding ASCII"
+    powershell -Command "(gc %CONFIG_FILE_NAME%).TrimEnd() -replace 'token:.+', 'token: %BOT_TOKEN%' | Out-File %CONFIG_FILE_NAME% -Encoding ASCII"
   )
 ) || (
   REM Add new token key-value pair to config.yml file
   if not "%BOT_TOKEN%"=="" (
-    set /p =token: %BOT_TOKEN%<nul>>%CONFIG_FILE_NAME%
+    powershell -Command "(Get-Content %CONFIG_FILE_NAME% -Raw).TrimEnd() + [Environment]::NewLine + 'token: %BOT_TOKEN%' | Set-Content %CONFIG_FILE_NAME%"
   )
 )

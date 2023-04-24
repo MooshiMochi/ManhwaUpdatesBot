@@ -562,18 +562,17 @@ class CommandsCog(commands.Cog):
                 \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
                 • [LeviatanScans](https://en.leviatanscans.com/)
                 \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
-                
                 """
                 + (
-                    f"""
-                    •[Aquamanga](https://aquamanga.com/)
+                    f"""\
+                    • [Aquamanga](https://aquamanga.com/)
                     \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
                     """
                     if self.bot.config["user-agents"][Aquamanga.name] is not None else ""
                 )
 
                 + (
-                    f"""
+                    f"""\
                     • [AniglisScans](https://anigliscans.com/)
                     \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
                     """

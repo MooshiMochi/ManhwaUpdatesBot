@@ -199,7 +199,7 @@ class ProtectedRequest:
             None
         """
         cls._default_cache_time = cache_time
-        cls.logger.warning(f"Set default cache time to {cache_time}")
+        cls.logger.info(f"Set default cache time to {cache_time}")
 
     def set_instance_default_cache_time(self, cache_time: int) -> None:
         """

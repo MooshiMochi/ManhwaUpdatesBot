@@ -9,7 +9,7 @@ from discord.utils import setup_logging
 from src.core import BotCommandTree
 from src.core import CachedClientSession, ProtectedRequest
 from src.core import MangaClient
-from src.utils import ensure_configs, ensure_environment, exit_bot, ensure_proxy
+from src.utils import ensure_configs, ensure_environment, exit_bot, ensure_proxy, load_config
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -26,13 +26,16 @@ def ensure_logs() -> None:
 
 
 async def main():
-    setup_logging(level=logging.INFO)
+    # setup_logging(level=logging.INFO)
 
     _logger = logging.getLogger("main")
-
-    config = ensure_configs(_logger)
-
-    setup_logging(level=logging.DEBUG if config["debug"] else logging.INFO)
+    _logger.info("Starting bot...")
+    config = load_config(_logger)
+    if config and config.get("debug") is True:
+        setup_logging(level=logging.DEBUG)
+    else:
+        setup_logging(level=logging.INFO)
+    config = ensure_configs(_logger, config)
 
     ensure_logs()
 
