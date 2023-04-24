@@ -9,7 +9,7 @@ from discord.utils import setup_logging
 from src.core import BotCommandTree
 from src.core import CachedClientSession, ProtectedRequest
 from src.core import MangaClient
-from src.utils import ensure_configs, ensure_environment, exit_bot, ensure_proxy, load_config
+from src.utils import ensure_configs, ensure_environment, exit_bot, ensure_proxy, load_config, silence_debug_loggers
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -38,6 +38,19 @@ async def main():
     config = ensure_configs(_logger, config)
 
     ensure_logs()
+
+    silence_debug_loggers(
+        _logger,
+        [
+            "pyppeteer.connection.Connection",
+            "websockets.client",
+            "pyppeteer.connection.CDPSession",
+            "aiosqlite",
+            "discord.gateway",
+            "discord.client",
+            "discord.http"
+        ]
+    )
 
     CachedClientSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
     ProtectedRequest.set_default_cache_time(config["constants"]["cache-retention-seconds"])

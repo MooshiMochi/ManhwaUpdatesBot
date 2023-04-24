@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -219,6 +220,12 @@ def del_unavailable_scanlators(config, logger):
                 f"- {str(key).capitalize()} WILL NOT WORK without a valid user-agent. Please contact the website "
                 f"owner to get a valid user-agent."
             )
+
+
+def silence_debug_loggers(main_logger, logger_names: list) -> None:
+    for logger_name in logger_names:
+        logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+        main_logger.warning(f"Silenced debug logger: {logger_name}")
 
 
 def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:

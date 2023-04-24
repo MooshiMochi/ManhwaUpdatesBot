@@ -12,7 +12,7 @@ from src.static import EMPTY
 
 
 class CachedClientSession(aiohttp.ClientSession):
-    logger = logging.getLogger(__name__)
+    logger = None
     _default_cache_time: int = 5
 
     def __init__(
@@ -29,7 +29,7 @@ class CachedClientSession(aiohttp.ClientSession):
         self._proxy = proxy
         self._name = name or __name__
 
-        self.logger.name = self._name
+        self.logger = logging.getLogger(self._name or __name__)
 
         self.set_default_cache_time = lambda *_, **k: self.logger.error(
             "Error: The 'set_default_cache_time' method can only be called on the class, not an instance.\n"
@@ -187,7 +187,7 @@ class CachedClientSession(aiohttp.ClientSession):
             None
         """
         cls._default_cache_time = cache_time
-        cls.logger.info(f"Set default cache time to {cache_time}")
+        logging.getLogger(__name__).info(f"Set default cache time to {cache_time}")
 
     def set_instance_default_cache_time(self, cache_time: int) -> None:
         """

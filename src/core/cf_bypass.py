@@ -21,8 +21,7 @@ class ProtectedRequest:
     _default_cache_time: int = 5
     logger = logging.getLogger(__name__)
 
-    def __init__(self, bot: MangaClient, headless: bool = True, ignored_urls: Optional[Set[str]] = None, *args,
-                 **kwargs) -> None:
+    def __init__(self, bot: MangaClient, headless: bool = True, ignored_urls: Optional[Set[str]] = None) -> None:
 
         self.bot: MangaClient = bot
         self._user_data_dir: str = "browser_data"
@@ -35,7 +34,6 @@ class ProtectedRequest:
             "headless": self._headless,
             "args": [
                 '--no-sandbox',
-
             ],
             "userDataDir": self._user_data_dir,
             # "ignoreHTTPSErrors": True,
