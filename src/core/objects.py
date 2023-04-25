@@ -129,6 +129,7 @@ class ABCScan(ABC):
 
         Raises:
             MangaNotFound - If the manga is not found in the scanlator's website.
+            URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         request_url = _manga_request_url or manga.url
         all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
@@ -174,6 +175,7 @@ class ABCScan(ABC):
 
         Raises:
             MangaNotFound - If the manga is not found in the scanlator's website.
+            URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         raise NotImplementedError
 
@@ -196,6 +198,7 @@ class ABCScan(ABC):
 
         Raises:
             MangaNotFound - If the manga is not found in the scanlator's website.
+            URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         raise NotImplementedError
 
@@ -710,7 +713,7 @@ class GuildSettings:
         self.channel: discord.TextChannel = self.guild.get_channel(channel_id)
         self.role: Optional[discord.Role] = self.guild.get_role(updates_role_id)
         self.webhook: discord.Webhook = discord.Webhook.from_url(
-            webhook_url, session=bot.session
+            webhook_url, session=bot.session, client=bot
         )
         self._args = args
         self._kwargs = kwargs

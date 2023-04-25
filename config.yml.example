@@ -11,6 +11,7 @@ extensions:
   - src.ext.commands
   - src.ext.dev
   - src.ext.bookmark
+  - src.ext.update_check
 prefix: '?'
 privileged-intents:
   members: false

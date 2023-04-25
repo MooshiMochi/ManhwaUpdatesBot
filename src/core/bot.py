@@ -180,6 +180,10 @@ class MangaClient(commands.Bot):
                 return
 
     @property
+    def debug(self):
+        return self._debug_mode
+
+    @property
     def session(self):
         return self._session
 

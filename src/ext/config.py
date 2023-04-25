@@ -44,10 +44,10 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             return False
 
         if (
-            interaction.user.guild_permissions.manage_roles
-            or interaction.user.id in self.bot.owner_ids
-            or interaction.user.guild_permissions.administrator
-            or interaction.user.guild_permissions.manage_channels
+                interaction.user.guild_permissions.manage_roles
+                or interaction.user.id in self.bot.owner_ids
+                or interaction.user.guild_permissions.administrator
+                or interaction.user.guild_permissions.manage_channels
         ):
             return True
 
@@ -66,10 +66,10 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
         role="The role to ping when a new update is released.",
     )
     async def setup(
-        self,
-        interaction: discord.Interaction,
-        channel: discord.TextChannel,
-        role: Optional[discord.Role],
+            self,
+            interaction: discord.Interaction,
+            channel: discord.TextChannel,
+            role: Optional[discord.Role],
     ):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -191,7 +191,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot._debug_mode and bot.test_guild_id:
+    if bot.debug and bot.test_guild_id:
         await bot.add_cog(ConfigCog(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
         await bot.add_cog(ConfigCog(bot))

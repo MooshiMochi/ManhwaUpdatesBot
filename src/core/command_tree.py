@@ -25,7 +25,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
     @staticmethod
     async def _respond_with_check(
-        interaction: discord.Interaction, embed: discord.Embed, ephemeral: bool = True
+            interaction: discord.Interaction, embed: discord.Embed, ephemeral: bool = True
     ) -> None:
         try:
             await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
@@ -39,19 +39,19 @@ class BotCommandTree(discord.app_commands.CommandTree):
         if not interaction.guild:
             return False
         elif (
-            not interaction.guild.me.guild_permissions.send_messages
-            and not interaction.guild.me.guild_permissions.embed_links
+                not interaction.guild.me.guild_permissions.send_messages
+                and not interaction.guild.me.guild_permissions.embed_links
         ):
             self.client.logger.error("I don't have permission to send messages or embed links.")
             return False
         return True
 
     async def on_error(
-        self,
-        interaction: discord.Interaction,
-        error: discord.app_commands.AppCommandError,
-        *args,
-        **kwargs,
+            self,
+            interaction: discord.Interaction,
+            error: discord.app_commands.AppCommandError,
+            *args,
+            **kwargs,
     ) -> None:
         # self.client._logger.error(
         #     f"{tb.format_exc()}\n{interaction}\n{error}\n{args}\n{kwargs}",
@@ -92,6 +92,13 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
+        elif isinstance(error, URLAccessFailed):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Failed to access URL!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
         elif isinstance(error, ChapterNotFound):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Chapter not found!",
@@ -104,7 +111,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 title=f"{Emotes.warning} Hey, you can't do that!",
                 color=0xFF0000,
                 description="Sorry, you need to have one of the following roles: "
-                + f"<@&{'>, <@&'.join(error.missing_roles)}> to execute that command.",
+                            + f"<@&{'>, <@&'.join(error.missing_roles)}> to execute that command.",
             )
 
         elif isinstance(error, app_commands.errors.BotMissingPermissions):
@@ -115,8 +122,8 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 title=f"{Emotes.warning} I can't do that.",
                 color=0xFF0000,
                 description=f"Sorry, I require the permission(s) `{perms}` to "
-                + "execute that command. Please contact a server "
-                + "administrator to fix this issue.",
+                            + "execute that command. Please contact a server "
+                            + "administrator to fix this issue.",
             )
 
         elif isinstance(error, app_commands.errors.CommandOnCooldown):
@@ -185,7 +192,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 f"logs/error.log"
             )
             async with aiofiles.open(
-                "logs/error.log", "a", encoding="utf-8"
+                    "logs/error.log", "a", encoding="utf-8"
             ) as logfile:
                 await logfile.write(f"{tb.format_exc()}\n\n{error}")
 

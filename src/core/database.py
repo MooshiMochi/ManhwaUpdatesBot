@@ -64,7 +64,6 @@ class Database:
             )
 
             await db.execute(
-                # available_chapters will have to be a list of strings. can store the json.dumps string
                 """
                 CREATE TABLE IF NOT EXISTS bookmarks (
                     user_id INTEGER NOT NULL,
@@ -100,6 +99,15 @@ class Database:
                     FOREIGN KEY (scanlator) REFERENCES series (scanlator),
                     UNIQUE (scanlator) ON CONFLICT REPLACE
                 )
+                """
+            )
+
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS scanlators_config (
+                    scanlator TEXT PRIMARY KEY NOT NULL,
+                    enabled BOOLEAN NOT NULL DEFAULT 1
+                );
                 """
             )
             await db.commit()
@@ -158,6 +166,39 @@ class Database:
                 else:
                     # Import table data
                     df.to_sql(table_name, conn, index=False, if_exists="append")
+
+    async def toggle_scanlator(self, scanlator: str) -> None:
+        """
+        Summary: Toggles a scanlator's enabled status.
+
+        Parameters:
+            scanlator (str): The scanlator to toggle.
+
+        Returns:
+            (bool): Whether the scanlator was enabled or disabled.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 1) 
+                ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled RETURNING enabled;
+                """,
+                (scanlator,),
+            )
+            result = await cursor.fetchone()
+            await db.commit()
+            return result[0]
+
+    async def get_disabled_scanlators(self) -> List[str]:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT scanlator FROM scanlators_config WHERE enabled = 0;
+                """
+            )
+            result = await cursor.fetchall()
+            await db.commit()
+            return [row[0] for row in result]
 
     async def add_series(self, manga_obj: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -304,6 +345,29 @@ class Database:
                 if result:
                     return Manga.from_tuples(result)
                 return None
+
+    async def get_manga_guild_ids(self, manga_id: str | int) -> list[int]:
+        """
+        Summary:
+            Returns a list of guild ids that has subscribed to the manga.
+
+        Parameters:
+            manga_id (str|int): The id of the manga.
+
+        Returns:
+            list[int]: list of guild ids that has subscribed to the manga.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                    """
+                    SELECT guild_id FROM users WHERE series_id = $1;
+                    """,
+                    (manga_id,),
+            ) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return list(set([row[0] for row in result]))
+                return []
 
     async def get_series_to_update(self) -> list[Manga] | None:
         """
@@ -480,6 +544,31 @@ class Database:
                 if result:
                     return GuildSettings(self.client, *result)
 
+    async def get_many_guild_config(self, guild_ids: list[int]) -> list[GuildSettings] | None:
+        """
+        Summary:
+            Returns a list of GuildSettings objects for the specified guilds.
+
+        Parameters:
+            guild_ids (list[int]): A list of guild ids.
+
+        Returns:
+            List[GuildSettings] if guilds are found.
+            None if no guilds are found.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                    """
+                    SELECT * FROM config WHERE guild_id IN ({});
+                    """.format(
+                        ", ".join("?" * len(guild_ids))
+                    ),
+                    guild_ids,
+            ) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return [GuildSettings(self.client, *guild) for guild in result]
+
     async def get_series(self, series_id: str) -> Manga | None:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
@@ -632,22 +721,6 @@ class Database:
                 """
             )
             await db.commit()
-
-    async def get_series_webhook_role_pairs(self) -> list[tuple[str, str, int]]:
-        """
-
-        Returns: [(series_id, webhook_url, updates_role_id), ...)]
-        """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT series.id, config.webhook_url, config.updates_role_id FROM series
-                    INNER JOIN config ON series.id IN (
-                        SELECT series_id FROM users WHERE guild_id = config.guild_id
-                    );
-                    """
-            ) as cursor:
-                return await cursor.fetchall()
 
     async def get_webhooks(self) -> set[str]:
         """

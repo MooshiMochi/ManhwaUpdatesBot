@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -32,10 +33,10 @@ class BookmarkCog(commands.Cog):
             return []
 
         return [
-            discord.app_commands.Choice(
-                name=x[1],
-                value=x[0]
-            ) for x in bookmarks
+                   discord.app_commands.Choice(
+                       name=x[1],
+                       value=x[0]
+                   ) for x in bookmarks
                ][:25]
 
     async def chapter_autocomplete(
@@ -49,11 +50,11 @@ class BookmarkCog(commands.Cog):
             return []
 
         return [
-            discord.app_commands.Choice(
-                name=chp.name[:97] + ("..." if len(chp.name) > 100 else ''),
-                value=str(chp.index)
-            ) for chp in chapters
-        ][:25]
+                   discord.app_commands.Choice(
+                       name=chp.name[:97] + ("..." if len(chp.name) > 100 else ''),
+                       value=str(chp.index)
+                   ) for chp in chapters
+               ][:25]
 
     bookmark_group = app_commands.Group(name="bookmark", description="Bookmark a manga")
 
@@ -144,7 +145,7 @@ class BookmarkCog(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot._debug_mode and bot.test_guild_id:
+    if bot.debug and bot.test_guild_id:
         await bot.add_cog(BookmarkCog(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
         await bot.add_cog(BookmarkCog(bot))

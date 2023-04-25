@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.core import MangaClient
+    from src.ext.update_check import UpdateCheckCog
 
 from discord import app_commands
-from discord.ext import commands, tasks
-import traceback as tb
+from discord.ext import commands
 
 from src.core.errors import MangaCompletedOrDropped
 from src.core.scanners import *
@@ -26,9 +26,6 @@ class CommandsCog(commands.Cog):
     async def cog_load(self):
         self.bot.logger.info("Loaded Commands Cog...")
         self.bot.add_view(SubscribeView(self.bot))
-
-        self.check_updates_task.add_exception_type(Exception)
-        self.check_updates_task.start()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         commands_to_check = [
@@ -58,149 +55,21 @@ class CommandsCog(commands.Cog):
 
         return True
 
-    @tasks.loop(hours=1.0)
-    async def check_updates_task(self):
-        self.bot.logger.info("Checking for updates...")
-        try:
-            series_to_delete: list[Manga] = await self.bot.db.get_series_to_delete()
-            if series_to_delete:
-                self.bot.logger.warning(
-                    "Deleting the following series: ================="
-                    + "\n".join(
-                        f'({x.scanlator})' + x.human_name for x in series_to_delete
-                    )
-                )
-                await self.bot.db.bulk_delete_series([m.id for m in series_to_delete])
-
-            series_to_update: list[Manga] = await self.bot.db.get_series_to_update()
-
-            if not series_to_update:
-                return
-
-            series_webhook_roles: list[tuple[str, str, str]] = await self.bot.db.get_series_webhook_role_pairs()
-
-            series_webhooks_roles: dict[str, dict[str, list[tuple[str, str]]]] = {}
-            for series_id, webhook_url, role_id in series_webhook_roles:
-                if series_id not in series_webhooks_roles:
-                    series_webhooks_roles[series_id] = {
-                        "webhook_role_pairs": [(webhook_url, role_id)]
-                    }
-                else:
-                    series_webhooks_roles[series_id]["webhook_role_pairs"].append(
-                        (webhook_url, role_id)
-                    )
-
-            for manga in series_to_update:
-                if manga.completed:
-                    self.bot.logger.warning(
-                        f"({manga.scanlator}) {manga.human_name} ====> COMPLETED"
-                    )
-
-                scanner = self.SCANLATORS.get(manga.scanlator, None)
-                if scanner is None:
-                    self.bot.logger.warning(
-                        f"Unknown scanlator {manga.scanlator} for {manga.human_name}. ID--{manga.id}"
-                    )
-                    log_em = discord.Embed(
-                        title="Unknown Scanlator",
-                        description=(f"```diff\n- Scanlator: {manga.scanlator}\n- Name: {manga.human_name}\n- "
-                                     f"ID: {manga.id}```"
-                                     )
-                    )
-                    log_em.set_footer(
-                        text="Manga Updates Logs", icon_url=self.bot.user.avatar.url
-                    )
-                    await self.bot.log_to_discord(embed=log_em)
-                    continue
-
-                await self.rate_limiter.delay_if_necessary(manga)
-
-                try:
-                    update_check_result: ChapterUpdate = await scanner.check_updates(
-                        self.bot, manga
-                    )
-                except Exception as e:
-                    self.bot.logger.warning(
-                        f"Error while checking for updates for {manga.human_name} ({manga.id})",
-                        exc_info=e,
-                    )
-                    traceback = "".join(
-                        tb.format_exception(type(e), e, e.__traceback__)
-                    )
-                    await self.bot.log_to_discord(f"Error when checking updates: {traceback}"[:-2000])
-                    continue
-
-                if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
-                    # self.bot._logger.info(f"No updates for {manga.human_name} ({manga.id})")
-                    continue
-
-                wh_n_role = series_webhooks_roles.get(manga.id, None)
-                if wh_n_role is not None:
-
-                    for webhook_url, role_id in wh_n_role["webhook_role_pairs"]:
-
-                        webhook = discord.Webhook.from_url(
-                            webhook_url, session=self.bot.session, client=self.bot
-                        )
-
-                        if webhook:
-
-                            for i, new_chapter in enumerate(update_check_result.new_chapters):
-                                manga.update(
-                                    new_chapter, update_check_result.series_completed, update_check_result.new_cover_url
-                                )
-
-                                extra_kwargs = update_check_result.extra_kwargs[i] if len(
-                                    update_check_result.extra_kwargs) > i else {}
-
-                                self.bot.logger.info(
-                                    f"Sending update for {manga.human_name} ====> Chapter {new_chapter.name} released!"
-                                )
-
-                                try:
-                                    role_ping = "" if not role_id else f"<@&{role_id}> "
-                                    await webhook.send(
-                                        (
-                                            f"{role_ping}**{manga.human_name}** **{new_chapter.name}**"
-                                            f" has been released!\n{new_chapter.url}"
-                                        ),
-                                        allowed_mentions=discord.AllowedMentions(roles=True),
-                                        **extra_kwargs
-                                    )
-                                    # await asyncio.sleep(1)
-                                except discord.HTTPException as e:
-                                    self.bot.logger.error(
-                                        f"Failed to send update for {manga.human_name}| {new_chapter.name}", exc_info=e
-                                    )
-                        else:
-                            self.bot.logger.error(f"Can't connect to webhook {webhook_url}")
-                else:
-                    self.bot.logger.warning(
-                        f"No webhook found for ({manga.scanlator}) {manga.human_name} =====> updating silently"
-                    )
-
-                manga.update(
-                    update_check_result.new_chapters[-1] if update_check_result.new_chapters else None,
-                    update_check_result.series_completed,
-                    update_check_result.new_cover_url
-                )
-                await self.bot.db.update_series(manga)
-        except Exception as e:
-            self.bot.logger.error("Error while checking updates", exc_info=e)
-            traceback = "".join(
-                tb.format_exception(type(e), e, e.__traceback__)
-            )
-            await self.bot.log_to_discord(("Error while checking updates:\n" + traceback)[:2000])
-        self.bot.logger.info("Update check finished =================")
-
-    @check_updates_task.before_loop
-    async def before_check_updates_task(self):
-        await self.bot.wait_until_ready()
-
     @app_commands.command(name="next_update_check", description="Get the time of the next update check.")
     async def next_update_check(self, interaction: discord.Interaction) -> None:
         # await interaction.response.defer(ephemeral=True, thinking=True)
-        next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
+        updates_cog: UpdateCheckCog | None = self.bot.get_cog("UpdateCheckCog")
+        if not updates_cog:
+            em = discord.Embed(
+                title="Error",
+                description="The update check cog is not loaded.",
+                color=0xFF0000,
+            )
+            em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
+            await interaction.response.send_message(embed=em, ephemeral=True)
+            return
+
+        next_update_ts = int(updates_cog.check_updates_task.next_iteration.timestamp())
         em = discord.Embed(
             title="Next Update Check",
             description=(
@@ -739,7 +608,7 @@ class CommandsCog(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot._debug_mode and bot.test_guild_id:
+    if bot.debug and bot.test_guild_id:
         await bot.add_cog(CommandsCog(bot), guild=discord.Object(id=bot.test_guild_id))
     else:
         await bot.add_cog(CommandsCog(bot))

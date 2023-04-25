@@ -588,6 +588,49 @@ class Restricted(commands.Cog):
             return
         await ctx.send("```diff\n-<[ Query executed. ]>-```")
 
+    @developer.command(
+        name="toggle_scanlator",
+        help="Enable or disable a scanlator class.",
+        brief="Enable or disable a scanlator class.",
+        aliases=["tscan"]
+    )
+    async def toggle_scanlator(self, ctx: commands.Context, *, scanlator: str):
+        scanlator = scanlator.lower()
+        updates_cog: commands.Cog | None = self.bot.get_cog("UpdateCheckCog")
+        if scanlator not in updates_cog.SCANLATORS:
+            em = discord.Embed(
+                title="Scanlator not found.",
+                description=f"Scanlator `{scanlator}` not found.",
+                color=discord.Color.red()
+            )
+            em.description += "\n\nAvailable scanlators:\n```diff\n"
+            em.description += "+ " + " +\n+ ".join(updates_cog.SCANLATORS) + " +" + "\n```"
+            await ctx.send(embed=em)
+            return
+        new_status = await self.bot.db.toggle_scanlator(scanlator)
+        await ctx.send(
+            f"```diff\n-<[ {scanlator} is now {'enabled' if new_status else 'disabled'} ]>-```")
+
+    @developer.command(
+        name="disabled_scanlators",
+        help="List all disabled scanlators.",
+        brief="List all disabled scanlators.",
+        aliases=["dscan"]
+    )
+    async def disabled_scanlators(self, ctx: commands.Context):
+        em = discord.Embed(
+            title="Disabled scanlators.",
+            description="List of all disabled scanlators.",
+            color=discord.Color.red()
+        )
+        em.description += "\n\n```diff\n"
+        disabled_scanlators = await self.bot.db.get_disabled_scanlators()
+        if disabled_scanlators:
+            em.description += "- " + " -\n- ".join(disabled_scanlators) + " -" + "\n```"
+        else:
+            em.description += "+ None +\n```"
+        await ctx.send(embed=em)
+
 
 async def setup(bot: MangaClient) -> None:
     await bot.add_cog(Restricted(bot))
