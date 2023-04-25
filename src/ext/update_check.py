@@ -67,16 +67,26 @@ class UpdateCheckCog(commands.Cog):
             guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
 
             if update_check_result.new_chapters:
+
                 for i, chapter in enumerate(update_check_result.new_chapters):
                     self.bot.logger.info(
                         f"({manga.scanlator}) {manga.human_name} ====> Chapter "
                         f"{chapter.name} released!"
                     )
+                    if not guild_configs:
+                        continue
+
                     extra_kwargs = update_check_result.extra_kwargs[i] if len(
                         update_check_result.extra_kwargs
                     ) > i else {}
 
                     for guild_config in guild_configs:
+                        if not guild_config.webhook:
+                            self.bot.logger.debug(
+                                f"Webhook not found for guild {guild_config.guild_id}"
+                            )
+                            continue
+
                         try:
                             role_ping = "" if not guild_config.role else f"{guild_config.role.mention} "
                             await guild_config.webhook.send(
