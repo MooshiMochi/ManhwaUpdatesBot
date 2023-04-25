@@ -22,10 +22,10 @@ class URLAccessFailed(BaseError):
 
     def __init__(self, manga_url: str, status_code: int = 0):
         self.manga_url = manga_url
-        self.error_msg = f"""
-        There was an error{' (' + str(status_code) + ') ' if status_code != 0 else ''}
-        while trying to access [this website]({self.manga_url}) you entered.
-        """
+        self.error_msg = (
+            f"There was an error{' (' + str(status_code) + ') ' if status_code != 0 else ''}"
+            f"while trying to access [this website]({self.manga_url}) you entered."
+        )
 
 
 class BookmarkNotFound(BaseError):
