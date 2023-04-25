@@ -104,6 +104,8 @@ class UpdateCheckCog(commands.Cog):
                     f"({manga.scanlator}) {manga.human_name} ====> COVER UPDATE"
                 )
 
+        self.bot.logger.info(f"Finished checking for updates for {mangas[0].scanlator}...")
+
     @tasks.loop(hours=1.0)
     async def check_updates_task(self):
         self.bot.logger.info("Checking for updates...")
