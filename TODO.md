@@ -37,3 +37,6 @@
       - reaperscans has pagination for chapters, so I need to add some code to grab all chapters...
    
       - flamescans sometimes returns 404 when requesting. Considering switching to grabbing data with pyppeteer instead
+
+      - mangadex needs to get all chapters. Considering using recursion or setting the limit to the number of 
+        chapters in the series.
