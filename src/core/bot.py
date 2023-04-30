@@ -138,7 +138,7 @@ class MangaClient(commands.Bot):
             return
         try:
             if content and len(content) > 1997:
-                content = content[:1997] + "..."
+                content = "..." + content[-1997:]
 
             await channel.send(content, **kwargs)
         except Exception as e:
