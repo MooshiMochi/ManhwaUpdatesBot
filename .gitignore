@@ -145,3 +145,5 @@ logs/restart.txt
 browser_data/
 
 local/
+
+test/
