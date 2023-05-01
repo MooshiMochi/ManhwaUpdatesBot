@@ -162,7 +162,7 @@ class ProtectedRequest:
                 await page.setCookie(*cookie)
 
         elif scanlator and scanlator.name in self.cookie_exempt_scanlators:
-            await page.setCookie()
+            await page.deleteCookie(*await page.cookies())
 
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \

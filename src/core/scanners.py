@@ -634,6 +634,8 @@ class AsuraScans(ABCScan):
     fmt_url = base_url + "manga/{manga_url_name}"
     name = "asurascans"
 
+    NOT_FOUND_IMG_URL = "https://www.asurascans.com/wp-content/themes/mangastream/assets/images/404.png"
+
     @classmethod
     async def check_updates(
             cls,
@@ -672,6 +674,9 @@ class AsuraScans(ABCScan):
                 file=write_to_discord_file(cls.name + ".html", text)
             )
             raise URLAccessFailed(manga_url)
+
+        if cls.NOT_FOUND_IMG_URL in text:
+            raise MangaNotFound(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
         chapter_list_container = soup.find("div", {"class": "eplister"})
@@ -719,8 +724,8 @@ class AsuraScans(ABCScan):
             raise URLAccessFailed(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
-        with open("test/result.html", "w", encoding="utf-8") as f:
-            f.write(soup.prettify())
+        if cls.NOT_FOUND_IMG_URL in text:
+            raise MangaNotFound(manga_url)
         title_tag = soup.find("h1", {"class": "entry-title"})
         return title_tag.text.strip()
 
@@ -746,6 +751,9 @@ class AsuraScans(ABCScan):
             )
             raise URLAccessFailed(manga_url)
 
+        if cls.NOT_FOUND_IMG_URL in text:
+            raise MangaNotFound(manga_url)
+
         soup = BeautifulSoup(text, "html.parser")
         return cls._bs_is_series_completed(soup)
 
@@ -770,6 +778,9 @@ class AsuraScans(ABCScan):
             )
             raise URLAccessFailed(manga_url)
 
+        if cls.NOT_FOUND_IMG_URL in text:
+            raise MangaNotFound(manga_url)
+        
         soup = BeautifulSoup(text, "html.parser")
         cover_image = soup.find("div", {"class": "thumb", "itemprop": "image"}).find("img")
         return cover_image["src"] if cover_image else None
