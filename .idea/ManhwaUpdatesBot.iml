@@ -6,7 +6,6 @@
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludeFolder url="file://$MODULE_DIR$/browser_data" />
       <excludeFolder url="file://$MODULE_DIR$/local" />
-      <excludeFolder url="file://$MODULE_DIR$/test" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.11 (ManhwaUpdatesBot)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

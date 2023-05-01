@@ -14,7 +14,7 @@ from pyppeteer.network_manager import Request
 import logging
 from typing import Dict, Any, Optional, Set
 from src.utils import get_manga_scanlator_class
-from src.core.scanners import SCANLATORS
+from src.core.scanners import SCANLATORS, AsuraScans
 
 import tempfile
 
@@ -31,6 +31,10 @@ class ProtectedRequest:
         self._ignored_urls = set(ignored_urls) if ignored_urls else set()
         self._cache: Dict[str, Dict[str, Any]] = {}
         self.browser: Browser | None = None
+
+        self.cookie_exempt_scanlators = [
+            AsuraScans.name
+        ]
 
         options = {
             "headless": self._headless,
@@ -152,10 +156,13 @@ class ProtectedRequest:
         page = await self.browser.newPage()
 
         scanlator = get_manga_scanlator_class(SCANLATORS, url)
-        if scanlator:
+        if scanlator and scanlator.name not in self.cookie_exempt_scanlators:
             cookie = await self.bot.db.get_cookie(scanlator.name)
             if cookie:
                 await page.setCookie(*cookie)
+
+        elif scanlator and scanlator.name in self.cookie_exempt_scanlators:
+            await page.setCookie()
 
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
@@ -198,7 +205,7 @@ class ProtectedRequest:
                 await self.click_cloudflare_checkbox(page)
 
         page_cookie = await page.cookies()
-        if page_cookie and scanlator:
+        if page_cookie and scanlator and scanlator.name not in self.cookie_exempt_scanlators:
             await self.bot.db.set_cookie(scanlator.name, page_cookie)
 
         if url not in self._ignored_urls:

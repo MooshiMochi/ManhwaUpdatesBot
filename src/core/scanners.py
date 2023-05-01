@@ -663,7 +663,7 @@ class AsuraScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_all_chapters func. Status: N/A"
@@ -708,7 +708,7 @@ class AsuraScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_human_name func. Status: N/A"
@@ -719,6 +719,8 @@ class AsuraScans(ABCScan):
             raise URLAccessFailed(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
+        with open("test/result.html", "w", encoding="utf-8") as f:
+            f.write(soup.prettify())
         title_tag = soup.find("h1", {"class": "entry-title"})
         return title_tag.text.strip()
 
@@ -735,7 +737,7 @@ class AsuraScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception("Failed to run is_series_completed func. Status: N/A"
                                + " Request URL: " + str(manga_url)
@@ -758,7 +760,7 @@ class AsuraScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_cover_image func. Status: N/A"
@@ -942,7 +944,7 @@ class ReaperScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_all_chapters func. Status: N/A"
@@ -991,7 +993,7 @@ class ReaperScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_human_name func. Status: N/A"
@@ -1017,7 +1019,7 @@ class ReaperScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception("Failed to run is_series_completed func. Status: N/A"
                                + " Request URL: " + str(manga_url)
@@ -1042,7 +1044,7 @@ class ReaperScans(ABCScan):
         if not text or "Ray ID" in text:
             status_code_n_error_msg = cls.extract_error_code_n_message(text)
             if status_code_n_error_msg:
-                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
+                raise URLAccessFailed(manga_url, *status_code_n_error_msg)
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_cover_image func. Status: N/A"
