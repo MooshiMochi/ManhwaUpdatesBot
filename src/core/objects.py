@@ -104,7 +104,24 @@ class ABCScan(ABC):
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
-            print(message)
+            bot.logger.critical(message)
+
+    @classmethod
+    def extract_error_code_n_message(cls, text: str) -> tuple[int | str, str] | None:
+        """Extracts the status code and error message from the webpage text."""
+        soup = BeautifulSoup(text, "html.parser")
+        page_title = soup.find("title")
+        if page_title is None:
+            return None
+        page_title = page_title.text
+        re_result = re.search(r"(\b\d{3}): (\w* \w*\b)", page_title)
+        if re_result:
+            status_code, error_message = re_result.groups()
+            try:
+                return int(status_code), error_message
+            except ValueError:
+                return status_code, error_message
+        return None
 
     @classmethod
     @abstractmethod

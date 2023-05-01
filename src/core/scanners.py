@@ -661,6 +661,9 @@ class AsuraScans(ABCScan):
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_all_chapters func. Status: N/A"
@@ -703,6 +706,9 @@ class AsuraScans(ABCScan):
     ) -> str | None:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_human_name func. Status: N/A"
@@ -727,6 +733,9 @@ class AsuraScans(ABCScan):
     ) -> bool:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception("Failed to run is_series_completed func. Status: N/A"
                                + " Request URL: " + str(manga_url)
@@ -747,6 +756,9 @@ class AsuraScans(ABCScan):
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_cover_image func. Status: N/A"
@@ -928,6 +940,9 @@ class ReaperScans(ABCScan):
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_all_chapters func. Status: N/A"
@@ -974,6 +989,9 @@ class ReaperScans(ABCScan):
     ) -> str | None:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_human_name func. Status: N/A"
@@ -997,6 +1015,9 @@ class ReaperScans(ABCScan):
     ) -> bool:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception("Failed to run is_series_completed func. Status: N/A"
                                + " Request URL: " + str(manga_url)
@@ -1019,6 +1040,9 @@ class ReaperScans(ABCScan):
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
         text = await bot.cf_scraper.bypass_cloudflare(manga_url)
         if not text or "Ray ID" in text:
+            status_code_n_error_msg = cls.extract_error_code_n_message(text)
+            if status_code_n_error_msg:
+                raise URLAccessFailed(manga_url, status_code_n_error_msg[0])
             await cls.report_error(
                 bot, Exception(
                     "Failed to run get_cover_image func. Status: N/A"

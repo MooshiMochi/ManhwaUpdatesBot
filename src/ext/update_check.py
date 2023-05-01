@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict
 
 import discord
 
+from src.core.errors import URLAccessFailed
 from src.core.objects import Manga, ChapterUpdate
 from src.core.ratelimiter import RateLimiter
 from src.core.scanners import SCANLATORS, ABCScan
@@ -49,6 +50,13 @@ class UpdateCheckCog(commands.Cog):
                 update_check_result: ChapterUpdate = await scanner.check_updates(
                     self.bot, manga
                 )
+            except URLAccessFailed as e:
+                await self.bot.log_to_discord(
+                    f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
+                    " while checking for updates."
+                    + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
+                )
+                continue
             except Exception as e:
                 self.bot.logger.warning(
                     f"Error while checking for updates for {manga.human_name} ({manga.id})",

@@ -20,12 +20,14 @@ class MangaNotFound(BaseError):
 class URLAccessFailed(BaseError):
     """Raised when a URL cannot be accessed."""
 
-    def __init__(self, manga_url: str, status_code: int = 0):
+    def __init__(self, manga_url: str, status_code: int = 0, error_msg: str = None):
         self.manga_url = manga_url
+        self.status_code: int = status_code
         self.error_msg = (
             f"There was an error{' (' + str(status_code) + ') ' if status_code != 0 else ''}"
             f"while trying to access [this website]({self.manga_url}) you entered."
         )
+        self.arg_error_msg = error_msg
 
 
 class BookmarkNotFound(BaseError):

@@ -6,7 +6,7 @@ import pyppeteer.errors
 
 if TYPE_CHECKING:
     from src.core import MangaClient
-
+from io import BytesIO
 import asyncio
 from pyppeteer.launcher import Launcher
 from pyppeteer.browser import Browser
@@ -15,6 +15,8 @@ import logging
 from typing import Dict, Any, Optional, Set
 from src.utils import get_manga_scanlator_class
 from src.core.scanners import SCANLATORS
+
+import tempfile
 
 
 class ProtectedRequest:
@@ -91,9 +93,57 @@ class ProtectedRequest:
         else:
             await req.continue_()
 
+    async def open_page(self, url: str, size: tuple[int, int] = (1280, 800)) -> pyppeteer.browser.Page:
+        if not self.browser:
+            await self.async_init()
+
+        page = await self.browser.newPage()
+        # Set custom User-Agent string
+        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
+                     'Chrome/93.0.4577.63 Safari/537.36'
+        await page.setUserAgent(user_agent)
+
+        # Set viewport size
+        await page.setViewport({'width': size[0], 'height': size[1]})
+
+        # Set additional headers
+        headers = {
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+        }
+        await page.setExtraHTTPHeaders(headers)
+
+        def on_request(req: Request):
+            asyncio.ensure_future(self.check_request(req))
+
+        # Block requests to the radio api
+        await page.setRequestInterception(True)
+        page.on("request", on_request)
+
+        await page.goto(url, wait_until="domcontentloaded")
+        return page
+
+    @staticmethod
+    async def screenshot_element(page: pyppeteer.browser.Page, selector: str) -> BytesIO:
+        """Screenshots an element on the page, returns the element as a BytesIO object"""
+        element = await page.querySelector(selector)
+        if not element:
+            raise ValueError(f"Element {selector} not found on page {page.url}")
+
+        temp_file = tempfile.mktemp(suffix=".png")
+        await element.screenshot({'path': temp_file}, type="png")
+        with open(temp_file, "rb") as f:
+            buffer = BytesIO(f.read())
+        buffer.seek(0)
+        await page.close()
+        return buffer
+
     async def bypass_cloudflare(self, url, cache_time: Optional[int] = None) -> str:
         if not self.browser:
             await self.async_init()
+
+        page = await self.browser.newPage()
 
         if url in self._cache and self._cache[url]["expires"] > asyncio.get_event_loop().time():
             self.logger.debug(f"Using cached response for {url}")
@@ -102,9 +152,10 @@ class ProtectedRequest:
         page = await self.browser.newPage()
 
         scanlator = get_manga_scanlator_class(SCANLATORS, url)
-        cookie = await self.bot.db.get_cookie(scanlator.name)
-        if cookie:
-            await page.setCookie(*cookie)
+        if scanlator:
+            cookie = await self.bot.db.get_cookie(scanlator.name)
+            if cookie:
+                await page.setCookie(*cookie)
 
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
@@ -147,7 +198,7 @@ class ProtectedRequest:
                 await self.click_cloudflare_checkbox(page)
 
         page_cookie = await page.cookies()
-        if page_cookie:
+        if page_cookie and scanlator:
             await self.bot.db.set_cookie(scanlator.name, page_cookie)
 
         if url not in self._ignored_urls:
