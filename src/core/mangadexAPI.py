@@ -1,13 +1,13 @@
 import asyncio
-
 from typing import Any, Dict, List, Optional
+
 from src.core.cache import CachedClientSession
 
 
 class MangaDexAPI:
     def __init__(
-        self,
-        session: Optional[CachedClientSession] = None,
+            self,
+            session: Optional[CachedClientSession] = None,
     ):
         self.api_url: str = "https://api.mangadex.org"
         self.session = session or CachedClientSession()
@@ -20,13 +20,13 @@ class MangaDexAPI:
         # self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
 
     async def __request(
-        self,
-        method: str,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, Any]] = None,
-        **kwargs
+            self,
+            method: str,
+            endpoint: str,
+            params: Optional[Dict[str, Any]] = None,
+            data: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, Any]] = None,
+            **kwargs
     ) -> Dict[str, Any]:
         url = f"{self.api_url}/{endpoint}"
         if not headers:
@@ -36,7 +36,7 @@ class MangaDexAPI:
             await asyncio.sleep(self.rate_limit_reset)
 
         async with self.session.request(
-            method, url, params=params, json=data, headers=headers, **kwargs
+                method, url, params=params, json=data, headers=headers, **kwargs
         ) as response:
             json_data = await response.json()
             self.rate_limit_remaining = int(
@@ -55,15 +55,16 @@ class MangaDexAPI:
         return await self.__request("GET", endpoint)
 
     async def get_chapters_list(
-        self, manga_id: str, languages=None
+            self, manga_id: str, languages=None
     ) -> list[Dict[str, Any]]:
         """Return a list of chapters in ascending order"""
         if languages is None:
             languages = ["en"]
         endpoint = f"manga/{manga_id}/feed"
         params = {
-            "translatedLanguage[]": languages, "order[chapter]": "desc", "order[volume]": "desc", "limit": 50
+            "translatedLanguage[]": languages, "order[chapter]": "desc", "order[volume]": "desc"
         }
+        # , "limit": 50
         result = await self.__request(
             "GET", endpoint, params=params
         )
@@ -76,17 +77,17 @@ class MangaDexAPI:
         return list(result)
 
     async def search(
-        self,
-        title: Optional[str] = None,
-        author: Optional[str] = None,
-        artist: Optional[str] = None,
-        year: Optional[str] = None,
-        included_tags: Optional[List[str]] = None,
-        excluded_tags: Optional[List[str]] = None,
-        status: Optional[str] = None,
-        order: Optional[str] = None,
-        page: Optional[int] = None,
-        limit: Optional[int] = None,
+            self,
+            title: Optional[str] = None,
+            author: Optional[str] = None,
+            artist: Optional[str] = None,
+            year: Optional[str] = None,
+            included_tags: Optional[List[str]] = None,
+            excluded_tags: Optional[List[str]] = None,
+            status: Optional[str] = None,
+            order: Optional[str] = None,
+            page: Optional[int] = None,
+            limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         endpoint = "manga"
         params = {
