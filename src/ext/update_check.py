@@ -69,8 +69,6 @@ class UpdateCheckCog(commands.Cog):
                 continue
 
             if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
-                print("No new chapters or cover update for ", scanner.name)
-                print(manga.last_chapter)
                 continue
 
             guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)
