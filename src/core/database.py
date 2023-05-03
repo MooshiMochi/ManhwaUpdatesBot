@@ -178,13 +178,18 @@ class Database:
             (bool): Whether the scanlator was enabled or disabled.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
+            await db.execute(
                 """
                 INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 0)
-                ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled RETURNING enabled;
+                ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled;
                 """,
                 # as scanlators are enabled by default, we will insert 0 when first toggling
                 (scanlator,),
+            )
+            cursor = await db.execute(
+                """
+                SELECT enabled FROM scanlators_config WHERE scanlator = $1;
+                """
             )
             result = await cursor.fetchone()
             await db.commit()
