@@ -180,9 +180,10 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             cursor = await db.execute(
                 """
-                INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 1) 
+                INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 0)
                 ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled RETURNING enabled;
                 """,
+                # as scanlators are enabled by default, we will insert 0 when first toggling
                 (scanlator,),
             )
             result = await cursor.fetchone()
