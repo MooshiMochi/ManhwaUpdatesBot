@@ -189,7 +189,8 @@ class Database:
             cursor = await db.execute(
                 """
                 SELECT enabled FROM scanlators_config WHERE scanlator = $1;
-                """
+                """,
+                (scanlator,),
             )
             result = await cursor.fetchone()
             await db.commit()
