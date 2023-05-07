@@ -145,12 +145,12 @@ class UpdateCheckCog(commands.Cog):
 
             series_to_update: list[list[Manga]] = group_items_by(series_to_update, ["scanlator"])
 
-            _tasks = [
+            _coros = [
                 self.check_updates_by_scanlator(mangas)
                 for mangas in series_to_update
             ]
-            chunked_tasks = chunked(_tasks, 2)
-            for chunk in chunked_tasks:
+            chunked_coros = chunked(_coros, 2)
+            for chunk in chunked_coros:
                 await asyncio.gather(*chunk)
                 await asyncio.sleep(20)
         except Exception as e:
