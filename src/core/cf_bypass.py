@@ -153,7 +153,15 @@ class ProtectedRequest:
             self.logger.debug(f"Using cached response for {url}")
             return self._cache[url]["content"]
 
-        page = await self.browser.newPage()
+        try:
+            page = await self.browser.newPage()
+        except ConnectionError:
+            self.logger.error("ConnectionError when trying to create new page")
+            self.logger.warning("Retrying in 10 seconds...")
+            await self.browser.close()
+            await asyncio.sleep(10)
+            self.browser = None
+            return await self.bypass_cloudflare(url, cache_time)
 
         scanlator = get_manga_scanlator_class(SCANLATORS, url)
         if scanlator and scanlator.name not in self.cookie_exempt_scanlators:
