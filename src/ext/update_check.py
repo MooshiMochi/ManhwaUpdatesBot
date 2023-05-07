@@ -158,7 +158,6 @@ class UpdateCheckCog(commands.Cog):
             traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
             await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
         finally:
-
             self.bot.logger.info("Update check finished =================")
 
     @check_updates_task.before_loop

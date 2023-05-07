@@ -207,6 +207,7 @@ class CommandsCog(commands.Cog):
             scanlator = Bato
 
             series_url: str = await Bato.fmt_manga_url(self.bot, None, manga_url)
+            series_id = await Bato.get_manga_id(self.bot, series_url)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
