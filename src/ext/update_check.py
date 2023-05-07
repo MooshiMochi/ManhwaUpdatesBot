@@ -146,7 +146,7 @@ class UpdateCheckCog(commands.Cog):
             series_to_update: list[list[Manga]] = group_items_by(series_to_update, ["scanlator"])
 
             _tasks = [
-                self.bot.loop.create_task(self.check_updates_by_scanlator(mangas))
+                self.check_updates_by_scanlator(mangas)
                 for mangas in series_to_update
             ]
             chunked_tasks = chunked(_tasks, 2)
