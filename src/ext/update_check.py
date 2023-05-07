@@ -10,7 +10,7 @@ from src.core.errors import URLAccessFailed
 from src.core.objects import Manga, ChapterUpdate
 from src.core.ratelimiter import RateLimiter
 from src.core.scanners import SCANLATORS, ABCScan
-from src.utils import group_items_by
+from src.utils import group_items_by, chunked
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -149,7 +149,10 @@ class UpdateCheckCog(commands.Cog):
                 self.bot.loop.create_task(self.check_updates_by_scanlator(mangas))
                 for mangas in series_to_update
             ]
-            await asyncio.gather(*_tasks)
+            chunked_tasks = chunked(_tasks, 2)
+            for chunk in chunked_tasks:
+                await asyncio.gather(*chunk)
+                await asyncio.sleep(20)
         except Exception as e:
             self.bot.logger.error("Error while checking for updates", exc_info=e)
             traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
