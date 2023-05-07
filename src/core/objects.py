@@ -100,7 +100,8 @@ class ABCScan(ABC):
         traceback = "".join(
             tb.format_exception(type(error), error, error.__traceback__)
         )
-        message: str = f"Error in {cls.name} scan: {traceback}"
+        # message: str = f"Error in {cls.name} scan: {traceback}"
+        message: str = f"{traceback}\nError in {cls.name} scan.\nURL: {kwargs.get('request_url', 'Unknown')}"
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
@@ -149,15 +150,20 @@ class ABCScan(ABC):
             URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         request_url = _manga_request_url or manga.url
-        all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
-        completed: bool = await cls.is_series_completed(bot, manga.id, manga.url)
-        cover_url: str = await cls.get_cover_image(bot, manga.id, manga.url)
-        if all_chapters is None:
-            return ChapterUpdate([], cover_url, completed)
-        new_chapters: list[Chapter] = [
-            chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
-        ]
-        return ChapterUpdate(new_chapters, cover_url, completed)
+        try:
+            all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
+            completed: bool = await cls.is_series_completed(bot, manga.id, manga.url)
+            cover_url: str = await cls.get_cover_image(bot, manga.id, manga.url)
+            if all_chapters is None:
+                return ChapterUpdate([], cover_url, completed)
+            new_chapters: list[Chapter] = [
+                chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
+            ]
+            return ChapterUpdate(new_chapters, cover_url, completed)
+        except (ValueError, AttributeError) as e:
+            await cls.report_error(bot, e, request_url=request_url)
+        except Exception as e:
+            raise e
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:

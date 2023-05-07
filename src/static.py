@@ -75,3 +75,7 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?mangapill\.com/(?:manga|chapters)/?(\d+)(?:-\d+)?/([\w-]+?)(?:-chapter-["
         r"\d-]+)?/?(?:/.*)?$"
     )
+
+    bato_url = re.compile(
+        r"(?:https?://)?(?:www\.)?bato\.to/series/(\d+)/([\w-]+)(?:/.*)?"
+    )

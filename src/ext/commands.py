@@ -117,7 +117,9 @@ class CommandsCog(commands.Cog):
             series_url: str = TritiniaScans.base_url + url_name
             series_id = await TritiniaScans.get_manga_id(self.bot, series_url)
 
-        elif RegExpressions.toonily_url.search(manga_url):
+        elif (RegExpressions.toonily_url.search(manga_url)
+              and self.bot.config["user-agents"][Toonily.name] is not None
+        ):
             scanlator = Toonily
 
             url_name = RegExpressions.toonily_url.search(manga_url).group(1)
@@ -200,6 +202,11 @@ class CommandsCog(commands.Cog):
             url_name = RegExpressions.leviatanscans_url.search(manga_url).group(1)
             series_url: str = LeviatanScans.fmt_url.format(manga_url_name=url_name)
             series_id = await LeviatanScans.get_manga_id(self.bot, series_url)
+
+        elif RegExpressions.bato_url.search(manga_url):
+            scanlator = Bato
+
+            series_url: str = await Bato.fmt_manga_url(self.bot, None, manga_url)
 
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
@@ -431,6 +438,8 @@ class CommandsCog(commands.Cog):
                 \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
                 • [LeviatanScans](https://en.leviatanscans.com/)
                 \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
+                • [Bato.to](https://bato.to/)
+                \u200b \u200b \u200b \↪ Format -> `https://bato.to/series/12351/manga-title/`
                 """
                 + (
                     f"""\
