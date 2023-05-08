@@ -147,7 +147,7 @@ class ProtectedRequest:
         if not self.browser:
             await self.async_init()
 
-        page = await self.browser.newPage()
+        # page = await self.browser.newPage()
 
         if url in self._cache and self._cache[url]["expires"] > asyncio.get_event_loop().time():
             self.logger.debug(f"Using cached response for {url}")
