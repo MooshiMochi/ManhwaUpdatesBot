@@ -89,7 +89,10 @@ class MangaClient(commands.Bot):
             channel = self.get_channel(int(channel_id))
             if channel is None:
                 return
-            msg = await channel.fetch_message(int(msg_id))
+            try:
+                msg = await channel.fetch_message(int(msg_id))
+            except discord.NotFound:
+                return
             if msg is None:
                 return
             em = msg.embeds[0]
