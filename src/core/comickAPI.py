@@ -1,6 +1,8 @@
 import asyncio
 from typing import Any, Dict, Optional
 
+import aiohttp
+
 from src.core.cache import CachedClientSession
 
 
@@ -34,21 +36,28 @@ class ComickAppAPI:
 
         if self.rate_limit_remaining is not None and self.rate_limit_remaining == 0:
             await asyncio.sleep(self.rate_limit_reset)
-
-        async with self.session.request(
-                method, url, params=params, json=data, headers=headers, **kwargs
-        ) as response:
-            json_data = await response.json()
-            self.rate_limit_remaining = int(
-                response.headers.get("X-RateLimit-Remaining", "-1")
-            )
-            self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
-
-            if response.status != 200:
-                raise Exception(
-                    f"Request failed with status {response.status}: {json_data}\nURL: {response.url}"
+        try:
+            async with self.session.request(
+                    method, url, params=params, json=data, headers=headers, **kwargs
+            ) as response:
+                json_data = await response.json()
+                self.rate_limit_remaining = int(
+                    response.headers.get("X-RateLimit-Remaining", "-1")
                 )
-            return json_data
+                self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
+
+                if response.status != 200:
+                    raise Exception(
+                        f"Request failed with status {response.status}: {json_data}\nURL: {response.url}"
+                    )
+                return json_data
+
+        except aiohttp.ServerDisconnectedError:
+            self.session.logger.error("Server disconnected, retrying with new session...")
+            session_proxy = self.session._proxy
+            await self.session.close()
+            self.session = CachedClientSession(proxy=session_proxy, name="cache.comick", trust_env=True)
+            return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
     async def get_manga(self, manga_id: str) -> Dict[str, Any]:
         endpoint = f"comic/{manga_id}"

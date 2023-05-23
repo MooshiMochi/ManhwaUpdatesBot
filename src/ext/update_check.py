@@ -4,6 +4,7 @@ import asyncio
 import traceback as tb
 from typing import TYPE_CHECKING, Dict
 
+import aiohttp
 import discord
 
 from src.core.errors import URLAccessFailed
@@ -57,6 +58,20 @@ class UpdateCheckCog(commands.Cog):
                     + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
                 )
                 continue
+            except aiohttp.ClientHttpProxyError as e:
+                if e.status >= 500:
+                    pass  # an error on the proxy side, will probably be fixed soon...
+                else:
+                    self.bot.logger.warning(
+                        f"Error while checking for updates for {manga.human_name} ({manga.id})",
+                        exc_info=e,
+                    )
+                    traceback = "".join(
+                        tb.format_exception(type(e), e, e.__traceback__)
+                    )
+                    await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
+                continue
+
             except Exception as e:
                 self.bot.logger.warning(
                     f"Error while checking for updates for {manga.human_name} ({manga.id})",
@@ -68,7 +83,10 @@ class UpdateCheckCog(commands.Cog):
                 await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
                 continue
 
-            if not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
+            if (
+                    not (update_check_result or update_check_result.new_chapters) and
+                    manga.cover_url == update_check_result.new_cover_url
+            ):
                 continue
 
             guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)

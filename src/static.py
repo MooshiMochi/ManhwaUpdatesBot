@@ -59,7 +59,7 @@ class RegExpressions:
     )
 
     leviatanscans_url = re.compile(
-        r"(?:https?://)?(?:en\.)?leviatanscans\.com/home/manga/([\w-]+)(?:/.*)?"
+        r"(?:https?://)?(?:en\.)?leviatanscans\.com/manga/([\w-]+)(?:/.*)?"
     )
 
     drakescans_url = re.compile(

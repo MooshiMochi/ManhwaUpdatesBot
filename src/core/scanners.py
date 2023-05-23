@@ -1490,8 +1490,8 @@ class LuminousScans(ABCScan):
 
 
 class LeviatanScans(ABCScan):
-    icon_url = "https://en.leviatanscans.com/wp-content/uploads/2022/08/cropped-isotiponegro-192x192.png"
-    base_url = "https://en.leviatanscans.com/home/manga/"
+    icon_url = "https://en.leviatanscans.com/wp-content/uploads/2023/04/cropped-isotiponegro-192x192.png"
+    base_url = "https://en.leviatanscans.com/manga/"
     fmt_url = base_url + "{manga_url_name}/ajax/chapters/"
     name = "leviatanscans"
 
