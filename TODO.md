@@ -3,7 +3,6 @@
 ### Websites to add:
 
     omegascans.org
-    bato.to
 
 ### Cloudflare protected websites to add:
 
