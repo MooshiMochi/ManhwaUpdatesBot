@@ -83,10 +83,11 @@ class UpdateCheckCog(commands.Cog):
                 await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
                 continue
 
-            if (
-                    not (update_check_result or update_check_result.new_chapters) and
-                    manga.cover_url == update_check_result.new_cover_url
-            ):
+            if not update_check_result:
+                self.bot.logger.warning(f"{manga.scanlator} returned no result for {manga.human_name}")
+                continue
+
+            elif not update_check_result.new_chapters and manga.cover_url == update_check_result.new_cover_url:
                 continue
 
             guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)
