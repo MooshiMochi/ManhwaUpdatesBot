@@ -577,7 +577,7 @@ class Manga:
 
     def update(
             self,
-            new_latest_chapter: Chapter,
+            new_latest_chapter: Chapter = None,
             completed: bool = None,
             new_cover_url: str = None,
     ) -> None:
