@@ -136,7 +136,7 @@ class UpdateCheckCog(commands.Cog):
                 )
                 await self.bot.db.update_series(manga)
 
-            elif update_check_result.new_cover_url != manga.cover_url:
+            elif update_check_result.new_cover_url and update_check_result.new_cover_url != manga.cover_url:
                 self.bot.logger.info(
                     f"({manga.scanlator}) {manga.human_name} ====> COVER UPDATE"
                 )
