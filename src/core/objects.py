@@ -15,7 +15,7 @@ import discord
 from bs4 import BeautifulSoup
 from discord.ext.commands import Context
 from discord.ext.commands import Paginator as CommandPaginator
-
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import hashlib
 import re
@@ -39,6 +39,7 @@ class ChapterUpdate:
         return f"UpdateResult({len(self.new_chapters)} new chapters, series_completed={self.series_completed})"
 
 
+@dataclass
 class Chapter:
     def __init__(self, url: str, name: str, index: int):
         self.url = url
@@ -668,6 +669,11 @@ class Manga:
 
     def __repr__(self) -> str:
         return f"Manga({self.human_name} - {self.last_chapter.name})"
+
+    def __eq__(self, other: Manga):
+        if isinstance(other, Manga):
+            return self.url == other.url and self.human_name == other.human_name or self.id == other.id
+        return False
 
 
 class Bookmark:
