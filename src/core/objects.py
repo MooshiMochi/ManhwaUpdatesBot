@@ -15,7 +15,6 @@ import discord
 from bs4 import BeautifulSoup
 from discord.ext.commands import Context
 from discord.ext.commands import Paginator as CommandPaginator
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import hashlib
 import re
@@ -39,7 +38,6 @@ class ChapterUpdate:
         return f"UpdateResult({len(self.new_chapters)} new chapters, series_completed={self.series_completed})"
 
 
-@dataclass
 class Chapter:
     def __init__(self, url: str, name: str, index: int):
         self.url = url
@@ -80,6 +78,11 @@ class Chapter:
     @classmethod
     def from_many_json(cls, data: str):
         return [cls.from_dict(d) for d in json.loads(data)]
+
+    def __eq__(self, other: Chapter):
+        if isinstance(other, Chapter):
+            return self.url == other.url and other.name == self.name and other.index == self.index
+        return False
 
 
 class ABCScan(ABC):
