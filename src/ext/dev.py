@@ -19,7 +19,8 @@ import discord
 from discord import Object
 from discord.ext import commands
 
-from src.core.objects import PaginatorView, TextPageSource
+from src.core.objects import PaginatorView, TextPageSource, GuildSettings
+from src.ui.views import ConfirmView
 
 
 class Restricted(commands.Cog):
@@ -630,6 +631,93 @@ class Restricted(commands.Cog):
         else:
             em.description += "+ None +\n```"
         await ctx.send(embed=em)
+
+    @developer.command(
+        name="g_update",
+        help="Send a global update.",
+        brief="Send a global update.",
+    )
+    async def g_update(self, ctx: commands.Context, *, message: str):
+        bottom_text = "\n\n*If you have any questions, please join [SkyHub](https://discord.gg/EQ83EWW7Nu) and ping " \
+                      "Mooshi#6669.*"
+        message += bottom_text
+        em = discord.Embed(
+            title="⚠️ Important Update ⚠️",
+            description=message,
+            color=discord.Color.red()
+        )
+        em.set_footer(text="This is a global update sent by Mooshi#6669.")
+
+        guild_configs = await self.bot.db.get_many_guild_config([x.id for x in self.bot.guilds])
+        if not guild_configs:
+            await ctx.send(embed=discord.Embed(
+                title="⚠️ No guilds found!",
+                description="No guilds have been found in the database.",
+                color=discord.Color.red()
+            ))
+            return
+
+        guild_configs_to_notify: list[GuildSettings] = []
+        # ensure that the channel in each guild config exists
+        for guild_config in guild_configs:
+            if not guild_config.channel:
+                continue
+            bot_channel_perms = guild_config.channel.permissions_for(guild_config.channel.guild.me)
+            if bot_channel_perms.send_messages and bot_channel_perms.embed_links:
+                guild_configs_to_notify.append(guild_config)
+
+        if not guild_configs_to_notify:
+            await ctx.send(embed=discord.Embed(
+                title="⚠️ Can't sent messages!",
+                description="There are no guilds for which the bot has perms to send messages.",
+                color=discord.Color.red()
+            ))
+            return
+
+        view = ConfirmView(self.bot, ctx)
+        view.message = await ctx.send(
+            f"Are you sure you want to send this message to {len(guild_configs_to_notify)} guilds?", embed=em, view=view
+        )
+        await view.wait()
+        if view.value is None:  # timed out
+            return
+        elif view.value is False:  # cancelled = False
+            await view.message.edit(embed=discord.Embed(
+                title="Cancelled!",
+                description="The message has been cancelled.",
+                color=discord.Color.red()
+            ), view=None)
+            return
+
+        await view.message.edit(embed=discord.Embed(
+            title="Sending...",
+            description=f"Sending the message to {len(guild_configs_to_notify)} guilds...",
+        ), view=None)
+
+        successes = 0
+        for guild_config in guild_configs_to_notify:
+            if guild_config.role:
+                role_mention = guild_config.role.mention
+                if guild_config.role.id == guild_config.channel.guild.id:
+                    role_mention = "@everyone"
+            else:
+                role_mention = None
+
+            try:
+                await guild_config.channel.send(
+                    f"||{role_mention}||" if role_mention is not None else None,
+                    embed=em,
+                    allowed_mentions=discord.AllowedMentions(roles=True)
+                )
+                successes += 1
+            except discord.HTTPException:
+                pass
+
+        await view.message.edit(embed=discord.Embed(
+            title="Sent!",
+            description=f"Sent the message to {successes} guilds.",
+            color=discord.Color.green()
+        ))
 
 
 async def setup(bot: MangaClient) -> None:

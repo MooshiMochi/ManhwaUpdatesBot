@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal, Self
+
+from typing import TYPE_CHECKING, Self
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -17,6 +18,7 @@ from functools import partial
 from .buttons import CustomButtonCallbacks
 from src.enums import BookmarkSortType, BookmarkViewType
 from src.core.errors import MangaCompletedOrDropped
+from discord.ext import commands
 
 
 class BaseView(View):
@@ -141,7 +143,8 @@ class BookmarkView(BaseView):
         embeds: list[discord.Embed] = []
 
         def _make_embed() -> discord.Embed:
-            return discord.Embed(title=f"Bookmarks ({len(self.bookmarks)})", color=discord.Color.blurple(), description="")
+            return discord.Embed(title=f"Bookmarks ({len(self.bookmarks)})", color=discord.Color.blurple(),
+                                 description="")
 
         em = _make_embed()
         line_index = 0
@@ -151,8 +154,8 @@ class BookmarkView(BaseView):
             for bookmark in bookmark_group:
                 line_index += 1
                 to_add = (
-                         f"**{line_index}.** "
-                         f"[{bookmark.manga.human_name}]({bookmark.manga.url}) - {bookmark.last_read_chapter}\n"
+                    f"**{line_index}.** "
+                    f"[{bookmark.manga.human_name}]({bookmark.manga.url}) - {bookmark.last_read_chapter}\n"
                 )
                 if not scanlator_title_added:
                     if len(em.description) + len(bookmark.manga.scanlator) + 6 > 4096:
@@ -307,8 +310,8 @@ class BookmarkView(BaseView):
 
 class SubscribeView(View):
     def __init__(
-        self,
-        bot: MangaClient,
+            self,
+            bot: MangaClient,
     ):
         super().__init__(timeout=None)
         self.bot: MangaClient = bot
@@ -361,3 +364,21 @@ class SubscribeView(View):
         embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class ConfirmView(BaseView):
+    def __init__(self, bot: MangaClient, interaction_or_ctx: discord.Interaction | commands.Context):
+        super().__init__(bot, interaction_or_ctx)
+        self.value = None
+
+    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, _):
+        await interaction.response.defer(ephemeral=True, thinking=False)
+        self.value = True
+        self.stop()
+
+    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, _):
+        await interaction.response.defer(ephemeral=True, thinking=False)
+        self.value = False
+        self.stop()
