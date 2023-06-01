@@ -662,6 +662,10 @@ class Manga:
             self.scanlator,
         )
 
+    def chapters_to_text(self) -> str:
+        """Convert available_chapters to TEXT (db format)"""
+        return json.dumps([x.to_dict() for x in self.available_chapters])
+
     def __repr__(self) -> str:
         return f"Manga({self.human_name} - {self.last_chapter.name})"
 

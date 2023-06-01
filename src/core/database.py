@@ -625,9 +625,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                UPDATE series SET last_chapter = $1, series_cover_url = $2 WHERE id = $3;
+                UPDATE series SET last_chapter = $1, series_cover_url = $2, available_chapters = $3, WHERE id = $4;
                 """,
-                (manga.last_chapter.to_json(), manga.cover_url, manga.id),
+                (manga.last_chapter.to_json(), manga.cover_url, manga.chapters_to_text(), manga.id),
             )
             if result.rowcount < 1:
                 raise ValueError(f"No series with ID {manga.id} was found.")
