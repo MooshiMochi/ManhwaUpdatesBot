@@ -584,6 +584,9 @@ class Manga:
         """Update the manga."""
         if new_latest_chapter is not None:
             self._last_chapter = new_latest_chapter
+            self._available_chapters.append(new_latest_chapter)
+            self._available_chapters = list(set(self._available_chapters))
+            
         if completed is not None:
             self._completed = completed
         if new_cover_url is not None:
