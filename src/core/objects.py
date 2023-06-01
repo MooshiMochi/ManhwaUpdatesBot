@@ -585,7 +585,7 @@ class Manga:
         if new_latest_chapter is not None:
             self._last_chapter = new_latest_chapter
             self._available_chapters.append(new_latest_chapter)
-            self._available_chapters = list(set(self._available_chapters))
+            self._available_chapters = list(sorted(set(self._available_chapters), key=lambda x: x.index))
 
         if completed is not None:
             self._completed = completed

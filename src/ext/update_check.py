@@ -94,12 +94,17 @@ class UpdateCheckCog(commands.Cog):
             guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
 
             if update_check_result.new_chapters:
-
                 for i, chapter in enumerate(update_check_result.new_chapters):
                     self.bot.logger.info(
                         f"({manga.scanlator}) {manga.human_name} ====> Chapter "
                         f"{chapter.name} released!"
                     )
+                    manga.update(
+                        chapter,
+                        update_check_result.series_completed,
+                        update_check_result.new_cover_url
+                    )
+
                     if not guild_configs:
                         continue
 
@@ -128,12 +133,6 @@ class UpdateCheckCog(commands.Cog):
                             self.bot.logger.error(
                                 f"Failed to send update for {manga.human_name}| {chapter.name}", exc_info=e
                             )
-
-                manga.update(
-                    update_check_result.new_chapters[-1] if update_check_result.new_chapters else None,
-                    update_check_result.series_completed,
-                    update_check_result.new_cover_url
-                )
                 await self.bot.db.update_series(manga)
 
             elif update_check_result.new_cover_url and update_check_result.new_cover_url != manga.cover_url:
