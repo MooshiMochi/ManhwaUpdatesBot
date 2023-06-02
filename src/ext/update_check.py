@@ -121,14 +121,14 @@ class UpdateCheckCog(commands.Cog):
 
                         try:
                             role_ping = "" if not guild_config.role else f"{guild_config.role.mention} "
-                            # await guild_config.webhook.send(
-                            #     (
-                            #         f"{role_ping}**{manga.human_name}** **{chapter.name}**"
-                            #         f" has been released!\n{chapter.url}"
-                            #     ),
-                            #     allowed_mentions=discord.AllowedMentions(roles=True),
-                            #     **extra_kwargs
-                            # )
+                            await guild_config.webhook.send(
+                                (
+                                    f"{role_ping}**{manga.human_name}** **{chapter.name}**"
+                                    f" has been released!\n{chapter.url}"
+                                ),
+                                allowed_mentions=discord.AllowedMentions(roles=True),
+                                **extra_kwargs
+                            )
                         except discord.HTTPException as e:
                             self.bot.logger.error(
                                 f"Failed to send update for {manga.human_name}| {chapter.name}", exc_info=e
