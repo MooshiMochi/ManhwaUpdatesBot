@@ -84,6 +84,9 @@ class Chapter:
             return self.url == other.url and other.name == self.name and other.index == self.index
         return False
 
+    def __hash__(self):
+        return hash((self.url, self.name, self.index))
+
 
 class ABCScan(ABC):
     MIN_TIME_BETWEEN_REQUESTS = 1.0  # In seconds
