@@ -52,15 +52,18 @@ class UpdateCheckCog(commands.Cog):
                     self.bot, manga
                 )
             except URLAccessFailed as e:
-                await self.bot.log_to_discord(
-                    f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
-                    " while checking for updates."
-                    + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
-                )
+                if e.status_code >= 500:
+                    pass  # server error, ignore
+                else:
+                    await self.bot.log_to_discord(
+                        f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
+                        " while checking for updates."
+                        + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
+                    )
                 continue
             except aiohttp.ClientHttpProxyError as e:
                 if e.status >= 500:
-                    pass  # an error on the proxy side, will probably be fixed soon...
+                    pass  # proxy server error, ignore
                 else:
                     self.bot.logger.warning(
                         f"Error while checking for updates for {manga.human_name} ({manga.id})",
