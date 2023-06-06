@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -74,13 +74,17 @@ class BookmarkCog(commands.Cog):
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         manga_id = await scanner.get_manga_id(self.bot, manga_url)
-        bookmark = await scanner.make_bookmark_object(
-            self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
-        )
-        if not bookmark:
-            raise MangaNotFound(manga_url)
-
-        bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
+        existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
+        if existing_bookmark:
+            bookmark = existing_bookmark
+            bookmark.user_created = False
+        else:
+            bookmark = await scanner.make_bookmark_object(
+                self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
+            )
+            if not bookmark:
+                raise MangaNotFound(manga_url)
+            bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
 
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanner.icon_url)
