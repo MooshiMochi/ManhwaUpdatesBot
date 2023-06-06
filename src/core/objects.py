@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import urllib
 from asyncio import TimeoutError
-from typing import TYPE_CHECKING, Iterable, Union, Any
+from typing import Any, Iterable, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
@@ -690,12 +690,18 @@ class Bookmark:
             last_read_chapter: Chapter,
             guild_id: int,
             last_updated_ts: float = None,
+            user_created: bool = False,
     ):
         self.user_id: int = user_id
         self.manga: Manga = manga
         self.last_read_chapter: Chapter = last_read_chapter
         self.guild_id: int = guild_id
-        self.last_updated_ts: float = float(last_updated_ts)
+        if last_updated_ts is not None:
+            self.last_updated_ts: float = float(last_updated_ts)
+        else:
+            self.last_updated_ts: float = datetime.utcnow().timestamp()
+            
+        self.user_created: bool = user_created
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Bookmark":
@@ -705,6 +711,7 @@ class Bookmark:
         # 2 = last_read_chapter
         # 3 = guild_id
         # 4 = last_updated_ts
+        # 5 = user_created
         last_read_chapter: Chapter = Chapter.from_dict(json.loads(data[2]))
         parsed_data = list(data)
         parsed_data[2] = last_read_chapter
@@ -723,6 +730,7 @@ class Bookmark:
             self.last_read_chapter.to_json(),
             self.guild_id,
             self.last_updated_ts,
+            self.user_created,
         )
 
     async def delete(self, bot: MangaClient) -> bool:

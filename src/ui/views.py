@@ -1,31 +1,42 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from typing import Optional, Self, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core import MangaClient
 
-import traceback as tb
-from discord.ext.commands import Context
-from discord.ui import View, Button
 import discord
-from discord import ButtonStyle
-from src.utils import create_bookmark_embed, sort_bookmarks, group_items_by, get_manga_scanlator_class
-from src.core.objects import Bookmark, ABCScan, Manga
-from .selects import SortTypeSelect, ViewTypeSelect
-from src.core.scanners import SCANLATORS
+import traceback as tb
+
 from functools import partial
-from .buttons import CustomButtonCallbacks
-from src.enums import BookmarkSortType, BookmarkViewType
-from src.core.errors import MangaCompletedOrDropped
+
+from discord import ButtonStyle
 from discord.ext import commands
+from discord.ui import View, Button
+from discord.ext.commands import Context
+
+from src.core.objects import Bookmark, ABCScan, Manga
+from src.core.scanners import SCANLATORS
+from src.core.errors import MangaCompletedOrDropped
+
+from src.utils import (
+    create_bookmark_embed,
+    sort_bookmarks,
+    group_items_by,
+    get_manga_scanlator_class,
+)
+from src.enums import BookmarkSortType, BookmarkViewType
+
+from .buttons import CustomButtonCallbacks
+from .selects import SortTypeSelect, ViewTypeSelect
 
 
 class BaseView(View):
     def __init__(
-            self, bot: MangaClient,
+            self,
+            bot: MangaClient,
             interaction: discord.Interaction | Context = None,
-            timeout: float = 60.0
+            timeout: float | None = 60.0,
     ):
         super().__init__(timeout=timeout)
         self.bot = bot
@@ -44,7 +55,11 @@ class BaseView(View):
             )
 
     async def on_error(
-            self, interaction: discord.Interaction, error: Exception, item: discord.ui.Button, /
+            self,
+            interaction: discord.Interaction,
+            error: Exception,
+            item: discord.ui.Button,
+            /,
     ) -> None:
         self.bot.logger.error(
             tb.print_exception(type(error), error, error.__traceback__)
@@ -97,21 +112,31 @@ class BookmarkView(BaseView):
         self.clear_components()
         self.add_item(ViewTypeSelect(self.view_type, row=2))
 
-        self.add_item(Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3))
-        update_btn = Button(style=ButtonStyle.blurple, label="Update", custom_id="update_btn", row=3)
+        self.add_item(
+            Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3)
+        )
+        update_btn = Button(
+            style=ButtonStyle.blurple, label="Update", custom_id="update_btn", row=3
+        )
         update_btn.callback = partial(self._btn_callbacks.update_button_callback)
 
-        search_btn = Button(style=ButtonStyle.blurple, label="Search", custom_id="search_btn", row=3)
+        search_btn = Button(
+            style=ButtonStyle.blurple, label="Search", custom_id="search_btn", row=3
+        )
         search_btn.callback = partial(self._btn_callbacks.search_button_callback)
 
-        delete_btn = Button(style=ButtonStyle.red, label="Delete", custom_id="delete_btn", row=3)
+        delete_btn = Button(
+            style=ButtonStyle.red, label="Delete", custom_id="delete_btn", row=3
+        )
         delete_btn.callback = partial(self._btn_callbacks.delete_button_callback)
 
         self.add_item(update_btn)
         self.add_item(search_btn)
         self.add_item(delete_btn)
 
-        self.add_item(Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3))
+        self.add_item(
+            Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3)
+        )
         return self
 
     def _load_text_components_preset(self) -> Self:
@@ -121,10 +146,14 @@ class BookmarkView(BaseView):
 
         def _add_blank_buttons():
             for _ in range(2):
-                self.add_item(Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3))
+                self.add_item(
+                    Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3)
+                )
 
         _add_blank_buttons()
-        search_btn = Button(style=ButtonStyle.blurple, label="Search", custom_id="search_btn", row=3)
+        search_btn = Button(
+            style=ButtonStyle.blurple, label="Search", custom_id="search_btn", row=3
+        )
         search_btn.callback = partial(self._btn_callbacks.search_button_callback)
         self.add_item(search_btn)
         _add_blank_buttons()
@@ -143,8 +172,11 @@ class BookmarkView(BaseView):
         embeds: list[discord.Embed] = []
 
         def _make_embed() -> discord.Embed:
-            return discord.Embed(title=f"Bookmarks ({len(self.bookmarks)})", color=discord.Color.blurple(),
-                                 description="")
+            return discord.Embed(
+                title=f"Bookmarks ({len(self.bookmarks)})",
+                color=discord.Color.blurple(),
+                description="",
+            )
 
         em = _make_embed()
         line_index = 0
@@ -208,7 +240,9 @@ class BookmarkView(BaseView):
             self.stop()
             return
 
-        await interaction.response.edit_message(view=view, embed=self._get_display_embed())
+        await interaction.response.edit_message(
+            view=view, embed=self._get_display_embed()
+        )
 
     def change_view_type(self, new_view_type: BookmarkViewType) -> bool:
         """
@@ -257,8 +291,12 @@ class BookmarkView(BaseView):
             return self.text_view_embeds[self.text_page_index]
         else:
             idx = self.visual_item_index
-            scanlator = get_manga_scanlator_class(SCANLATORS, key=self.bookmarks[idx].manga.scanlator)
-            return create_bookmark_embed(self.bot, self.bookmarks[idx], scanlator.icon_url)
+            scanlator = get_manga_scanlator_class(
+                SCANLATORS, key=self.bookmarks[idx].manga.scanlator
+            )
+            return create_bookmark_embed(
+                self.bot, self.bookmarks[idx], scanlator.icon_url
+            )
 
     def _handle_index_change(self):
         if self.text_page_index > len(self.text_view_embeds) - 1:
@@ -279,9 +317,7 @@ class BookmarkView(BaseView):
         self._handle_index_change()
 
     @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, row=0)
-    async def _first_page(
-            self, interaction: discord.Interaction, _
-    ):
+    async def _first_page(self, interaction: discord.Interaction, _):
         self._increment_index(float("inf"))  # this will set index to 0 internally
         await interaction.response.edit_message(embed=self._get_display_embed())
 
@@ -296,14 +332,14 @@ class BookmarkView(BaseView):
         self.stop()
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, row=0)
-    async def forward(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def forward(
+            self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         self._increment_index(1)
         await interaction.response.edit_message(embed=self._get_display_embed())
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, row=0)
-    async def _last_page(
-            self, interaction: discord.Interaction, _
-    ):
+    async def _last_page(self, interaction: discord.Interaction, _):
         self._increment_index(float("-inf"))  # this will set index to max internally
         await interaction.response.edit_message(embed=self._get_display_embed())
 
@@ -323,7 +359,6 @@ class SubscribeView(View):
         custom_id="search_subscribe",
     )
     async def subscribe(self, interaction: discord.Interaction, _):
-
         message: discord.Message = interaction.message
         manga_home_url = message.embeds[0].fields[-1].value
 
@@ -367,18 +402,201 @@ class SubscribeView(View):
 
 
 class ConfirmView(BaseView):
-    def __init__(self, bot: MangaClient, interaction_or_ctx: discord.Interaction | commands.Context):
+    def __init__(
+            self,
+            bot: MangaClient,
+            interaction_or_ctx: discord.Interaction | commands.Context,
+    ):
         super().__init__(bot, interaction_or_ctx)
         self.value = None
 
-    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, _):
         await interaction.response.defer(ephemeral=True, thinking=False)
         self.value = True
         self.stop()
 
-    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, _):
         await interaction.response.defer(ephemeral=True, thinking=False)
         self.value = False
+        self.stop()
+
+
+class BookmarkChapterView(View):
+    def __init__(self, bot: MangaClient):
+        self.bot: MangaClient = bot
+        super().__init__(timeout=None)  # View is persistent ∴ no timeout
+
+        self.manga_id: Optional[str] = None
+        self.chapter_index: Optional[int] = None
+        self.extracted: bool = False
+
+    @discord.ui.button(
+        label="✉️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
+    )
+    async def mark_read(self, interaction: discord.Interaction, btn: Button) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=False)
+
+        if not self.extracted:
+            await self._extract_keys(interaction, btn)
+
+        bookmark: Bookmark = await self.bot.db.get_user_bookmark(
+            interaction.user.id, self.manga_id
+        )
+        if bookmark is None:
+            manga: Manga = await self.bot.db.get_series(self.manga_id)
+            bookmark = Bookmark(
+                interaction.user.id,
+                manga,
+                None,  # temp value, will be updated below
+                interaction.guild_id,
+            )
+
+        if bookmark.last_read_chapter == bookmark.manga.available_chapters[self.chapter_index]:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Already Read",
+                    description="This chapter is already marked as read.",
+                    color=discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+
+        bookmark.last_read_chapter = bookmark.manga.available_chapters[self.chapter_index]
+        await self.bot.db.upsert_bookmark(bookmark)
+
+        await interaction.followup.send(
+            embed=discord.Embed(
+                title="Marked Read",
+                description=f"Successfully marked chapter **{bookmark.last_read_chapter}** as read.",
+                color=discord.Color.green(),
+            ),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="📖 Mark Unread",
+        style=discord.ButtonStyle.red,
+        custom_id="btn_mark_unread",
+    )
+    async def mark_unread(self, interaction: discord.Interaction, btn: Button) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=False)
+        # await self.bot.db.mark_chapter_unread(self.chapter)
+        if not self.extracted:
+            await self._extract_keys(interaction, btn)
+
+        bookmark: Bookmark = await self.bot.db.get_user_bookmark(
+            interaction.user.id, self.manga_id
+        )
+        if bookmark is None:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Not Read",
+                    description="This chapter is not marked as read.",
+                    color=discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+
+        if bookmark.last_read_chapter == bookmark.manga.available_chapters[self.chapter_index]:
+            if self.chapter_index - 1 >= 0:  # if there is a previous chapter
+                bookmark.last_read_chapter = bookmark.manga.available_chapters[self.chapter_index - 1]
+                await self.bot.db.upsert_bookmark(bookmark)
+            else:
+                await self.bot.db.delete_bookmark(
+                    interaction.user.id, bookmark.manga.id
+                )
+            del_bookmark_view = DeleteBookmarkView(self.bot, interaction, self.manga_id)
+            del_bookmark_view.message = await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Marked Unread",
+                    description=f"Successfully marked chapter "
+                                f"{bookmark.manga.available_chapters[self.chapter_index]} as unread.",
+                    color=discord.Color.green(),
+                ),
+                ephemeral=True,
+                view=del_bookmark_view
+            )
+            return
+        else:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Not Read",
+                    description="This chapter is not marked as read.",
+                    color=discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+
+    async def _extract_keys(
+            self, interaction: discord.Interaction, button: Button
+    ) -> None:
+        key_message = interaction.message.content.split("||")[1]
+        manga_id, chapter_index = key_message.split(" | ")
+        manga_id = manga_id.strip().lstrip("<Manga ID: ")
+        chapter_index = chapter_index.strip().lstrip("Chapter Index: ").rstrip(">")
+
+        self.manga_id, self.chapter_index = manga_id, int(chapter_index)
+        self.extracted = True
+
+    async def on_error(
+            self,
+            interaction: discord.Interaction,
+            error: Exception,
+            item: discord.ui.Button,
+            /,
+    ) -> None:
+        self.bot.logger.error(
+            tb.print_exception(type(error), error, error.__traceback__)
+        )
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+            )
+
+
+class DeleteBookmarkView(BaseView):
+    def __init__(self, bot: MangaClient, interaction: discord.Interaction, manga_id: str):
+        super().__init__(bot, interaction=interaction)
+        self.manga_id: str = manga_id
+
+    @discord.ui.button(label="Delete 'last raed' data", style=discord.ButtonStyle.red)
+    async def delete_last_read(self, interaction: discord.Interaction, btn: Button):
+        btn.disabled = True
+        await interaction.response.edit_message(view=self)
+
+        confirm_view: ConfirmView = ConfirmView(self.bot, interaction)
+        confirm_view.message = await interaction.followup.send(
+            embed=discord.Embed(
+                title="Are you sure?",
+                description=f"Are you sure you want to delete 'last read' data for this manga?",
+                color=discord.Color.red()
+            ),
+            ephemeral=True,
+            view=confirm_view
+        )
+        await confirm_view.wait()
+        if confirm_view.value is None:  # timed out
+            btn.disabled = False
+            await self.message.edit(view=self)
+            self.stop()
+            return
+        elif confirm_view.value is False:  # cancelled = False
+            btn.disabled = False
+            await self.message.edit(view=self)
+            await confirm_view.message.delete()
+            self.stop()
+            return
+
+        await self.message.edit(view=None)
+        await self.bot.db.delete_bookmark(interaction.user.id, self.manga_id)
+        await confirm_view.message.edit(
+            embed=discord.Embed(
+                title="Deleted",
+                description=f"Successfully deleted 'last read' data for this manga.",
+                color=discord.Color.green(),
+            ),
+            view=None
+        )
         self.stop()

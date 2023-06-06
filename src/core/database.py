@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Dict, Any
+from typing import Any, Dict, List, TYPE_CHECKING
 
 import aiosqlite
 from fuzzywuzzy import fuzz
@@ -15,6 +15,7 @@ from io import BytesIO
 import pandas as pd
 import sqlite3
 from json import loads, dumps
+from src.core.errors import DatabaseError
 
 
 def _levenshtein_distance(a: str, b: str) -> int:
@@ -64,6 +65,12 @@ class Database:
             )
 
             await db.execute(
+                # user_id: the discord ID of the user the bookmark belongs to
+                # series_id: the ID of the series from the series table
+                # last_read_chapter: the last chapter the user read
+                # guild_id: the discord guild the user bookmarked the manga from
+                # last_updated_ts: the timestamp of the last time the bookmark was updated by the user
+                # user_created: whether the bookmark was created by the user or by the bot
                 """
                 CREATE TABLE IF NOT EXISTS bookmarks (
                     user_id INTEGER NOT NULL,
@@ -71,6 +78,7 @@ class Database:
                     last_read_chapter TEXT DEFAULT NULL,
                     guild_id INTEGER NOT NULL,
                     last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_created BOOLEAN NOT NULL DEFAULT false,
                     
                     FOREIGN KEY (series_id) REFERENCES series (id),
                     FOREIGN KEY (user_id) REFERENCES users (id),
@@ -228,13 +236,7 @@ class Database:
                 """,
                 (bookmark.manga.to_tuple()),
             )
-            # await db.execute(
-            #     """
-            #     INSERT INTO users (id, series_id, guild_id) VALUES ($1, $2, $3) ON CONFLICT(id, series_id, guild_id)
-            #     DO NOTHING;
-            #     """,
-            #     (bookmark.user_id, bookmark.manga.id, bookmark.guild_id),
-            # )
+
             await db.execute(
                 """
                 INSERT INTO bookmarks (
@@ -242,11 +244,12 @@ class Database:
                     series_id, 
                     last_read_chapter,
                     guild_id,
-                    last_updated_ts
+                    last_updated_ts,
+                    user_created
                     ) 
-                VALUES ($1, $2, $3, $4, $5) 
+                VALUES ($1, $2, $3, $4, $5, $6) 
                 ON CONFLICT(user_id, series_id) DO 
-                UPDATE SET last_read_chapter=$3, last_updated_ts=$5;
+                UPDATE SET last_read_chapter=$3, last_updated_ts=$5, user_created=$6;
                 """,
                 (bookmark.to_tuple()),
             )
@@ -274,6 +277,34 @@ class Database:
             )
 
             await db.commit()
+
+    async def mark_chapter_read(self, user_id: int, guild_id: int, manga: Manga, chapter: Chapter) -> bool:
+        """
+        Summary: Marks a chapter as read for a user.
+
+        Args:
+            user_id: The user's ID.
+            guild_id: The guild's ID.
+            manga: The manga object.
+            chapter: The chapter object.
+
+        Returns:
+            (bool): Whether the chapter was marked as read.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            result = await db.execute(
+                """
+                INSERT INTO bookmarks (user_id, series_id, last_read_chapter, guild_id, last_updated_ts, user_created) 
+                VALUES ($1, $2, $3, $4, $5, false) 
+                ON CONFLICT(user_id, series_id) 
+                DO UPDATE SET last_read_chapter = $3, last_updated_ts = $5;
+                """,
+                (user_id, manga.id, chapter.to_json(), guild_id, datetime.now()),
+            )
+            if result.rowcount < 1:
+                raise DatabaseError("Failed to mark chapter as read.")
+            await db.commit()
+            return True
 
     async def upsert_config(self, settings: GuildSettings) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -407,6 +438,7 @@ class Database:
                     b.last_read_chapter,
                     b.guild_id,
                     b.last_updated_ts,
+                    b.user_created,
                     
                     s.id,
                     s.human_name,
@@ -454,6 +486,7 @@ class Database:
                     b.last_read_chapter,
                     b.guild_id,
                     b.last_updated_ts,
+                    b.user_created,
                     
                     s.id,
                     s.human_name,

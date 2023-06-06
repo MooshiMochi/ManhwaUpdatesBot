@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import traceback as tb
-from typing import TYPE_CHECKING, Dict
+from typing import Dict, TYPE_CHECKING
 
 import aiohttp
 import discord
 
 from src.core.errors import URLAccessFailed
-from src.core.objects import Manga, ChapterUpdate
+from src.core.objects import ChapterUpdate, Manga
 from src.core.ratelimiter import RateLimiter
-from src.core.scanners import SCANLATORS, ABCScan
-from src.utils import group_items_by, chunked
+from src.core.scanners import ABCScan, SCANLATORS
+from src.ui.views import BookmarkChapterView
+from src.utils import chunked, group_items_by
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -27,6 +28,7 @@ class UpdateCheckCog(commands.Cog):
 
     async def cog_load(self):
         self.bot.logger.info("Loaded Updates Cog...")
+        self.bot.add_view(BookmarkChapterView(self.bot))
 
         self.check_updates_task.add_exception_type(Exception)
         self.check_updates_task.start()
@@ -126,11 +128,13 @@ class UpdateCheckCog(commands.Cog):
                             role_ping = "" if not guild_config.role else f"{guild_config.role.mention} "
                             await guild_config.webhook.send(
                                 (
+                                    f"||<Manga ID: {manga.id} | Chapter Index: {chapter.index}>||\n"
                                     f"{role_ping}**{manga.human_name}** **{chapter.name}**"
                                     f" has been released!\n{chapter.url}"
                                 ),
                                 allowed_mentions=discord.AllowedMentions(roles=True),
-                                **extra_kwargs
+                                **extra_kwargs,
+                                view=BookmarkChapterView(self.bot),
                             )
                         except discord.HTTPException as e:
                             self.bot.logger.error(

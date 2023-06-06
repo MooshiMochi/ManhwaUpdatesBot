@@ -61,3 +61,10 @@ class MangaCompletedOrDropped(BaseError):
         [This manga]({self.manga_url}) has already been completed or dropped.
         Consider using `/bookmark new` to bookmark the manga instead.
         """
+
+
+class DatabaseError(BaseError):
+    """Raised when there is an error with the database."""
+
+    def __init__(self, error_msg: str):
+        self.error_msg = error_msg
