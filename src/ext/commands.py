@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -381,6 +381,39 @@ class CommandsCog(commands.Cog):
         return
 
     @app_commands.command(
+        name="last_chapter_read", description="Get the last chapter you read of a manga."
+    )
+    @app_commands.describe(manga_id="The name of the manga.")
+    @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
+    @app_commands.rename(manga_id="manga")
+    async def last_chapter_read(self, interaction: discord.Interaction, manga_id: str):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
+        if not bookmark:
+            em = discord.Embed(title="No info available", color=discord.Color.red())
+            em.description = f"You have not marked any chapters as read for this manga."
+            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+            return await interaction.followup.send(embed=em, ephemeral=True)
+
+        if len(bookmark.manga.available_chapters) - 1 > bookmark.last_read_chapter.index:
+            next_available_chapter = bookmark.manga.available_chapters[bookmark.last_read_chapter.index + 1]
+        elif bookmark.manga.completed:
+            next_available_chapter = "`N/A (Manga is completed)`"
+        else:
+            next_available_chapter = "`Wait for updates`"
+
+        em = discord.Embed(title="Last Chapter Read", color=discord.Color.green())
+        em.description = (
+            f"The last chapter you read of `{bookmark.manga.human_name}` is {bookmark.last_read_chapter}.\n"
+            f"Next chapter: {next_available_chapter}"
+        )
+        em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+
+        await interaction.followup.send(embed=em, ephemeral=True)
+        return
+
+    @app_commands.command(
         name="chapters", description="Get a list of chapters for a manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
@@ -490,6 +523,7 @@ class CommandsCog(commands.Cog):
             "`/search` - Search for a manga on MangaDex.\n"
             "`/latest` - Get the latest chapter of a manga.\n"
             "`/chapters` - Get a list of chapters of a manga.\n"
+            "`/last_chapter_read` - Get the last chapter you read.\n"
             "`/supported_websites` - Get a list of websites supported by the bot.\n\n"
 
             "**Subscription Commands:**\n"
