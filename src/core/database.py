@@ -500,7 +500,7 @@ class Database:
                 FROM bookmarks AS b
                 INNER JOIN series AS s
                 ON b.series_id = s.id
-                WHERE b.user_id = $1
+                WHERE b.user_id = $1 AND b.user_created = 1;
                 """,
                 (user_id,),
             )
