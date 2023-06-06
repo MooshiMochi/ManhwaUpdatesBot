@@ -77,7 +77,7 @@ class BookmarkCog(commands.Cog):
         existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
         if existing_bookmark:
             bookmark = existing_bookmark
-            bookmark.user_created = False
+            bookmark.user_created = True
         else:
             bookmark = await scanner.make_bookmark_object(
                 self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
