@@ -108,7 +108,7 @@ class ABCScan(ABC):
             tb.format_exception(type(error), error, error.__traceback__)
         )
         # message: str = f"Error in {cls.name} scan: {traceback}"
-        message: str = f"{traceback}\nError in {cls.name} scan.\nURL: {kwargs.get('request_url', 'Unknown')}"
+        message: str = f"{traceback}\nError in {cls.name} scan.\nURL: {kwargs.pop('request_url', 'Unknown')}"
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
@@ -700,7 +700,7 @@ class Bookmark:
             self.last_updated_ts: float = float(last_updated_ts)
         else:
             self.last_updated_ts: float = datetime.utcnow().timestamp()
-            
+
         self.user_created: bool = user_created
 
     @classmethod

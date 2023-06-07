@@ -117,8 +117,9 @@ class CommandsCog(commands.Cog):
             series_url: str = TritiniaScans.base_url + url_name
             series_id = await TritiniaScans.get_manga_id(self.bot, series_url)
 
-        elif (RegExpressions.toonily_url.search(manga_url)
-              and self.bot.config["user-agents"][Toonily.name] is not None
+        elif (
+                RegExpressions.toonily_url.search(manga_url)
+                and self.bot.config["user-agents"][Toonily.name] is not None
         ):
             scanlator = Toonily
 
@@ -240,7 +241,7 @@ class CommandsCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def manga_autocomplete(
-            self, interaction: discord.Interaction, current: str
+            self: Any, interaction: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /unsubscribe command."""
         subs: list[Manga] = await self.bot.db.get_user_subs(
@@ -261,9 +262,10 @@ class CommandsCog(commands.Cog):
                ][:25]
 
     async def latest_chapters_autocomplete(
-            self, interaction: discord.Interaction, current: str
+            self: Any, _: discord.Interaction, current: str
     ) -> list[discord.app_commands.Choice[str]]:
         """Autocomplete for the /latest command"""
+        # noinspection PyProtectedMember
         subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
         # subs = list(reversed(subs))
         return [

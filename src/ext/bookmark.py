@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -26,7 +26,7 @@ class BookmarkCog(commands.Cog):
         self.bot.logger.info("Loaded Bookmarks Cog...")
 
     async def bookmark_autocomplete(
-            self, interaction: discord.Interaction, argument: str
+            self: Any, interaction: discord.Interaction, argument: str
     ) -> list[discord.app_commands.Choice]:
         bookmarks = await self.bot.db.get_user_bookmarks_autocomplete(interaction.user.id, argument)
         if not bookmarks:
@@ -40,7 +40,7 @@ class BookmarkCog(commands.Cog):
                ][:25]
 
     async def chapter_autocomplete(
-            self, interaction: discord.Interaction, argument: str
+            self: Any, interaction: discord.Interaction, argument: str
     ) -> list[discord.app_commands.Choice]:
         series_id = interaction.namespace["manga"]
         if series_id is None:
@@ -76,9 +76,10 @@ class BookmarkCog(commands.Cog):
         manga_id = await scanner.get_manga_id(self.bot, manga_url)
         existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
         if existing_bookmark:
+            print("Bookmark already exists")
             bookmark = existing_bookmark
-            bookmark.user_created = True
         else:
+            print("Bookmark does not exist")
             bookmark = await scanner.make_bookmark_object(
                 self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
             )
@@ -86,6 +87,7 @@ class BookmarkCog(commands.Cog):
                 raise MangaNotFound(manga_url)
             bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
 
+        bookmark.user_created = True
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanner.icon_url)
         await interaction.followup.send(

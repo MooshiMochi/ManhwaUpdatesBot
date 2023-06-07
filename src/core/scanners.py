@@ -384,7 +384,7 @@ class Toonily(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
-        return await super().get_manga_id(bot, manga_url)
+        return await super().get_manga_id(bot, await cls.fmt_manga_url(bot, None, manga_url))
 
     @classmethod
     async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
