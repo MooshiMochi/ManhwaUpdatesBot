@@ -114,8 +114,9 @@ class BookmarkCog(commands.Cog):
                 if hidden_bookmark:
                     em = create_bookmark_embed(self.bot, hidden_bookmark, hidden_bookmark.scanner.icon_url)
                     await interaction.response.followup.send(embed=em, ephemeral=True)
+                    view.stop()
                     return
-                
+
                 raise BookmarkNotFound()
             view.visual_item_index = bookmark_index
 
