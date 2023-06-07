@@ -570,7 +570,7 @@ class DeleteBookmarkView(BaseView):
         confirm_view.message = await interaction.followup.send(
             embed=discord.Embed(
                 title="Are you sure?",
-                description=f"Are you sure you want to delete 'last read' data for this manga?",
+                description=f"Are you sure you want to delete the 'hidden bookmark' for this manga?",
                 color=discord.Color.red()
             ),
             ephemeral=True,
@@ -594,7 +594,7 @@ class DeleteBookmarkView(BaseView):
         await confirm_view.message.edit(
             embed=discord.Embed(
                 title="Deleted",
-                description=f"Successfully deleted 'last read' data for this manga.",
+                description=f"Successfully deleted the 'hidden bookmark' for this manga.",
                 color=discord.Color.green(),
             ),
             view=None
