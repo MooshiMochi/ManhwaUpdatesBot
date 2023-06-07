@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from functools import partial
 from itertools import islice
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 import aiohttp
 import discord
@@ -489,7 +489,7 @@ def relative_time_to_seconds(time_string) -> int:
 
 def time_string_to_seconds(time_str: str) -> int:
     """Convert a time string to seconds since the epoch"""
-    formats = ["%b %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
+    formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
     for fmt in formats:
         try:
             dt = datetime.strptime(time_str, fmt)
