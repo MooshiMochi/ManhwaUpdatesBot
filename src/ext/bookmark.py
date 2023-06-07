@@ -110,6 +110,12 @@ class BookmarkCog(commands.Cog):
         if series_id:
             bookmark_index = next((i for i, x in enumerate(view.bookmarks) if x.manga.id == series_id), None)
             if bookmark_index is None:
+                hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
+                if hidden_bookmark:
+                    em = create_bookmark_embed(self.bot, hidden_bookmark, hidden_bookmark.scanner.icon_url)
+                    await interaction.response.followup.send(embed=em, ephemeral=True)
+                    return
+                
                 raise BookmarkNotFound()
             view.visual_item_index = bookmark_index
 
