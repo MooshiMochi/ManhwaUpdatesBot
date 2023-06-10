@@ -59,7 +59,7 @@ class Database:
                     guild_id INTEGER NOT NULL,
                     FOREIGN KEY (series_id) REFERENCES series (id),
                     FOREIGN KEY (guild_id) REFERENCES config (guild_id),
-                    UNIQUE (id, series_id, guild_id) ON CONFLICT IGNORE
+                    UNIQUE (id, series_id) ON CONFLICT IGNORE
                 )
                 """
             )
@@ -269,14 +269,36 @@ class Database:
 
     async def subscribe_user(self, user_id: int, guild_id: int, series_id: int) -> None:
         async with aiosqlite.connect(self.db_name) as db:
+            # INSERT OR IGNORE INTO users (id, series_id, guild_id) VALUES ($1, $2, $3);
             await db.execute(
                 """
-                INSERT INTO users (id, series_id, guild_id) VALUES ($1, $2, $3);
+                INSERT INTO users (id, series_id, guild_id) VALUES ($1, $2, $3) ON CONFLICT(id, series_id) DO NOTHING;
                 """,
                 (user_id, series_id, guild_id),
             )
 
             await db.commit()
+
+    async def is_user_subscribed(self, user_id: int, manga_id: Any) -> bool:
+        """
+        Summary: Checks if a user is subscribed to a manga.
+
+        Args:
+            user_id: The user's ID.
+            manga_id: The manga's ID.
+
+        Returns:
+            (bool): Whether the user is subscribed to the manga.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT * FROM users WHERE id = $1 AND series_id = $2;
+                """,
+                (user_id, manga_id),
+            )
+            result = await cursor.fetchone()
+            return result is not None
 
     async def mark_chapter_read(self, user_id: int, guild_id: int, manga: Manga, chapter: Chapter) -> bool:
         """

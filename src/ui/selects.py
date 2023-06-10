@@ -1,14 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal
+
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from . import BookmarkView
+    from src.core import MangaClient
 
 import discord
 
-from src.utils import sort_bookmarks
 from src.core.objects import Chapter, Bookmark
 from discord.ui import Select
 from src.enums import BookmarkSortType, BookmarkViewType
+from src.core.errors import ChapterNotFound
 
 
 class SortTypeSelect(Select):
@@ -122,13 +124,55 @@ class ChapterSelect(Select):
         return placeholder
 
     async def callback(self, interaction: discord.Interaction):
-        chapter_index: int = int(self.values[0])
-        new_last_read_chapter = self.bookmark.manga.available_chapters[chapter_index]
+        try:
+            chapter_index: int = int(self.values[0])
+            new_last_read_chapter = self.bookmark.manga.available_chapters[chapter_index]
+        except (IndexError, TypeError):
+            raise ChapterNotFound()
+
         self.bookmark.last_read_chapter = new_last_read_chapter
+
         await self.bookmark.update_last_read_chapter(self.view.bot, new_last_read_chapter)
+
+        # If last_read_chapter == last_chapter and manga not completed, subscribe user
+        bot: MangaClient = self.view.bot
+        user_subscribed: bool = False
+        if self.bookmark.last_read_chapter == self.bookmark.manga.available_chapters[
+            -1
+        ] and not self.bookmark.manga.completed:
+            # check if user is subscribed to the manga with manga.id
+            # if not, subscribe user
+            user_subscribed = True
+            if not await bot.db.is_user_subscribed(interaction.user.id, self.bookmark.manga.id):
+                await bot.db.subscribe_user(
+                    interaction.user.id, self.bookmark.guild_id, self.bookmark.manga.id
+                )
+        # -----
 
         self.view.clear_components()
         self.view.load_components()
         self.view.toggle_nav_buttons(True)
 
         await self.view.update(interaction)
+
+        if user_subscribed:
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Bookmark Updated",
+                        description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter} and "
+                                    f"subscribed you to updates for {self.bookmark.manga.human_name}",
+                        color=discord.Color.green(),
+                    ),
+                    ephemeral=True,
+                )
+            else:
+                await interaction.response.send_message(
+                    embed=discord.Embed(
+                        title="Bookmark Updated",
+                        description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter} and "
+                                    f"subscribed you to updates for {self.bookmark.manga.human_name}",
+                        color=discord.Color.green(),
+                    ),
+                    ephemeral=True
+                )

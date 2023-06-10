@@ -30,6 +30,8 @@ from src.enums import BookmarkSortType, BookmarkViewType
 from .buttons import CustomButtonCallbacks
 from .selects import SortTypeSelect, ViewTypeSelect
 
+from datetime import datetime
+
 
 class BaseView(View):
     def __init__(
@@ -464,6 +466,7 @@ class BookmarkChapterView(View):
             )
 
         bookmark.last_read_chapter = bookmark.manga.available_chapters[self.chapter_index]
+        bookmark.last_updated_ts = datetime.utcnow().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
 
         await interaction.followup.send(
@@ -502,6 +505,7 @@ class BookmarkChapterView(View):
         if bookmark.last_read_chapter == bookmark.manga.available_chapters[self.chapter_index]:
             if self.chapter_index - 1 >= 0:  # if there is a previous chapter
                 bookmark.last_read_chapter = bookmark.manga.available_chapters[self.chapter_index - 1]
+                bookmark.last_updated_ts = datetime.utcnow().timestamp()
                 await self.bot.db.upsert_bookmark(bookmark)
             else:
                 await self.bot.db.delete_bookmark(

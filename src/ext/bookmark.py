@@ -9,7 +9,7 @@ from src.core.scanners import SCANLATORS
 from src.core.objects import ABCScan
 
 import discord
-
+from datetime import datetime
 from discord.ext import commands
 from src.utils import get_manga_scanlator_class, create_bookmark_embed
 from discord import app_commands
@@ -76,10 +76,8 @@ class BookmarkCog(commands.Cog):
         manga_id = await scanner.get_manga_id(self.bot, manga_url)
         existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
         if existing_bookmark:
-            print("Bookmark already exists")
             bookmark = existing_bookmark
         else:
-            print("Bookmark does not exist")
             bookmark = await scanner.make_bookmark_object(
                 self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
             )
@@ -134,16 +132,50 @@ class BookmarkCog(commands.Cog):
     @app_commands.autocomplete(chapter_index=chapter_autocomplete)
     async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
-        chapters = await self.bot.db.get_series_chapters(series_id)
-        if not chapters:
+        bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
+        if not bookmark:
             raise BookmarkNotFound()
 
-        chapter = chapters[int(chapter_index)]
-        if not chapter:
+        try:
+            chapter_index = int(chapter_index)
+        except ValueError:
             raise ChapterNotFound()
-        await self.bot.db.update_last_read_chapter(interaction.user.id, series_id, chapter)
-        await interaction.followup.send(f"Successfully updated bookmark to {chapter.name}", ephemeral=True)
-        return
+        try:
+            new_chapter = bookmark.manga.available_chapters[chapter_index]
+        except (IndexError, TypeError):
+            raise ChapterNotFound()
+
+        bookmark.last_read_chapter = new_chapter
+        bookmark.last_updated_ts = datetime.utcnow().timestamp()
+
+        user_subscribed: bool = False
+        # no need to worry about available_chapters being empty because it's handled above
+        if bookmark.last_read_chapter == bookmark.manga.available_chapters[-1] and not bookmark.manga.completed:
+            # check if user is subscribed to the manga with manga.id
+            # if not, subscribe user
+            user_subscribed = True
+            if not await self.bot.db.is_user_subscribed(interaction.user.id, bookmark.manga.id):
+                await self.bot.db.subscribe_user(interaction.user.id, bookmark.guild_id, bookmark.manga.id)
+
+        await self.bot.db.upsert_bookmark(bookmark)
+        if user_subscribed:
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Bookmark Updated",
+                    description=f"Successfully updated bookmark to {bookmark.last_read_chapter} and subscribed you to "
+                                f"updates for {bookmark.manga.human_name}",
+                    color=discord.Color.green(),
+                ),
+                ephemeral=True,
+            )
+        else:
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Bookmark Updated",
+                    description=f"Successfully updated bookmark to {bookmark.last_read_chapter}",
+                    color=discord.Color.green(),
+                ), ephemeral=True
+            )
 
     @bookmark_group.command(name="delete", description="Delete a bookmark")
     @app_commands.rename(series_id="manga")
