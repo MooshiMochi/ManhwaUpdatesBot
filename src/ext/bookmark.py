@@ -7,17 +7,21 @@ from src.static import RegExpressions
 if TYPE_CHECKING:
     from src.core import MangaClient
 
-from src.core.scanners import SCANLATORS
-from src.core.objects import ABCScan
-
 import discord
-from datetime import datetime
-from discord.ext import commands
-from src.utils import get_manga_scanlator_class, create_bookmark_embed
 from discord import app_commands
-from src.core.errors import MangaNotFound, BookmarkNotFound, ChapterNotFound
+from discord.ext import commands
+
+from datetime import datetime
+
 from src.ui import BookmarkView
 from src.enums import BookmarkViewType
+
+from src.core.objects import ABCScan
+from src.core.objects import Manga
+from src.core.scanners import SCANLATORS
+from src.core.errors import MangaNotFound, BookmarkNotFound, ChapterNotFound
+
+from src.utils import get_manga_scanlator_class, create_bookmark_embed
 
 
 class BookmarkCog(commands.Cog):
@@ -39,6 +43,27 @@ class BookmarkCog(commands.Cog):
                        name=x[1],
                        value=x[0]
                    ) for x in bookmarks
+               ][:25]
+
+    async def manga_autocomplete(
+            self: Any, interaction: discord.Interaction, current: str
+    ) -> list[discord.app_commands.Choice[str]]:
+        """Autocomplete for the /unsubscribe command."""
+        subs: list[Manga] = await self.bot.db.get_user_subs(
+            interaction.user.id, current
+        )
+        # subs = list(reversed(subs))
+
+        return [
+                   discord.app_commands.Choice(
+                       name=(
+                           x.human_name[:97] + "..."
+                           if len(x.human_name) > 100
+                           else x.human_name
+                       ),
+                       value=x.id,
+                   )
+                   for x in subs
                ][:25]
 
     async def chapter_autocomplete(
@@ -63,7 +88,7 @@ class BookmarkCog(commands.Cog):
     @bookmark_group.command(name="new", description="Bookmark a new manga")
     @app_commands.describe(manga_url_or_id="The name of the bookmarked manga you want to view")
     @app_commands.rename(manga_url_or_id="manga_url")
-    @app_commands.autocomplete(manga_url_or_id=bookmark_autocomplete)
+    @app_commands.autocomplete(manga_url_or_id=manga_autocomplete)
     async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
