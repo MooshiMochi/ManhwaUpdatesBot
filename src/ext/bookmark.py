@@ -109,10 +109,13 @@ class BookmarkCog(commands.Cog):
             manga_id = manga_url_or_id
         existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
 
+        manga_obj = await self.bot.db.get_series(manga_id)
+        scanner = get_manga_scanlator_class(SCANLATORS, key=manga_obj.scanlator)
+
         if existing_bookmark:
             bookmark = existing_bookmark
-            scanner = get_manga_scanlator_class(SCANLATORS, key=bookmark.manga.scanlator)
         else:
+
             bookmark = await scanner.make_bookmark_object(
                 self.bot, manga_id, manga_url_or_id, interaction.user.id, interaction.guild.id
             )
