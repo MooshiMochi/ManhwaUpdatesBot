@@ -6,10 +6,8 @@ from discord import Intents
 from discord.errors import LoginFailure
 from discord.utils import setup_logging
 
-from src.core import BotCommandTree
-from src.core import CachedClientSession, ProtectedRequest
-from src.core import MangaClient
-from src.utils import ensure_configs, ensure_environment, exit_bot, ensure_proxy, load_config, silence_debug_loggers
+from src.core import BotCommandTree, CachedClientSession, MangaClient, ProtectedRequest
+from src.utils import ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, silence_debug_loggers
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -48,7 +46,8 @@ async def main():
             "aiosqlite",
             "discord.gateway",
             "discord.client",
-            "discord.http"
+            "discord.http",
+            "discord.webhook.async_",
         ]
     )
 

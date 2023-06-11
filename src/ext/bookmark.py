@@ -40,7 +40,7 @@ class BookmarkCog(commands.Cog):
 
         return [
                    discord.app_commands.Choice(
-                       name=x[1],
+                       name=x[1][:97] + "..." if len(x[1]) > 100 else x[1],
                        value=x[0]
                    ) for x in bookmarks
                ][:25]
