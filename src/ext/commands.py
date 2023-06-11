@@ -247,7 +247,6 @@ class CommandsCog(commands.Cog):
         subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id, current
         )
-        # subs = list(reversed(subs))
 
         return [
                    discord.app_commands.Choice(
