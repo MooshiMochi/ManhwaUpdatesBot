@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Optional, TYPE_CHECKING
 
+from src.static import RegExpressions
+
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -59,33 +61,51 @@ class BookmarkCog(commands.Cog):
     bookmark_group = app_commands.Group(name="bookmark", description="Bookmark a manga")
 
     @bookmark_group.command(name="new", description="Bookmark a new manga")
-    @app_commands.describe(manga_url="The url of the manga you want to bookmark")
-    async def bookmark_new(self, interaction: discord.Interaction, manga_url: str):
+    @app_commands.describe(manga_url_or_id="The name of the bookmarked manga you want to view")
+    @app_commands.rename(manga_url_or_id="manga_url")
+    @app_commands.autocomplete(manga_url_or_id=bookmark_autocomplete)
+    async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        scanner: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_url)
-        if not scanner:
-            em = discord.Embed(title="Invalid URL", color=discord.Color.red())
-            em.description = (
-                "The URL you provided does not follow any of the known url formats.\n"
-                "See `/supported_websites` for a list of supported websites and their url formats."
-            )
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.followup.send(embed=em, ephemeral=True)
+        scanner: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_url_or_id)
 
-        manga_id = await scanner.get_manga_id(self.bot, manga_url)
+        if RegExpressions.url.search(manga_url_or_id):
+            if not scanner:
+                em = discord.Embed(title="Invalid URL", color=discord.Color.red())
+                em.description = (
+                    "The URL you provided does not follow any of the known url formats.\n"
+                    "See `/supported_websites` for a list of supported websites and their url formats."
+                )
+                em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+                return await interaction.followup.send(embed=em, ephemeral=True)
+
+            manga_id = await scanner.get_manga_id(self.bot, manga_url_or_id)
+        else:
+            manga_id = manga_url_or_id
         existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
+
         if existing_bookmark:
             bookmark = existing_bookmark
+            scanner = get_manga_scanlator_class(SCANLATORS, key=bookmark.manga.scanlator)
         else:
             bookmark = await scanner.make_bookmark_object(
-                self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
+                self.bot, manga_id, manga_url_or_id, interaction.user.id, interaction.guild.id
             )
             if not bookmark:
-                raise MangaNotFound(manga_url)
-            bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
+                raise MangaNotFound(manga_url_or_id)
+            try:
+                bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
+            except IndexError:
+                return await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="No chapters available",
+                        description="This manga has no chapters available to read.\nConsider using `/subscribe` to "
+                                    "get notified when new chapters are available.",
+                    ), ephemeral=True
+                )
 
         bookmark.user_created = True
+        bookmark.last_updated_ts = datetime.utcnow().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanner.icon_url)
         await interaction.followup.send(

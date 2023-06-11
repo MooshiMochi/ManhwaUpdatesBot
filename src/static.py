@@ -14,6 +14,7 @@ class EMPTY:
 
 class RegExpressions:
     chapter_num_from_url = re.compile(r"(\d+([.]\d+)?)/?$")
+    url = re.compile(r"https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(%[0-9a-fA-F][0-9a-fA-F]))+")
     toonily_url = re.compile(
         r"(?:https?://)?(?:www\.)?toonily\.com/webtoon/([a-zA-Z0-9-]+)(?:/.*)?"
     )
