@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import Literal, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -639,14 +639,14 @@ class Restricted(commands.Cog):
     )
     async def g_update(self, ctx: commands.Context, *, message: str):
         bottom_text = "\n\n*If you have any questions, please join [SkyHub](https://discord.gg/EQ83EWW7Nu) and ping " \
-                      "Mooshi#6669.*"
+                      "`.mooshi`.*"
         message += bottom_text
         em = discord.Embed(
             title="⚠️ Important Update ⚠️",
             description=message,
             color=discord.Color.red()
         )
-        em.set_footer(text="This is a global update sent by Mooshi#6669.")
+        em.set_footer(text="This is a global update sent by Mooshi.")
 
         guild_configs = await self.bot.db.get_many_guild_config([x.id for x in self.bot.guilds])
         if not guild_configs:

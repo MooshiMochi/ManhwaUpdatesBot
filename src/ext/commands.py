@@ -551,7 +551,7 @@ class CommandsCog(commands.Cog):
             "• Manage Webhooks\n\n"
             "**Further Help:**\n"
             "If you need further help, you can join the [support server](https://discord.gg/EQ83EWW7Nu) and contact "
-            "Mooshi#6669 - the bot developer.\n\n"
+            ".mooshi - the bot developer.\n\n"
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
         await interaction.response.send_message(embed=em, ephemeral=True)
