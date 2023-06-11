@@ -93,6 +93,7 @@ class BookmarkCog(commands.Cog):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         scanner: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_url_or_id)
+        manga_url = manga_url_or_id
 
         if RegExpressions.url.search(manga_url_or_id):
             if not scanner:
@@ -107,17 +108,18 @@ class BookmarkCog(commands.Cog):
             manga_id = await scanner.get_manga_id(self.bot, manga_url_or_id)
         else:
             manga_id = manga_url_or_id
-        existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
+            manga_obj = await self.bot.db.get_series(manga_id)
+            scanner = get_manga_scanlator_class(SCANLATORS, key=manga_obj.scanlator)
+            manga_url = manga_obj.url
 
-        manga_obj = await self.bot.db.get_series(manga_id)
-        scanner = get_manga_scanlator_class(SCANLATORS, key=manga_obj.scanlator)
+        existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
 
         if existing_bookmark:
             bookmark = existing_bookmark
         else:
 
             bookmark = await scanner.make_bookmark_object(
-                self.bot, manga_id, manga_url_or_id, interaction.user.id, interaction.guild.id
+                self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
             )
             if not bookmark:
                 raise MangaNotFound(manga_url_or_id)
