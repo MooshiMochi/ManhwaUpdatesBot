@@ -134,7 +134,6 @@ dmypy.json
 
 **/_lavalink_/
 
-test.py
 
 **/database.db
 config.yml
