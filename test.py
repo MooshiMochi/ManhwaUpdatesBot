@@ -6,6 +6,7 @@ This is a test file for testing each individual scanlator class from scanlator.p
 from __future__ import annotations
 
 import hashlib
+import os
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
@@ -55,10 +56,14 @@ class SetupTest:
 
     @staticmethod
     def load_config() -> Dict:
-        import yaml
-        with open("config.yml", "r") as f:
-            config = yaml.safe_load(f)
-        return config
+        if os.name == "nt":
+            print("Running on Windows, using config.yml")
+            import yaml
+            with open("config.yml", "r") as f:
+                config = yaml.safe_load(f)
+            return config
+        else:
+            return {}
 
     def fmt_proxy(self) -> str:
         proxy_dict = self.bot.config["proxy"]
