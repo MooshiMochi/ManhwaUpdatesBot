@@ -444,64 +444,40 @@ class CommandsCog(commands.Cog):
     )
     async def supported_websites(self, interaction: discord.Interaction) -> None:
         em = discord.Embed(title="Supported Websites", color=discord.Color.green())
-        em.description = (
-                """
-                Manga Updates Bot currently supports the following websites:
-                • [MangaDex](https://mangadex.org/)
-                 \u200b \u200b \u200b \↪ Format -> `https://mangadex.org/title/1b2c3d/`
-                • [Manganato](https://manganato.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://manganato.com/manga-m123456` 
-                • [Toonily](https://toonily.com)
-                \u200b \u200b \u200b \↪ Format -> `https://toonily.net/manga/manga-title/`
-                • [TritiniaScans](https://tritinia.org)
-                \u200b \u200b \u200b \↪ Format -> `https://tritinia.org/manga/manga-title/`
-                • [FlameScans](https://flamescans.org/)
-                \u200b \u200b \u200b \↪ Format -> `https://flamescans.org/series/12351-manga-title/`
-                • [AsuraScans](https://asurascans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://asurascans.com/manga/12351-manga-title/`
-                • [ReaperScans](https://reaperscans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://reaperscans.com/comics/12351-manga-title/`
-                • [Comick](https://comick.app/)
-                \u200b \u200b \u200b \↪ Format -> `https://comick.app/comic/manga-title/`
-                • [Luminous](https://luminousscans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://luminousscans.com/series/12351-manga-title/`
-                • [DrakeScans](https://drakescans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://drakescans.com/series/manga-title/`
-                • [NitroScans](https://nitroscans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://nitroscans.com/series/manga-title/`
-                • [Mangapill](https://mangapill.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://mangapill.com/manga/12351/manga-title/`
-                • [LeviatanScans](https://en.leviatanscans.com/)
-                \u200b \u200b \u200b \↪ Format -> `https://en.leviatanscans.com/home/manga/manga-title/`
-                • [Bato.to](https://bato.to/)
-                \u200b \u200b \u200b \↪ Format -> `https://bato.to/series/12351/manga-title/`
-                """
-                + (
-                    f"""\
-                    • [Aquamanga](https://aquamanga.com/)
-                    \u200b \u200b \u200b \↪ Format -> `https://aquamanga.com/read/manga-title/`
-                    """
-                    if self.bot.config["user-agents"][Aquamanga.name] is not None else ""
-                )
+        supp_webs = [
+            ("MangaDex", "https://mangadex.org/", "https://mangadex.org/title/1b2c3d/"),
+            ("Manganato", "https://manganato.com/", "https://manganato.com/manga-m123456"),
+            ("Toonily", "https://toonily.com", "https://toonily.net/manga/manga-title/"),
+            ("TritiniaScans", "https://tritinia.org", "https://tritinia.org/manga/manga-title/"),
+            ("FlameScans", "https://flamescans.org/", "https://flamescans.org/series/manga-title/"),
+            ("AsuraScans", "https://asurascans.com/", "https://asurascans.com/manga/manga-title/"),
+            ("ReaperScans", "https://reaperscans.com/", "https://reaperscans.com/comics/12351-manga-title/"),
+            ("Comick", "https://comick.app/", "https://comick.app/comic/manga-title/"),
+            ("Luminous", "https://luminousscans.com/", "https://luminousscans.com/series/12351-manga-title/"),
+            ("DrakeScans", "https://drakescans.com/", "https://drakescans.com/series/manga-title/"),
+            ("NitroScans", "https://nitroscans.com/", "https://nitroscans.com/series/manga-title/"),
+            ("Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
+            ("LeviatanScans", "https://en.leviatanscans.com/", "https://en.leviatanscans.com/home/manga/manga-title/"),
+            ("Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
+            # ("Void-Scans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
+            ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
+            ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/")
+        ]
+        if self.bot.config['user-agents'][AniglisScans.name] is None:
+            supp_webs.pop(-1)
+        if self.bot.config['user-agents'][Aquamanga.name] is None:
+            supp_webs.pop(-1)
+        supp_webs = sorted(supp_webs, key=lambda x: x[0])
 
-                + (
-                    f"""\
-                    • [AniglisScans](https://anigliscans.com/)
-                    \u200b \u200b \u200b \↪ Format -> `https://anigliscans.com/series/manga-title/`
-                    """
-                    if self.bot.config["user-agents"][AniglisScans.name] is not None else ""
-                )
+        em.description = "Manga Updates Bot currently supports the following websites:\n"
+        for name, url, _format in supp_webs:
+            em.description += f"• [{name}]({url})\n"
+            em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"
 
-                + (
-                    """
-                    \n__**Note:**__
-                    More websites will be added in the future. Don't forget to leave suggestions on websites I should add.
-                    """
-                )
+        em.description += "\n\n__**Note:**__"
+        em.description += "\nMore websites will be added in the future. "
+        em.description += "Don't forget to leave suggestions on websites I should add."
 
-            # •[Void-Scans](https://void-scans.com/)
-            # \u200b \u200b \u200b \↪ Format -> `https://void-scans.com/manga/manga-title/`
-        )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.response.send_message(embed=em, ephemeral=True)
