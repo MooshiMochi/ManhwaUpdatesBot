@@ -1254,7 +1254,6 @@ class Comick(ABCScan):
                     file=write_to_discord_file(cls.name + ".html", await resp.text())
                 )
             manga_id = re.search(r"\"hid\":\"([^\"]+)\"", await resp.text()).group(1)
-            print(f"Got manga ID {manga_id} for {manga_url}")
             return manga_id
 
     @classmethod
@@ -2022,8 +2021,9 @@ class Bato(ABCScan):
                 "div", {"class": "main"}
             )
             # chapter_tags = chapter_list_container.find_all("a")
-            chapter_divs = chapter_list_container.find_all("div",
-                                                           {"class": "p-2 d-flex flex-column flex-md-row item is-new"})
+            chapter_divs = chapter_list_container.find_all(
+                "div", {"class": "p-2"}
+            )
             chapters: list[Chapter] = []
             for i, chp_tag in enumerate(reversed(chapter_divs)):
                 chp_tag = chp_tag.find("a")

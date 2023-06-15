@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, Set, Dict, Any, Coroutine, Union
+from typing import Any, Coroutine, Dict, Optional, Set, Union
 
 import aiohttp
 from aiohttp import hdrs
@@ -77,14 +77,15 @@ class CachedClientSession(aiohttp.ClientSession):
                 kwargs.pop("proxy")
                 kwargs.pop("verify_ssl", None)
 
+        # set default user agent if not set
+        if kwargs.get("headers", None) is None:
+            kwargs["headers"] = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/114.0.0.0 Safari/537.36'
+            }
         if url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
             self.logger.debug(f"Requesting {url} without caching")
-            if kwargs.get("headers", None) is None:
-                kwargs["headers"] = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                                  'Chrome/58.0.3029.110 Safari/537.3'
-                }
             return await super()._request(method, url, **kwargs)
 
         if url in self._cache and self._cache[url]['expires'] > asyncio.get_event_loop().time():

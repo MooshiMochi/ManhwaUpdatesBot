@@ -40,6 +40,11 @@ class ProtectedRequest:
             "headless": self._headless,
             "args": [
                 '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--headless',
+                '--disable-gpu',
+                '--ignore-certificate-errors'
             ],
             "userDataDir": self._user_data_dir,
             # "ignoreHTTPSErrors": True,
@@ -104,8 +109,16 @@ class ProtectedRequest:
         page = await self.browser.newPage()
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
-                     'Chrome/93.0.4577.63 Safari/537.36'
+                     'Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.43'
+
         await page.setUserAgent(user_agent)
+        # await page.setExtraHTTPHeaders({
+        #     "Sec-Ch-Ua": "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Microsoft Edge\";v=\"90\"",
+        #     "Sec-Ch-Ua-Mobile": "?0",
+        #     # "Sec-Fetch-Dest": "document",
+        #     "Sec-Ch-Ua-Platform": "\"Windows\"",
+        #     "Upgrade-Insecure-Requests": "1",
+        # })
 
         # Set viewport size
         await page.setViewport({'width': size[0], 'height': size[1]})
