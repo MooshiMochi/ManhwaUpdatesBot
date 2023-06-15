@@ -51,7 +51,7 @@ class SetupTest:
     def setup(self):
         self.bot = Bot(proxy_url=self.proxy_url)
         self.bot.config = self.load_config()
-        self.proxy_url = self.fmt_proxy()
+        self.proxy_url = self.fmt_proxy() if os.name == "nt" else None
         return self
 
     @staticmethod
