@@ -245,6 +245,8 @@ class Test:
                 checks_passed += 1
             except AssertionError as e:
                 print(e)
+            except Exception as e:
+                print(f"❌ Unexpected error: {e}")
         emoji = "❌" if checks_passed != len(checks_to_run) else "✅"
         print(f"{emoji} [{self.expected_result.scanlator_name}] Passed {checks_passed}/{len(checks_to_run)} tests")
         return f"{checks_passed}/{len(checks_to_run)}"
