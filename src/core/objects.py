@@ -97,7 +97,7 @@ class ABCScan(ABC):
 
     @classmethod
     def _make_headers(cls, bot: MangaClient):
-        user_agent = bot.config['user-agents'].get(cls.name)
+        user_agent = bot.config.get('user-agents', {}).get(cls.name)
         if not user_agent:
             return {}
         return {"User-Agent": user_agent}
