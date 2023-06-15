@@ -22,7 +22,7 @@ from typing import Optional
 import yaml
 
 # noinspection PyPackages
-from .static import RegExpressions
+from .static import RegExpressions, ScanlatorsRequiringUserAgent
 # noinspection PyPackages
 from .enums import BookmarkSortType
 
@@ -100,34 +100,43 @@ async def ensure_environment(bot, logger) -> None:
         exit_bot()
 
 
-def load_config(logger) -> Optional[dict]:
+def load_config(logger: logging.Logger, *, auto_exit: bool = True) -> Optional[dict]:
     if not os.path.exists("config.yml"):
         logger.critical(
             "   - config.yml file not found. Please follow the instructions listed in the README.md file."
         )
-        exit_bot()
+        if auto_exit:
+            return exit_bot()
+
+        logger.critical(
+            "   - Creating a new config.yml file..."
+        )
+        with open("config.yml", "w"):
+            pass
 
     with open("config.yml", "r") as f:
         try:
-            return yaml.safe_load(f)
+            return yaml.safe_load(f) or {}
         except yaml.YAMLError as e:
             logger.critical(
                 "   - config.yml file is not a valid YAML file. Please follow the instructions "
                 "listed in the README.md file."
             )
             logger.critical("   - Error: " + str(e))
-            exit_bot()
-            return
+            if auto_exit:
+                exit_bot()
+            return {}
 
 
-def ensure_configs(logger, config) -> Optional[dict]:
+def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto_exit: bool = True) -> Optional[dict]:
     required_keys = ["token"]
     if not config:
         logger.critical(
             "   - config.yml file is empty. Please follow the instructions listed in the README.md file."
         )
-        exit_bot()
-        return
+        if auto_exit:
+            exit_bot()
+            return {}
 
     if not all(key in config for key in required_keys):
         missing_required_keys = [key for key in required_keys if key not in config]
@@ -148,8 +157,9 @@ def ensure_configs(logger, config) -> Optional[dict]:
             f"   - config.yml file is missing following required key(s): "
             f"{missing_required_keys_str}. Please run the {setup_file} file."
         )
-        exit_bot()
-        return
+        if auto_exit:
+            exit_bot()
+            return {}
 
     default_config = {
         "debug": False,
@@ -169,8 +179,10 @@ def ensure_configs(logger, config) -> Optional[dict]:
         },
         "proxy": {
             "enabled": True,
-            "ip": "210.148.141.4",  # japanese proxy with HTTPS support
-            "port": 8080,
+            "ip": "2.56.119.93",  # user webshare.io proxy (I recommend)
+            "port": 5074,
+            "username": "difemjzc",
+            "password": "em03wrup0hod",
         },
         "user-agents": {
             "aquamanga": None,
@@ -210,21 +222,22 @@ def ensure_configs(logger, config) -> Optional[dict]:
             yaml.safe_dump(config, f)
         logger.warning("    - config.yml file has been updated with default configs.")
 
-    del_unavailable_scanlators(config, logger)
+    del_unavailable_scanlators(config, logger, scanlators)
 
     return config
 
 
-def del_unavailable_scanlators(config, logger):
-    for key, value in config["user-agents"].items():
-        if value is None:
+def del_unavailable_scanlators(config: dict, logger: logging.Logger, scanlators: dict[str, ABCScan]):
+    for scanlator in ScanlatorsRequiringUserAgent.scanlators:
+        if config.get('user-agents', {}).get(scanlator) is None:
             logger.warning(
-                f"- {str(key).capitalize()} WILL NOT WORK without a valid user-agent. Please contact the website "
+                f"- {scanlator} WILL NOT WORK without a valid user-agent. Removing ...\nPlease contact the website "
                 f"owner to get a valid user-agent."
             )
+            scanlators.pop(scanlator, None)
 
 
-def silence_debug_loggers(main_logger, logger_names: list) -> None:
+def silence_debug_loggers(main_logger: logging.Logger, logger_names: list) -> None:
     for logger_name in logger_names:
         logging.getLogger(logger_name).setLevel(logging.CRITICAL)
         main_logger.warning(f"Silenced debug logger: {logger_name}")
@@ -243,7 +256,7 @@ def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, k
     for name, obj in RegExpressions.__dict__.items():
         if isinstance(obj, re.Pattern) and name.count("_") == 1:
             if obj.search(url):
-                return d[name.split("_")[0]]
+                return d.get(name.split("_")[0])
 
 
 def write_to_discord_file(filename: str, content: str) -> discord.File:

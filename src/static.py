@@ -12,6 +12,17 @@ class EMPTY:
     pass
 
 
+class ScanlatorsRequiringUserAgent:
+    """
+    A class that contains a list of scanlators that require a user-agent.
+    """
+    scanlators = [
+        "aniglisscans",
+        "aquamanga",
+        "toonily",
+    ]
+
+
 class RegExpressions:
     chapter_num_from_url = re.compile(r"(\d+([.]\d+)?)/?$")
     url = re.compile(r"https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(%[0-9a-fA-F][0-9a-fA-F]))+")

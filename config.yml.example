@@ -19,10 +19,10 @@ privileged-intents:
   presences: false
 proxy:
     enabled: true
-    ip: 210.148.141.4
-    port: 8080
-    username: null
-    password: null
+    ip: 2.56.119.93
+    port: 5074
+    username: difemjzc
+    password: em03wrup0hod
 user-agents:
     aquamanga: null
     aniglisscans: null

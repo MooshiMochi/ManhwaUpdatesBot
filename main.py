@@ -7,6 +7,7 @@ from discord.errors import LoginFailure
 from discord.utils import setup_logging
 
 from src.core import BotCommandTree, CachedClientSession, MangaClient, ProtectedRequest
+from src.core.scanners import SCANLATORS
 from src.utils import ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, silence_debug_loggers
 
 
@@ -33,7 +34,7 @@ async def main():
         setup_logging(level=logging.DEBUG)
     else:
         setup_logging(level=logging.INFO)
-    config = ensure_configs(_logger, config)
+    config = ensure_configs(_logger, config, SCANLATORS)
 
     ensure_logs()
 

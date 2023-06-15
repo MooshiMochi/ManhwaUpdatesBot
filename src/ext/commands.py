@@ -463,14 +463,16 @@ class CommandsCog(commands.Cog):
             ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
             ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/")
         ]
-        if self.bot.config['user-agents'][AniglisScans.name] is None:
+        if self.bot.config.get('user-agents', {}).get(AniglisScans.name) is None:
             supp_webs.pop(-1)
-        if self.bot.config['user-agents'][Aquamanga.name] is None:
+        if self.bot.config.get('user-agents', {}).get(Aquamanga.name) is None:
             supp_webs.pop(-1)
         supp_webs = sorted(supp_webs, key=lambda x: x[0])
 
         em.description = "Manga Updates Bot currently supports the following websites:\n"
         for name, url, _format in supp_webs:
+            if name.lower() not in SCANLATORS:
+                continue
             em.description += f"• [{name}]({url})\n"
             em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"
 

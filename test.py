@@ -6,7 +6,7 @@ This is a test file for testing each individual scanlator class from scanlator.p
 from __future__ import annotations
 
 import hashlib
-import os
+import logging
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
@@ -17,6 +17,10 @@ from src.core.comickAPI import ComickAppAPI
 from src.core.database import Database
 from src.core.mangadexAPI import MangaDexAPI
 from src.core.scanners import *
+from src.core.scanners import SCANLATORS
+from src.utils import ensure_configs, load_config
+
+logger: logging.Logger = logging.getLogger("test")
 
 
 # noinspection PyTypeChecker
@@ -51,23 +55,25 @@ class SetupTest:
     def setup(self):
         self.bot = Bot(proxy_url=self.proxy_url)
         self.bot.config = self.load_config()
-        self.proxy_url = self.fmt_proxy() if os.name == "nt" else None
+        self.proxy_url = self.fmt_proxy()
         return self
 
     @staticmethod
     def load_config() -> Dict:
-        if os.name == "nt":
-            print("Running on Windows, using config.yml")
-            import yaml
-            with open("config.yml", "r") as f:
-                config = yaml.safe_load(f)
-            return config
-        else:
-            return {}
+        config = load_config(logger, auto_exit=False)
+        return ensure_configs(logger, config, SCANLATORS, auto_exit=False)
 
-    def fmt_proxy(self) -> str:
-        proxy_dict = self.bot.config["proxy"]
-        return f"http://{proxy_dict['username']}:{proxy_dict['password']}@{proxy_dict['ip']}:{proxy_dict['port']}"
+    def fmt_proxy(self) -> Optional[str]:
+        proxy_dict = self.bot.config.get("proxy")
+        if proxy_dict is None:
+            return None
+        ip, port = proxy_dict.get("ip"), proxy_dict.get("port")
+        if not ip or not port:
+            return None
+        if (user := proxy_dict.get("username")) and ([pwd := proxy_dict.get("password")]):
+            return f"http://{user}:{pwd}@{ip}:{port}"
+        else:
+            return f"http://{ip}:{port}"
 
 
 class ExpectedResult:
