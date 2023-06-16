@@ -556,10 +556,17 @@ class BookmarkChapterView(View):
                 ephemeral=True,
             )
 
+        last_read_index = bookmark.last_read_chapter.index
+        next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
+        next_not_available = "`Wait for updates!`" if bookmark.manga.completed else "`None, manga is finished!`"
+
         await interaction.followup.send(
             embed=discord.Embed(
                 title="Last Chapter Read",
-                description=f"The last chapter you read **{bookmark.last_read_chapter}**.",
+                description=(
+                    f"The last chapter you read **{bookmark.last_read_chapter}**.\n\n"
+                    f"**Next chapter:** {next_chapter if next_chapter else next_not_available}\n"
+                ),
                 color=discord.Color.green(),
             ),
             ephemeral=True,
