@@ -564,8 +564,8 @@ class BookmarkChapterView(View):
             embed=discord.Embed(
                 title="Last Chapter Read",
                 description=(
-                    f"The last chapter you read **{bookmark.last_read_chapter}**.\n\n"
-                    f"**Next chapter:** {next_chapter if next_chapter else next_not_available}\n"
+                    f"The last chapter you read **{bookmark.last_read_chapter}**.\n"
+                    f"Next chapter: {next_chapter if next_chapter else next_not_available}\n"
                 ),
                 color=discord.Color.green(),
             ),
