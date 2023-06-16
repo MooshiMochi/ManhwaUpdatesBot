@@ -119,7 +119,7 @@ class MangaClient(commands.Bot):
         self._config: dict = config
 
     async def on_ready(self):
-        self._logger.info("Ready!")
+        self._logger.info(f"{self.user.name}#{self.user.discriminator} is ready!")
 
     async def close(self):
         await self._session.close() if self._session else None

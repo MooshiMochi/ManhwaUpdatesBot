@@ -533,6 +533,37 @@ class BookmarkChapterView(View):
                 ephemeral=True,
             )
 
+    @discord.ui.button(
+        label="My last read chapter 🔖",
+        style=discord.ButtonStyle.blurple,
+        custom_id="btn_last_read",
+    )
+    async def last_read(self, interaction: discord.Interaction, btn: Button) -> None:
+        if not self.extracted:
+            await self._extract_keys(interaction, btn)
+
+        bookmark: Bookmark = await self.bot.db.get_user_bookmark(
+            interaction.user.id, self.manga_id
+        )
+        if bookmark is None:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Not Read",
+                    description="This chapter is not marked as read.",
+                    color=discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+
+        await interaction.followup.send(
+            embed=discord.Embed(
+                title="Last Chapter Read",
+                description=f"The last chapter you read **{bookmark.last_read_chapter}**.",
+                color=discord.Color.green(),
+            ),
+            ephemeral=True,
+        )
+
     async def _extract_keys(
             self, interaction: discord.Interaction, button: Button
     ) -> None:
