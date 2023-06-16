@@ -539,6 +539,7 @@ class BookmarkChapterView(View):
         custom_id="btn_last_read",
     )
     async def last_read(self, interaction: discord.Interaction, btn: Button) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=False)
         if not self.extracted:
             await self._extract_keys(interaction, btn)
 
