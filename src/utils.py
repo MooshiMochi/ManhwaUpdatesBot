@@ -503,6 +503,11 @@ def relative_time_to_seconds(time_string) -> int:
 def time_string_to_seconds(time_str: str) -> int:
     """Convert a time string to seconds since the epoch"""
     formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
+
+    try:
+        relative_time_to_seconds(time_str)
+    except ValueError:
+        pass
     for fmt in formats:
         try:
             dt = datetime.strptime(time_str, fmt)
