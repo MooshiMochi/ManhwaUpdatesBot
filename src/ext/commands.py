@@ -210,6 +210,12 @@ class CommandsCog(commands.Cog):
             series_url: str = await Bato.fmt_manga_url(self.bot, None, manga_url)
             series_id = await Bato.get_manga_id(self.bot, series_url)
 
+        elif RegExpressions.omegascans_url.search(manga_url):
+            scanlator = OmegaScans
+
+            series_url: str = await OmegaScans.fmt_manga_url(self.bot, None, manga_url)
+            series_id = await OmegaScans.get_manga_id(self.bot, series_url)
+
         else:
             em = discord.Embed(title="Invalid URL", color=discord.Color.red())
             em.description = (
@@ -461,7 +467,7 @@ class CommandsCog(commands.Cog):
             ("Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
             ("OmegaScans", "https://omegascans.org/", "https://omegascans.org/series/manga-title/"),
             ("Void-Scans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
-            
+
             # Scanlators requiring user-agents
             ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
             ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
