@@ -2256,6 +2256,7 @@ class Bato(ABCScan):
 
 SCANLATORS: dict[str, ABCScan] = {
     VoidScans.name: VoidScans,
+    OmegaScans.name: OmegaScans,
     Aquamanga.name: Aquamanga,
     Toonily.name: Toonily,
     TritiniaScans.name: TritiniaScans,
