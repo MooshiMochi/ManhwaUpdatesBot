@@ -988,7 +988,7 @@ class ReaperScans(ABCScan):
         status_container = soup.find("dl", {"class": "mt-2"})
         _type, content = status_container.find_all("dd"), status_container.find_all("dt")
         for _type_element, content_element in zip(_type, content):
-            if content_element.text.strip().lower() == "source status":
+            if content_element.text.strip().lower() == "release status":
                 status = _type_element.text.strip()
                 return status.lower() == "completed" or status.lower() == "dropped"
         else:
@@ -1583,7 +1583,10 @@ class LeviatanScans(ABCScan):
             if date_strings:
                 date_to_check = date_strings[0]
                 timestamp = date_str_to_timestamp(date_to_check)
-                if datetime.now().timestamp() - timestamp > 60 * 60 * 24 * 30:  # 30 days
+                if (
+                        datetime.now().timestamp() - timestamp >
+                        bot.config["constants"]["time-for-manga-to-be-considered-stale"]
+                ):
                     return True
             return False
 
@@ -1670,6 +1673,14 @@ class DrakeScans(ABCScan):
         status_div = status_container.find_all("div", {"class": "post-content_item"})[1]
         status = status_div.find("div", {"class": "summary-content"})
         status = status.text.strip().lower()
+
+        status_title = soup.find("span", {"class": "manga-title-badges"})
+        if status_title:
+            status_title = status_title.text.strip().lower()
+            return (
+                    status_title == "completed" or status_title == "dropped" or
+                    status_title == "canceled" or status_title == "cancelled"
+            )
 
         return status == "completed" or status == "dropped" or status == "canceled"
 
@@ -1935,7 +1946,10 @@ class Mangapill(ABCScan):
             for label in soup.find_all("label", {"class": "text-secondary"}):
                 if label.text.strip().lower() == "status":
                     status = label.find_next_sibling("div").text.strip().lower()
-                    return status == "finished" or status == "dropped" or status == "canceled"
+                    return (
+                            status == "finished" or status == "dropped" or
+                            status == "canceled" or status == "discontinued"
+                    )
             else:
                 return False
 
@@ -1984,6 +1998,129 @@ class Mangapill(ABCScan):
             soup = BeautifulSoup(await resp.text(), "html.parser")
             img = soup.find("div", {"class": "text-transparent"}).find("img")
             return img["data-src"]
+
+
+class OmegaScans(ABCScan):
+    icon_url = "https://omegascans.org/images/webicon.png"
+    base_url = "https://omegascans.org/"
+    fmt_url = base_url + "series/{manga_url_name}"
+    name = "omegascans"
+
+    # MIN_TIME_BETWEEN_REQUESTS = 30
+
+    @classmethod
+    async def check_updates(
+            cls,
+            bot: MangaClient,
+            manga: Manga,
+            _manga_request_url: str | None = None
+    ) -> ChapterUpdate:
+        return await super().check_updates(bot, manga, _manga_request_url)
+
+    @classmethod
+    async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
+        async with bot.session.get(manga_url) as resp:
+            if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            soup = BeautifulSoup(await resp.text(), "html.parser")
+            chapter_container = soup.find("ul", {"class": "MuiList-root"}).find_all("a")
+            chapters: list[Chapter] = []
+
+            for i, chapter_tag in enumerate(reversed(chapter_container)):
+                chapter_url = cls.base_url[:-1] + chapter_tag["href"]
+                chapter_text = chapter_tag.text.strip()
+                chapters.append(Chapter(chapter_url, chapter_text, i))
+            return chapters
+
+    @classmethod
+    async def get_curr_chapter(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> Chapter | None:
+        return await super().get_curr_chapter(bot, manga_id, manga_url)
+
+    @classmethod
+    async def get_human_name(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        async with bot.session.get(manga_url) as resp:
+            if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            soup = BeautifulSoup(await resp.text(), "html.parser")
+            title_div = soup.find("div", {"class": "series-title"})
+            title = title_div.find("h1")
+            return title.text.strip()
+
+    @classmethod
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(bot, await cls.fmt_manga_url(bot, "", manga_url))
+
+    @classmethod
+    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
+        url_name = RegExpressions.omegascans_url.search(manga_url).group(1)
+        return cls.fmt_url.format(manga_url_name=url_name)
+
+    @classmethod
+    async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
+        async with bot.session.get(manga_url) as resp:
+            if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            soup = BeautifulSoup(await resp.text(), "html.parser")
+            img = soup.find("img", {"class": "sc-fsQiph"})
+            return img["src"]
+
+    @classmethod
+    async def is_series_completed(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> bool:
+        async with bot.session.post(manga_url) as resp:
+            if resp.status != 200:
+                await cls.report_error(
+                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
+                                   + " Request URL: " + str(resp.url)
+                                   ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text())
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            def date_str_to_timestamp(date_str: str) -> int:
+                try:
+                    return relative_time_to_seconds(date_str)
+                except ValueError:
+                    return time_string_to_seconds(date_str)
+
+            soup = BeautifulSoup(await resp.text(), "html.parser")
+            release_dates = soup.find("ul", {"class": "MuiList-root"}).find_all("a")
+            date_strings = [_date.find("p", {"class": "MuiTypography-root"}).text for _date in release_dates]
+            if date_strings:
+                date_to_check = date_strings[0]
+                timestamp = date_str_to_timestamp(date_to_check)
+                if (
+                        datetime.now().timestamp() - timestamp >
+                        bot.config["constants"]["time-for-manga-to-be-considered-stale"]
+                ):
+                    return True
+            return False
 
 
 class Bato(ABCScan):
@@ -2118,8 +2255,7 @@ class Bato(ABCScan):
 
 
 SCANLATORS: dict[str, ABCScan] = {
-    # VoidScans.name: VoidScans,
-
+    VoidScans.name: VoidScans,
     Aquamanga.name: Aquamanga,
     Toonily.name: Toonily,
     TritiniaScans.name: TritiniaScans,

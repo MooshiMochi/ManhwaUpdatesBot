@@ -26,6 +26,8 @@ This bot currently only supports the following websites:
 - https://mangapill.com
 - https://en.leviatanscans.com
 - https://aquamanga.com (requires explicit permission from the website owner)
+- https://omegascans.org
+- https://void-scans.com
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope
 for too much.
@@ -79,5 +81,5 @@ The following websites will not work unless a custom user-agent allowed by the o
 ### Websites heavily protected by Cloudflare (won't be considered for this project)
 
    ```
-   - https://void-scans.com
+   Nothing here yet.
    ```

@@ -459,9 +459,10 @@ class CommandsCog(commands.Cog):
             ("Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
             ("LeviatanScans", "https://en.leviatanscans.com/", "https://en.leviatanscans.com/home/manga/manga-title/"),
             ("Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
-            # ("Void-Scans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
             ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
-            ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/")
+            ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
+            ("OmegaScans", "https://omegascans.org/", "https://omegascans.org/series/manga-title/"),
+            ("Void-Scans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
         ]
         if self.bot.config.get('user-agents', {}).get(AniglisScans.name) is None:
             supp_webs.pop(-1)

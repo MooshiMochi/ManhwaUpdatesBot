@@ -252,7 +252,7 @@ class Test:
             except AssertionError as e:
                 print(e)
             except Exception as e:
-                print(f"❌ Unexpected error: {e}")
+                print(f"❌ Unexpected error: {e} --- {error_msg}")
         emoji = "❌" if checks_passed != len(checks_to_run) else "✅"
         print(f"{emoji} [{self.expected_result.scanlator_name}] Passed {checks_passed}/{len(checks_to_run)} tests")
         return f"{checks_passed}/{len(checks_to_run)}"
@@ -307,20 +307,22 @@ if __name__ == "__main__":
         testCases = [
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://tritinia.org/manga/useless-magician/"),
+                test_data=TestInputData("https://tritinia.org/manga/momo-the-blood-taker/"),
                 expected_result=ExpectedResult(
                     scanlator_name="tritinia",
-                    manga_url="https://tritinia.org/manga/useless-magician/",
-                    completed=False,
-                    human_name="Useless Wizard",
-                    manga_id=default_id_func("https://tritinia.org/manga/useless-magician"),
-                    curr_chapter_url="https://tritinia.org/manga/useless-magician/ch-24/",
-                    first_chapter_url="https://tritinia.org/manga/useless-magician/ch-1/",
-                    cover_image="https://tritinia.org/wp-content/uploads/2022/10/cover_x2-193x278.jpg",
+                    manga_url="https://tritinia.org/manga/momo-the-blood-taker/",
+                    completed=True,
+                    human_name="MOMO: The Blood Taker",
+                    manga_id=default_id_func("https://tritinia.org/manga/momo-the-blood-taker"),
+                    curr_chapter_url="https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-48/",
+                    first_chapter_url=(
+                        "https://tritinia.org/manga/momo-the-blood-taker/volume-1/ch-1-v-coming-soon-scans/"
+                    ),
+                    cover_image="https://tritinia.org/wp-content/uploads/2022/02/000-193x278.jpg",
                     last_3_chapter_urls=[
-                        "https://tritinia.org/manga/useless-magician/ch-22/",
-                        "https://tritinia.org/manga/useless-magician/ch-23/",
-                        "https://tritinia.org/manga/useless-magician/ch-24/",
+                        "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-46/",
+                        "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-47/",
+                        "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-48/",
                     ]
                 ),
                 test_subject=TritiniaScans
@@ -349,137 +351,134 @@ if __name__ == "__main__":
             TestCase(
                 test_setup,
                 test_data=TestInputData(
-                    "https://toonily.com/webtoon/please-give-me-energy/"
+                    "https://toonily.com/webtoon/lucky-guy-0002/"
                 ),
                 expected_result=ExpectedResult(
                     scanlator_name="toonily",
-                    manga_url="https://toonily.com/webtoon/please-give-me-energy/",
-                    completed=False,
-                    human_name="Please Give Me Energy",
-                    manga_id=default_id_func(
-                        "https://toonily.com/webtoon/please-give-me-energy"
-                    ),
-                    curr_chapter_url="https://toonily.com/webtoon/please-give-me-energy/chapter-40/",
-                    first_chapter_url="https://toonily.com/webtoon/please-give-me-energy/chapter-1/",
+                    manga_url="https://toonily.com/webtoon/lucky-guy-0002/",
+                    completed=True,
+                    human_name="Lucky Guy",
+                    manga_id=default_id_func("https://toonily.com/webtoon/lucky-guy-0002"),
+                    curr_chapter_url="https://toonily.com/webtoon/lucky-guy-0002/chapter-73/",
+                    first_chapter_url="https://toonily.com/webtoon/lucky-guy-0002/chapter-1/",
                     cover_image=(
-                        "https://toonily.com/wp-content/uploads/2022/10/Please-Give-Me-Energy-toptoon-manhwa-free"
-                        "-224x320.jpg"),
+                        "https://toonily.com/wp-content/uploads/2020/02/Lucky-Guy-224x320.jpg"),
                     last_3_chapter_urls=[
-                        "https://toonily.com/webtoon/please-give-me-energy/chapter-38/",
-                        "https://toonily.com/webtoon/please-give-me-energy/chapter-39/",
-                        "https://toonily.com/webtoon/please-give-me-energy/chapter-40/",
+                        "https://toonily.com/webtoon/lucky-guy-0002/chapter-71/",
+                        "https://toonily.com/webtoon/lucky-guy-0002/chapter-72/",
+                        "https://toonily.com/webtoon/lucky-guy-0002/chapter-73/",
                     ]
                 ),
                 test_subject=Toonily
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://mangadex.org/title/8b34f37a-0181-4f0b-8ce3-01217e9a602c"),
+                test_data=TestInputData("https://mangadex.org/title/7dbeaa0e-420a-4dc0-b2d3-eb174de266da/zippy-ziggy"),
                 expected_result=ExpectedResult(
                     scanlator_name="mangadex",
-                    manga_url="https://mangadex.org/title/8b34f37a-0181-4f0b-8ce3-01217e9a602c",
-                    completed=False,
-                    human_name="Please Bully Me, Miss Villainess!",
-                    manga_id="8b34f37a-0181-4f0b-8ce3-01217e9a602c",
-                    curr_chapter_url="https://mangadex.org/chapter/42cefe93-2113-4ae9-bab6-5a97169a1343",
-                    first_chapter_url="https://mangadex.org/chapter/988a7365-e411-4fe1-b705-ea16dcda21de",
+                    manga_url="https://mangadex.org/title/7dbeaa0e-420a-4dc0-b2d3-eb174de266da",
+                    completed=True,
+                    human_name="Zippy Ziggy",
+                    manga_id="7dbeaa0e-420a-4dc0-b2d3-eb174de266da",
+                    curr_chapter_url="https://mangadex.org/chapter/aef242d7-0051-431f-9f03-53442afdbead",
+                    first_chapter_url="https://mangadex.org/chapter/388124f0-dc2e-43db-b19e-71d0e3eddfc6",
                     cover_image=(
-                        "https://uploads.mangadex.org/covers/8b34f37a-0181-4f0b-8ce3-01217e9a602c/71e4f7c8-3fb3-4c10-bb07"
-                        "-63b3f82c370e.jpg"
+                        "https://uploads.mangadex.org/covers/7dbeaa0e-420a-4dc0-b2d3-eb174de266da/192e6a85-80d5-42b4"
+                        "-bdda-81b56592c44f.jpg"
                     ),
                     last_3_chapter_urls=[
-                        "https://mangadex.org/chapter/98a201b4-c07d-4911-a4c6-b864df66a617",
-                        "https://mangadex.org/chapter/b241cfd8-46f3-49a2-ab7c-0ce50c041320",
-                        "https://mangadex.org/chapter/42cefe93-2113-4ae9-bab6-5a97169a1343",
+                        "https://mangadex.org/chapter/03402aaa-8eba-43ac-a83e-ce336c75aa62",
+                        "https://mangadex.org/chapter/ee43a7c7-595a-4006-9dc0-df44b0f37b59",
+                        "https://mangadex.org/chapter/aef242d7-0051-431f-9f03-53442afdbead",
                     ]
                 ),
                 test_subject=MangaDex,
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://flamescans.org/series/1686650521-solo-necromancy/"),
+                test_data=TestInputData("https://flamescans.org/series/1687428121-the-villainess-is-a-marionette/"),
                 expected_result=ExpectedResult(
                     scanlator_name="flamescans",
-                    manga_url="https://flamescans.org/series/solo-necromancy/",
-                    completed=False,
-                    human_name="Solo Necromancy",
-                    manga_id=default_id_func("https://flamescans.org/series/solo-necromancy"),
-                    curr_chapter_url="https://flamescans.org/solo-necromancy-chapter-95/",
-                    first_chapter_url="https://flamescans.org/solo-necromancy-chapter-1/",
-                    cover_image="https://flamescans.org/wp-content/uploads/2021/09/3.3MB-SN-Updated-2-WEBP-1.webp",
+                    manga_url="https://flamescans.org/series/the-villainess-is-a-marionette/",
+                    completed=True,
+                    human_name="The Villainess is a Marionette",
+                    manga_id=default_id_func("https://flamescans.org/series/the-villainess-is-a-marionette"),
+                    curr_chapter_url="https://flamescans.org/the-villainess-is-a-marionette-chapter-69/",
+                    first_chapter_url="https://flamescans.org/the-villainess-is-a-marionette-chapter-0/",
+                    cover_image="https://flamescans.org/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
                     last_3_chapter_urls=[
-                        "https://flamescans.org/solo-necromancy-chapter-91/",
-                        "https://flamescans.org/solo-necromancy-chapter-92/",
-                        "https://flamescans.org/solo-necromancy-chapter-93/",
+                        "https://flamescans.org/the-villainess-is-a-marionette-chapter-67/",
+                        "https://flamescans.org/the-villainess-is-a-marionette-chapter-68/",
+                        "https://flamescans.org/the-villainess-is-a-marionette-chapter-69/",
                     ]
                 ),
                 test_subject=FlameScans
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://www.asurascans.com/manga/the-knight-king-who-returned-with-a-god/"),
+                test_data=TestInputData("https://www.asurascans.com/manga/4569947261-i-regressed-as-the-duke/"),
                 expected_result=ExpectedResult(
                     scanlator_name="asurascans",
-                    manga_url="https://www.asurascans.com/manga/the-knight-king-who-returned-with-a-god/",
-                    completed=False,
-                    human_name="The Knight King Who Returned with a God",
+                    manga_url="https://www.asurascans.com/manga/i-regressed-as-the-duke/",
+                    completed=True,
+                    human_name="I Regressed As The Duke",
                     manga_id=default_id_func(
-                        "https://www.asurascans.com/manga/the-knight-king-who-returned-with-a-god"
+                        "https://www.asurascans.com/manga/i-regressed-as-the-duke"
                     ),
-                    curr_chapter_url="https://www.asurascans.com/the-knight-king-who-returned-with-a-god-chapter-8/",
-                    first_chapter_url="https://www.asurascans.com/the-knight-king-who-returned-with-a-god-chapter-1/",
-                    cover_image="https://www.asurascans.com/wp-content/uploads/2023/05/theknightkingCover01.png",
+                    curr_chapter_url="https://www.asurascans.com/i-regressed-as-the-duke-chapter-64-notice/",
+                    first_chapter_url="https://www.asurascans.com/i-regressed-as-the-duke-chapter-1/",
+                    cover_image="https://www.asurascans.com/wp-content/uploads/2022/04/unknown_1-1.png",
                     last_3_chapter_urls=[
-                        "https://www.asurascans.com/the-knight-king-who-returned-with-a-god-chapter-6/",
-                        "https://www.asurascans.com/the-knight-king-who-returned-with-a-god-chapter-7/",
-                        "https://www.asurascans.com/the-knight-king-who-returned-with-a-god-chapter-8/",
+                        "https://www.asurascans.com/i-regressed-as-the-duke-chapter-62/",
+                        "https://www.asurascans.com/i-regressed-as-the-duke-chapter-63/",
+                        "https://www.asurascans.com/i-regressed-as-the-duke-chapter-64-notice/",
                     ]
                 ),
                 test_subject=AsuraScans
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://aquamanga.com/read/the-world-after-the-fall/"),
+                test_data=TestInputData("https://aquamanga.com/read/the-legendary-mechanic-1/"),
                 expected_result=ExpectedResult(
                     scanlator_name="aquamanga",
-                    manga_url="https://aquamanga.com/read/the-world-after-the-fall/",
-                    completed=False,
-                    human_name="The World After the Fall",
-                    manga_id=default_id_func("https://aquamanga.com/read/the-world-after-the-fall"),
-                    curr_chapter_url="https://aquamanga.com/read/the-world-after-the-fall/chapter-78/",
-                    first_chapter_url="https://aquamanga.com/read/the-world-after-the-fall/chapter-0/",
-                    cover_image="https://aquamanga.com/wp-content/uploads/2022/02/the-world-after-the-fall-193x278.jpeg",
+                    manga_url="https://aquamanga.com/read/the-legendary-mechanic-1/",
+                    completed=True,
+                    human_name="The Legendary Mechanic",
+                    manga_id=default_id_func("https://aquamanga.com/read/the-legendary-mechanic-1"),
+                    curr_chapter_url="https://aquamanga.com/read/the-legendary-mechanic-1/chapter-191/",
+                    first_chapter_url="https://aquamanga.com/read/the-legendary-mechanic-1/chapter-0/",
+                    cover_image="https://aquamanga.com/wp-content/uploads/2021/03/legendary-mechanic-manga-193x278.jpg",
                     last_3_chapter_urls=[
-                        "https://aquamanga.com/read/the-world-after-the-fall/chapter-76/",
-                        "https://aquamanga.com/read/the-world-after-the-fall/chapter-77/",
-                        "https://aquamanga.com/read/the-world-after-the-fall/chapter-78/",
+                        "https://aquamanga.com/read/the-legendary-mechanic-1/chapter-189/",
+                        "https://aquamanga.com/read/the-legendary-mechanic-1/chapter-190/",
+                        "https://aquamanga.com/read/the-legendary-mechanic-1/chapter-191/",
                     ]
                 ),
                 test_subject=Aquamanga
             ),
             # TestCase(
             #     test_setup,
-            #     test_data=TestInputData("https://reaperscans.com/comics/2818-knight-of-the-frozen-flower"),
+            #     test_data=TestInputData("https://reaperscans.com/comics/4099-the-legendary-mechanic"),
             #     expected_result=ExpectedResult(
             #         scanlator_name="reaperscans",
-            #         manga_url="https://reaperscans.com/comics/2818-knight-of-the-frozen-flower",
-            #         completed=False,
-            #         human_name="Knight of the Frozen Flower",
-            #         manga_id="2818",
+            #         manga_url="https://reaperscans.com/comics/4099-the-legendary-mechanic",
+            #         completed=True,
+            #         human_name="The Legendary Mechanic",
+            #         manga_id="4099",
             #         curr_chapter_url=(
-            #             "https://reaperscans.com/comics/2818-knight-of-the-frozen-flower/chapters/56567166-chapter-59"
+            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
             #         ),
             #         first_chapter_url=(
-            #             "https://reaperscans.com/comics/2818-knight-of-the-frozen-flower/chapters/18980856-chapter-28"
+            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/24239107-chapter-0"
             #         ),
             #         cover_image=(
-            #             "https://media.reaperscans.com/file/4SRBHm/comics/65ea299e-cde7-44c1-b12a-816667d0a205"
-            #             "/jhQQJXway6OVyS5B87bq5S6rG8Aak3V5IBtgCFTk.jpg"
+            #             "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8"
+            #             "/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg"
             #         ),
             #         last_3_chapter_urls=[
-            #             "https://reaperscans.com/comics/2818-knight-of-the-frozen-flower/chapters/56567164-chapter-57",
-            #             "https://reaperscans.com/comics/2818-knight-of-the-frozen-flower/chapters/56567165-chapter-58",
-            #             "https://reaperscans.com/comics/2818-knight-of-the-frozen-flower/chapters/56567166-chapter-59",
+            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
+            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
+            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10",
             #         ],
             #     ),
             #     id_first=True,
@@ -487,20 +486,20 @@ if __name__ == "__main__":
             # ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://anigliscans.com/series/doomsday-summoning-frenzy/"),
+                test_data=TestInputData("https://anigliscans.com/series/blooming/"),
                 expected_result=ExpectedResult(
                     scanlator_name="aniglisscans",
-                    manga_url="https://anigliscans.com/series/doomsday-summoning-frenzy/",
-                    completed=False,
-                    human_name="Doomsday Summoning Frenzy",
-                    manga_id=default_id_func("https://anigliscans.com/series/doomsday-summoning-frenzy"),
-                    curr_chapter_url="https://anigliscans.com/doomsday-summoning-frenzy-chapter-15/",
-                    first_chapter_url="https://anigliscans.com/doomsday-summoning-frenzy-chapter-5/",
-                    cover_image="https://anigliscans.com/wp-content/uploads/2023/04/1-1.jpg",
+                    manga_url="https://anigliscans.com/series/blooming/",
+                    completed=True,
+                    human_name="BLOOMING",
+                    manga_id=default_id_func("https://anigliscans.com/series/blooming"),
+                    curr_chapter_url="https://anigliscans.com/blooming-chapter-24/",
+                    first_chapter_url="https://anigliscans.com/blooming-chapter-1/",
+                    cover_image="https://anigliscans.com/wp-content/uploads/2022/07/blooming_cov.png",
                     last_3_chapter_urls=[
-                        "https://anigliscans.com/doomsday-summoning-frenzy-chapter-13/",
-                        "https://anigliscans.com/doomsday-summoning-frenzy-chapter-14/",
-                        "https://anigliscans.com/doomsday-summoning-frenzy-chapter-15/",
+                        "https://anigliscans.com/blooming-chapter-22/",
+                        "https://anigliscans.com/blooming-chapter-23/",
+                        "https://anigliscans.com/blooming-chapter-24/",
                     ],
                 ),
                 test_subject=AniglisScans
@@ -525,28 +524,42 @@ if __name__ == "__main__":
                 ),
                 test_subject=Comick
             ),
-            # TestCase(
-            #     test_setup,
-            #     test_data=TestInputData(),
-            #     expected_result=ExpectedResult(),
-            #     test_subject=VoidScans
-            # ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://luminousscans.com/series/1680246102-legend-of-the-northern-blade/"),
+                test_data=TestInputData("https://void-scans.com/manga/superhuman-era/"),
+                expected_result=ExpectedResult(
+                    scanlator_name="voidscans",
+                    manga_url="https://void-scans.com/manga/superhuman-era/",
+                    completed=False,
+                    human_name="Superhuman Era",
+                    manga_id=default_id_func("https://void-scans.com/manga/superhuman-era"),
+                    curr_chapter_url="https://void-scans.com/superhuman-era-chapter-48/",
+                    first_chapter_url="https://void-scans.com/superhuman-era-chapter-0/",
+                    cover_image="https://void-scans.com/wp-content/uploads/25-1638290924.jpg",
+                    last_3_chapter_urls=[
+                        "https://void-scans.com/superhuman-era-chapter-46/",
+                        "https://void-scans.com/superhuman-era-chapter-47/",
+                        "https://void-scans.com/superhuman-era-chapter-48/",
+                    ],
+                ),
+                test_subject=VoidScans
+            ),
+            TestCase(
+                test_setup,
+                test_data=TestInputData("https://luminousscans.com/series/1680246102-my-office-noonas-story/"),
                 expected_result=ExpectedResult(
                     scanlator_name="luminousscans",
-                    manga_url="https://luminousscans.com/series/1680246102-legend-of-the-northern-blade/",
-                    completed=False,
-                    human_name="Legend of the Northern Blade",
+                    manga_url="https://luminousscans.com/series/1680246102-my-office-noonas-story/",
+                    completed=True,
+                    human_name="My Office Noona’s Story",
                     manga_id="1680246102",
-                    curr_chapter_url="https://luminousscans.com/legend-of-the-northern-blade-chapter-160/",
-                    first_chapter_url="https://luminousscans.com/1680246102-legend-of-the-northern-blade-chapter-92/",
-                    cover_image="https://luminousscans.com/wp-content/uploads/2021/07/LONBAnimGif1.gif",
+                    curr_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-03/",
+                    first_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-prologue/",
+                    cover_image="https://luminousscans.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
                     last_3_chapter_urls=[
-                        "https://luminousscans.com/legend-of-the-northern-blade-chapter-158/",
-                        "https://luminousscans.com/legend-of-the-northern-blade-chapter-159/",
-                        "https://luminousscans.com/legend-of-the-northern-blade-chapter-160/",
+                        "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-01/",
+                        "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-02/",
+                        "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-03/",
                     ],
                 ),
                 id_first=True,
@@ -554,113 +567,137 @@ if __name__ == "__main__":
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://en.leviatanscans.com/manga/my-dad-is-too-strong/"),
+                test_data=TestInputData("https://en.leviatanscans.com/manga/trash-of-the-counts-family/"),
                 expected_result=ExpectedResult(
                     scanlator_name="leviatanscans",
-                    manga_url="https://en.leviatanscans.com/manga/my-dad-is-too-strong/",
+                    manga_url="https://en.leviatanscans.com/manga/trash-of-the-counts-family/",
                     completed=False,
-                    human_name="My Dad is Too Strong",
-                    manga_id=default_id_func("https://en.leviatanscans.com/manga/my-dad-is-too-strong"),
-                    curr_chapter_url="https://en.leviatanscans.com/manga/my-dad-is-too-strong/chapter-134/",
-                    first_chapter_url="https://en.leviatanscans.com/manga/my-dad-is-too-strong/chapter-1/",
-                    cover_image="https://en.leviatanscans.com/wp-content/uploads/2023/04/bannerMDTS.jpg",
+                    human_name="Trash of the Count’s Family",
+                    manga_id=default_id_func("https://en.leviatanscans.com/manga/trash-of-the-counts-family"),
+                    curr_chapter_url="https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-92/",
+                    first_chapter_url="https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-0/",
+                    cover_image="https://en.leviatanscans.com/wp-content/uploads/2023/04/bannerTCF.jpg",
                     last_3_chapter_urls=[
-                        "https://en.leviatanscans.com/manga/my-dad-is-too-strong/chapter-132/",
-                        "https://en.leviatanscans.com/manga/my-dad-is-too-strong/chapter-133/",
-                        "https://en.leviatanscans.com/manga/my-dad-is-too-strong/chapter-134/",
+                        "https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-90/",
+                        "https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-91/",
+                        "https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-92/",
                     ],
                 ),
                 test_subject=LeviatanScans
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://drakescans.com/series/my-disciples-are-all-big-villains/"),
+                test_data=TestInputData("https://drakescans.com/series/spirit-pet-creation-simulator1/"),
                 expected_result=ExpectedResult(
                     scanlator_name="drakescans",
-                    manga_url="https://drakescans.com/series/my-disciples-are-all-big-villains/",
-                    completed=False,
-                    human_name="My Disciples Are All Big Villains",
-                    manga_id=default_id_func("https://drakescans.com/series/my-disciples-are-all-big-villains"),
-                    curr_chapter_url="https://drakescans.com/series/my-disciples-are-all-big-villains/chapter-82/",
-                    first_chapter_url="https://drakescans.com/series/my-disciples-are-all-big-villains/chapter-1/",
-                    cover_image="https://drakescans.com/wp-content/uploads/2022/12/V-193x278.jpg",
+                    manga_url="https://drakescans.com/series/spirit-pet-creation-simulator1/",
+                    completed=True,
+                    human_name="Spirit Pet Creation Simulator",
+                    manga_id=default_id_func("https://drakescans.com/series/spirit-pet-creation-simulator1"),
+                    curr_chapter_url="https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
+                    first_chapter_url="https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-00/",
+                    cover_image="https://drakescans.com/wp-content/uploads/2022/02/01-193x278.jpg",
                     last_3_chapter_urls=[
-                        "https://drakescans.com/series/my-disciples-are-all-big-villains/chapter-80/",
-                        "https://drakescans.com/series/my-disciples-are-all-big-villains/chapter-81/",
-                        "https://drakescans.com/series/my-disciples-are-all-big-villains/chapter-82/",
+                        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-26/",
+                        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-27/",
+                        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
                     ],
                 ),
                 test_subject=DrakeScans
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://nitroscans.com/series/the-s-classes-that-i-raised/"),
+                test_data=TestInputData("https://nitroscans.com/series/i-am-the-sorcerer-king/"),
                 expected_result=ExpectedResult(
                     scanlator_name="nitroscans",
-                    manga_url="https://nitroscans.com/series/the-s-classes-that-i-raised/",
-                    completed=False,
-                    human_name="The S-Classes That I Raised",
-                    manga_id=default_id_func("https://nitroscans.com/series/the-s-classes-that-i-raised"),
-                    curr_chapter_url="https://nitroscans.com/series/the-s-classes-that-i-raised/chapter-90/",
-                    first_chapter_url="https://nitroscans.com/series/the-s-classes-that-i-raised/chapter-1/",
-                    cover_image="https://nitroscans.com/wp-content/uploads/2022/06/The-S-Classes-That-I-Raised-193x278.jpg",
+                    manga_url="https://nitroscans.com/series/i-am-the-sorcerer-king/",
+                    completed=True,
+                    human_name="I Am the Sorcerer King",
+                    manga_id=default_id_func("https://nitroscans.com/series/i-am-the-sorcerer-king"),
+                    curr_chapter_url="https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-143/",
+                    first_chapter_url="https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-1/",
+                    cover_image=(
+                        "https://nitroscans.com/wp-content/uploads/2022/08/I-Am-the-Sorcerer-King-193x278.jpg"
+                    ),
                     last_3_chapter_urls=[
-                        "https://nitroscans.com/series/the-s-classes-that-i-raised/chapter-88/",
-                        "https://nitroscans.com/series/the-s-classes-that-i-raised/chapter-89/",
-                        "https://nitroscans.com/series/the-s-classes-that-i-raised/chapter-90/",
+                        "https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-141/",
+                        "https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-142/",
+                        "https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-143/",
                     ],
                 ),
                 test_subject=NitroScans
             ),
-            # TestCase(
-            #     test_setup,
-            #     test_data=TestInputData("https://mangapill.com/chapters/5284-10162000/omniscient-reader-chapter-162"),
-            #     expected_result=ExpectedResult(
-            #         scanlator_name="mangapill",
-            #         manga_url="https://mangapill.com/manga/5284/omniscient-reader/",
-            #         completed=False,
-            #         human_name="Omniscient Reader",
-            #         manga_id="5284",
-            #         curr_chapter_url="https://mangapill.com/chapters/5284-10162000/omniscient-reader-chapter-162",
-            #         first_chapter_url="https://mangapill.com/chapters/5284-10000000/omniscient-reader-chapter-0",
-            #         cover_image="https://cdn.readdetectiveconan.com/file/mangapill/i/5284.jpeg",
-            #         last_3_chapter_urls=[
-            #             "https://mangapill.com/chapters/5284-10162000/omniscient-reader-chapter-162",
-            #             "https://mangapill.com/chapters/5284-10161000/omniscient-reader-chapter-161",
-            #             "https://mangapill.com/chapters/5284-10160000/omniscient-reader-chapter-160",
-            #         ],
-            #     ),
-            #     id_first=True,
-            #     test_subject=Mangapill
-            # ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://bato.to/series/106147/bad-thinking-diary-unofficial"),
+                test_data=TestInputData("https://mangapill.com/manga/57/3d-kanojo"),
+                expected_result=ExpectedResult(
+                    scanlator_name="mangapill",
+                    manga_url="https://mangapill.com/manga/57/3d-kanojo",
+                    completed=True,
+                    human_name="3D Kanojo",
+                    manga_id="57",
+                    curr_chapter_url="https://mangapill.com/chapters/57-10047000/3d-kanojo-chapter-47",
+                    first_chapter_url="https://mangapill.com/chapters/57-10001000/3d-kanojo-chapter-1",
+                    cover_image="https://cdn.readdetectiveconan.com/file/mangapill/i/57.jpeg",
+                    last_3_chapter_urls=[
+                        "https://mangapill.com/chapters/57-10045000/3d-kanojo-chapter-45",
+                        "https://mangapill.com/chapters/57-10046000/3d-kanojo-chapter-46",
+                        "https://mangapill.com/chapters/57-10047000/3d-kanojo-chapter-47",
+                    ],
+                ),
+                id_first=True,
+                test_subject=Mangapill
+            ),
+            TestCase(
+                test_setup,
+                test_data=TestInputData("https://bato.to/series/95400/queen-in-the-shadows"),
                 expected_result=ExpectedResult(
                     scanlator_name="bato.to",
-                    manga_url="https://bato.to/series/106147/bad-thinking-diary-unofficial",
-                    completed=False,
-                    human_name="Bad Thinking Diary (unofficial)",
-                    manga_id="106147",
-                    curr_chapter_url="https://bato.to/chapter/2342882",
-                    first_chapter_url="https://bato.to/chapter/1965357",
+                    manga_url="https://bato.to/series/95400/queen-in-the-shadows",
+                    completed=True,
+                    human_name="Queen in the Shadows",
+                    manga_id="95400",
+                    curr_chapter_url="https://bato.to/chapter/2031007",
+                    first_chapter_url="https://bato.to/chapter/1803219",
                     cover_image=(
-                        "https://xfs-s105.batcg.org/thumb/W600/ampi/900"
-                        "/900affca276584ddd39fbb82cb61891ac9eeb39f_597_778_126135.jpeg"
+                        "https://xfs-s118.batcg.org/thumb/W600/ampi/515"
+                        "/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg"
                     ),
                     last_3_chapter_urls=[
-                        "https://bato.to/chapter/2319461",
-                        "https://bato.to/chapter/2330320",
-                        "https://bato.to/chapter/2342882",
+                        "https://bato.to/chapter/2018714",
+                        "https://bato.to/chapter/2029629",
+                        "https://bato.to/chapter/2031007",
                     ],
                 ),
                 id_first=True,
                 test_subject=Bato
+            ),
+            TestCase(
+                test_setup,
+                test_data=TestInputData("https://omegascans.org/series/dorm-room-sisters"),
+                expected_result=ExpectedResult(
+                    scanlator_name="omegascans",
+                    manga_url="https://omegascans.org/series/dorm-room-sisters",
+                    completed=True,
+                    human_name="Dorm Room Sisters",
+                    manga_id=default_id_func("https://omegascans.org/series/dorm-room-sisters"),
+                    curr_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-93-5-review",
+                    first_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-1",
+                    cover_image=(
+                        "https://media.omegascans.org/file/zFSsXt/covers/12333c4d-d82c-4a88-8b55-7f5e5f266457.jpg"
+                    ),
+                    last_3_chapter_urls=[
+                        "https://omegascans.org/series/dorm-room-sisters/chapter-92",
+                        "https://omegascans.org/series/dorm-room-sisters/chapter-93-end",
+                        "https://omegascans.org/series/dorm-room-sisters/chapter-93-5-review",
+                    ],
+                ),
+                test_subject=OmegaScans,
             )
         ]
         try:
             await run_tests(testCases)
-            # await run_single_test(testCases[8])
+            # await run_single_test(testCases[16])
         finally:
             await test_setup.bot.close()
 

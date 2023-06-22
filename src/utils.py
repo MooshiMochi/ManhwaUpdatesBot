@@ -176,6 +176,7 @@ def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto
             "owner-ids": [0],
             "test-guild-id": 0,
             "cache-retention-seconds": 300,
+            "time-for-manga-to-be-considered-stale": 7776000,
         },
         "proxy": {
             "enabled": True,
@@ -502,7 +503,7 @@ def relative_time_to_seconds(time_string) -> int:
 
 def time_string_to_seconds(time_str: str) -> int:
     """Convert a time string to seconds since the epoch"""
-    formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
+    formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"]
 
     try:
         relative_time_to_seconds(time_str)

@@ -91,3 +91,7 @@ class RegExpressions:
     bato_url = re.compile(
         r"(?:https?://)?(?:www\.)?bato\.to/series/(\d+)/([\w-]+)(?:/.*)?"
     )
+
+    omegascans_url = re.compile(
+        r"(?:https?://)?(?:www\.)?omegascans\.org/series/([\w-]+)(?:/.*)?"
+    )
