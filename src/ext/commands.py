@@ -459,17 +459,18 @@ class CommandsCog(commands.Cog):
             ("Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
             ("LeviatanScans", "https://en.leviatanscans.com/", "https://en.leviatanscans.com/home/manga/manga-title/"),
             ("Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
-            ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
-            ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
             ("OmegaScans", "https://omegascans.org/", "https://omegascans.org/series/manga-title/"),
             ("Void-Scans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
+            
+            # Scanlators requiring user-agents
+            ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
+            ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
         ]
+        supp_webs = sorted(supp_webs, key=lambda x: x[0])
         if self.bot.config.get('user-agents', {}).get(AniglisScans.name) is None:
             supp_webs.pop(-1)
         if self.bot.config.get('user-agents', {}).get(Aquamanga.name) is None:
             supp_webs.pop(-1)
-        supp_webs = sorted(supp_webs, key=lambda x: x[0])
-
         em.description = "Manga Updates Bot currently supports the following websites:\n"
         for name, url, _format in supp_webs:
             if name.lower() not in SCANLATORS:
