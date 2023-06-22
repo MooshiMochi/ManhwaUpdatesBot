@@ -103,12 +103,11 @@ class CommandsCog(commands.Cog):
             series_url = Aquamanga.fmt_url.format(manga_url_name=url_name)
             series_id = await Aquamanga.get_manga_id(self.bot, series_url)
 
-        # elif RegExpressions.voidscans_url.search(manga_url):
-        #     scanlator = VoidScans
-        #
-        #     url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
-        #     series_url: str = VoidScans.fmt_url.format(manga_url_name=url_name)
-        #     series_id = await VoidScans.get_manga_id(self.bot, series_url)
+        elif RegExpressions.voidscans_url.search(manga_url):
+            scanlator = VoidScans
+
+            series_url: str = await VoidScans.fmt_manga_url(self.bot, None, manga_url)
+            series_id = await VoidScans.get_manga_id(self.bot, series_url)
 
         elif RegExpressions.tritinia_url.search(manga_url):
             scanlator = TritiniaScans
@@ -453,7 +452,6 @@ class CommandsCog(commands.Cog):
         supp_webs = [
             ("MangaDex", "https://mangadex.org/", "https://mangadex.org/title/1b2c3d/"),
             ("Manganato", "https://manganato.com/", "https://manganato.com/manga-m123456"),
-            ("Toonily", "https://toonily.com", "https://toonily.net/manga/manga-title/"),
             ("TritiniaScans", "https://tritinia.org", "https://tritinia.org/manga/manga-title/"),
             ("FlameScans", "https://flamescans.org/", "https://flamescans.org/series/manga-title/"),
             ("AsuraScans", "https://asurascans.com/", "https://asurascans.com/manga/manga-title/"),
@@ -465,8 +463,9 @@ class CommandsCog(commands.Cog):
             ("Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
             ("LeviatanScans", "https://en.leviatanscans.com/", "https://en.leviatanscans.com/home/manga/manga-title/"),
             ("Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
+            ("Toonily", "https://toonily.com", "https://toonily.net/manga/manga-title/"),
             ("OmegaScans", "https://omegascans.org/", "https://omegascans.org/series/manga-title/"),
-            ("Void-Scans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
+            ("VoidScans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
 
             # Scanlators requiring user-agents
             ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
