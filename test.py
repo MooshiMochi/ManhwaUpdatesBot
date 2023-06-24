@@ -25,10 +25,11 @@ logger: logging.Logger = logging.getLogger("test")
 
 # noinspection PyTypeChecker
 class Bot:
-    def __init__(self, proxy_url: Optional[str] = None):
-        self.config: Dict = None
+    def __init__(self, config: Dict):
+        self.config: Dict = config
+        self.proxy_addr = self._fmt_proxy()
         self.cf_scraper = ProtectedRequest(self)
-        self.session = CachedClientSession(proxy=proxy_url)
+        self.session = CachedClientSession(proxy=self.proxy_addr)
         self.db = Database(self)
         self.mangadex_api = MangaDexAPI(self.session)
         self.comick_api = ComickAppAPI(self.session)
@@ -47,24 +48,8 @@ class Bot:
     async def log_to_discord(message, **kwargs):
         print(message, kwargs)
 
-
-class SetupTest:
-    proxy_url: str = None
-    bot: Bot = None
-
-    def setup(self):
-        self.bot = Bot(proxy_url=self.proxy_url)
-        self.bot.config = self.load_config()
-        self.proxy_url = self.fmt_proxy()
-        return self
-
-    @staticmethod
-    def load_config() -> Dict:
-        config = load_config(logger, auto_exit=False)
-        return ensure_configs(logger, config, SCANLATORS, auto_exit=False)
-
-    def fmt_proxy(self) -> Optional[str]:
-        proxy_dict = self.bot.config.get("proxy")
+    def _fmt_proxy(self) -> Optional[str]:
+        proxy_dict = self.config.get("proxy")
         if proxy_dict is None:
             return None
         ip, port = proxy_dict.get("ip"), proxy_dict.get("port")
@@ -74,6 +59,17 @@ class SetupTest:
             return f"http://{user}:{pwd}@{ip}:{port}"
         else:
             return f"http://{ip}:{port}"
+
+
+class SetupTest:
+    def __init__(self):
+        config = self.load_config()
+        self.bot: Bot = Bot(self.load_config())
+
+    @staticmethod
+    def load_config() -> Dict:
+        config = load_config(logger, auto_exit=False)
+        return ensure_configs(logger, config, SCANLATORS, auto_exit=False)
 
 
 class ExpectedResult:
@@ -302,7 +298,7 @@ async def run_single_test(test_case: TestCase):
 if __name__ == "__main__":
     # noinspection SpellCheckingInspection
     async def main():
-        test_setup = SetupTest().setup()
+        test_setup = SetupTest()
 
         testCases = [
             TestCase(
