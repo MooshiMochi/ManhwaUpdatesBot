@@ -3,19 +3,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyppeteer.errors
+from pyppeteer_stealth import stealth
 
 if TYPE_CHECKING:
     from src.core import MangaClient
 from io import BytesIO
 import asyncio
+
 from pyppeteer.launcher import Launcher
 from pyppeteer.browser import Browser
 from pyppeteer.network_manager import Request
 import logging
 from typing import Dict, Any, Optional, Set
-from src.utils import get_manga_scanlator_class
-from src.core.scanners import SCANLATORS, AsuraScans
-
+from src.core.scanners import AsuraScans
 import tempfile
 
 
@@ -49,6 +49,10 @@ class ProtectedRequest:
             "userDataDir": self._user_data_dir,
             # "ignoreHTTPSErrors": True,
         }
+
+        if bot.config.get("proxy", {}).get("enabled", False):
+            options["args"].append(f"--proxy-server={bot.proxy_addr.split('@')[-1].split('//')[-1]}")
+
         self._launcher: Launcher | None = Launcher(**options)
 
         self._clear_cache_task = asyncio.create_task(self._clear_cache())
@@ -102,23 +106,25 @@ class ProtectedRequest:
         else:
             await req.continue_()
 
-    async def open_page(self, url: str, size: tuple[int, int] = (1280, 800)) -> pyppeteer.browser.Page:
+    async def new_tab(self, size: tuple[int, int] = (1280, 800)) -> pyppeteer.browser.Page:
+
         if not self.browser:
             await self.async_init()
 
         page = await self.browser.newPage()
+
+        # authenticate the proxy if enabled:
+        if self.bot.config.get("proxy", {}).get("enabled", False):
+            proxy_dict = self.bot.config.get("proxy", {})
+            if proxy_dict.get("username") and proxy_dict.get("password"):
+                await page.authenticate(
+                    {'username': proxy_dict.get("username"), 'password': proxy_dict.get("password")}
+                )
+
         # Set custom User-Agent string
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
                      'Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.43'
-
         await page.setUserAgent(user_agent)
-        # await page.setExtraHTTPHeaders({
-        #     "Sec-Ch-Ua": "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Microsoft Edge\";v=\"90\"",
-        #     "Sec-Ch-Ua-Mobile": "?0",
-        #     # "Sec-Fetch-Dest": "document",
-        #     "Sec-Ch-Ua-Platform": "\"Windows\"",
-        #     "Upgrade-Insecure-Requests": "1",
-        # })
 
         # Set viewport size
         await page.setViewport({'width': size[0], 'height': size[1]})
@@ -131,13 +137,14 @@ class ProtectedRequest:
         }
         await page.setExtraHTTPHeaders(headers)
 
-        def on_request(req: Request):
-            asyncio.ensure_future(self.check_request(req))
+        await stealth(page)
 
-        # Block requests to the radio api
-        await page.setRequestInterception(True)
-        page.on("request", on_request)
+        return page  # return the page object
+        # await page.goto(url, wait_until="domcontentloaded")
+        # return page
 
+    async def open_page(self, url: str, size: tuple[int, int] = (1280, 800)) -> pyppeteer.browser.Page:
+        page = await self.new_tab(size)
         await page.goto(url, wait_until="domcontentloaded")
         return page
 
@@ -167,7 +174,7 @@ class ProtectedRequest:
             return self._cache[url]["content"]
 
         try:
-            page = await self.browser.newPage()
+            page = await self.new_tab()
         except ConnectionError:
             self.logger.error("ConnectionError when trying to create new page")
             self.logger.warning("Retrying in 10 seconds...")
@@ -176,30 +183,14 @@ class ProtectedRequest:
             self.browser = None
             return await self.bypass_cloudflare(url, cache_time)
 
-        scanlator = get_manga_scanlator_class(SCANLATORS, url)
-        if scanlator and scanlator.name not in self.cookie_exempt_scanlators:
-            cookie = await self.bot.db.get_cookie(scanlator.name)
-            if cookie:
-                await page.setCookie(*cookie)
-
-        elif scanlator and scanlator.name in self.cookie_exempt_scanlators:
-            await page.deleteCookie(*await page.cookies())
-
-        # Set custom User-Agent string
-        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
-                     'Chrome/93.0.4577.63 Safari/537.36'
-        await page.setUserAgent(user_agent)
-
-        # Set viewport size
-        await page.setViewport({'width': 1280, 'height': 800})
-
-        # Set additional headers
-        headers = {
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-        }
-        await page.setExtraHTTPHeaders(headers)
+        # scanlator = get_manga_scanlator_class(SCANLATORS, url)
+        # if scanlator and scanlator.name not in self.cookie_exempt_scanlators:
+        #     cookie = await self.bot.db.get_cookie(scanlator.name)
+        #     if cookie:
+        #         await page.setCookie(*cookie)
+        #
+        # elif scanlator and scanlator.name in self.cookie_exempt_scanlators:
+        #     await page.deleteCookie(*await page.cookies())
 
         def on_request(req: Request):
             asyncio.ensure_future(self.check_request(req))
@@ -208,26 +199,24 @@ class ProtectedRequest:
         await page.setRequestInterception(True)
         page.on("request", on_request)
 
-        for i in range(3):
-            try:
-                await page.goto(url, wait_until="domcontentloaded")
-                break
-            except pyppeteer.errors.PageError as e:
-                if i == 2:
-                    return f"Ray ID\n{str(e)}"
+        await page.goto(url)  # , wait_until="domcontentloaded"
 
         # await asyncio.sleep(5)  # wait 5 sec in hopes that cloudflare will be done.
         content = await page.content()
         if "Just a moment..." in content:
+            self.logger.debug("Caught in cloudflare 'Just a moment...' challenge. Attempting to wait it out!")
             # wait 10 sec in hopes that cloudflare will be done.
             await page.waitFor(10000)
             content = await page.content()
             if "Verify you are human" in content:
+                self.logger.debug("Caught in cloudflare 'Verify you are human' challenge. Attempting to bypass!")
                 await self.click_cloudflare_checkbox(page)
+        else:
+            self.logger.debug("No cloudflare challenge detected.")
 
-        page_cookie = await page.cookies()
-        if page_cookie and scanlator and scanlator.name not in self.cookie_exempt_scanlators:
-            await self.bot.db.set_cookie(scanlator.name, page_cookie)
+        # page_cookie = await page.cookies()
+        # if page_cookie and scanlator and scanlator.name not in self.cookie_exempt_scanlators:
+        #     await self.bot.db.set_cookie(scanlator.name, page_cookie)
 
         if url not in self._ignored_urls:
             self._cache[url] = {
@@ -237,7 +226,6 @@ class ProtectedRequest:
                 )
             }
         self.logger.debug(f"Cached response for {url}")
-        await asyncio.sleep(5)
         await page.close()
         return content
 

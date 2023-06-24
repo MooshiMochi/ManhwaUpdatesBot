@@ -10,3 +10,4 @@ python-Levenshtein
 pandas
 openpyxl
 pyppeteer
+pyppeteer_stealth
