@@ -116,7 +116,9 @@ class UpdateCheckCog(commands.Cog):
                     extra_kwargs = update_check_result.extra_kwargs[i] if len(
                         update_check_result.extra_kwargs
                     ) > i else {}
-
+                    if not isinstance(extra_kwargs, dict):
+                        self.bot.logger.warning(f"Extra kwargs must be a dict, ignoring extra kwargs:\n{extra_kwargs}")
+                        
                     for guild_config in guild_configs:
                         if not guild_config.webhook:
                             self.bot.logger.debug(
