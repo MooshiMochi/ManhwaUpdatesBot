@@ -269,6 +269,7 @@ class TestCase:
     async def begin(self) -> str:
         if self.test_subject not in SCANLATORS:
             print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
+            return "N/A"
         else:
             return await self.test.begin()
 
@@ -282,6 +283,9 @@ async def run_tests(test_cases: list[TestCase]):
     for test_case in test_cases:
         test_case.setup()
         checks_passed: str = await test_case.begin()
+        if checks_passed == "N/A":
+            continue
+
         passed_of_total = checks_passed.split("/")
         if passed_of_total[0] == passed_of_total[1]:
             successful_tests += 1
