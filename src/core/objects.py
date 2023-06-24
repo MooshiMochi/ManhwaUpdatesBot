@@ -27,12 +27,12 @@ class ChapterUpdate:
             new_chapters: list[Chapter],
             new_cover_url: Optional[str] = None,
             series_completed: bool = False,
-            *extra_kwargs: list[dict[str, Any]]
+            extra_kwargs: list[dict[str, Any]] = None
     ):
         self.new_chapters = new_chapters
         self.new_cover_url = new_cover_url
         self.series_completed = series_completed
-        self.extra_kwargs = extra_kwargs
+        self.extra_kwargs = extra_kwargs or []
 
     def __repr__(self):
         return f"UpdateResult({len(self.new_chapters)} new chapters, series_completed={self.series_completed})"

@@ -267,7 +267,10 @@ class TestCase:
         self.test = Test(self.test_setup, self.test_data, self.expected_result, self.test_subject, self.id_first)
 
     async def begin(self) -> str:
-        return await self.test.begin()
+        if self.test_subject not in SCANLATORS:
+            print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
+        else:
+            return await self.test.begin()
 
 
 def default_id_func(manga_url: str) -> str:
