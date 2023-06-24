@@ -7,6 +7,8 @@ from typing import Any, Iterable, TYPE_CHECKING, Union
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
+from io import BytesIO
+from .errors import URLAccessFailed
 import traceback as tb
 from datetime import datetime
 from typing import Optional
@@ -113,6 +115,25 @@ class ABCScan(ABC):
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
             bot.logger.critical(message)
+
+    @staticmethod
+    def _create_chapter_embed(
+            scanlator_name: str, img_url: str, human_name: str, chapter_url: str, chapter_text: str
+    ) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"{human_name} - {chapter_text}",
+            url=chapter_url)
+        embed.set_author(name=scanlator_name)
+        embed.description = f"Read {human_name} online for free on {scanlator_name}!"
+        embed.set_image(url=img_url)
+        return embed
+
+    @staticmethod
+    async def _fetch_image_bytes(bot, image_url: str, filename: str) -> discord.File:
+        async with bot.session.get(image_url) as resp:
+            if resp.status != 200:
+                raise URLAccessFailed(image_url, resp.status)
+            return discord.File(BytesIO(await resp.read()), filename)
 
     @classmethod
     def extract_error_code_n_message(cls, text: str) -> tuple[int | str, str] | None:

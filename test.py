@@ -267,7 +267,7 @@ class TestCase:
         self.test = Test(self.test_setup, self.test_data, self.expected_result, self.test_subject, self.id_first)
 
     async def begin(self) -> str:
-        if self.test_subject not in SCANLATORS:
+        if self.test_subject.name not in SCANLATORS:
             print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
             return "N/A"
         else:
@@ -459,34 +459,34 @@ if __name__ == "__main__":
                 ),
                 test_subject=Aquamanga
             ),
-            # TestCase(
-            #     test_setup,
-            #     test_data=TestInputData("https://reaperscans.com/comics/4099-the-legendary-mechanic"),
-            #     expected_result=ExpectedResult(
-            #         scanlator_name="reaperscans",
-            #         manga_url="https://reaperscans.com/comics/4099-the-legendary-mechanic",
-            #         completed=True,
-            #         human_name="The Legendary Mechanic",
-            #         manga_id="4099",
-            #         curr_chapter_url=(
-            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
-            #         ),
-            #         first_chapter_url=(
-            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/24239107-chapter-0"
-            #         ),
-            #         cover_image=(
-            #             "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8"
-            #             "/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg"
-            #         ),
-            #         last_3_chapter_urls=[
-            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
-            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
-            #             "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10",
-            #         ],
-            #     ),
-            #     id_first=True,
-            #     test_subject=ReaperScans,
-            # ),
+            TestCase(
+                test_setup,
+                test_data=TestInputData("https://reaperscans.com/comics/4099-the-legendary-mechanic"),
+                expected_result=ExpectedResult(
+                    scanlator_name="reaperscans",
+                    manga_url="https://reaperscans.com/comics/4099-the-legendary-mechanic",
+                    completed=True,
+                    human_name="The Legendary Mechanic",
+                    manga_id="4099",
+                    curr_chapter_url=(
+                        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
+                    ),
+                    first_chapter_url=(
+                        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/24239107-chapter-0"
+                    ),
+                    cover_image=(
+                        "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8"
+                        "/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg"
+                    ),
+                    last_3_chapter_urls=[
+                        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
+                        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
+                        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10",
+                    ],
+                ),
+                id_first=True,
+                test_subject=ReaperScans,
+            ),
             TestCase(
                 test_setup,
                 test_data=TestInputData("https://anigliscans.com/series/blooming/"),
@@ -699,8 +699,8 @@ if __name__ == "__main__":
             )
         ]
         try:
-            await run_tests(testCases)
-            # await run_single_test(testCases[16])
+            # await run_tests(testCases)
+            await run_single_test(testCases[7])
         finally:
             await test_setup.bot.close()
 

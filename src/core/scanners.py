@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
-import discord
 import re
 
 from bs4 import BeautifulSoup
@@ -797,7 +796,34 @@ class Aquamanga(ABCScan):
             manga: Manga,
             _manga_request_url: str | None = None
     ) -> ChapterUpdate:
-        return await super().check_updates(bot, manga, _manga_request_url)
+
+        request_url = _manga_request_url or manga.url
+        try:
+            all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
+            completed: bool = await cls.is_series_completed(bot, manga.id, manga.url)
+            cover_url: str = await cls.get_cover_image(bot, manga.id, manga.url)
+            if all_chapters is None:
+                return ChapterUpdate([], cover_url, completed)
+            new_chapters: list[Chapter] = [
+                chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
+            ]
+            return ChapterUpdate(
+                new_chapters, cover_url, completed,
+                [
+                    {
+                        "embed": cls._create_chapter_embed(
+                            "Aquamanga", "attachment://img.png", manga.human_name, chapter.url,
+                            chapter.name
+                        ),
+                        "file": await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
+                    }
+                    for chapter in new_chapters
+                ]
+            )
+        except (ValueError, AttributeError) as e:
+            await cls.report_error(bot, e, request_url=request_url)
+        except Exception as e:
+            raise e
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
@@ -914,16 +940,6 @@ class ReaperScans(ABCScan):
     fmt_url = base_url + "comics/{manga_id}-{manga_url_name}"
     name = "reaperscans"
 
-    @staticmethod
-    def _create_chapter_embed(img_url: str, human_name: str, chapter_url: str, chapter_text: str) -> discord.Embed:
-        embed = discord.Embed(
-            title=f"{human_name} - {chapter_text}",
-            url=chapter_url)
-        embed.set_author(name="Reaper Scans")
-        embed.description = f"Read {human_name} online for free on Reaper Scans!"
-        embed.set_image(url=img_url)
-        return embed
-
     @classmethod
     async def check_updates(
             cls,
@@ -942,7 +958,10 @@ class ReaperScans(ABCScan):
         ]
         return ChapterUpdate(new_chapters, cover_url, completed, [
             {
-                "embed": cls._create_chapter_embed(cover_url, manga.human_name, chapter.url, chapter.name)
+                "embed": cls._create_chapter_embed(
+                    "Reaper Scans", "attachment://img.png", manga.human_name, chapter.url, chapter.name
+                ),
+                "file": await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
             }
             for chapter in new_chapters
         ])
