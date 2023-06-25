@@ -814,15 +814,22 @@ class CachedResponse:
     def __init__(self, response: aiohttp.ClientResponse):
         self._response = response
         self._data_dict = {}
+        self._original_methods = {
+            "json": response.json,
+            "text": response.text,
+            "read": response.read,
+        }
 
     async def try_return(self, key: str):
         stored = self._data_dict.get(key)
 
         if stored is None:
             try:
-                self._data_dict[key] = {"content": await self._response.__getattribute__(key)(), "type": "data"}
+                self._data_dict[key] = {"content": await self._original_methods[key](), "type": "data"}
+                stored = self._data_dict[key]
             except Exception as e:
                 self._data_dict[key] = {"type": "error", "content": e}
+                stored = self._data_dict[key]
 
         if stored["type"] == "error":
             raise stored["content"]
@@ -842,7 +849,7 @@ class CachedResponse:
         keys = ["json", "text", "read"]
         for key in keys:
             try:
-                self._data_dict[key] = {"content": await self._response.__getattribute__(key)(), "type": "data"}
+                self._data_dict[key] = {"content": await self._original_methods[key](), "type": "data"}
             except Exception as e:
                 self._data_dict[key] = {"type": "error", "content": e}
         return self
