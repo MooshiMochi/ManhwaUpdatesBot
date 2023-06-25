@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
@@ -254,7 +255,9 @@ class Test:
             except AssertionError as e:
                 print(e)
             except Exception as e:
-                print(f"❌ Unexpected error: {e} --- {error_msg}")
+                print(f"❌ Unexpected error: {e} ---")
+                exc = tb.format_exception(type(e), e, e.__traceback__)
+                print("".join(exc))
         emoji = "❌" if checks_passed != len(checks_to_run) else "✅"
         print(f"{emoji} [{self.expected_result.scanlator_name}] Passed {checks_passed}/{len(checks_to_run)} tests")
         return f"{checks_passed}/{len(checks_to_run)}"
@@ -293,17 +296,18 @@ def toggle_logging(name: str = "__main__") -> logging.Logger:
 
 async def run_tests(test_cases: list[TestCase]):
     successful_tests = 0
+    total_tests = len(test_cases)
     for test_case in test_cases:
         test_case.setup()
         checks_passed: str = await test_case.begin()
         if checks_passed == "N/A":
+            total_tests -= 1
             continue
 
         passed_of_total = checks_passed.split("/")
         if passed_of_total[0] == passed_of_total[1]:
             successful_tests += 1
 
-    total_tests = len(test_cases)
     if successful_tests == total_tests:
         print("🎉 All tests passed!")
     else:
@@ -714,7 +718,7 @@ if __name__ == "__main__":
 
         try:
             await run_tests(testCases)
-            # await run_single_test(testCases[-1])
+            # await run_single_test(testCases[9])
         finally:
             await test_setup.bot.close()
 
@@ -722,6 +726,8 @@ if __name__ == "__main__":
     import asyncio
 
     if os.name == "nt":
+        os.name = "windows-blud"
+
         toggle_logging("src.core.cf_bypass")
         toggle_logging("src.core.cache")
         toggle_logging("cache.bot")

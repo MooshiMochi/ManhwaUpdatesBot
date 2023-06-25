@@ -71,9 +71,9 @@ class ComickAppAPI:
                 continue
             # elif chapter["chap"] is None:
             #     chapter["chap"] = "0." + chapter["vol"]
-
-            chapter["chap"] = float(chapter["chap"]) if "." in chapter["chap"] else int(chapter["chap"])
-            if chapter["vol"] is not None:
+            if not isinstance(chapter["chap"], (int, float)):
+                chapter["chap"] = float(chapter["chap"]) if "." in chapter["chap"] else int(chapter["chap"])
+            if chapter["vol"] is not None and not isinstance(chapter["vol"], (int, float)):
                 chapter["vol"] = float(chapter["vol"]) if "." in chapter["vol"] else int(chapter["vol"])
 
             chap_number = chapter['chap']
