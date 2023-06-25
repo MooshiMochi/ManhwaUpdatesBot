@@ -807,15 +807,13 @@ class Aquamanga(ABCScan):
             new_chapters: list[Chapter] = [
                 chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
             ]
-            image_file = await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
             return ChapterUpdate(
                 new_chapters, cover_url, completed,
                 [
                     {
                         "embed": cls._create_chapter_embed(
                             "Aquamanga", Constants.no_img_available_url, manga.human_name, chapter.url, chapter.name
-                        ),
-                        "file": image_file
+                        )
                     }
                     for chapter in new_chapters
                 ]
