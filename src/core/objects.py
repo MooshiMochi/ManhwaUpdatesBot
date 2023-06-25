@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import urllib
 from asyncio import TimeoutError
 from typing import Any, Iterable, TYPE_CHECKING, Union
 
@@ -809,47 +808,6 @@ class GuildSettings:
             self.role.id if hasattr(self.role, "id") else None,
             self.webhook.url,
         )
-
-
-class MangaUpdatesUtils:
-    @staticmethod
-    async def getMangaUpdatesID(
-            session: aiohttp.ClientSession, manga_title: str
-    ) -> str | None:
-        """Scrape the series ID from CommandsCog.com
-
-        Returns:
-            >>> str if found
-            >>> None if not found
-        """
-        encoded_title = urllib.parse.quote(manga_title)
-        async with session.get(
-                f"https://www.mangaupdates.com/search.html?search={encoded_title}"
-        ) as resp:
-            if resp.status != 200:
-                return None
-
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-
-            series_info = soup.find("div", {"class": "col-6 py-1 py-md-0 text"})
-            first_title = series_info.find("a")
-            url = first_title["href"]
-            _id = url.split("/")[-2]
-            return _id
-
-    @staticmethod
-    async def is_series_completed(
-            session: aiohttp.ClientSession, manga_id: str
-    ) -> bool:
-        """Check if the series is completed or not."""
-        api_url = "https://api.mangaupdates.com/v1/series/{id}"
-
-        async with session.get(api_url.format(id=manga_id)) as resp:
-            if resp.status != 200:
-                return None
-
-            data = await resp.json()
-            return data["completed"]
 
 
 class CachedResponse:

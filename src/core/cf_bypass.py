@@ -199,7 +199,13 @@ class ProtectedRequest:
         await page.setRequestInterception(True)
         page.on("request", on_request)
 
-        await page.goto(url)  # , wait_until="domcontentloaded"
+        try:
+            await page.goto(url)  # , wait_until="domcontentloaded"
+        except TimeoutError:
+            self.logger.error(f"TimeoutError when trying to bypass cloudflare for {url}")
+            await self.bot.log_to_discord(f"TimeoutError when trying to bypass cloudflare for {url}")
+            await page.close()
+            return "Ray ID: 504 Gateway Timeout"
 
         # await asyncio.sleep(5)  # wait 5 sec in hopes that cloudflare will be done.
         content = await page.content()

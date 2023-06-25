@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from src.core import MangaClient
     from src.ext.update_check import UpdateCheckCog
 
+import discord
 from discord import app_commands
 from discord.ext import commands
 
