@@ -9,7 +9,7 @@ import re
 
 from bs4 import BeautifulSoup
 from datetime import datetime
-from src.static import RegExpressions
+from src.static import Constants, RegExpressions
 from src.utils import write_to_discord_file, relative_time_to_seconds, time_string_to_seconds
 
 from .errors import MangaNotFound, URLAccessFailed
@@ -813,8 +813,7 @@ class Aquamanga(ABCScan):
                 [
                     {
                         "embed": cls._create_chapter_embed(
-                            "Aquamanga", "attachment://img.png", manga.human_name, chapter.url,
-                            chapter.name
+                            "Aquamanga", Constants.no_img_available_url, manga.human_name, chapter.url, chapter.name
                         ),
                         "file": image_file
                     }

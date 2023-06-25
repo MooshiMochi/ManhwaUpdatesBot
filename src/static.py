@@ -5,6 +5,11 @@ class Emotes:
     warning = "⚠️"
 
 
+class Constants:
+    no_img_available_url = "https://st4.depositphotos.com/14953852/22772/v/600/depositphotos_227725020-stock" \
+                           "-illustration-image-available-icon-flat-vector.jpg"
+
+
 class EMPTY:
     """
     A class that represents an empty object.

@@ -811,6 +811,19 @@ class GuildSettings:
 
 
 class CachedResponse:
+    """
+    A class that patches the response of a aiohttp.ClientResponse to work with
+    the cache system.
+
+    Note: the .apply_patch() method must be called before using the response object.
+
+    Example:
+    >>> async with aiohttp.ClientSession() as session:
+    >>>     async with session.get("https://example.com") as response:
+    >>>         cached_response = await CachedResponse(response).apply_patch()
+    >>>         await cached_response.json()
+    """
+
     def __init__(self, response: aiohttp.ClientResponse):
         self._response = response
         self._data_dict = {}
