@@ -707,8 +707,8 @@ if __name__ == "__main__":
         ]
 
         try:
-            # await run_tests(testCases)
-            await run_single_test(testCases[7])
+            await run_tests(testCases)
+            # await run_single_test(testCases[-1])
         finally:
             await test_setup.bot.close()
 

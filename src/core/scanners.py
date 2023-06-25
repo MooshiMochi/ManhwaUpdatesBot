@@ -2055,7 +2055,7 @@ class OmegaScans(ABCScan):
 
             for i, chapter_tag in enumerate(reversed(chapter_container)):
                 chapter_url = cls.base_url[:-1] + chapter_tag["href"]
-                chapter_text = chapter_tag.text.strip()
+                chapter_text = chapter_tag.find("span").text.strip()
                 chapters.append(Chapter(chapter_url, chapter_text, i))
             return chapters
 
