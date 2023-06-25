@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
@@ -50,11 +51,17 @@ class Bot:
 
     def _fmt_proxy(self) -> Optional[str]:
         proxy_dict = self.config.get("proxy")
-        if proxy_dict is None:
+        if proxy_dict is None or proxy_dict.get("enabled") is False:
             return None
+
+        if os.name != "nt":  # disable proxy on non-windows systems
+            self.config["proxy"]["enabled"] = False
+            return None
+
         ip, port = proxy_dict.get("ip"), proxy_dict.get("port")
         if not ip or not port:
             return None
+
         if (user := proxy_dict.get("username")) and ([pwd := proxy_dict.get("password")]):
             return f"http://{user}:{pwd}@{ip}:{port}"
         else:
@@ -63,7 +70,6 @@ class Bot:
 
 class SetupTest:
     def __init__(self):
-        config = self.load_config()
         self.bot: Bot = Bot(self.load_config())
 
     @staticmethod
@@ -715,7 +721,9 @@ if __name__ == "__main__":
 
     import asyncio
 
-    toggle_logging("src.core.cf_bypass")
-    toggle_logging("src.core.cache")
-    toggle_logging("cache.bot")
+    if os.name == "nt":
+        toggle_logging("src.core.cf_bypass")
+        toggle_logging("src.core.cache")
+        toggle_logging("cache.bot")
+
     asyncio.run(main())
