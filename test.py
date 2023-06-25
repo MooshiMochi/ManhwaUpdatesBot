@@ -278,6 +278,13 @@ def default_id_func(manga_url: str) -> str:
     return hashlib.sha256(manga_url.encode()).hexdigest()
 
 
+def toggle_logging(name: str = "__main__") -> logging.Logger:
+    _logger = logging.getLogger(name)
+    _logger.setLevel(logging.DEBUG)
+    _logger.addHandler(logging.StreamHandler())
+    return _logger
+
+
 async def run_tests(test_cases: list[TestCase]):
     successful_tests = 0
     for test_case in test_cases:
@@ -698,6 +705,7 @@ if __name__ == "__main__":
                 test_subject=OmegaScans,
             )
         ]
+
         try:
             # await run_tests(testCases)
             await run_single_test(testCases[7])
@@ -707,4 +715,7 @@ if __name__ == "__main__":
 
     import asyncio
 
+    toggle_logging("src.core.cf_bypass")
+    toggle_logging("src.core.cache")
+    toggle_logging("cache.bot")
     asyncio.run(main())

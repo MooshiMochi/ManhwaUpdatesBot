@@ -133,7 +133,8 @@ class ABCScan(ABC):
         async with bot.session.get(image_url) as resp:
             if resp.status != 200:
                 raise URLAccessFailed(image_url, resp.status)
-            return discord.File(BytesIO(await resp.read()), filename)
+            buffer = BytesIO(await resp.read())
+            return discord.File(buffer, filename)
 
     @classmethod
     def extract_error_code_n_message(cls, text: str) -> tuple[int | str, str] | None:
@@ -849,3 +850,50 @@ class MangaUpdatesUtils:
 
             data = await resp.json()
             return data["completed"]
+
+
+class CachedResponse:
+    def __init__(self, response: aiohttp.ClientResponse):
+        self._response = response
+        self._data_dict = {}
+
+    async def try_return(self, key: str):
+        stored = self._data_dict.get(key)
+
+        if stored is None:
+            try:
+                self._data_dict[key] = {"content": await self._response.__getattribute__(key)(), "type": "data"}
+            except Exception as e:
+                self._data_dict[key] = {"type": "error", "content": e}
+
+        if stored["type"] == "error":
+            raise stored["content"]
+        else:
+            return stored["content"]
+
+    async def json(self):
+        return await self.try_return("json")
+
+    async def text(self):
+        return await self.try_return("text")
+
+    async def read(self):
+        return await self.try_return("read")
+
+    async def _async_init(self):
+        keys = ["json", "text", "read"]
+        for key in keys:
+            try:
+                self._data_dict[key] = {"content": await self._response.__getattribute__(key)(), "type": "data"}
+            except Exception as e:
+                self._data_dict[key] = {"type": "error", "content": e}
+        return self
+
+    async def apply_patch(self, preload_data: bool = False):
+        if preload_data:
+            await self._async_init()
+
+        attributes = [("_data_dict", self._data_dict), ("json", self.json), ("text", self.text), ("read", self.read)]
+        for attr, value in attributes:
+            setattr(self._response, attr, value)
+        return self._response

@@ -8,6 +8,7 @@ from aiohttp import hdrs
 from aiohttp.client import _RequestContextManager
 from aiohttp.typedefs import StrOrURL
 
+from src.core.objects import CachedResponse
 from src.static import EMPTY
 
 
@@ -97,14 +98,15 @@ class CachedClientSession(aiohttp.ClientSession):
 
         # Cache miss, fetch and cache response
         response = await super()._request(method, url, **kwargs)  # await the new response object
+        response = await CachedResponse(response).apply_patch()
+        
+        cache_time = cache_time if cache_time is not None else self._default_cache_time
         # response.cached = False
         self._cache[url] = {
             'response': response,
-            'expires': asyncio.get_event_loop().time() + (
-                cache_time if cache_time is not None else self._default_cache_time
-            )
+            'expires': asyncio.get_event_loop().time() + cache_time
         }
-        self.logger.debug(f"Cached response for {url}")
+        self.logger.debug(f"Cached response for {url} for {cache_time} seconds")
         return response
 
     def get(

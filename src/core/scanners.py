@@ -807,6 +807,7 @@ class Aquamanga(ABCScan):
             new_chapters: list[Chapter] = [
                 chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
             ]
+            image_file = await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
             return ChapterUpdate(
                 new_chapters, cover_url, completed,
                 [
@@ -815,7 +816,7 @@ class Aquamanga(ABCScan):
                             "Aquamanga", "attachment://img.png", manga.human_name, chapter.url,
                             chapter.name
                         ),
-                        "file": await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
+                        "file": image_file
                     }
                     for chapter in new_chapters
                 ]
@@ -956,15 +957,18 @@ class ReaperScans(ABCScan):
         new_chapters: list[Chapter] = [
             chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
         ]
-        return ChapterUpdate(new_chapters, cover_url, completed, [
-            {
-                "embed": cls._create_chapter_embed(
-                    "Reaper Scans", "attachment://img.png", manga.human_name, chapter.url, chapter.name
-                ),
-                "file": await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
-            }
-            for chapter in new_chapters
-        ])
+        image_file = await cls._fetch_image_bytes(bot, manga.cover_url, "img.png")
+        return ChapterUpdate(
+            new_chapters, cover_url, completed, [
+                {
+                    "embed": cls._create_chapter_embed(
+                        "Reaper Scans", "attachment://img.png", manga.human_name, chapter.url, chapter.name
+                    ),
+                    "file": image_file
+                }
+                for chapter in new_chapters
+            ]
+        )
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
