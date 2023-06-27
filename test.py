@@ -727,6 +727,23 @@ if __name__ == "__main__":
             )
         }
 
+        if os.name == "nt":
+            os.name = "posix"  # debug on posix systems (linux, macos, etc)
+            logger.warning("asurascans, reaperscans and voidscans cannot be tested on windows.")
+            logger.warning("Use WSL instead.")
+            testCases.pop("asurascans", None)
+            testCases.pop("reaperscans", None)
+            testCases.pop("voidscans", None)
+
+        if (user := os.environ.get("HOME")) is not None:
+            if user.split("/")[-1] == "mooshi":
+                ...
+            else:
+                testCases.pop("voidscans", None)  # remove voidscans from testinc in GitHub Actions
+
+        # toggle_logging("cache.curl_cffi")
+        # toggle_logging("cache.bot")
+        
         try:
             tests_to_ignore = ["nitroscans"]  # going through changes on website, gotta wait till done
             await run_tests(testCases, tests_to_ignore)
@@ -736,13 +753,5 @@ if __name__ == "__main__":
 
 
     import asyncio
-
-    if os.name == "nt":
-        os.name = "posix"  # debug on posix systems (linux, macos, etc)
-
-    if (user := os.environ.get("HOME")) is not None:
-        if user.split("/")[-1] == "mooshi":
-            toggle_logging("cache.curl_cffi")
-            toggle_logging("cache.bot")
 
     asyncio.run(main())
