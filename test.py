@@ -741,9 +741,9 @@ if __name__ == "__main__":
             else:
                 testCases.pop("voidscans", None)  # remove voidscans from testinc in GitHub Actions
 
-        # toggle_logging("cache.curl_cffi")
-        # toggle_logging("cache.bot")
-        
+        toggle_logging("cache.curl_cffi")
+        toggle_logging("cache.bot")
+
         try:
             tests_to_ignore = ["nitroscans"]  # going through changes on website, gotta wait till done
             await run_tests(testCases, tests_to_ignore)
