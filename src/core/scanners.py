@@ -10,7 +10,7 @@ import re
 from bs4 import BeautifulSoup
 from datetime import datetime
 from src.static import Constants, RegExpressions
-from src.utils import write_to_discord_file, relative_time_to_seconds, time_string_to_seconds
+from src.utils import write_to_discord_file, time_string_to_seconds
 
 from .errors import MangaNotFound, URLAccessFailed
 from .objects import ChapterUpdate, Chapter, ABCScan, Manga
@@ -1591,18 +1591,12 @@ class LeviatanScans(ABCScan):
                 )
                 raise URLAccessFailed(manga_url, resp.status)
 
-            def date_str_to_timestamp(date_str: str) -> int:
-                try:
-                    return relative_time_to_seconds(date_str)
-                except ValueError:
-                    return time_string_to_seconds(date_str)
-
             soup = BeautifulSoup(await resp.text(), "html.parser")
             release_dates = soup.find("ul", {"class": "main"}).find_all("span", {"class": "chapter-release-date"})
             date_strings = [_date.find("i").text for _date in release_dates]
             if date_strings:
                 date_to_check = date_strings[0]
-                timestamp = date_str_to_timestamp(date_to_check)
+                timestamp = cls._parse_time_string_to_sec(date_to_check)
                 if (
                         datetime.now().timestamp() - timestamp >
                         bot.config["constants"]["time-for-manga-to-be-considered-stale"]
@@ -2028,6 +2022,10 @@ class OmegaScans(ABCScan):
 
     # MIN_TIME_BETWEEN_REQUESTS = 30
 
+    @staticmethod
+    def _parse_time_string_to_sec(time_string: str) -> float | int:
+        return time_string_to_seconds(time_string, ["%m/%d/%Y"])
+
     @classmethod
     async def check_updates(
             cls,
@@ -2123,18 +2121,12 @@ class OmegaScans(ABCScan):
                 )
                 raise URLAccessFailed(manga_url, resp.status)
 
-            def date_str_to_timestamp(date_str: str) -> int:
-                try:
-                    return relative_time_to_seconds(date_str)
-                except ValueError:
-                    return time_string_to_seconds(date_str)
-
             soup = BeautifulSoup(await resp.text(), "html.parser")
             release_dates = soup.find("ul", {"class": "MuiList-root"}).find_all("a")
             date_strings = [_date.find("p", {"class": "MuiTypography-root"}).text for _date in release_dates]
             if date_strings:
                 date_to_check = date_strings[0]
-                timestamp = date_str_to_timestamp(date_to_check)
+                timestamp = cls._parse_time_string_to_sec(date_to_check)
                 if (
                         datetime.now().timestamp() - timestamp >
                         bot.config["constants"]["time-for-manga-to-be-considered-stale"]

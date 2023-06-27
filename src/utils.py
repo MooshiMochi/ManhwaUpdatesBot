@@ -479,13 +479,13 @@ def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
     return sub_groups
 
 
-def relative_time_to_seconds(time_string) -> int:
-    time_regex = r'(?P<value>\d+)\s+(?P<unit>[a-z]+)\s+ago'
+def relative_time_to_seconds(time_string) -> Optional[int]:
+    time_regex = r'(?P<value>\d+|an?)\s+(?P<unit>[a-z]+)\s+ago'
     match = re.match(time_regex, time_string.strip(), re.I)
     if not match:
-        raise ValueError('Invalid time string')
+        return None
     value, unit = match.groups()
-    value = int(value)
+    value = int(value) if value not in ["a", "an"] else 1
     unit = unit.lower()
     unit_timedelta = {
         'second': timedelta(seconds=1),
@@ -501,14 +501,16 @@ def relative_time_to_seconds(time_string) -> int:
     return int((datetime.now() - (value * unit_timedelta)).timestamp())
 
 
-def time_string_to_seconds(time_str: str) -> int:
+def time_string_to_seconds(time_str: str, formats: list[str] = None, default_formats: bool = False) -> int:
     """Convert a time string to seconds since the epoch"""
-    formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"]
-
     try:
-        relative_time_to_seconds(time_str)
+        return relative_time_to_seconds(time_str)
     except ValueError:
         pass
+
+    if default_formats:
+        formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
+        
     for fmt in formats:
         try:
             dt = datetime.strptime(time_str, fmt)

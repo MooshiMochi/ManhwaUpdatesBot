@@ -3,6 +3,8 @@ from __future__ import annotations
 from asyncio import TimeoutError
 from typing import Any, Iterable, TYPE_CHECKING, Union
 
+from ..utils import time_string_to_seconds
+
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
@@ -114,6 +116,10 @@ class ABCScan(ABC):
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
             bot.logger.critical(message)
+
+    @staticmethod
+    def _parse_time_string_to_sec(time_string: str) -> float | int:
+        return time_string_to_seconds(time_string, default_formats=True)
 
     @staticmethod
     def _create_chapter_embed(
