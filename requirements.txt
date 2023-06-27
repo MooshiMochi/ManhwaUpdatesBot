@@ -9,5 +9,4 @@ fuzzywuzzy
 python-Levenshtein
 pandas
 openpyxl
-pyppeteer
-pyppeteer_stealth
+curl_cffi

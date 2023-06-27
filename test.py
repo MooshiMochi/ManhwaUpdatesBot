@@ -13,8 +13,7 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
 
-from src.core.cache import CachedClientSession
-from src.core.cf_bypass import ProtectedRequest
+from src.core.cache import CachedClientSession, CachedCurlCffiSession
 from src.core.comickAPI import ComickAppAPI
 from src.core.database import Database
 from src.core.mangadexAPI import MangaDexAPI
@@ -30,15 +29,19 @@ class Bot:
     def __init__(self, config: Dict):
         self.config: Dict = config
         self.proxy_addr = self._fmt_proxy()
-        self.cf_scraper = ProtectedRequest(self)
-        self.session = CachedClientSession(proxy=self.proxy_addr)
+        self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
+            "http": self.proxy_addr,
+            "https": None
+        })
+        self.session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self.db = Database(self)
         self.mangadex_api = MangaDexAPI(self.session)
         self.comick_api = ComickAppAPI(self.session)
 
     async def close(self):
-        await self.cf_scraper.close()
+        # await self.cf_scraper.close()
         await self.session.close()
+        self.curl_session.close() if self.curl_session else None
 
     async def __aenter__(self):
         return self
@@ -137,7 +140,7 @@ class Test:
         self.fmt_url: str | None = None
 
     async def fmt_manga_url(self) -> bool:
-        result = await self.test_subject.fmt_manga_url(self._bot, self.manga_id or None, self.test_data.manga_url)
+        result = await self.test_subject.fmt_manga_url(self._bot, self.manga_id, self.test_data.manga_url)
         self.fmt_url = result
         evaluated: bool = result == self.expected_result.manga_url
         if not evaluated:
@@ -255,7 +258,7 @@ class Test:
             except AssertionError as e:
                 print(e)
             except Exception as e:
-                print(f"❌ Unexpected error: {e} ---")
+                print(f"❌ Unexpected error: {e} --- {error_msg}")
                 exc = tb.format_exception(type(e), e, e.__traceback__)
                 print("".join(exc))
         emoji = "❌" if checks_passed != len(checks_to_run) else "✅"
@@ -294,10 +297,16 @@ def toggle_logging(name: str = "__main__") -> logging.Logger:
     return _logger
 
 
-async def run_tests(test_cases: list[TestCase]):
+async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None):
     successful_tests = 0
     total_tests = len(test_cases)
-    for test_case in test_cases:
+    if to_ignore is None:
+        to_ignore = []
+    for name, test_case in test_cases.items():
+        if name in to_ignore:
+            total_tests -= 1
+            continue
+
         test_case.setup()
         checks_passed: str = await test_case.begin()
         if checks_passed == "N/A":
@@ -324,8 +333,8 @@ if __name__ == "__main__":
     async def main():
         test_setup = SetupTest()
 
-        testCases = [
-            TestCase(
+        testCases = {
+            "tritinia": TestCase(
                 test_setup,
                 test_data=TestInputData("https://tritinia.org/manga/momo-the-blood-taker/"),
                 expected_result=ExpectedResult(
@@ -347,7 +356,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=TritiniaScans
             ),
-            TestCase(
+            "manganato": TestCase(
                 test_setup,
                 test_data=TestInputData("https://chapmanganato.com/manga-hf985162"),
                 expected_result=ExpectedResult(
@@ -368,7 +377,7 @@ if __name__ == "__main__":
                 test_subject=Manganato,
                 id_first=True
             ),
-            TestCase(
+            "toonily": TestCase(
                 test_setup,
                 test_data=TestInputData(
                     "https://toonily.com/webtoon/lucky-guy-0002/"
@@ -391,7 +400,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=Toonily
             ),
-            TestCase(
+            "mangadex": TestCase(
                 test_setup,
                 test_data=TestInputData("https://mangadex.org/title/7dbeaa0e-420a-4dc0-b2d3-eb174de266da/zippy-ziggy"),
                 expected_result=ExpectedResult(
@@ -414,7 +423,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=MangaDex,
             ),
-            TestCase(
+            "flamescans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://flamescans.org/series/1687428121-the-villainess-is-a-marionette/"),
                 expected_result=ExpectedResult(
@@ -434,7 +443,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=FlameScans
             ),
-            TestCase(
+            "asurascans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://www.asurascans.com/manga/4569947261-i-regressed-as-the-duke/"),
                 expected_result=ExpectedResult(
@@ -456,7 +465,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=AsuraScans
             ),
-            TestCase(
+            "aquamanga": TestCase(
                 test_setup,
                 test_data=TestInputData("https://aquamanga.com/read/court-swordswoman-in-another-world/"),
                 expected_result=ExpectedResult(
@@ -478,7 +487,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=Aquamanga
             ),
-            TestCase(
+            "reaperscans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://reaperscans.com/comics/4099-the-legendary-mechanic"),
                 expected_result=ExpectedResult(
@@ -506,7 +515,7 @@ if __name__ == "__main__":
                 id_first=True,
                 test_subject=ReaperScans,
             ),
-            TestCase(
+            "aniglisscans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://anigliscans.com/series/blooming/"),
                 expected_result=ExpectedResult(
@@ -526,7 +535,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=AniglisScans
             ),
-            TestCase(
+            "comick": TestCase(
                 test_setup,
                 test_data=TestInputData("https://comick.app/comic/00-solo-leveling?lang=en"),
                 expected_result=ExpectedResult(
@@ -546,7 +555,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=Comick
             ),
-            TestCase(
+            "voidscans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://void-scans.com/manga/superhuman-era/"),
                 expected_result=ExpectedResult(
@@ -566,7 +575,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=VoidScans
             ),
-            TestCase(
+            "luminousscans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://luminousscans.com/series/1680246102-my-office-noonas-story/"),
                 expected_result=ExpectedResult(
@@ -587,7 +596,7 @@ if __name__ == "__main__":
                 id_first=True,
                 test_subject=LuminousScans
             ),
-            TestCase(
+            "leviatanscans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://en.leviatanscans.com/manga/trash-of-the-counts-family/"),
                 expected_result=ExpectedResult(
@@ -607,7 +616,7 @@ if __name__ == "__main__":
                 ),
                 test_subject=LeviatanScans
             ),
-            TestCase(
+            "drakescans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://drakescans.com/series/spirit-pet-creation-simulator1/"),
                 expected_result=ExpectedResult(
@@ -627,29 +636,29 @@ if __name__ == "__main__":
                 ),
                 test_subject=DrakeScans
             ),
-            TestCase(
+            "nitroscans": TestCase(
                 test_setup,
-                test_data=TestInputData("https://nitroscans.com/series/i-am-the-sorcerer-king/"),
+                test_data=TestInputData("https://nitroscans.com/mangas/spirit-pet-creation-simulator/"),
                 expected_result=ExpectedResult(
                     scanlator_name="nitroscans",
-                    manga_url="https://nitroscans.com/series/i-am-the-sorcerer-king/",
+                    manga_url="https://nitroscans.com/mangas/spirit-pet-creation-simulator/",
                     completed=True,
-                    human_name="I Am the Sorcerer King",
-                    manga_id=default_id_func("https://nitroscans.com/series/i-am-the-sorcerer-king"),
-                    curr_chapter_url="https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-143/",
-                    first_chapter_url="https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-1/",
+                    human_name="Spirit Pet Creation Simulator",
+                    manga_id=default_id_func("https://nitroscans.com/mangas/spirit-pet-creation-simulator"),
+                    curr_chapter_url="https://nitroscans.com/mangas/spirit-pet-creation-simulator/chapter-28/",
+                    first_chapter_url="https://nitroscans.com/mangas/spirit-pet-creation-simulator/chapter-0/",
                     cover_image=(
-                        "https://nitroscans.com/wp-content/uploads/2022/08/I-Am-the-Sorcerer-King-193x278.jpg"
+                        "https://nitroscans.com/wp-content/uploads/2022/05/Spirit-Pet-Creation-Simulator-193x278.jpg"
                     ),
                     last_3_chapter_urls=[
-                        "https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-141/",
-                        "https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-142/",
-                        "https://nitroscans.com/series/i-am-the-sorcerer-king/chapter-143/",
+                        "https://nitroscans.com/mangas/spirit-pet-creation-simulator/chapter-26/",
+                        "https://nitroscans.com/mangas/spirit-pet-creation-simulator/chapter-27/",
+                        "https://nitroscans.com/mangas/spirit-pet-creation-simulator/chapter-28/",
                     ],
                 ),
                 test_subject=NitroScans
             ),
-            TestCase(
+            "mangapill": TestCase(
                 test_setup,
                 test_data=TestInputData("https://mangapill.com/manga/57/3d-kanojo"),
                 expected_result=ExpectedResult(
@@ -670,7 +679,7 @@ if __name__ == "__main__":
                 id_first=True,
                 test_subject=Mangapill
             ),
-            TestCase(
+            "bato.to": TestCase(
                 test_setup,
                 test_data=TestInputData("https://bato.to/series/95400/queen-in-the-shadows"),
                 expected_result=ExpectedResult(
@@ -694,7 +703,7 @@ if __name__ == "__main__":
                 id_first=True,
                 test_subject=Bato
             ),
-            TestCase(
+            "omegascans": TestCase(
                 test_setup,
                 test_data=TestInputData("https://omegascans.org/series/dorm-room-sisters"),
                 expected_result=ExpectedResult(
@@ -716,11 +725,12 @@ if __name__ == "__main__":
                 ),
                 test_subject=OmegaScans,
             )
-        ]
+        }
 
         try:
-            await run_tests(testCases)
-            # await run_single_test(testCases[9])
+            tests_to_ignore = ["nitroscans"]  # going through changes on website, gotta wait till done
+            await run_tests(testCases, tests_to_ignore)
+            # await run_single_test(testCases["asurascans"])
         finally:
             await test_setup.bot.close()
 
@@ -730,8 +740,9 @@ if __name__ == "__main__":
     if os.name == "nt":
         os.name = "posix"  # debug on posix systems (linux, macos, etc)
 
-        toggle_logging("src.core.cf_bypass")
-        toggle_logging("src.core.cache")
-        toggle_logging("cache.bot")
+    if (user := os.environ.get("HOME")) is not None:
+        if user.split("/")[-1] == "mooshi":
+            toggle_logging("cache.curl_cffi")
+            toggle_logging("cache.bot")
 
     asyncio.run(main())

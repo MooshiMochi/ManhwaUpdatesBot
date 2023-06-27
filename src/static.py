@@ -84,7 +84,7 @@ class RegExpressions:
     )
 
     nitroscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?nitroscans\.com/series/([\w-]+)(?:/.*)?"
+        r"(?:https?://)?(?:www\.)?nitroscans\.com/mangas/([\w-]+)(?:/.*)?"
     )
 
     mangapill_url = re.compile(

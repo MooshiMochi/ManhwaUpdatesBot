@@ -3,12 +3,12 @@ import os
 from typing import Optional, Union
 
 import aiohttp
+import curl_cffi.requests
 import discord
 from discord import Intents
 from discord.ext import commands
 
-from .cache import CachedClientSession
-from .cf_bypass import ProtectedRequest
+from .cache import CachedClientSession, CachedCurlCffiSession
 from .comickAPI import ComickAppAPI
 from .database import Database
 from .mangadexAPI import MangaDexAPI
@@ -17,6 +17,7 @@ from .scanners import SCANLATORS
 
 
 class MangaClient(commands.Bot):
+    # noinspection PyTypeChecker
     def __init__(
             self, prefix: str = "!", intents: Intents = Intents.default(), *args, **kwargs
     ):
@@ -31,13 +32,15 @@ class MangaClient(commands.Bot):
         self.test_guild_id = None
         self.db = Database(self, "database.db")
         self._logger: logging.Logger = logging.getLogger("bot")
-        self._session: Optional[Union[aiohttp.ClientSession, CachedClientSession]] = None
-        self._cf_scraper: Optional[ProtectedRequest] = None
+
+        # Placeholder values. These are set in .setup_hook() below
+        self._session: Union[aiohttp.ClientSession, CachedClientSession] = None
+        self.curl_session: curl_cffi.requests.AsyncSession = None
+        self.mangadex_api: MangaDexAPI = None
+        self.comick_api: ComickAppAPI = None
+
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
-        self.mangadex_api: Optional[MangaDexAPI] = None
-        self.comick_api: Optional[ComickAppAPI] = None
-
         self.proxy_addr: Optional[str] = None
 
     async def setup_hook(self):
@@ -54,9 +57,12 @@ class MangaClient(commands.Bot):
         self._remove_unavailable_scanlators()
 
         self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
-        self._cf_scraper = ProtectedRequest(self)
+        self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
+            "http": self.proxy_addr,
+            "https": None
+        })
 
-        await self._cf_scraper.async_init()
+        # await self._cf_scraper.async_init()
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
@@ -125,6 +131,7 @@ class MangaClient(commands.Bot):
         await self._session.close() if self._session else None
         await self.mangadex_api.session.close() if self.mangadex_api else None
         await self._cf_scraper.close() if self._cf_scraper else None
+        self.curl_session.close() if self.curl_session else None
         await super().close()
 
     async def log_to_discord(self, content: Union[str, None] = None, **kwargs) -> None:

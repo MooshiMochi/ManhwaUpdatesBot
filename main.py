@@ -6,7 +6,8 @@ from discord import Intents
 from discord.errors import LoginFailure
 from discord.utils import setup_logging
 
-from src.core import BotCommandTree, CachedClientSession, MangaClient, ProtectedRequest
+from src.core import BotCommandTree, CachedClientSession, MangaClient
+from src.core.cache import CachedCurlCffiSession
 from src.core.scanners import SCANLATORS
 from src.utils import ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, silence_debug_loggers
 
@@ -53,7 +54,7 @@ async def main():
     )
 
     CachedClientSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
-    ProtectedRequest.set_default_cache_time(config["constants"]["cache-retention-seconds"])
+    CachedCurlCffiSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
 
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
