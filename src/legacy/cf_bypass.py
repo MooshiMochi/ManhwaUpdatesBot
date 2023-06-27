@@ -17,6 +17,7 @@ import logging
 from typing import Dict, Any, Optional, Set
 from src.core.scanners import AsuraScans
 import tempfile
+import os
 
 
 class ProtectedRequest:
@@ -35,6 +36,9 @@ class ProtectedRequest:
         self.cookie_exempt_scanlators = [
             AsuraScans.name
         ]
+
+        if not os.path.exists(self._user_data_dir):
+            os.mkdir(self._user_data_dir)
 
         options = {
             "headless": self._headless,

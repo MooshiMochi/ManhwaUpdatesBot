@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING
 
 import aiosqlite
 from fuzzywuzzy import fuzz
@@ -14,7 +14,6 @@ from src.core.objects import GuildSettings, Manga, Bookmark, Chapter
 from io import BytesIO
 import pandas as pd
 import sqlite3
-from json import loads, dumps
 from src.core.errors import DatabaseError
 
 
@@ -95,17 +94,6 @@ class Database:
                     updates_role_id INTEGER DEFAULT NULL,
                     webhook_url TEXT NOT NULL,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
-                )
-                """
-            )
-
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS cookies (
-                    scanlator TEXT PRIMARY KEY NOT NULL,
-                    cookie TEXT NOT NULL,
-                    FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                    UNIQUE (scanlator) ON CONFLICT REPLACE
                 )
                 """
             )
@@ -256,17 +244,6 @@ class Database:
             await db.commit()
             return True
 
-    async def set_cookie(self, scanlator: str, cookie: List[Dict]) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            serialized_cookies = dumps(cookie)
-            await db.execute(
-                """
-                INSERT INTO cookies (scanlator, cookie) VALUES ($1, $2)
-                """,
-                (scanlator, serialized_cookies),
-            )
-            await db.commit()
-
     async def subscribe_user(self, user_id: int, guild_id: int, series_id: int) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             # INSERT OR IGNORE INTO users (id, series_id, guild_id) VALUES ($1, $2, $3);
@@ -340,18 +317,6 @@ class Database:
             )
 
             await db.commit()
-
-    async def get_cookie(self, scanlator: str):
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT cookie FROM cookies WHERE scanlator = $1;
-                """,
-                (scanlator,),
-            )
-            cookie = await cursor.fetchone()
-            if cookie is not None:
-                return loads(cookie[0])
 
     # noinspection PyUnresolvedReferences
     async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
@@ -696,17 +661,6 @@ class Database:
                 """,
                 (last_read_chapter.to_json(), datetime.utcnow().timestamp(), user_id, series_id),
             )
-            await db.commit()
-
-    async def delete_cookie(self, scanlator: str) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM cookies WHERE scanlator = ?;
-                """,
-                (scanlator,),
-            )
-
             await db.commit()
 
     async def delete_series(self, series_id: str) -> None:
