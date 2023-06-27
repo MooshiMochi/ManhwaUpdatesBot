@@ -483,7 +483,7 @@ def relative_time_to_seconds(time_string) -> Optional[int]:
     time_regex = r'(?P<value>\d+|an?)\s+(?P<unit>[a-z]+)\s+ago'
     match = re.match(time_regex, time_string.strip(), re.I)
     if not match:
-        return None
+        raise ValueError(f'Invalid time string: {time_string}')
     value, unit = match.groups()
     value = int(value) if value not in ["a", "an"] else 1
     unit = unit.lower()
@@ -501,7 +501,7 @@ def relative_time_to_seconds(time_string) -> Optional[int]:
     return int((datetime.now() - (value * unit_timedelta)).timestamp())
 
 
-def time_string_to_seconds(time_str: str, formats: list[str] = None, default_formats: bool = False) -> int:
+def time_string_to_seconds(time_str: str, formats: list[str] = None, default_formats: bool = True) -> int:
     """Convert a time string to seconds since the epoch"""
     try:
         return relative_time_to_seconds(time_str)
@@ -509,8 +509,8 @@ def time_string_to_seconds(time_str: str, formats: list[str] = None, default_for
         pass
 
     if default_formats:
-        formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
-        
+        formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y", ""]
+
     for fmt in formats:
         try:
             dt = datetime.strptime(time_str, fmt)

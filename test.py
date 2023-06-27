@@ -458,20 +458,22 @@ if __name__ == "__main__":
             ),
             TestCase(
                 test_setup,
-                test_data=TestInputData("https://aquamanga.com/read/the-legendary-mechanic-1/"),
+                test_data=TestInputData("https://aquamanga.com/read/court-swordswoman-in-another-world/"),
                 expected_result=ExpectedResult(
                     scanlator_name="aquamanga",
-                    manga_url="https://aquamanga.com/read/the-legendary-mechanic-1/",
+                    manga_url="https://aquamanga.com/read/court-swordswoman-in-another-world/",
                     completed=True,
-                    human_name="The Legendary Mechanic",
-                    manga_id=default_id_func("https://aquamanga.com/read/the-legendary-mechanic-1"),
-                    curr_chapter_url="https://aquamanga.com/read/the-legendary-mechanic-1/chapter-191/",
-                    first_chapter_url="https://aquamanga.com/read/the-legendary-mechanic-1/chapter-0/",
-                    cover_image="https://aquamanga.com/wp-content/uploads/2021/03/legendary-mechanic-manga-193x278.jpg",
+                    human_name="Court Swordswoman in Another World",
+                    manga_id=default_id_func("https://aquamanga.com/read/court-swordswoman-in-another-world"),
+                    curr_chapter_url="https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
+                    first_chapter_url="https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-1/",
+                    cover_image=(
+                        "https://aquamanga.com/wp-content/uploads/2021/03/court-swordswoman-in-another-world.jpg"
+                    ),
                     last_3_chapter_urls=[
-                        "https://aquamanga.com/read/the-legendary-mechanic-1/chapter-189/",
-                        "https://aquamanga.com/read/the-legendary-mechanic-1/chapter-190/",
-                        "https://aquamanga.com/read/the-legendary-mechanic-1/chapter-191/",
+                        "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-13/",
+                        "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-14/",
+                        "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
                     ]
                 ),
                 test_subject=Aquamanga
@@ -726,7 +728,7 @@ if __name__ == "__main__":
     import asyncio
 
     if os.name == "nt":
-        os.name = "windows-blud"
+        os.name = "posix"  # debug on posix systems (linux, macos, etc)
 
         toggle_logging("src.core.cf_bypass")
         toggle_logging("src.core.cache")
