@@ -727,6 +727,8 @@ if __name__ == "__main__":
             )
         }
 
+        testCases.pop("voidscans", None)  # ass website to work with
+
         if os.name == "nt":
             os.name = "posix"  # debug on posix systems (linux, macos, etc)
             logger.warning("asurascans, reaperscans and voidscans cannot be tested on windows.")

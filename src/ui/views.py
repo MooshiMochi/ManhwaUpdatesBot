@@ -604,7 +604,7 @@ class DeleteBookmarkView(BaseView):
         super().__init__(bot, interaction=interaction)
         self.manga_id: str = manga_id
 
-    @discord.ui.button(label="Delete 'last raed' data", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Delete 'hidden bookmark'", style=discord.ButtonStyle.red)
     async def delete_last_read(self, interaction: discord.Interaction, btn: Button):
         btn.disabled = True
         await interaction.response.edit_message(view=self)

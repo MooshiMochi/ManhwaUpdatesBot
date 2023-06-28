@@ -451,35 +451,37 @@ class CommandsCog(commands.Cog):
     async def supported_websites(self, interaction: discord.Interaction) -> None:
         em = discord.Embed(title="Supported Websites", color=discord.Color.green())
         supp_webs = [
-            ("MangaDex", "https://mangadex.org/", "https://mangadex.org/title/1b2c3d/"),
-            ("Manganato", "https://manganato.com/", "https://manganato.com/manga-m123456"),
-            ("TritiniaScans", "https://tritinia.org", "https://tritinia.org/manga/manga-title/"),
-            ("FlameScans", "https://flamescans.org/", "https://flamescans.org/series/manga-title/"),
-            ("AsuraScans", "https://asurascans.com/", "https://asurascans.com/manga/manga-title/"),
-            ("ReaperScans", "https://reaperscans.com/", "https://reaperscans.com/comics/12351-manga-title/"),
-            ("Comick", "https://comick.app/", "https://comick.app/comic/manga-title/"),
-            ("Luminous", "https://luminousscans.com/", "https://luminousscans.com/series/12351-manga-title/"),
-            ("DrakeScans", "https://drakescans.com/", "https://drakescans.com/series/manga-title/"),
-            ("NitroScans", "https://nitroscans.com/", "https://nitroscans.com/series/manga-title/"),
-            ("Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
-            ("LeviatanScans", "https://en.leviatanscans.com/", "https://en.leviatanscans.com/home/manga/manga-title/"),
-            ("Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
-            ("Toonily", "https://toonily.com", "https://toonily.net/manga/manga-title/"),
-            ("OmegaScans", "https://omegascans.org/", "https://omegascans.org/series/manga-title/"),
-            ("VoidScans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
+            (MangaDex, "MangaDex", "https://mangadex.org/", "https://mangadex.org/title/1b2c3d/"),
+            (Manganato, "Manganato", "https://manganato.com/", "https://manganato.com/manga-m123456"),
+            (TritiniaScans, "TritiniaScans", "https://tritinia.org", "https://tritinia.org/manga/manga-title/"),
+            (FlameScans, "FlameScans", "https://flamescans.org/", "https://flamescans.org/series/manga-title/"),
+            (AsuraScans, "AsuraScans", "https://asurascans.com/", "https://asurascans.com/manga/manga-title/"),
+            (ReaperScans, "ReaperScans", "https://reaperscans.com/",
+             "https://reaperscans.com/comics/12351-manga-title/"),
+            (Comick, "Comick", "https://comick.app/", "https://comick.app/comic/manga-title/"),
+            (LuminousScans, "Luminous", "https://luminousscans.com/",
+             "https://luminousscans.com/series/12351-manga-title/"),
+            (DrakeScans, "DrakeScans", "https://drakescans.com/", "https://drakescans.com/series/manga-title/"),
+            (NitroScans, "NitroScans", "https://nitroscans.com/", "https://nitroscans.com/series/manga-title/"),
+            (Mangapill, "Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
+            (LeviatanScans, "LeviatanScans", "https://en.leviatanscans.com/",
+             "https://en.leviatanscans.com/home/manga/manga-title/"),
+            (Bato, "Bato.to", "https://bato.to/", "https://bato.to/series/12351/manga-title/"),
+            (Toonily, "Toonily", "https://toonily.com", "https://toonily.net/manga/manga-title/"),
+            (OmegaScans, "OmegaScans", "https://omegascans.org/", "https://omegascans.org/series/manga-title/"),
+            (VoidScans, "VoidScans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
 
             # Scanlators requiring user-agents
-            ("AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
-            ("Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
+            (AniglisScans, "AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
+            (Aquamanga, "Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
         ]
         supp_webs = sorted(supp_webs, key=lambda x: x[0])
-        if self.bot.config.get('user-agents', {}).get(AniglisScans.name) is None:
-            supp_webs.pop(-1)
-        if self.bot.config.get('user-agents', {}).get(Aquamanga.name) is None:
-            supp_webs.pop(-1)
+        user_agents = self.bot.config.get('user-agents', {})
         em.description = "Manga Updates Bot currently supports the following websites:\n"
-        for name, url, _format in supp_webs:
-            if name.lower() not in SCANLATORS:
+        
+        for scanlator, name, url, _format in supp_webs:
+            # Only remove those that are SET to None in user-agents in config or not in SCANLATORS
+            if scanlator.name not in SCANLATORS or user_agents.get(scanlator.name, True) is None:
                 continue
             em.description += f"• [{name}]({url})\n"
             em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"

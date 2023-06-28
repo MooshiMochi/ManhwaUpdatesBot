@@ -2194,7 +2194,7 @@ class Bato(ABCScan):
 
 
 SCANLATORS: dict[str, ABCScan] = {
-    VoidScans.name: VoidScans,
+    # VoidScans.name: VoidScans,  # this website is actually such an ass to work with
     OmegaScans.name: OmegaScans,
     Aquamanga.name: Aquamanga,
     Toonily.name: Toonily,
