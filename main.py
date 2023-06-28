@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import sys
 
 from discord import Intents
 from discord.errors import LoginFailure
@@ -42,9 +43,7 @@ async def main():
     silence_debug_loggers(
         _logger,
         [
-            "pyppeteer.connection.Connection",
             "websockets.client",
-            "pyppeteer.connection.CDPSession",
             "aiosqlite",
             "discord.gateway",
             "discord.client",
@@ -79,6 +78,9 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        if os.name == "nt" and sys.version_info >= (3, 8):
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
         asyncio.run(main())
     except KeyboardInterrupt:
         exit(1)

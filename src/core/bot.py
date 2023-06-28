@@ -62,7 +62,6 @@ class MangaClient(commands.Bot):
             "https": None
         })
 
-        # await self._cf_scraper.async_init()
         if not self._config["constants"]["synced"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
@@ -130,7 +129,6 @@ class MangaClient(commands.Bot):
     async def close(self):
         await self._session.close() if self._session else None
         await self.mangadex_api.session.close() if self.mangadex_api else None
-        await self._cf_scraper.close() if self._cf_scraper else None
         self.curl_session.close() if self.curl_session else None
         await super().close()
 
@@ -204,7 +202,3 @@ class MangaClient(commands.Bot):
     @property
     def config(self):
         return self._config
-
-    @property
-    def cf_scraper(self):
-        return self._cf_scraper
