@@ -475,10 +475,10 @@ class CommandsCog(commands.Cog):
             (AniglisScans, "AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
             (Aquamanga, "Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
         ]
-        supp_webs = sorted(supp_webs, key=lambda x: x[0])
+        supp_webs = sorted(supp_webs, key=lambda x: x[1])
         user_agents = self.bot.config.get('user-agents', {})
         em.description = "Manga Updates Bot currently supports the following websites:\n"
-        
+
         for scanlator, name, url, _format in supp_webs:
             # Only remove those that are SET to None in user-agents in config or not in SCANLATORS
             if scanlator.name not in SCANLATORS or user_agents.get(scanlator.name, True) is None:
