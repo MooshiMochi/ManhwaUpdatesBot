@@ -69,8 +69,8 @@ class ComickAppAPI:
         for chapter in chapters:
             if chapter["chap"] is None:
                 continue
-            # elif chapter["chap"] is None:
-            #     chapter["chap"] = "0." + chapter["vol"]
+
+            # apply type conversion
             if not isinstance(chapter["chap"], (int, float)):
                 chapter["chap"] = float(chapter["chap"]) if "." in chapter["chap"] else int(chapter["chap"])
             if chapter["vol"] is not None and not isinstance(chapter["vol"], (int, float)):
@@ -89,8 +89,8 @@ class ComickAppAPI:
                     chapter_dict[chap_number] = (chapter, is_official)
             else:
                 chapter_dict[chap_number] = (chapter, is_official)
-
-        return [value[0] for value in chapter_dict.values()]
+        result = [value[0] for value in chapter_dict.values()]
+        return result
 
     async def get_chapters_list(self, manga_id: str, language: str = None, page: int = 1) -> list[Dict[str, Any]]:
         """Return a list of chapters in ascending order"""
@@ -100,11 +100,10 @@ class ComickAppAPI:
         # params = {"lang": language, "page": page}
         result = await self.__request("GET", endpoint)
 
-        result["chapters"] = self._remove_duplicate_chapters(result["chapters"])
-
         if result["chapters"]:
             result["chapters"].extend(await self.get_chapters_list(manga_id, language, page + 1))
 
+        result["chapters"] = self._remove_duplicate_chapters(result["chapters"])
         result = sorted(result["chapters"], key=lambda _x: float(_x['chap']))
         return list(result)
 

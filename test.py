@@ -328,12 +328,11 @@ async def run_single_test(test_case: TestCase):
     await test_case.begin()
 
 
-if __name__ == "__main__":
-    # noinspection SpellCheckingInspection
-    async def main():
-        test_setup = SetupTest()
-
-        testCases = {
+class TestCases(dict):
+    def __init__(self):
+        self.test_setup = SetupTest()
+        test_setup = self.test_setup
+        self.testCases: dict[str, TestCase] = {
             "tritinia": TestCase(
                 test_setup,
                 test_data=TestInputData("https://tritinia.org/manga/momo-the-blood-taker/"),
@@ -727,18 +726,76 @@ if __name__ == "__main__":
             )
         }
 
+        super().__init__(**self.testCases)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.test_setup.bot.close()
+
+
+async def main():
+    # toggle_logging("cache.curl_cffi")
+    # toggle_logging("cache.bot")
+    tests_to_ignore = ["nitroscans"]  # going through changes on website, gotta wait till done
+
+    async with TestCases() as testCases:
         testCases.pop("voidscans", None)  # ass website to work with
+        await run_tests(testCases, tests_to_ignore)
+        # await run_single_test(testCases["comick"])
 
-        # toggle_logging("cache.curl_cffi")
-        # toggle_logging("cache.bot")
 
-        try:
-            tests_to_ignore = ["nitroscans"]  # going through changes on website, gotta wait till done
-            await run_tests(testCases, tests_to_ignore)
-            # await run_single_test(testCases["asurascans"])
-        finally:
-            await test_setup.bot.close()
+async def sub_main():
+    test_setup = SetupTest()
 
+    testCase = TestCase(
+        test_setup,
+        test_data=TestInputData("https://reaperscans.com/comics/5601-the-tutorial-is-too-hard?page=2"),
+        expected_result=ExpectedResult(
+            scanlator_name="reaperscans",
+            manga_url="https://reaperscans.com/comics/5601-the-tutorial-is-too-hard",
+            completed=False,
+            human_name="The Tutorial is Too Hard",
+            manga_id="5601",
+            curr_chapter_url=(
+                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-84"
+            ),
+            first_chapter_url=(
+                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/75813927-chapter-0"
+            ),
+            cover_image=(
+                "https://media.reaperscans.com/file/4SRBHm/comics/ef80d264-c3c4-4d21-af1e-2455ddcb5bd7"
+                "/iJaRJ9tcd4uGBBPKCInDm6Vck4FbFk09PG5VXJNm.png"
+            ),
+            last_3_chapter_urls=[
+                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-82",
+                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-83",
+                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-84",
+            ],
+        ),
+        id_first=True,
+        test_subject=ReaperScans,
+    )
+
+    try:
+        await run_single_test(testCase)
+    finally:
+        await test_setup.bot.close()
+
+
+async def paused_test():
+    async with TestCases() as testCases:
+        testCases.pop("nitroscans", None)  # nitroscans went through changes. gotta implement new stuff
+        for scanner, testCase in testCases.items():
+            await run_single_test(testCase)
+            input("Press Enter to continue...")
+
+        print("Testing finished!")
+
+
+if __name__ == "__main__":
+    # noinspection SpellCheckingInspection
 
     import asyncio
     import sys
@@ -747,3 +804,5 @@ if __name__ == "__main__":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     asyncio.run(main())
+    # asyncio.run(sub_main())
+    # asyncio.run(paused_test())

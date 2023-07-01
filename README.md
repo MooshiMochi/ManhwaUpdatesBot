@@ -27,7 +27,8 @@ This bot currently only supports the following websites:
 - https://en.leviatanscans.com
 - https://aquamanga.com (requires explicit permission from the website owner)
 - https://omegascans.org
-- https://void-scans.com
+
+[//]: # (- https://void-scans.com)
 
 Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope
 for too much.
