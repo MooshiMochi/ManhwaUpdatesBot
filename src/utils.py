@@ -501,16 +501,16 @@ def relative_time_to_seconds(time_string) -> Optional[int]:
     return int((datetime.now() - (value * unit_timedelta)).timestamp())
 
 
-def time_string_to_seconds(time_str: str, formats: list[str] = None, default_formats: bool = True) -> int:
+def time_string_to_seconds(time_str: str, formats: list[str] = None) -> int:
     """Convert a time string to seconds since the epoch"""
     try:
         return relative_time_to_seconds(time_str)
     except ValueError:
         pass
 
-    if default_formats:
-        formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y", ""]
-
+    if not formats:
+        formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
+        
     for fmt in formats:
         try:
             dt = datetime.strptime(time_str, fmt)

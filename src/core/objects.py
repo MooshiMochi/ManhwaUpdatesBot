@@ -119,7 +119,7 @@ class ABCScan(ABC):
 
     @staticmethod
     def _parse_time_string_to_sec(time_string: str) -> float | int:
-        return time_string_to_seconds(time_string, default_formats=True)
+        return time_string_to_seconds(time_string)
 
     @staticmethod
     def _create_chapter_embed(
