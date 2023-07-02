@@ -55,6 +55,7 @@ class Chapter:
 
     def __repr__(self):
         return f"[{self.name}]({self.url})"
+        # return f"Chapter(url={self.url}, name={self.name}, index={self.index})"
 
     def to_dict(self):
         return {

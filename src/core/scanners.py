@@ -960,13 +960,22 @@ class ReaperScans(ABCScan):
             chapter_text = chapter.find("p").text.strip()
             chapters.append(Chapter(chapter_url, chapter_text, i))
 
-        if page == 0:
-            return list(reversed(chapters))  # if specified page is 0, we want only the first page
-
         if (pagination_container := chapters_container_parent.find("nav", {"role": "navigation"})) is not None:
             pagination_p = pagination_container.find("p")
             nums_tags = pagination_p.find_all("span", {"class": "font-medium"})
             nums = list(map(lambda x: int(x.text), nums_tags))
+
+            if page == 0:
+                # fix chapter indexes
+                max_index = nums[2] - 1
+                min_index = max_index - 31
+                chapters = sorted(
+                    chapters, key=lambda ch: ch.index, reverse=True
+                )  # if specified page is 0, we want only the first page
+                for i, chapter in enumerate(chapters):
+                    chapter.index = min_index + i
+                return chapters
+
             if nums[1] != nums[2]:
                 next_page_chapters = await cls.get_all_chapters(bot, manga_id, manga_url, page=(page or 1) + 1)
                 if next_page_chapters:
@@ -985,7 +994,8 @@ class ReaperScans(ABCScan):
         # return sorted(chapters, key=lambda ch: ch.index)
         for i, chapter in enumerate(reversed(chapters)):
             chapter.index = i
-        return sorted(chapters, key=lambda ch: ch.index)
+        result = sorted(chapters, key=lambda ch: ch.index)
+        return result
 
     @classmethod
     async def get_curr_chapter(
@@ -1000,7 +1010,7 @@ class ReaperScans(ABCScan):
         chapter_list_container = soup.find("ul", {"role": "list"})
         chapters_list = chapter_list_container.find_all("a")
         chapters = []
-        for i, chapter in enumerate(chapters_list):
+        for i, chapter in enumerate(reversed(chapters_list)):
             chapter_url = chapter["href"]
             chapter_text = chapter.find("p").text.strip()
             chapters.append(Chapter(chapter_url, chapter_text, i))

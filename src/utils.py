@@ -488,6 +488,8 @@ def relative_time_to_seconds(time_string) -> Optional[int]:
     value = int(value) if value not in ["a", "an"] else 1
     unit = unit.lower()
     unit_timedelta = {
+        'sec': timedelta(seconds=1),
+        'min': timedelta(minutes=1),
         'second': timedelta(seconds=1),
         'minute': timedelta(minutes=1),
         'hour': timedelta(hours=1),
@@ -505,12 +507,13 @@ def time_string_to_seconds(time_str: str, formats: list[str] = None) -> int:
     """Convert a time string to seconds since the epoch"""
     try:
         return relative_time_to_seconds(time_str)
-    except ValueError:
+    except ValueError as e:
+        # print(e)
         pass
 
     if not formats:
         formats = ["%b %d, %Y", "%B %d, %Y", "%d/%m/%Y", "%d-%m-%Y"]
-        
+
     for fmt in formats:
         try:
             dt = datetime.strptime(time_str, fmt)

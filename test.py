@@ -28,6 +28,7 @@ logger: logging.Logger = logging.getLogger("test")
 class Bot:
     def __init__(self, config: Dict):
         self.config: Dict = config
+        self.logger = logging.getLogger("test.bot")
         self.proxy_addr = self._fmt_proxy()
         self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
             "http": self.proxy_addr,
@@ -230,7 +231,7 @@ class Test:
             print(f"   ↳ Got: {self.test_subject.name}")
         return evaluated
 
-    async def begin(self) -> str:
+    async def begin(self, test_method: str = "all") -> str:
         checks_passed: int = 0
         print(f"🔎 [{self.expected_result.scanlator_name}] Running tests...")
         checks_to_run: list[tuple[callable, str]] = [
@@ -246,6 +247,15 @@ class Test:
         ]
         if not self.id_first:
             checks_to_run[0], checks_to_run[1] = checks_to_run[1], checks_to_run[0]
+
+        if test_method != "all":
+            method_to_test = [check for check in checks_to_run if check[0].__name__ == test_method]
+            if not method_to_test:
+                print(f"❌ [{self.expected_result.scanlator_name}] No test method named {test_method}")
+                print("Available test methods:")
+                print("\n".join([check[0].__name__ for check in checks_to_run]))
+            checks_to_run = checks_to_run[:2]
+            checks_to_run.extend(method_to_test)
 
         for check, error_msg in checks_to_run:
             try:
@@ -278,12 +288,12 @@ class TestCase:
     def setup(self):
         self.test = Test(self.test_setup, self.test_data, self.expected_result, self.test_subject, self.id_first)
 
-    async def begin(self) -> str:
+    async def begin(self, test_method: str = "all") -> str:
         if self.test_subject.name not in SCANLATORS:
             print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
             return "N/A"
         else:
-            return await self.test.begin()
+            return await self.test.begin(test_method)
 
 
 def default_id_func(manga_url: str) -> str:
@@ -293,7 +303,12 @@ def default_id_func(manga_url: str) -> str:
 def toggle_logging(name: str = "__main__") -> logging.Logger:
     _logger = logging.getLogger(name)
     _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(logging.StreamHandler())
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(levelname)s | %(name)s | %(message)s',
+                                  '%m-%d-%Y %H:%M:%S')
+    stdout_handler.setFormatter(formatter)
+    _logger.addHandler(stdout_handler)
+
     return _logger
 
 
@@ -323,18 +338,17 @@ async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None
         print(f"❌ {total_tests - successful_tests}/{total_tests} tests failed!")
 
 
-async def run_single_test(test_case: TestCase):
+async def run_single_test(test_case: TestCase, test_method: str = "all"):
     test_case.setup()
-    await test_case.begin()
+    await test_case.begin(test_method)
 
 
 class TestCases(dict):
     def __init__(self):
         self.test_setup = SetupTest()
-        test_setup = self.test_setup
         self.testCases: dict[str, TestCase] = {
             "tritinia": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://tritinia.org/manga/momo-the-blood-taker/"),
                 expected_result=ExpectedResult(
                     scanlator_name="tritinia",
@@ -356,7 +370,7 @@ class TestCases(dict):
                 test_subject=TritiniaScans
             ),
             "manganato": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://chapmanganato.com/manga-hf985162"),
                 expected_result=ExpectedResult(
                     scanlator_name="manganato",
@@ -377,7 +391,7 @@ class TestCases(dict):
                 id_first=True
             ),
             "toonily": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData(
                     "https://toonily.com/webtoon/lucky-guy-0002/"
                 ),
@@ -400,7 +414,7 @@ class TestCases(dict):
                 test_subject=Toonily
             ),
             "mangadex": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://mangadex.org/title/7dbeaa0e-420a-4dc0-b2d3-eb174de266da/zippy-ziggy"),
                 expected_result=ExpectedResult(
                     scanlator_name="mangadex",
@@ -423,7 +437,7 @@ class TestCases(dict):
                 test_subject=MangaDex,
             ),
             "flamescans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://flamescans.org/series/1687428121-the-villainess-is-a-marionette/"),
                 expected_result=ExpectedResult(
                     scanlator_name="flamescans",
@@ -443,7 +457,7 @@ class TestCases(dict):
                 test_subject=FlameScans
             ),
             "asurascans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://www.asurascans.com/manga/4569947261-i-regressed-as-the-duke/"),
                 expected_result=ExpectedResult(
                     scanlator_name="asurascans",
@@ -465,7 +479,7 @@ class TestCases(dict):
                 test_subject=AsuraScans
             ),
             "aquamanga": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://aquamanga.com/read/court-swordswoman-in-another-world/"),
                 expected_result=ExpectedResult(
                     scanlator_name="aquamanga",
@@ -487,7 +501,7 @@ class TestCases(dict):
                 test_subject=Aquamanga
             ),
             "reaperscans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://reaperscans.com/comics/4099-the-legendary-mechanic"),
                 expected_result=ExpectedResult(
                     scanlator_name="reaperscans",
@@ -515,7 +529,7 @@ class TestCases(dict):
                 test_subject=ReaperScans,
             ),
             "aniglisscans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://anigliscans.com/series/blooming/"),
                 expected_result=ExpectedResult(
                     scanlator_name="aniglisscans",
@@ -535,7 +549,7 @@ class TestCases(dict):
                 test_subject=AniglisScans
             ),
             "comick": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://comick.app/comic/00-solo-leveling?lang=en"),
                 expected_result=ExpectedResult(
                     scanlator_name="comick",
@@ -555,7 +569,7 @@ class TestCases(dict):
                 test_subject=Comick
             ),
             "voidscans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://void-scans.com/manga/superhuman-era/"),
                 expected_result=ExpectedResult(
                     scanlator_name="voidscans",
@@ -575,7 +589,7 @@ class TestCases(dict):
                 test_subject=VoidScans
             ),
             "luminousscans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://luminousscans.com/series/1680246102-my-office-noonas-story/"),
                 expected_result=ExpectedResult(
                     scanlator_name="luminousscans",
@@ -596,7 +610,7 @@ class TestCases(dict):
                 test_subject=LuminousScans
             ),
             "leviatanscans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://en.leviatanscans.com/manga/trash-of-the-counts-family/"),
                 expected_result=ExpectedResult(
                     scanlator_name="leviatanscans",
@@ -616,7 +630,7 @@ class TestCases(dict):
                 test_subject=LeviatanScans
             ),
             "drakescans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://drakescans.com/series/spirit-pet-creation-simulator1/"),
                 expected_result=ExpectedResult(
                     scanlator_name="drakescans",
@@ -636,7 +650,7 @@ class TestCases(dict):
                 test_subject=DrakeScans
             ),
             "nitroscans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://nitroscans.com/mangas/spirit-pet-creation-simulator/"),
                 expected_result=ExpectedResult(
                     scanlator_name="nitroscans",
@@ -658,7 +672,7 @@ class TestCases(dict):
                 test_subject=NitroScans
             ),
             "mangapill": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://mangapill.com/manga/57/3d-kanojo"),
                 expected_result=ExpectedResult(
                     scanlator_name="mangapill",
@@ -679,7 +693,7 @@ class TestCases(dict):
                 test_subject=Mangapill
             ),
             "bato.to": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://bato.to/series/95400/queen-in-the-shadows"),
                 expected_result=ExpectedResult(
                     scanlator_name="bato.to",
@@ -703,7 +717,7 @@ class TestCases(dict):
                 test_subject=Bato
             ),
             "omegascans": TestCase(
-                test_setup,
+                self.test_setup,
                 test_data=TestInputData("https://omegascans.org/series/dorm-room-sisters"),
                 expected_result=ExpectedResult(
                     scanlator_name="omegascans",
@@ -736,14 +750,10 @@ class TestCases(dict):
 
 
 async def main():
-    # toggle_logging("cache.curl_cffi")
-    # toggle_logging("cache.bot")
-    tests_to_ignore = ["nitroscans"]  # going through changes on website, gotta wait till done
-
     async with TestCases() as testCases:
-        testCases.pop("voidscans", None)  # ass website to work with
+        tests_to_ignore = ["nitroscans", "voidscans"]  # going through changes on website, gotta wait till done
+        # testCases.pop("voidscans", None)  # ass website to work with
         await run_tests(testCases, tests_to_ignore)
-        # await run_single_test(testCases["comick"])
 
 
 async def sub_main():
@@ -751,33 +761,32 @@ async def sub_main():
 
     testCase = TestCase(
         test_setup,
-        test_data=TestInputData("https://reaperscans.com/comics/5601-the-tutorial-is-too-hard?page=2"),
+        test_data=TestInputData("https://reaperscans.com/comics/7182-ending-maker"),
         expected_result=ExpectedResult(
             scanlator_name="reaperscans",
-            manga_url="https://reaperscans.com/comics/5601-the-tutorial-is-too-hard",
+            manga_url="https://reaperscans.com/comics/7182-ending-maker",
             completed=False,
-            human_name="The Tutorial is Too Hard",
-            manga_id="5601",
+            human_name="Ending Maker",
+            manga_id="7182",
             curr_chapter_url=(
-                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-84"
+                "https://reaperscans.com/comics/7182-ending-maker/chapters/95650781-chapter-46"
             ),
             first_chapter_url=(
-                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/75813927-chapter-0"
+                "https://reaperscans.com/comics/7182-ending-maker"
             ),
             cover_image=(
-                "https://media.reaperscans.com/file/4SRBHm/comics/ef80d264-c3c4-4d21-af1e-2455ddcb5bd7"
-                "/iJaRJ9tcd4uGBBPKCInDm6Vck4FbFk09PG5VXJNm.png"
+                "https://media.reaperscans.com/file/4SRBHm/comics/e9f8bc31-2cb4-477b-b23a-36c52bc8141a"
+                "/LJ980EN3gxiOe4CjuDVhTm3FAfqNfPzMFWgeelW6.jpg"
             ),
             last_3_chapter_urls=[
-                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-82",
-                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-83",
-                "https://reaperscans.com/comics/5601-the-tutorial-is-too-hard/chapters/22308537-chapter-84",
+                "https://reaperscans.com/comics/7182-ending-maker/chapters/50693318-chapter-44",
+                "https://reaperscans.com/comics/7182-ending-maker/chapters/11209901-chapter-45",
+                "https://reaperscans.com/comics/7182-ending-maker/chapters/95650781-chapter-46",
             ],
         ),
         id_first=True,
         test_subject=ReaperScans,
     )
-
     try:
         await run_single_test(testCase)
     finally:
@@ -794,6 +803,12 @@ async def paused_test():
         print("Testing finished!")
 
 
+async def test_single_method():
+    async with TestCases() as testCases:
+        test_method = "first_chapter_url"
+        await run_single_test(testCases["reaperscans"], test_method=test_method)
+
+
 if __name__ == "__main__":
     # noinspection SpellCheckingInspection
 
@@ -803,6 +818,11 @@ if __name__ == "__main__":
     if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+    # toggle_logging("cache.bot")
+    # toggle_logging("cache.curl_cffi")
+    # toggle_logging("test.bot")
+
     asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
+    # asyncio.run(test_single_method())
