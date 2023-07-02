@@ -150,6 +150,9 @@ class BookmarkCog(commands.Cog):
     async def bookmark_view(self, interaction: discord.Interaction, series_id: Optional[str] = None):
         await interaction.response.defer(ephemeral=True, thinking=True)
         bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
+
+        # remove unsupported websites
+        bookmarks = [bookmark for bookmark in bookmarks if bookmark.manga.scanlator in SCANLATORS]
         if not bookmarks:
             return await interaction.followup.send("You have no bookmarks", ephemeral=True)
 

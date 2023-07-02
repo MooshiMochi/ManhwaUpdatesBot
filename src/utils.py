@@ -245,19 +245,21 @@ def silence_debug_loggers(main_logger: logging.Logger, logger_names: list) -> No
 
 
 def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:
-    if url is None and key is None:
-        raise ValueError("Either URL or key must be provided.")
-
     d: dict[str, ABCScan] = scanlators
 
     if key is not None:
         if existing_class := d.get(key):
             return existing_class
+        return None
 
-    for name, obj in RegExpressions.__dict__.items():
-        if isinstance(obj, re.Pattern) and name.count("_") == 1:
-            if obj.search(url):
-                return d.get(name.split("_")[0])
+    elif url is not None:
+        for name, obj in RegExpressions.__dict__.items():
+            if isinstance(obj, re.Pattern) and name.count("_") == 1:
+                if obj.search(url):
+                    return d.get(name.split("_")[0])
+        return None
+
+    raise ValueError("Either URL or key must be provided.")
 
 
 def write_to_discord_file(filename: str, content: str) -> discord.File:
