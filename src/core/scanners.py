@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -1005,6 +1006,7 @@ class ReaperScans(ABCScan):
             max_chapters = float("inf")
             chapters: list[Chapter] = []
             while len(chapters) < max_chapters:
+                await asyncio.sleep(1)  # add some delay to reduce ratelimits
                 next_page_chapters, max_chapters = await cls.get_chapters_on_page(bot, manga_url, page=page)
                 if next_page_chapters is None:
                     break
