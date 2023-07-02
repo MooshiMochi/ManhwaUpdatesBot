@@ -911,6 +911,7 @@ class ReaperScans(ABCScan):
         all_chapters = await cls.get_all_chapters(bot, manga.id, request_url, page=0)
         completed: bool = await cls.is_series_completed(bot, manga.id, request_url)
         cover_url: str = await cls.get_cover_image(bot, manga.id, request_url)
+
         if all_chapters is None:
             return ChapterUpdate([], cover_url, completed)
         new_chapters: list[Chapter] = [
@@ -929,73 +930,94 @@ class ReaperScans(ABCScan):
             ]
         )
 
+    @staticmethod
+    def _bs_total_chapters_available(soup: BeautifulSoup) -> int:
+        status_container = soup.find("dl", {"class": "mt-2"})
+        _type, content = status_container.find_all("dd"), status_container.find_all("dt")
+        for _type_element, content_element in zip(_type, content):
+            if content_element.text.strip().lower() == "total chapters":
+                status = _type_element.text.strip()
+                return int(status)
+        else:
+            raise Exception("Failed to find source status.")
+
     @classmethod
-    async def get_all_chapters(
-            cls, bot: MangaClient, manga_id: str, manga_url: str, *, page: int | None = None
-    ) -> list[Chapter] | None:
-        # by default, not specifying a page will return ALL manga chapters!
+    async def get_chapters_on_page(
+            cls, bot: MangaClient, manga_url: str, *, page: int | None = None
+    ) -> tuple[list[Chapter] | None, int]:
+        """
+        Returns a tuple of (list of chapters [descending order], max number of chapters there are)
+        for the given manga page.
+
+        Args:
+            bot: MangaClient - the bot instance
+            manga_url: str - the manga url
+            page: int | None - the page number to get chapters from. If None, gets all chapters
+
+        Returns:
+            tuple[list[Chapter] | None, int] - the list of chapters and max number of chapters there are
+        """
         if page is not None and page > 1:  # by default, no param = page 1, so we only consider page 2+
             resp = await bot.curl_session.get(
-                manga_url.rstrip("/") + f"?page={page}", headers={"sec-fetch-site": "same-origin"}
+                manga_url.rstrip("/") + f"?page={page}"
             )
         else:
             resp = await bot.curl_session.get(manga_url)
+
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
-        text = resp.text
-        soup = BeautifulSoup(text, "html.parser")
+
+        soup = BeautifulSoup(resp.text, "html.parser")
         chapter_list_container = soup.find("ul", {"role": "list"})
 
         chapters_container_parent = chapter_list_container.find_parent("div", {
             "class": "focus:outline-none max-w-6xl bg-white dark:bg-neutral-850 rounded mt-6"})
         if chapters_container_parent is None:
             bot.logger.warning(f"Could not fetch the chapters on page {page} for {manga_url}")
-            return None
-
+            return None, cls._bs_total_chapters_available(soup)
         chapters_list = chapter_list_container.find_all("a")
-        chapters = []
 
-        for i, chapter in enumerate(chapters_list):
-            chapter_url = chapter["href"]
-            chapter_text = chapter.find("p").text.strip()
-            chapters.append(Chapter(chapter_url, chapter_text, i))
-
+        index_shift = 0
         if (pagination_container := chapters_container_parent.find("nav", {"role": "navigation"})) is not None:
             pagination_p = pagination_container.find("p")
-            nums_tags = pagination_p.find_all("span", {"class": "font-medium"})
-            nums = list(map(lambda x: int(x.text), nums_tags))
+            nums = list(map(lambda x: int(x.text), pagination_p.find_all("span", {"class": "font-medium"})))
+            index_shift = nums[2] - nums[0] - len(chapters_list) + 1
 
-            if page == 0:
-                # fix chapter indexes
-                max_index = nums[2] - 1
-                min_index = max_index - 31
-                chapters = sorted(
-                    chapters, key=lambda ch: ch.index, reverse=True
-                )  # if specified page is 0, we want only the first page
-                for i, chapter in enumerate(chapters):
-                    chapter.index = min_index + i
-                return chapters
+        return (
+            [
+                Chapter(
+                    chapter["href"],
+                    chapter.find("p").text.strip(),
+                    index_shift + i
+                ) for i, chapter in enumerate(reversed(chapters_list))
+            ],
+            cls._bs_total_chapters_available(soup)
+        )
 
-            if nums[1] != nums[2]:
-                next_page_chapters = await cls.get_all_chapters(bot, manga_id, manga_url, page=(page or 1) + 1)
-                if next_page_chapters:
-                    chapters.extend(next_page_chapters)
-                else:
-                    # Get the total number of chapters from the pagination container
-                    total_chapters = int(nums_tags[-1].text)
+    @classmethod
+    async def get_all_chapters(
+            cls, bot: MangaClient, manga_id: str, manga_url: str, *, page: int | None = None
+    ) -> list[Chapter] | None:
 
-                    # Calculate the number of missing chapters
-                    missing_chapters = total_chapters - len(chapters)
-
-                    # Fill in the missing chapters
-                    for i in range(missing_chapters - 1, -1, -1):
-                        chapters.append(Chapter(name=f"Chapter {i + 1}", url=manga_url, index=i))
-
-        # return sorted(chapters, key=lambda ch: ch.index)
-        for i, chapter in enumerate(reversed(chapters)):
-            chapter.index = i
-        result = sorted(chapters, key=lambda ch: ch.index)
-        return result
+        if page is not None and page == 0:
+            return (await cls.get_chapters_on_page(bot, manga_url, page=page))[0]
+        else:
+            max_chapters = float("inf")
+            chapters: list[Chapter] = []
+            while len(chapters) < max_chapters:
+                next_page_chapters, max_chapters = await cls.get_chapters_on_page(bot, manga_url, page=page)
+                if next_page_chapters is None:
+                    break
+                chapters[:0] = next_page_chapters
+                page = (page or 1) + 1
+            if len(chapters) < max_chapters:
+                # fill in the missing chapters
+                chapters_to_fill = [
+                    Chapter(manga_url, f"Chapter {i + 1}", i)
+                    for i in range(max_chapters - len(chapters))
+                ]
+                chapters[:0] = chapters_to_fill
+            return sorted(chapters, key=lambda x: x.index)
 
     @classmethod
     async def get_curr_chapter(
@@ -1015,13 +1037,11 @@ class ReaperScans(ABCScan):
             chapter_text = chapter.find("p").text.strip()
             chapters.append(Chapter(chapter_url, chapter_text, i))
 
-        if (pagination_container := soup.find("nav", {"role": "navigation"})) is not None:
-            pagination_p = pagination_container.find("p")
-            nums_tags = pagination_p.find_all("span", {"class": "font-medium"})
-            nums = list(map(lambda x: int(x.text), nums_tags))
-            last_chapter = chapters[-1]
-            return Chapter(last_chapter.url, last_chapter.name, nums[2] - 1)
-        return chapters[-1]
+        last_chapter = chapters[-1]
+        total_chapters = cls._bs_total_chapters_available(soup)
+        if total_chapters is not None and total_chapters != len(chapters):
+            return Chapter(last_chapter.url, last_chapter.name, total_chapters - 1)
+        return last_chapter
 
     @classmethod
     def _bs_is_series_completed(cls, soup: BeautifulSoup) -> bool:
