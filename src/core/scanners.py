@@ -75,11 +75,14 @@ class TritiniaScans(ABCScan):
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
         """Returns whether the series is completed or not."""
         status_container = soup.find("div", {"class": "post-status"})
-        status_div = status_container.find_all("div", {"class": "post-content_item"})[1]
-        status = status_div.find("div", {"class": "summary-content"})
-        status = status.text.strip().lower()
-
-        return status == "completed" or status == "dropped" or status == "canceled"
+        headings, contents = status_container.find_all("div", {"class": "summary-heading"}), \
+            status_container.find_all("div", {"class": "summary-content"})
+        for heading, content in zip(headings, contents):
+            if (item_name := heading.find("h5")) is not None:
+                if item_name.text.strip().lower() == "status":
+                    status = content.text.strip().lower()
+                    return status == "completed" or status == "dropped" or status == "canceled"
+        return True
 
     @classmethod
     async def is_series_completed(
