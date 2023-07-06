@@ -184,66 +184,69 @@ class Manganato(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                await cls.report_error(
-                    bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
-                raise URLAccessFailed(manga_url, resp.status)
+        resp = await bot.curl_session.get(manga_url)
 
-            text = await resp.text()
+        if resp.status_code != 200:
+            await cls.report_error(
+                bot, Exception("Failed to run is_series_completed func. Status: " + str(resp.status_code)
+                               + " Request URL: " + str(resp.url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", resp.text)
+            )
+            raise URLAccessFailed(manga_url, resp.status_code)
 
-            if "404 - PAGE NOT FOUND" in text:
-                raise MangaNotFound(manga_url)
+        text = resp.text
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            return cls._bs_is_series_completed(soup)
+        if "404 - PAGE NOT FOUND" in text:
+            raise MangaNotFound(manga_url)
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        return cls._bs_is_series_completed(soup)
 
     @classmethod
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                await cls.report_error(
-                    bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
-                raise URLAccessFailed(manga_url, resp.status)
+        resp = await bot.curl_session.get(manga_url)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            title_div = soup.find("div", {"class": "story-info-right"})
-            return title_div.find("h1").text.strip()
+        if resp.status_code != 200:
+            await cls.report_error(
+                bot, Exception("Failed to run get_human_name func. Status: " + str(resp.status_code)
+                               + " Request URL: " + str(resp.url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", resp.text)
+            )
+            raise URLAccessFailed(manga_url, resp.status_code)
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        title_div = soup.find("div", {"class": "story-info-right"})
+        return title_div.find("h1").text.strip()
 
     @classmethod
     async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                await cls.report_error(
-                    bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
-                raise URLAccessFailed(manga_url, resp.status)
+        resp = await bot.curl_session.get(manga_url)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-
-            chapter_list_container = soup.find(
-                "div", {"class": "panel-story-chapter-list"}
+        if resp.status_code != 200:
+            await cls.report_error(
+                bot, Exception("Failed to run get_all_chapters func. Status: " + str(resp.status_code)
+                               + " Request URL: " + str(resp.url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", resp.text)
             )
-            chapter_tags = chapter_list_container.find_all("a")
-            chapters = []
-            for i, chp_tag in enumerate(reversed(chapter_tags)):
-                new_chapter_url = chp_tag["href"]
-                new_chapter_text = chp_tag.text
-                chapters.append(Chapter(new_chapter_url, new_chapter_text, i))
-            return chapters
+            raise URLAccessFailed(manga_url, resp.status_code)
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        chapter_list_container = soup.find(
+            "div", {"class": "panel-story-chapter-list"}
+        )
+        chapter_tags = chapter_list_container.find_all("a")
+        chapters = []
+        for i, chp_tag in enumerate(reversed(chapter_tags)):
+            new_chapter_url = chp_tag["href"]
+            new_chapter_text = chp_tag.text
+            chapters.append(Chapter(new_chapter_url, new_chapter_text, i))
+        return chapters
 
     @classmethod
     async def get_curr_chapter(
@@ -264,19 +267,20 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
-        async with bot.session.get(manga_url) as resp:
-            if resp.status != 200:
-                await cls.report_error(
-                    bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status)
-                                   + " Request URL: " + str(resp.url)
-                                   ),
-                    file=write_to_discord_file(cls.name + ".html", await resp.text())
-                )
-                raise URLAccessFailed(manga_url, resp.status)
+        resp = await bot.curl_session.get(manga_url)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
-            img = soup.find("span", {"class": "info-image"}).find("img", {"class": "img-loading"})
-            return img["src"] if img else None
+        if resp.status_code != 200:
+            await cls.report_error(
+                bot, Exception("Failed to run get_cover_image func. Status: " + str(resp.status_code)
+                               + " Request URL: " + str(resp.url)
+                               ),
+                file=write_to_discord_file(cls.name + ".html", resp.text)
+            )
+            raise URLAccessFailed(manga_url, resp.status_code)
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        img = soup.find("span", {"class": "info-image"}).find("img", {"class": "img-loading"})
+        return img["src"] if img else None
 
 
 class Toonily(ABCScan):
