@@ -2073,6 +2073,9 @@ class OmegaScans(ABCScan):
             chapters: list[Chapter] = []
 
             for i, chapter_tag in enumerate(reversed(chapter_container)):
+                if chapter_tag.find("span", {"class": "c-gQxrLF"}) is not None:  # patreon SVG container for chapter
+                    break  # if this is found, any further chapters will be patreon only
+
                 chapter_url = cls.base_url[:-1] + chapter_tag["href"]
                 chapter_text = chapter_tag.find("span").text.strip()
                 chapters.append(Chapter(chapter_url, chapter_text, i))

@@ -27,4 +27,4 @@
 
 ### Issues:
 
-- OmegaScans has patreon chapters. Need to account for those and not include them in updates.
+- None known at the moment...
