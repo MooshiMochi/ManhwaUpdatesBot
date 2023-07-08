@@ -128,6 +128,10 @@ class UpdateCheckCog(commands.Cog):
 
                         try:
                             role_ping = "" if not guild_config.role else f"{guild_config.role.mention} "
+
+                            if buffer := extra_kwargs.pop("buffer", None):
+                                buffer.seek(0)
+
                             await guild_config.webhook.send(
                                 (
                                     f"||<Manga ID: {manga.id} | Chapter Index: {chapter.index}>||\n"

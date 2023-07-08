@@ -26,16 +26,25 @@ def ensure_logs() -> None:
             f.write("")
 
 
-async def main():
-    # setup_logging(level=logging.INFO)
+def _setup_logging(level: int) -> None:
+    if os.name == "nt" and 'PYCHARM_HOSTED' in os.environ:  # this patch is only required for pycharm
+        logging_handler = logging.StreamHandler()
+        # apply patch for isatty in pycharm being broken
+        logging_handler.stream.isatty = lambda: True
+        setup_logging(level=level, handler=logging_handler)
+    else:
+        setup_logging(level=level)
 
+
+async def main():
     _logger = logging.getLogger("main")
-    _logger.info("Starting bot...")
     config = load_config(_logger)
     if config and config.get("debug") is True:
-        setup_logging(level=logging.DEBUG)
+        _setup_logging(level=logging.DEBUG)
     else:
-        setup_logging(level=logging.INFO)
+        _setup_logging(level=logging.INFO)
+
+    _logger.info("Starting bot...")
     config = ensure_configs(_logger, config, SCANLATORS)
 
     ensure_logs()

@@ -135,12 +135,12 @@ class ABCScan(ABC):
         return embed
 
     @staticmethod
-    async def _fetch_image_bytes(bot, image_url: str, filename: str) -> discord.File:
+    async def _fetch_image_bytes(bot, image_url: str) -> BytesIO:
         async with bot.session.get(image_url) as resp:
             if resp.status != 200:
                 raise URLAccessFailed(image_url, resp.status)
             buffer = BytesIO(await resp.read())
-            return discord.File(buffer, filename)
+            return buffer
 
     @classmethod
     def extract_error_code_n_message(cls, text: str) -> tuple[int | str, str] | None:
