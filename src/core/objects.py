@@ -692,7 +692,7 @@ class Manga:
             self.url,
             self.cover_url,
             self.last_chapter.to_json(),
-            json.dumps([x.to_dict() for x in self.available_chapters]),
+            self.chapters_to_text(),
             self.completed,
             self.scanlator,
         )
@@ -849,9 +849,19 @@ class CachedResponse:
                 stored = self._data_dict[key]
             except Exception as e:
                 self._data_dict[key] = {"type": "error", "content": e}
+                if "mangadex" in self._response.url:
+                    print("Mangadex throws text/html instead of application/json again...")
+                    with open("logs/mangadex-error.html", "w") as f:
+                        f.write(self._data_dict.get("text"))
+                    print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
                 stored = self._data_dict[key]
 
         if stored["type"] == "error":
+            if "mangadex" in self._response.url:
+                print("Mangadex throws text/html instead of application/json again (x2)...")
+                with open("logs/mangadex-error.html", "w") as f:
+                    f.write(self._data_dict.get("text"))
+                print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
             raise stored["content"]
         else:
             return stored["content"]
