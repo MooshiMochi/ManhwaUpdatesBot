@@ -19,7 +19,7 @@ from src.core.database import Database
 from src.core.mangadexAPI import MangaDexAPI
 from src.core.scanners import *
 from src.core.scanners import SCANLATORS
-from src.utils import ensure_configs, load_config
+from src.utils import ensure_configs, load_config, setup_logging
 
 logger: logging.Logger = logging.getLogger("test")
 
@@ -298,18 +298,6 @@ class TestCase:
 
 def default_id_func(manga_url: str) -> str:
     return hashlib.sha256(manga_url.encode()).hexdigest()
-
-
-def toggle_logging(name: str = "__main__") -> logging.Logger:
-    _logger = logging.getLogger(name)
-    _logger.setLevel(logging.DEBUG)
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('%(levelname)s | %(name)s | %(message)s',
-                                  '%m-%d-%Y %H:%M:%S')
-    stdout_handler.setFormatter(formatter)
-    _logger.addHandler(stdout_handler)
-
-    return _logger
 
 
 async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None):
@@ -761,31 +749,30 @@ async def sub_main():
 
     testCase = TestCase(
         test_setup,
-        test_data=TestInputData("https://reaperscans.com/comics/7182-ending-maker"),
+        test_data=TestInputData("https://omegascans.org/series/fucked-the-world-tree"),
         expected_result=ExpectedResult(
-            scanlator_name="reaperscans",
-            manga_url="https://reaperscans.com/comics/7182-ending-maker",
+            scanlator_name="omegascans",
+            manga_url="https://omegascans.org/series/fucked-the-world-tree",
             completed=False,
-            human_name="Ending Maker",
-            manga_id="7182",
+            human_name="Fucked the World Tree",
+            manga_id=default_id_func("https://omegascans.org/series/fucked-the-world-tree"),
             curr_chapter_url=(
-                "https://reaperscans.com/comics/7182-ending-maker/chapters/95650781-chapter-46"
+                "https://omegascans.org/series/fucked-the-world-tree/chapter-14"
             ),
             first_chapter_url=(
-                "https://reaperscans.com/comics/7182-ending-maker"
+                "https://omegascans.org/series/fucked-the-world-tree/chapter-1"
             ),
             cover_image=(
-                "https://media.reaperscans.com/file/4SRBHm/comics/e9f8bc31-2cb4-477b-b23a-36c52bc8141a"
-                "/LJ980EN3gxiOe4CjuDVhTm3FAfqNfPzMFWgeelW6.jpg"
+                "https://media.omegascans.org/file/zFSsXt/covers/adc97b9d-8fe1-49e0-95a1-494efbe32e7e.jpg"
             ),
             last_3_chapter_urls=[
-                "https://reaperscans.com/comics/7182-ending-maker/chapters/50693318-chapter-44",
-                "https://reaperscans.com/comics/7182-ending-maker/chapters/11209901-chapter-45",
-                "https://reaperscans.com/comics/7182-ending-maker/chapters/95650781-chapter-46",
+                "https://omegascans.org/series/fucked-the-world-tree/chapter-12",
+                "https://omegascans.org/series/fucked-the-world-tree/chapter-13",
+                "https://omegascans.org/series/fucked-the-world-tree/chapter-14",
             ],
         ),
-        id_first=True,
-        test_subject=ReaperScans,
+        # id_first=True,
+        test_subject=OmegaScans,
     )
     try:
         await run_single_test(testCase)
@@ -809,6 +796,11 @@ async def test_single_method():
         await run_single_test(testCases["reaperscans"], test_method=test_method)
 
 
+async def test_single_scanlator(scanlator: str):
+    async with TestCases() as testCases:
+        await run_single_test(testCases[scanlator])
+
+
 if __name__ == "__main__":
     # noinspection SpellCheckingInspection
 
@@ -818,11 +810,10 @@ if __name__ == "__main__":
     if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    # toggle_logging("cache.bot")
-    # toggle_logging("cache.curl_cffi")
-    # toggle_logging("test.bot")
+    setup_logging(level=logging.INFO)
 
     asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
+    # asyncio.run(test_single_scanlator("tritinia"))

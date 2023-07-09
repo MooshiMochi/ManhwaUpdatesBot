@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 
 import os
 import re
+import sys
 from typing import Optional
+from discord.utils import MISSING
 
 import yaml
 
@@ -30,6 +32,54 @@ from .enums import BookmarkSortType
 def exit_bot() -> None:
     input("Press enter to continue...")
     exit(1)
+
+
+class _StdOutFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno < logging.ERROR
+
+
+def setup_logging(
+        *,
+        level: int = MISSING,
+) -> None:
+    if level is MISSING:
+        level = logging.INFO
+
+    # noinspection PyProtectedMember
+    from discord.utils import _ColourFormatter as ColourFormatter, stream_supports_colour
+
+    OUT = logging.StreamHandler(stream=sys.stdout)
+    ERR = logging.StreamHandler(stream=sys.stderr)
+
+    if os.name == "nt" and 'PYCHARM_HOSTED' in os.environ:  # this patch is only required for pycharm
+        # apply patch for isatty in pycharm being broken
+        OUT.stream.isatty = lambda: True
+        ERR.stream.isatty = lambda: True
+
+    if isinstance(OUT, logging.StreamHandler) and stream_supports_colour(OUT.stream):
+        formatter = ColourFormatter()
+    else:
+        dt_fmt = '%Y-%m-%d %H:%M:%S'
+        formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
+
+    OUT.setFormatter(formatter)
+    ERR.setFormatter(formatter)
+
+    OUT.setLevel(level)
+    ERR.setLevel(logging.ERROR)
+
+    OUT.addFilter(_StdOutFilter())  # anything error or above goes to stderr
+
+    root = logging.getLogger()
+    root.setLevel(level)
+
+    # clear out any existing handlers
+    for handler in root.handlers[:]:
+        root.removeHandler(handler)
+
+    root.addHandler(OUT)
+    root.addHandler(ERR)
 
 
 async def ensure_proxy(config, logger) -> None:

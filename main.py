@@ -10,7 +10,8 @@ from discord.utils import setup_logging
 from src.core import BotCommandTree, CachedClientSession, MangaClient
 from src.core.cache import CachedCurlCffiSession
 from src.core.scanners import SCANLATORS
-from src.utils import ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, silence_debug_loggers
+from src.utils import (ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, setup_logging,
+                       silence_debug_loggers)
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -26,23 +27,13 @@ def ensure_logs() -> None:
             f.write("")
 
 
-def _setup_logging(level: int) -> None:
-    if os.name == "nt" and 'PYCHARM_HOSTED' in os.environ:  # this patch is only required for pycharm
-        logging_handler = logging.StreamHandler()
-        # apply patch for isatty in pycharm being broken
-        logging_handler.stream.isatty = lambda: True
-        setup_logging(level=level, handler=logging_handler)
-    else:
-        setup_logging(level=level)
-
-
 async def main():
     _logger = logging.getLogger("main")
     config = load_config(_logger)
     if config and config.get("debug") is True:
-        _setup_logging(level=logging.DEBUG)
+        setup_logging(level=logging.DEBUG)
     else:
-        _setup_logging(level=logging.INFO)
+        setup_logging(level=logging.INFO)
 
     _logger.info("Starting bot...")
     config = ensure_configs(_logger, config, SCANLATORS)
