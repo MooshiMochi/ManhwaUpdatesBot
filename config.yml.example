@@ -4,7 +4,8 @@ constants:
   time-for-manga-to-be-considered-stale: 7776000
   owner-ids:
     - 383287544336613385
-  synced: false
+  first_bot_startup: true
+  autosync: true
   test-guild-id: 1066891416934023218
   cache-retention-seconds: 300
 extensions:

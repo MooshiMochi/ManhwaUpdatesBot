@@ -3,8 +3,8 @@ import os
 from typing import Optional, Union
 
 import aiohttp
-import curl_cffi.requests
 import discord
+from curl_cffi.requests import AsyncSession
 from discord import Intents
 from discord.ext import commands
 
@@ -35,7 +35,7 @@ class MangaClient(commands.Bot):
 
         # Placeholder values. These are set in .setup_hook() below
         self._session: Union[aiohttp.ClientSession, CachedClientSession] = None
-        self.curl_session: curl_cffi.requests.AsyncSession = None
+        self.curl_session: AsyncSession = None
         self.mangadex_api: MangaDexAPI = None
         self.comick_api: ComickAppAPI = None
 
@@ -59,10 +59,10 @@ class MangaClient(commands.Bot):
         self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
             "http": self.proxy_addr,
-            "https": None
+            "https": self.proxy_addr
         })
 
-        if not self._config["constants"]["synced"]:
+        if self._config["constants"]["first_bot_startup"] or self._config["constants"]["autosync"]:
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
 
@@ -109,11 +109,12 @@ class MangaClient(commands.Bot):
         fmt = await self.tree.sync()
         self._logger.info(f"Synced {len(fmt)} commands globally.")
 
-        self._config["constants"]["synced"] = True
-        import yaml
+        if self._config["constants"]["first_bot_startup"]:
+            self._config["constants"]["first_bot_startup"] = False
+            import yaml
 
-        with open("config.yml", "w") as f:
-            yaml.dump(self._config, f, default_flow_style=False)
+            with open("config.yml", "w") as f:
+                yaml.dump(self._config, f, default_flow_style=False)
 
     def load_config(self, config: dict):
         self.owner_ids = config["constants"].get("owner-ids", [self.owner_id])
