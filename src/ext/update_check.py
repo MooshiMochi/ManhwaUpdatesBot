@@ -9,7 +9,6 @@ import discord
 
 from src.core.errors import URLAccessFailed
 from src.core.objects import ChapterUpdate, Manga
-from src.core.ratelimiter import RateLimiter
 from src.core.scanners import ABCScan, SCANLATORS
 from src.ui.views import BookmarkChapterView
 from src.utils import chunked, group_items_by
@@ -24,7 +23,7 @@ class UpdateCheckCog(commands.Cog):
     def __init__(self, bot: MangaClient) -> None:
         self.bot: MangaClient = bot
         self.SCANLATORS: Dict[str, ABCScan] = SCANLATORS
-        self.rate_limiter: RateLimiter = RateLimiter()
+        self.rate_limiter = {}
 
     async def cog_load(self):
         self.bot.logger.info("Loaded Updates Cog...")
@@ -47,8 +46,6 @@ class UpdateCheckCog(commands.Cog):
             return
 
         for manga in mangas:
-            await self.rate_limiter.delay_if_necessary(manga)
-
             try:
                 update_check_result: ChapterUpdate = await scanner.check_updates(
                     self.bot, manga
@@ -157,7 +154,7 @@ class UpdateCheckCog(commands.Cog):
 
         self.bot.logger.info(f"Finished checking for updates for {mangas[0].scanlator}...")
 
-    @tasks.loop(hours=1.0)
+    @tasks.loop(hours=2.0)
     async def check_updates_task(self):
         self.bot.logger.info("Checking for updates...")
         try:

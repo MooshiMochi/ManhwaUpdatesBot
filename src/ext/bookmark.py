@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from src.static import RegExpressions
 
@@ -17,11 +17,11 @@ from src.ui import BookmarkView
 from src.enums import BookmarkViewType
 
 from src.core.objects import ABCScan
-from src.core.objects import Manga
 from src.core.scanners import SCANLATORS
 from src.core.errors import MangaNotFound, BookmarkNotFound, ChapterNotFound
 
-from src.utils import get_manga_scanlator_class, create_bookmark_embed
+from src.utils import get_manga_scanlator_class, create_bookmark_embed, respond_if_limit_reached
+from src.ui import autocompletes
 
 
 class BookmarkCog(commands.Cog):
@@ -31,64 +31,12 @@ class BookmarkCog(commands.Cog):
     async def cog_load(self):
         self.bot.logger.info("Loaded Bookmarks Cog...")
 
-    async def bookmark_autocomplete(
-            self: Any, interaction: discord.Interaction, argument: str
-    ) -> list[discord.app_commands.Choice]:
-        bookmarks = await self.bot.db.get_user_bookmarks_autocomplete(interaction.user.id, argument)
-        if not bookmarks:
-            return []
-
-        return [
-                   discord.app_commands.Choice(
-                       name=x[1][:97] + "..." if len(x[1]) > 100 else x[1],
-                       value=x[0]
-                   ) for x in bookmarks
-               ][:25]
-
-    async def manga_autocomplete(
-            self: Any, interaction: discord.Interaction, current: str
-    ) -> list[discord.app_commands.Choice[str]]:
-        """Autocomplete for the /unsubscribe command."""
-        subs: list[Manga] = await self.bot.db.get_user_subs(
-            interaction.user.id, current
-        )
-        # subs = list(reversed(subs))
-
-        return [
-                   discord.app_commands.Choice(
-                       name=(
-                           x.human_name[:97] + "..."
-                           if len(x.human_name) > 100
-                           else x.human_name
-                       ),
-                       value=x.id,
-                   )
-                   for x in subs
-               ][:25]
-
-    async def chapter_autocomplete(
-            self: Any, interaction: discord.Interaction, argument: str
-    ) -> list[discord.app_commands.Choice]:
-        series_id = interaction.namespace["manga"]
-        if series_id is None:
-            return []
-        chapters = await self.bot.db.get_series_chapters(series_id, argument)
-        if not chapters:
-            return []
-
-        return [
-                   discord.app_commands.Choice(
-                       name=chp.name[:97] + ("..." if len(chp.name) > 100 else ''),
-                       value=str(chp.index)
-                   ) for chp in chapters
-               ][:25]
-
     bookmark_group = app_commands.Group(name="bookmark", description="Bookmark a manga")
 
     @bookmark_group.command(name="new", description="Bookmark a new manga")
     @app_commands.describe(manga_url_or_id="The name of the bookmarked manga you want to view")
     @app_commands.rename(manga_url_or_id="manga_url")
-    @app_commands.autocomplete(manga_url_or_id=manga_autocomplete)
+    @app_commands.autocomplete(manga_url_or_id=autocompletes.user_subbed_manga)
     async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -118,10 +66,18 @@ class BookmarkCog(commands.Cog):
             bookmark = existing_bookmark
         else:
 
-            bookmark = await scanner.make_bookmark_object(
-                self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
+            bookmark = await respond_if_limit_reached(
+                scanner.make_bookmark_object(
+                    self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
+                ),
+                interaction
             )
-            if not bookmark:
+            # bookmark = await scanner.make_bookmark_object(
+            #     self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
+            # )
+            if bookmark == "LIMIT_REACHED":
+                return
+            elif not bookmark:
                 raise MangaNotFound(manga_url_or_id)
             try:
                 bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
@@ -146,7 +102,7 @@ class BookmarkCog(commands.Cog):
     @bookmark_group.command(name="view", description="View your bookmark(s)")
     @app_commands.rename(series_id="manga")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to view")
-    @app_commands.autocomplete(series_id=bookmark_autocomplete)
+    @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     async def bookmark_view(self, interaction: discord.Interaction, series_id: Optional[str] = None):
         await interaction.response.defer(ephemeral=True, thinking=True)
         bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
@@ -181,8 +137,8 @@ class BookmarkCog(commands.Cog):
     @app_commands.rename(chapter_index="chapter")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to update")
     @app_commands.describe(chapter_index="The chapter you want to update the bookmark to")
-    @app_commands.autocomplete(series_id=bookmark_autocomplete)
-    @app_commands.autocomplete(chapter_index=chapter_autocomplete)
+    @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
+    @app_commands.autocomplete(chapter_index=autocompletes.chapters)
     async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
         bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
@@ -233,7 +189,7 @@ class BookmarkCog(commands.Cog):
     @bookmark_group.command(name="delete", description="Delete a bookmark")
     @app_commands.rename(series_id="manga")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to delete")
-    @app_commands.autocomplete(series_id=bookmark_autocomplete)
+    @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     async def bookmark_delete(self, interaction: discord.Interaction, series_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
         deleted: bool = await self.bot.db.delete_bookmark(interaction.user.id, series_id)

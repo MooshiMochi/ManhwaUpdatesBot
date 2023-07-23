@@ -38,7 +38,8 @@ class Database:
                     id TEXT PRIMARY KEY NOT NULL,
                     human_name TEXT NOT NULL,
                     url TEXT NOT NULL,
-                    
+                    synopsis TEXT,
+                                        
                     series_cover_url TEXT NOT NULL,
                     
                     last_chapter TEXT NOT NULL,
@@ -207,8 +208,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, url, series_cover_url, last_chapter, available_chapters, completed, 
-                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, completed, 
+                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                 """,
                 (manga_obj.to_tuple()),
             )
@@ -219,8 +220,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, url, series_cover_url, last_chapter, available_chapters, completed, 
-                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, completed, 
+                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                 """,
                 (bookmark.manga.to_tuple()),
             )
@@ -430,6 +431,7 @@ class Database:
                     s.id,
                     s.human_name,
                     s.url,
+                    s.synopsis,
                     s.series_cover_url,
                     s.last_chapter,
                     s.available_chapters,
@@ -445,7 +447,7 @@ class Database:
             result = await cursor.fetchone()
             if result is not None:
                 result = list(result)
-                bookmark_params, manga_params = result[:-8], tuple(result[-8:])
+                bookmark_params, manga_params = result[:-9], tuple(result[-9:])
 
                 manga = Manga.from_tuple(manga_params)
                 # replace series_id with a manga object
@@ -478,6 +480,7 @@ class Database:
                     s.id,
                     s.human_name,
                     s.url,
+                    s.synopsis,
                     s.series_cover_url,
                     s.last_chapter,
                     s.available_chapters,
@@ -498,9 +501,9 @@ class Database:
                 # change all the series_id to manga objects
                 new_result: list = []
                 for result_tup in list(result):
-                    manga_params = result_tup[-8:]
+                    manga_params = result_tup[-9:]
                     manga = Manga.from_tuple(manga_params)
-                    bookmark_params = result_tup[:-8]
+                    bookmark_params = result_tup[:-9]
                     bookmark_params = list(bookmark_params)
                     bookmark_params[1] = manga
                     new_result.append(tuple(bookmark_params))
@@ -608,19 +611,42 @@ class Database:
                 if result:
                     return Manga.from_tuple(result)
 
-    async def get_all_series(self) -> list[Manga] | None:
+    async def get_all_series(self, current: str = None, *, autocomplete: bool = False) -> list[Manga] | None:
         """
         Returns a list of Manga objects containing all series in the database.
         >>> [Manga, ...)]
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT * FROM series;
-                    """
-            ) as cursor:
-                if result := await cursor.fetchall():
-                    return Manga.from_tuples(result)
+        if current is not None:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+
+                async with db.execute(
+                        """
+                        SELECT * FROM series
+                        ORDER BY levenshtein(human_name, ?) DESC
+                        LIMIT 25;
+                        """, (current,)
+                ) as cursor:
+                    if result := await cursor.fetchall():
+                        return Manga.from_tuples(result)
+        elif autocomplete:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute(
+                        """
+                        SELECT * FROM series LIMIT 25;
+                        """
+                ) as cursor:
+                    if result := await cursor.fetchall():
+                        return Manga.from_tuples(result)
+        else:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute(
+                        """
+                        SELECT * FROM series;
+                        """
+                ) as cursor:
+                    if result := await cursor.fetchall():
+                        return Manga.from_tuples(result)
 
     async def get_all_subscribed_series(self) -> list[Manga]:
         """
@@ -749,32 +775,3 @@ class Database:
                     """
             ) as cursor:
                 return set([url for url, in await cursor.fetchall()])
-
-    async def _get_all_series_autocomplete(self, current: str = None) -> list:
-        """
-        Returns a list of Manga objects containing all series in the database.
-        >>> [Manga, ...)]
-        """
-        if current is not None:
-            async with aiosqlite.connect(self.db_name) as db:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-
-                async with db.execute(
-                        """
-                        SELECT * FROM series
-                        ORDER BY levenshtein(human_name, ?) DESC
-                        LIMIT 25;
-                        """,
-                        (current,),
-                ) as cursor:
-                    if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)
-        else:
-            async with aiosqlite.connect(self.db_name) as db:
-                async with db.execute(
-                        """
-                        SELECT * FROM series LIMIT 25;
-                        """,
-                ) as cursor:
-                    if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)

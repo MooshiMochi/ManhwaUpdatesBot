@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .rate_limiter import Limiter
+
 from discord.app_commands.errors import CommandInvokeError
 
 
@@ -68,3 +75,20 @@ class DatabaseError(BaseError):
 
     def __init__(self, error_msg: str):
         self.error_msg = error_msg
+
+
+class RateLimitExceeded(Exception):
+    def __init__(self, limiter: Limiter, message: str, period_remaining: float):
+        """
+        Custom exception raise when the number of function invocations exceeds
+        that imposed by a rate limit. Additionally, the exception is aware of
+        the remaining time period after which the rate limit is reset.
+
+        :param Limiter limiter: The rate limiter that raised the exception.
+        :param string message: Custom exception message.
+        :param float period_remaining: The time remaining until the rate limit is reset.
+        """
+        super(RateLimitExceeded, self).__init__(f"{message}. Try again in {period_remaining} seconds.")
+        self.limiter = limiter
+        self.period_remaining = period_remaining
+        self.message: str = message

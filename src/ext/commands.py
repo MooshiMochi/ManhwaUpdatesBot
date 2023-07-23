@@ -1,28 +1,27 @@
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+from src.ui import autocompletes
 
 if TYPE_CHECKING:
     from src.core import MangaClient
     from src.ext.update_check import UpdateCheckCog
 
-import discord
 from discord import app_commands
 from discord.ext import commands
 
 from src.core.errors import MangaCompletedOrDropped
 from src.core.scanners import *
 from src.core.objects import Manga, PaginatorView
-from src.core.ratelimiter import RateLimiter
 from src.ui.views import SubscribeView
-from src.utils import group_items_by, create_embeds, modify_embeds
+from src.utils import group_items_by, create_embeds, modify_embeds, get_manga_scanlator_class, respond_if_limit_reached
 
 
 class CommandsCog(commands.Cog):
     def __init__(self, bot: MangaClient):
         self.bot: MangaClient = bot
         self.SCANLATORS: dict[str, ABCScan] = SCANLATORS
-        self.rate_limiter: RateLimiter = RateLimiter()
 
     async def cog_load(self):
         self.bot.logger.info("Loaded Commands Cog...")
@@ -88,144 +87,41 @@ class CommandsCog(commands.Cog):
     async def subscribe_new(self, interaction: discord.Interaction, manga_url: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if RegExpressions.manganato_url.search(manga_url):
-            scanlator = Manganato
+        scanlator: ABCScan | None = None
 
-            series_id = await Manganato.get_manga_id(self.bot, manga_url)
-            series_url: str = Manganato.fmt_url.format(manga_id=series_id)
-
-        elif (
-                RegExpressions.aquamanga_url.search(manga_url) and
-                self.bot.config["user-agents"][Aquamanga.name] is not None
-        ):
-            scanlator = Aquamanga
-
-            url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
-            series_url = Aquamanga.fmt_url.format(manga_url_name=url_name)
-            series_id = await Aquamanga.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.voidscans_url.search(manga_url):
-            scanlator = VoidScans
-
-            series_url: str = await VoidScans.fmt_manga_url(self.bot, None, manga_url)
-            series_id = await VoidScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.tritinia_url.search(manga_url):
-            scanlator = TritiniaScans
-
-            url_name = RegExpressions.tritinia_url.search(manga_url).group(1)
-            series_url: str = TritiniaScans.base_url + url_name
-            series_id = await TritiniaScans.get_manga_id(self.bot, series_url)
-
-        elif (
-                RegExpressions.toonily_url.search(manga_url)
-                and self.bot.config["user-agents"][Toonily.name] is not None
-        ):
-            scanlator = Toonily
-
-            url_name = RegExpressions.toonily_url.search(manga_url).group(1)
-            series_url: str = Toonily.base_url + url_name
-            series_id = await Toonily.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.mangadex_url.search(manga_url):
-            scanlator = MangaDex
-
-            series_id = await MangaDex.get_manga_id(self.bot, manga_url)
-            series_url: str = MangaDex.fmt_url.format(manga_id=series_id)
-
-        elif RegExpressions.flamescans_url.search(manga_url):
-            scanlator = FlameScans
-
-            url_name = RegExpressions.flamescans_url.search(manga_url).group(1)
-            series_url: str = FlameScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await FlameScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.asurascans_url.search(manga_url):
-            scanlator = AsuraScans
-
-            url_name = RegExpressions.asurascans_url.search(manga_url).group(1)
-            series_id = await AsuraScans.get_manga_id(self.bot, manga_url)
-            series_url: str = AsuraScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
-
-        elif RegExpressions.reaperscans_url.search(manga_url):
-            scanlator = ReaperScans
-
-            url_name = RegExpressions.reaperscans_url.search(manga_url).group(2)
-            series_id = await ReaperScans.get_manga_id(self.bot, manga_url)
-            series_url: str = ReaperScans.fmt_url.format(manga_id=series_id, manga_url_name=url_name)
-
-        elif RegExpressions.comick_url.search(manga_url):
-            scanlator = Comick
-
-            url_name = RegExpressions.comick_url.search(manga_url).group(1)
-            series_id = await Comick.get_manga_id(self.bot, manga_url)
-            series_url: str = Comick.fmt_url.format(manga_url_name=url_name)
-
-        elif (
-                RegExpressions.aniglisscans_url.search(manga_url) and
-                self.bot.config["user-agents"][AniglisScans.name] is not None
-        ):
-            scanlator = AniglisScans
-
-            url_name = RegExpressions.aniglisscans_url.search(manga_url).group(1)
-            series_url: str = AniglisScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await AniglisScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.luminousscans_url.search(manga_url):
-            scanlator = LuminousScans
-
-            series_id = await LuminousScans.get_manga_id(self.bot, manga_url)
-            series_url: str = await LuminousScans.fmt_manga_url(self.bot, series_id, manga_url)
-
-        elif RegExpressions.drakescans_url.search(manga_url):
-            scanlator = DrakeScans
-
-            url_name = RegExpressions.drakescans_url.search(manga_url).group(1)
-            series_url: str = DrakeScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await DrakeScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.nitroscans_url.search(manga_url):
-            scanlator = NitroScans
-
-            url_name = RegExpressions.nitroscans_url.search(manga_url).group(1)
-            series_url: str = NitroScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await NitroScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.mangapill_url.search(manga_url):
-            scanlator = Mangapill
-
-            series_id = await Mangapill.get_manga_id(self.bot, manga_url)
-            series_url: str = await Mangapill.fmt_manga_url(self.bot, series_id, manga_url)
-
-        elif RegExpressions.leviatanscans_url.search(manga_url):
-            scanlator = LeviatanScans
-
-            url_name = RegExpressions.leviatanscans_url.search(manga_url).group(1)
-            series_url: str = LeviatanScans.fmt_url.format(manga_url_name=url_name)
-            series_id = await LeviatanScans.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.bato_url.search(manga_url):
-            scanlator = Bato
-
-            series_url: str = await Bato.fmt_manga_url(self.bot, None, manga_url)
-            series_id = await Bato.get_manga_id(self.bot, series_url)
-
-        elif RegExpressions.omegascans_url.search(manga_url):
-            scanlator = OmegaScans
-
-            series_url: str = await OmegaScans.fmt_manga_url(self.bot, None, manga_url)
-            series_id = await OmegaScans.get_manga_id(self.bot, series_url)
-
-        else:
-            em = discord.Embed(title="Invalid URL", color=discord.Color.red())
-            em.description = (
-                "The URL you provided does not follow any of the known url formats.\n"
-                "See `/supported_websites` for a list of supported websites and their url formats."
+        error_em = (
+            discord.Embed(
+                title="Invalid URL", color=discord.Color.red(),
+                description=(
+                    "The URL you provided does not follow any of the known url formats.\n"
+                    "See `/supported_websites` for a list of supported websites and their url formats.")
             )
-            em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-            return await interaction.followup.send(embed=em, ephemeral=True)
+            .set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+        )
 
-        manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
+        for scan in self.SCANLATORS.values():
+            if scan.rx.search(manga_url):
+                scanlator = scan
+                break
+
+        if scanlator is None or self.bot.config["user-agents"].get(scanlator.name, "N/A") is None:
+            await interaction.response.send_message(embed=error_em, ephemeral=True)
+            return
+
+        if scanlator.id_first:
+            series_id = await scanlator.get_manga_id(self.bot, manga_url)
+            series_url = await scanlator.fmt_manga_url(self.bot, series_id, manga_url)
+        else:
+            series_url = await scanlator.fmt_manga_url(self.bot, None, manga_url)
+            series_id = await scanlator.get_manga_id(self.bot, series_url)
+
+        manga: Manga | None = await respond_if_limit_reached(
+            scanlator.make_manga_object(self.bot, series_id, series_url),
+            interaction
+        )
+        # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
+        if manga == "LIMIT_REACHED":
+            return
 
         if manga.completed:
             raise MangaCompletedOrDropped(series_url)
@@ -246,50 +142,11 @@ class CommandsCog(commands.Cog):
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    async def manga_autocomplete(
-            self: Any, interaction: discord.Interaction, current: str
-    ) -> list[discord.app_commands.Choice[str]]:
-        """Autocomplete for the /unsubscribe command."""
-        subs: list[Manga] = await self.bot.db.get_user_subs(
-            interaction.user.id, current
-        )
-
-        return [
-                   discord.app_commands.Choice(
-                       name=(
-                           x.human_name[:97] + "..."
-                           if len(x.human_name) > 100
-                           else x.human_name
-                       ),
-                       value=x.id,
-                   )
-                   for x in subs
-               ][:25]
-
-    async def latest_chapters_autocomplete(
-            self: Any, _: discord.Interaction, current: str
-    ) -> list[discord.app_commands.Choice[str]]:
-        """Autocomplete for the /latest command"""
-        # noinspection PyProtectedMember
-        subs: list[Manga] = await self.bot.db._get_all_series_autocomplete(current)
-        # subs = list(reversed(subs))
-        return [
-                   discord.app_commands.Choice(
-                       name=(
-                           x.human_name[:97] + "..."
-                           if len(x.human_name) > 100
-                           else x.human_name
-                       ),
-                       value=x.id,
-                   )
-                   for x in subs
-               ][:25]
-
     @subscribe.command(
         name="delete", description="Unsubscribe from a currently subscribed manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
-    @app_commands.autocomplete(manga_id=manga_autocomplete)
+    @app_commands.autocomplete(manga_id=autocompletes.user_subbed_manga)
     @app_commands.rename(manga_id="manga")
     async def subscribe_delete(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -371,7 +228,7 @@ class CommandsCog(commands.Cog):
         name="latest", description="Get the latest chapter of a manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
-    @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
+    @app_commands.autocomplete(manga_id=autocompletes.manga)
     @app_commands.rename(manga_id="manga")
     async def latest_chapter(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -424,7 +281,7 @@ class CommandsCog(commands.Cog):
         name="chapters", description="Get a list of chapters for a manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
-    @app_commands.autocomplete(manga_id=latest_chapters_autocomplete)
+    @app_commands.autocomplete(manga_id=autocompletes.manga)
     @app_commands.rename(manga_id="manga")
     async def chapters(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -462,7 +319,7 @@ class CommandsCog(commands.Cog):
             (LuminousScans, "Luminous", "https://luminousscans.com/",
              "https://luminousscans.com/series/12351-manga-title/"),
             (DrakeScans, "DrakeScans", "https://drakescans.com/", "https://drakescans.com/series/manga-title/"),
-            (NitroScans, "NitroScans", "https://nitroscans.com/", "https://nitroscans.com/series/manga-title/"),
+            (Mangabaz, "Mangabaz", "https://mangabaz.net/", "https://mangabaz.net/mangas/manga-title/"),
             (Mangapill, "Mangapill", "https://mangapill.com/", "https://mangapill.com/manga/12351/manga-title/"),
             (LeviatanScans, "LeviatanScans", "https://en.leviatanscans.com/",
              "https://en.leviatanscans.com/home/manga/manga-title/"),
@@ -472,7 +329,7 @@ class CommandsCog(commands.Cog):
             (VoidScans, "VoidScans", "https://void-scans.com/", "https://void-scans.com/manga/manga-title/"),
 
             # Scanlators requiring user-agents
-            (AniglisScans, "AniglisScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
+            (AnigliScans, "AnigliScans", "https://anigliscans.com/", "https://anigliscans.com/series/manga-title/"),
             (Aquamanga, "Aquamanga", "https://aquamanga.com/", "https://aquamanga.com/read/manga-title/"),
         ]
         supp_webs = sorted(supp_webs, key=lambda x: x[1])
@@ -545,99 +402,24 @@ class CommandsCog(commands.Cog):
         return
 
     @app_commands.command(
-        name="search", description="Search for a manga on Mangadex."
+        name="search", description="Search for a manga on on all/one scanlator of choice."
     )
     @app_commands.describe(query="The name of the manga.")
-    async def dex_search(self, interaction: discord.Interaction, query: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+    @app_commands.describe(scanlator_website="The website to search on.")
+    @app_commands.rename(scanlator_website="scanlator")
+    @app_commands.autocomplete(scanlator_website=autocompletes.scanlator)
+    async def search(self, interaction: discord.Interaction, query: str, scanlator_website: str) -> None:
+        await interaction.response.defer(ephemeral=True)
 
-        if RegExpressions.mangadex_url.search(query) and (manga_id := await MangaDex.get_manga_id(self.bot, query)):
-            response: dict[str, Any] = await self.bot.mangadex_api.get_manga(manga_id)
-        else:
-            response: dict[str, Any] = await self.bot.mangadex_api.search(
-                query, limit=1
-            )
-        results: list[dict[str, Any]] = (
-            response["data"]
-            if isinstance(response["data"], list)
-            else [response["data"]]
-        )
+        if RegExpressions.url.search(query):  # if the query is a URL, try to get the manga from the URL
+            scanlator = get_manga_scanlator_class(SCANLATORS, url=query)
+            if scanlator is None:
+                return await interaction.followup.send(
+                    f"Could not find a manga on `{query}`.", ephemeral=True
+                )
 
-        if not results:
-            return await interaction.followup.send(
-                embed=discord.Embed(
-                    title="No Results Found",
-                    description="No results were found for your query.",
-                    color=discord.Color.red(),
-                ),
-                ephemeral=True,
-            )
-
-        result = results[0]
-
-        chapters = await self.bot.mangadex_api.get_chapters_list(result["id"])
-        if chapters:
-            latest_chapter = chapters[-1]["attributes"]["chapter"]
-        else:
-            latest_chapter = "N/A"
-
-        em = discord.Embed(
-            title=f"Title: {result['attributes']['title']['en']}",
-            color=discord.Color.green(),
-        )
-        cover_id = [
-            x["id"] for x in result["relationships"] if x["type"] == "cover_art"
-        ][0]
-        cover_url = await self.bot.mangadex_api.get_cover(result["id"], cover_id)
-        synopsis = result["attributes"]["description"].get("en")
-        if not synopsis:
-            # If the synopsis is not available in English, use the first available language.
-            synopsis = result["attributes"]["description"].values()[0]
-
-        em.set_image(url=cover_url)
-        em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-
-        em.description = (
-            f"**Year:** {result['attributes']['year']}\n"
-            f"**Status:** {result['attributes']['status'].title()}\n"
-            f"**Latest English Chapter:** {latest_chapter}\n"
-        )
-
-        em.add_field(
-            name="Tags:",
-            value=f"`#{'` `#'.join([x['attributes']['name']['en'] for x in result['attributes']['tags'] if x['type'] == 'tag'])}`",
-        )
-
-        max_field_length = 1024
-        paragraphs = synopsis.split("\n\n")
-        for paragraph in paragraphs:
-            if len(paragraph) <= max_field_length:
-                em.add_field(name="\u200b", value=paragraph, inline=False)
-            else:
-                current_field = ""
-                sentences = paragraph.split(".")
-                for i in range(len(sentences)):
-                    sentence = sentences[i].strip() + "."
-                    if len(current_field) + len(sentence) > max_field_length:
-                        em.add_field(name="\u200b", value=current_field, inline=False)
-                        current_field = ""
-                    current_field += sentence
-                    if i == len(sentences) - 1 and current_field != "":
-                        em.add_field(name="\u200b", value=current_field, inline=False)
-
-        em.add_field(
-            name="MangaDex Link:",
-            value=f"https://mangadex.org/title/{result['id']}",
-            inline=False,
-        )
-
-        view = SubscribeView(self.bot)
-
-        await interaction.followup.send(
-            embed=em,
-            ephemeral=True,
-            view=view,
-        )
+        # loop through scanlators. If they have a search method, use it, otherwise skip
+        # ...
 
 
 async def setup(bot: MangaClient) -> None:

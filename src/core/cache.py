@@ -1,15 +1,18 @@
 import asyncio
 import logging
 from functools import partialmethod
-from typing import Any, Coroutine, Dict, Optional, Set, Union
+from typing import Any, Dict, Optional, Set, Union
 
 import aiohttp
 import curl_cffi.requests
-# noinspection PyProtectedMember
-from aiohttp.client import _RequestContextManager
 
 from src.core.objects import CachedResponse
 from src.static import EMPTY
+from src.utils import get_url_hostname, is_from_stack_origin
+from . import rate_limiter
+
+
+# noinspection PyProtectedMember
 
 
 class BaseCacheSessionMixin:
@@ -75,6 +78,17 @@ class BaseCacheSessionMixin:
         self._cache = {}
         self.logger.warning("Cleared cache")
 
+    @staticmethod
+    def getLimiter(hostname: str) -> rate_limiter.Limiter:
+        is_user_called = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
+        limiter: rate_limiter.Limiter = rate_limiter.getLimiter(hostname, create_if_not_exists=False)
+        if limiter is not None:
+            if is_user_called:
+                limiter.can_call(is_user_call=True, raise_error=False)
+        else:
+            limiter: rate_limiter.Limiter = rate_limiter.disabled
+        return limiter
+
     @classmethod
     def set_default_cache_time(cls, cache_time: int) -> None:
         """
@@ -119,28 +133,30 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
 
     async def _request(
             self, method: str, url: str, cache_time: Optional[int] = None, *args, **kwargs
-    ) -> Union[Coroutine[Any, Any, aiohttp.ClientResponse], _RequestContextManager, Any]:
+    ) -> Union[CachedResponse, Any]:
+        self.logger.debug("Making request...")
 
         if self._proxy and kwargs.get("proxy") is None:
             kwargs["proxy"] = self._proxy
             kwargs["verify_ssl"] = False
 
         if (used_proxy := kwargs.get("proxy")) is not None:
-            if used_proxy is not EMPTY:
-                # self.logger.debug(f"Making request through proxy: {self._proxy}")
-                pass
-            else:
+            if used_proxy is EMPTY:
                 kwargs.pop("proxy")
                 kwargs.pop("verify_ssl", None)
 
-        # set default user agent if not set
         if kwargs.get("headers", None) is None:
             kwargs["headers"] = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/114.0.0.0 Safari/537.36'
             }
+
+        hostname = get_url_hostname(url)
+        is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
+        limiter: rate_limiter.Limiter = self.getLimiter(hostname)
+
         if url in self._ignored_urls or self._is_discord_api_url(url):
-            # Don't cache ignored URLs
+            await limiter.try_acquire(is_user_request=is_user_req)
             return await super()._request(method, url, *args, **kwargs)
 
         if url in self._cache and self._cache[url]['expires'] > asyncio.get_event_loop().time():
@@ -152,7 +168,8 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
 
         # Cache miss, fetch and cache response
         self.logger.debug(f"Cache miss for {url}")
-        response = await super()._request(method, url, *args, **kwargs)  # await the new response object
+        await limiter.try_acquire(is_user_request=is_user_req)
+        response = await super()._request(method, url, *args, **kwargs)
         response = await CachedResponse(response).apply_patch()
 
         cache_time = cache_time if cache_time is not None else self._default_cache_time
@@ -178,8 +195,14 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
 
     async def request(self, method, url, cache_time: Optional[int] = None, *args, **kwargs):
         self.logger.debug("Making request...")
+
+        hostname = get_url_hostname(url)
+        is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
+        limiter: rate_limiter.Limiter = self.getLimiter(hostname)
+
         if url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
+            await limiter.try_acquire(is_user_request=is_user_req)
             return await super().request(method, url, *args, **kwargs)
 
         elif url in self._cache and self._cache[url]['expires'] > asyncio.get_event_loop().time():
@@ -189,6 +212,7 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
             return response
 
         self.logger.debug(f"Cache miss for {url}")
+        await limiter.try_acquire(is_user_request=is_user_req)
         response = await super().request(method, url, *args, **kwargs)
 
         cache_time = cache_time if cache_time is not None else self._default_cache_time

@@ -63,6 +63,17 @@ class MangaDexAPI:
         endpoint = f"manga/{manga_id}"
         return await self.__request("GET", endpoint)
 
+    async def get_synopsis(self, manga_id: str) -> Optional[str]:
+        manga = await self.get_manga(manga_id)
+        if manga.get("data"):
+            synopsis = manga['data']["attributes"]["description"].get("en")
+            if not synopsis:
+                # If the synopsis is not available in English, use the first available language.
+                if len(manga['data']["attributes"]["description"].values()) > 0:
+                    synopsis = next(iter(manga['data']["attributes"]["description"].values()))
+            return synopsis
+        return None
+
     async def get_chapters_list(
             self, manga_id: str, languages=None
     ) -> list[Dict[str, Any]]:

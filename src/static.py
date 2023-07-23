@@ -22,7 +22,7 @@ class ScanlatorsRequiringUserAgent:
     A class that contains a list of scanlators that require a user-agent.
     """
     scanlators = [
-        "aniglisscans",
+        "anigliscans",
         "aquamanga",
         "toonily",
     ]
@@ -59,7 +59,7 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?aquamanga\.com/read/([a-zA-Z0-9-]+)(?:/.*)?"
     )
 
-    aniglisscans_url = re.compile(
+    anigliscans_url = re.compile(
         r"^(?:https?://)?(?:www\.)?anigliscans\.com/(?:series/)?([\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
     )
 
@@ -83,8 +83,8 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?drakescans\.com/series/([\w-]+)(?:/.*)?"
     )
 
-    nitroscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?nitroscans\.com/mangas/([\w-]+)(?:/.*)?"
+    mangabaz_url = re.compile(
+        r"(?:https?://)?(?:www\.)?mangabaz\.net/mangas/([\w-]+)(?:/.*)?"
     )
 
     mangapill_url = re.compile(

@@ -3,8 +3,6 @@ from __future__ import annotations
 from asyncio import TimeoutError
 from typing import Any, Iterable, TYPE_CHECKING, Union
 
-from ..utils import time_string_to_seconds
-
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
@@ -98,6 +96,8 @@ class ABCScan(ABC):
     base_url: str = None
     fmt_url: str = None
     name: str = "Unknown"
+    id_first: bool = False  # whether to extract ID first when using fmt_manga_url method
+    rx: re.Pattern = None
 
     @classmethod
     def _make_headers(cls, bot: MangaClient):
@@ -108,24 +108,60 @@ class ABCScan(ABC):
 
     @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
+        """
+        Summary:
+            Reports an error to the bot's logger and/or Discord.
+
+        Args:
+            bot: MangaClient - The bot instance.
+            error: Exception - The error to report.
+            **kwargs: Any - Any extra keyword arguments to pass to the logger.
+
+        Returns:
+            None
+        """
         traceback = "".join(
             tb.format_exception(type(error), error, error.__traceback__)
         )
         # message: str = f"Error in {cls.name} scan: {traceback}"
         message: str = f"{traceback}\nError in {cls.name} scan.\nURL: {kwargs.pop('request_url', 'Unknown')}"
+        if len(message) > 2000:
+            file = discord.File(BytesIO(message.encode()), filename="error.txt")
+            if not kwargs.get("file"):
+                kwargs["file"] = file
+            else:
+                kwargs["files"] = [kwargs["file"], file]
+                kwargs.pop("file")
+                if len(kwargs["files"]) > 10:
+                    kwargs["files"] = kwargs["files"][:10]
+                    bot.logger.warning(
+                        f"Too many files to attach to error message in {cls.name} scan."
+                    )
+                    bot.logger.error(message)
+            message = f"Error in {cls.name} scan. See attached file or logs."
         try:
             await bot.log_to_discord(message, **kwargs)
         except AttributeError:
             bot.logger.critical(message)
 
     @staticmethod
-    def _parse_time_string_to_sec(time_string: str) -> float | int:
-        return time_string_to_seconds(time_string)
-
-    @staticmethod
     def _create_chapter_embed(
             scanlator_name: str, img_url: str, human_name: str, chapter_url: str, chapter_text: str
     ) -> discord.Embed:
+        """
+        Summary:
+            Creates a chapter embed given the method parameters.
+
+        Args:
+            scanlator_name: str - The name of the scanlator.
+            img_url: str - The URL to the chapter image.
+            human_name: str - The human-readable name of the chapter.
+            chapter_url: str - The URL to the chapter.
+            chapter_text: str - The chapter text.
+
+        Returns:
+            discord.Embed - The chapter embed.
+        """
         embed = discord.Embed(
             title=f"{human_name} - {chapter_text}",
             url=chapter_url)
@@ -135,29 +171,24 @@ class ABCScan(ABC):
         return embed
 
     @staticmethod
-    async def _fetch_image_bytes(bot, image_url: str) -> BytesIO:
+    async def _fetch_image_bytes(bot: MangaClient, image_url: str) -> BytesIO:
+        """
+        Summary:
+            Fetches the image bytes from the given URL.
+        Args:
+            bot: MangaClient - The bot instance.
+            image_url: str - The URL to fetch the image from.
+
+        Returns:
+            BytesIO - The image bytes buffer.
+        Note:
+            If you want to re-use the bytes, make sure you call 'buffer.seek(0)' after reading it.
+        """
         async with bot.session.get(image_url) as resp:
             if resp.status != 200:
                 raise URLAccessFailed(image_url, resp.status)
             buffer = BytesIO(await resp.read())
             return buffer
-
-    @classmethod
-    def extract_error_code_n_message(cls, text: str) -> tuple[int | str, str] | None:
-        """Extracts the status code and error message from the webpage text."""
-        soup = BeautifulSoup(text, "html.parser")
-        page_title = soup.find("title")
-        if page_title is None:
-            return None
-        page_title = page_title.text
-        re_result = re.search(r"(\b\d{3}): (\w* \w*\b)", page_title)
-        if re_result:
-            status_code, error_message = re_result.groups()
-            try:
-                return int(status_code), error_message
-            except ValueError:
-                return status_code, error_message
-        return None
 
     @classmethod
     @abstractmethod
@@ -261,6 +292,22 @@ class ABCScan(ABC):
         raise NotImplementedError
 
     @classmethod
+    async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
+        """
+        Summary:
+            Gets the synopsis of the manga.
+
+        Parameters:
+            bot: MangaClient - The bot instance.
+            manga_id: str - The ID of the manga.
+            manga_url: str - The URL of the manga's home page.
+
+        Returns:
+            str - The synopsis of the manga.
+        """
+        raise NotImplementedError
+
+    @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
         """
         Summary:
@@ -311,8 +358,13 @@ class ABCScan(ABC):
         Returns:
             Manga/None - The Manga object if the manga is found, otherwise `None`.
         """
+        db_object: Manga = await bot.db.get_series(manga_id)
+        if db_object:
+            return db_object
+
         manga_url = await cls.fmt_manga_url(bot, manga_id, manga_url)
         human_name = await cls.get_human_name(bot, manga_id, manga_url)
+        synopsis = await cls.get_synopsis(bot, manga_id, manga_url)
         cover_url = await cls.get_cover_image(bot, manga_id, manga_url)
         curr_chapter = await cls.get_curr_chapter(bot, manga_id, manga_url)
         available_chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
@@ -321,6 +373,7 @@ class ABCScan(ABC):
             manga_id,
             human_name,
             manga_url,
+            synopsis,
             cover_url,
             curr_chapter,
             available_chapters,
@@ -585,6 +638,7 @@ class Manga:
             id: str,
             human_name: str,
             url: str,
+            synopsis: str,
             cover_url: str,
             last_chapter: Chapter,
             available_chapters: list[Chapter],
@@ -594,6 +648,7 @@ class Manga:
         self._id: str = id
         self._human_name: str = human_name
         self._url: str = url
+        self._synopsis: str = synopsis
         self._cover_url: str = cover_url
         self._last_chapter: Chapter = last_chapter
         self._available_chapters: list[Chapter] = available_chapters
@@ -645,6 +700,11 @@ class Manga:
         return self._url
 
     @property
+    def synopsis(self) -> str:
+        """Get the synopsis of the manga."""
+        return self._synopsis
+
+    @property
     def cover_url(self) -> str:
         """Get the cover URL of the manga."""
         return self._cover_url
@@ -690,6 +750,7 @@ class Manga:
             self.id,
             self.human_name,
             self.url,
+            self.synopsis,
             self.cover_url,
             self.last_chapter.to_json(),
             self.chapters_to_text(),
@@ -849,7 +910,7 @@ class CachedResponse:
                 stored = self._data_dict[key]
             except Exception as e:
                 self._data_dict[key] = {"type": "error", "content": e}
-                if "mangadex" in self._response.url:
+                if "mangadex" in str(self._response.url):
                     print("Mangadex throws text/html instead of application/json again...")
                     with open("logs/mangadex-error.html", "w") as f:
                         f.write(self._data_dict.get("text"))
@@ -857,7 +918,7 @@ class CachedResponse:
                 stored = self._data_dict[key]
 
         if stored["type"] == "error":
-            if "mangadex" in self._response.url:
+            if "mangadex" in str(self._response.url):
                 print("Mangadex throws text/html instead of application/json again (x2)...")
                 with open("logs/mangadex-error.html", "w") as f:
                     f.write(self._data_dict.get("text"))

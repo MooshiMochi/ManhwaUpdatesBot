@@ -27,4 +27,5 @@ proxy:
     password: em03wrup0hod
 user-agents:
     aquamanga: null
-    aniglisscans: null
+    anigliscans: null
+    toonily: null

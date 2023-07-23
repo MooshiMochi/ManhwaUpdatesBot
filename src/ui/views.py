@@ -21,7 +21,7 @@ from src.core.errors import MangaCompletedOrDropped
 
 from src.utils import (
     create_bookmark_embed,
-    sort_bookmarks,
+    respond_if_limit_reached, sort_bookmarks,
     group_items_by,
     get_manga_scanlator_class,
 )
@@ -381,7 +381,13 @@ class SubscribeView(View):
                 em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
                 return await interaction.response.send_message(embed=em, ephemeral=True)
 
-        manga: Manga = await scanlator.make_manga_object(self.bot, series_id, manga_url)
+        manga: Manga | None = await respond_if_limit_reached(
+            scanlator.make_manga_object(self.bot, series_id, manga_url),
+            interaction
+        )
+        if manga == "LIMIT_REACHED":
+            return
+        # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, manga_url)
 
         if manga.completed:
             raise MangaCompletedOrDropped(manga.url)

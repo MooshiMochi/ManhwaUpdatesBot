@@ -1,9 +1,10 @@
-from src.core.scanners import SCANLATORS
-from src.core.objects import ABCScan, Manga
-import logging
 import asyncio
-import time
+import logging
 import random
+import time
+
+from src.core.objects import ABCScan, Manga
+from src.core.scanners import SCANLATORS
 
 
 class RateLimiter:
@@ -27,7 +28,7 @@ class RateLimiter:
 
         scanlators_to_ignore_rate_limits_for = ["mangadex"]
 
-        scanlator_key = self.get_scanlator_key(manga)
+        scanlator_key = manga.scanlator
         if scanlator_key in scanlators_to_ignore_rate_limits_for:
             return
 
@@ -40,9 +41,9 @@ class RateLimiter:
             ].MIN_TIME_BETWEEN_REQUESTS
             if time_since_last_request < min_time_between_requests:
                 time_to_sleep = (
-                    min_time_between_requests
-                    - time_since_last_request
-                    + random.uniform(0.5, 1.5)
+                        min_time_between_requests
+                        - time_since_last_request
+                        + random.uniform(0.5, 1.5)
                 )
                 self._logger.debug(
                     f"Delaying request to {scanlator_key} for {time_to_sleep} seconds."

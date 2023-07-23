@@ -63,6 +63,11 @@ class ComickAppAPI:
         endpoint = f"comic/{manga_id}"
         return await self.__request("GET", endpoint)
 
+    async def get_synopsis(self, manga_id: str) -> Optional[str]:
+        endpoint = f"comic/{manga_id}"
+        data = await self.__request("GET", endpoint)
+        return data.get("comic", {}).get("desc", None)
+
     @staticmethod
     def _remove_duplicate_chapters(chapters):
         chapter_dict = {}

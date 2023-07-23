@@ -1,28 +1,32 @@
 from __future__ import annotations
 
+import inspect
 import io
 import logging
 from datetime import datetime, timedelta
 from functools import partial
 from itertools import islice
-from typing import Any, TYPE_CHECKING
+from typing import Any, Coroutine, Optional, TYPE_CHECKING
 
 import aiohttp
+import bs4
 import discord
 
 if TYPE_CHECKING:
-    from src.core.scanners import ABCScan
-    from src.core.objects import Bookmark
     from src.core import MangaClient
+    from src.core.objects import Bookmark
+    from src.core.scanners import ABCScan
 
 import os
 import re
 import sys
-from typing import Optional
+import tldextract
 from discord.utils import MISSING
 
 import yaml
 
+# noinspection PyPackages
+from .core.errors import RateLimitExceeded
 # noinspection PyPackages
 from .static import RegExpressions, ScanlatorsRequiringUserAgent
 # noinspection PyPackages
@@ -43,6 +47,16 @@ def setup_logging(
         *,
         level: int = MISSING,
 ) -> None:
+    """
+    Sets up logging for the bot.
+    This function must only be called once!
+
+    Parameters:
+        level: The logging level to use. Defaults to INFO.
+
+    Returns:
+        None
+    """
     if level is MISSING:
         level = logging.INFO
 
@@ -237,7 +251,8 @@ def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto
         },
         "user-agents": {
             "aquamanga": None,
-            "aniglisscans": None,
+            "anigliscans": None,
+            "toonily": None,
         },
     }
 
@@ -624,3 +639,65 @@ def chunked(iterable, n, strict=False):
         return iter(ret())
     else:
         return iterator
+
+
+def replace_tag_with(
+        soup: bs4.BeautifulSoup | bs4.Tag, tag_name: str, replace_with: str, *, closing: bool = False
+) -> bs4.BeautifulSoup:
+    """Replace tags with specified replace string"""
+
+    for _tag in soup.find_all(tag_name):
+        if closing:
+            _tag.replace_with(replace_with + _tag.text + replace_with)
+        else:
+            _tag.replace_with(replace_with + _tag.text)
+
+    return soup
+
+
+def get_url_hostname(url: str) -> str:
+    """Get the hostname of an url"""
+    return tldextract.extract(url).domain
+
+
+def is_from_stack_origin(*, class_name: str = None, function_name: str = None, file_name: str = None) -> bool:
+    if not any([class_name, function_name, file_name]):
+        raise ValueError("At least one of class_name, function_name or file_name must be provided")
+    call_stack = inspect.stack()
+
+    for record in call_stack:
+        frame = record[0]
+        info = inspect.getframeinfo(frame)
+
+        if class_name is not None:
+            # Get the class of the method from the frame
+            method_class = getattr(inspect.getmodule(frame), class_name, None)
+            if method_class is not None and method_class.__name__ == class_name:
+                return True
+
+        if function_name is not None and info.function == function_name:
+            return True
+
+        if file_name is not None and os.path.basename(info.filename) == file_name:
+            return True
+
+    return False
+
+
+async def respond_if_limit_reached(coro: Coroutine, interaction: discord.Interaction) -> Any | str:
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True, thinking=True)
+    try:
+        return await coro
+    except RateLimitExceeded as e:
+        next_try_ts = datetime.utcnow().timestamp() + e.period_remaining
+        em = discord.Embed(title="Rate Limit Exceeded", color=discord.Color.red())
+        em.description = (
+            f"Rate limit exceeded for this website.\n"
+            f"Please try again in <t:{int(next_try_ts)}:R>."
+        )
+        em.set_footer(text="Manga Updates", icon_url=interaction.client.user.avatar.url)
+        await interaction.followup.send(
+            embed=em
+        )
+        return "LIMIT_REACHED"
