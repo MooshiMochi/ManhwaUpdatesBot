@@ -9,10 +9,6 @@ from typing import Any
 from src.enums import Hours, Minutes
 from .errors import RateLimitExceeded
 
-# TODO:
-# - No need to actually call the request coro inside the limiter. I can just call the limiter to track the requests.
-
-
 logger = logging.getLogger("limiter")
 
 
