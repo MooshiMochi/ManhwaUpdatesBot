@@ -464,7 +464,7 @@ class TestCases(dict):
                         "https://www.asurascans.com/i-regressed-as-the-duke-chapter-64-notice/",
                     ]
                 ),
-                test_subject=AsuraScans
+                test_subject=Asura
             ),
             "aquamanga": TestCase(
                 self.test_setup,

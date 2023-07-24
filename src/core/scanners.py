@@ -740,16 +740,16 @@ class FlameScans(ABCScan):
             return cover_image["src"] if cover_image else None
 
 
-class AsuraScans(ABCScan):
-    rx: re.Pattern = RegExpressions.asurascans_url
-    icon_url = "https://www.asurascans.com/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
-    base_url = "https://www.asurascans.com/"
+class Asura(ABCScan):
+    rx: re.Pattern = RegExpressions.asura_url
+    icon_url = "https://www.asura.gg/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
+    base_url = "https://www.asura.gg/"
     fmt_url = base_url + "manga/{manga_url_name}"
     name = "asurascans"
     id_first = False
     rate_limiter.root.manager.getLimiter(get_url_hostname(base_url), calls=15, period=Minutes.ONE)  # 4s interval
 
-    NOT_FOUND_IMG_URL = "https://www.asurascans.com/wp-content/themes/mangastream/assets/images/404.png"
+    NOT_FOUND_IMG_URL = "https://asura.gg/wp-content/themes/mangastream/assets/images/404.png"
 
     @classmethod
     async def check_updates(
@@ -858,7 +858,7 @@ class AsuraScans(ABCScan):
 
     @classmethod
     async def fmt_manga_url(cls, bot: MangaClient, manga_id: str | None, manga_url: str) -> str:
-        manga_url_name = RegExpressions.asurascans_url.search(manga_url).group(1)
+        manga_url_name = RegExpressions.asura_url.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -2656,7 +2656,7 @@ SCANLATORS: dict[str, ABCScan] = {
     Manganato.name: Manganato,
     MangaDex.name: MangaDex,
     FlameScans.name: FlameScans,
-    AsuraScans.name: AsuraScans,
+    Asura.name: Asura,
     ReaperScans.name: ReaperScans,
     AnigliScans.name: AnigliScans,
     Comick.name: Comick,

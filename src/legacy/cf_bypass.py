@@ -15,7 +15,7 @@ from pyppeteer.browser import Browser
 from pyppeteer.network_manager import Request
 import logging
 from typing import Dict, Any, Optional, Set
-from src.core.scanners import AsuraScans
+from src.core.scanners import Asura
 import tempfile
 import os
 
@@ -34,7 +34,7 @@ class ProtectedRequest:
         self.browser: Browser | None = None
 
         self.cookie_exempt_scanlators = [
-            AsuraScans.name
+            Asura.name
         ]
 
         if not os.path.exists(self._user_data_dir):

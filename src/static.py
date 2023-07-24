@@ -47,8 +47,8 @@ class RegExpressions:
         r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?([\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
     )
 
-    asurascans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?asurascans\.com/manga/(?:\d+-)?([a-zA-Z0-9-]+)(?:/.*)?"
+    asura_url = re.compile(
+        r"(?:https?://)?(?:www\.)?asura\.gg/manga/(?:\d+-)?([a-zA-Z0-9-]+)(?:/.*)?"
     )
 
     reaperscans_url = re.compile(
