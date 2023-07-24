@@ -164,8 +164,8 @@ async def ensure_environment(bot, logger) -> None:
         exit_bot()
 
 
-def load_config(logger: logging.Logger, *, auto_exit: bool = True) -> Optional[dict]:
-    if not os.path.exists("config.yml"):
+def load_config(logger: logging.Logger, *, auto_exit: bool = True, filepath: str = "config.yml") -> Optional[dict]:
+    if not os.path.exists(filepath):
         logger.critical(
             "   - config.yml file not found. Please follow the instructions listed in the README.md file."
         )
@@ -175,10 +175,10 @@ def load_config(logger: logging.Logger, *, auto_exit: bool = True) -> Optional[d
         logger.critical(
             "   - Creating a new config.yml file..."
         )
-        with open("config.yml", "w"):
+        with open(filepath, "w"):
             pass
 
-    with open("config.yml", "r") as f:
+    with open(filepath, "r") as f:
         try:
             return yaml.safe_load(f) or {}
         except yaml.YAMLError as e:

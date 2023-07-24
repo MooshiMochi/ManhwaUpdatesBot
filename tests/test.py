@@ -79,7 +79,7 @@ class SetupTest:
 
     @staticmethod
     def load_config() -> Dict:
-        config = load_config(logger, auto_exit=False)
+        config = load_config(logger, auto_exit=False, filepath="../config.yml")
         return ensure_configs(logger, config, SCANLATORS, auto_exit=False)
 
 
