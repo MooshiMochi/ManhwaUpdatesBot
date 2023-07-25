@@ -105,7 +105,7 @@ class CommandsCog(commands.Cog):
                 break
 
         if scanlator is None or self.bot.config["user-agents"].get(scanlator.name, "N/A") is None:
-            await interaction.response.send_message(embed=error_em, ephemeral=True)
+            await interaction.followup.send(embed=error_em, ephemeral=True)
             return
 
         if scanlator.id_first:

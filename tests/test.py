@@ -450,22 +450,22 @@ class TestCases(dict):
             ),
             "asura": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://www.asura.gg/manga/4569947261-i-regressed-as-the-duke/"),
+                test_data=TestInputData("https://asura.gg/manga/4569947261-i-regressed-as-the-duke/"),
                 expected_result=ExpectedResult(
                     scanlator_name="asura",
-                    manga_url="https://www.asura.gg/manga/i-regressed-as-the-duke/",
+                    manga_url="https://asura.gg/manga/i-regressed-as-the-duke/",
                     completed=True,
                     human_name="I Regressed As The Duke",
                     manga_id=default_id_func(
-                        "https://www.asura.gg/manga/i-regressed-as-the-duke"
+                        "https://asura.gg/manga/i-regressed-as-the-duke"
                     ),
-                    curr_chapter_url="https://www.asura.gg/i-regressed-as-the-duke-chapter-64-notice/",
-                    first_chapter_url="https://www.asura.gg/i-regressed-as-the-duke-chapter-1/",
-                    cover_image="https://www.asura.gg/wp-content/uploads/2022/04/unknown_1-1.png",
+                    curr_chapter_url="https://asura.gg/i-regressed-as-the-duke-chapter-64-notice/",
+                    first_chapter_url="https://asura.gg/i-regressed-as-the-duke-chapter-1/",
+                    cover_image="https://asura.gg/wp-content/uploads/2022/04/unknown_1-1.png",
                     last_3_chapter_urls=[
-                        "https://www.asura.gg/i-regressed-as-the-duke-chapter-62/",
-                        "https://www.asura.gg/i-regressed-as-the-duke-chapter-63/",
-                        "https://www.asura.gg/i-regressed-as-the-duke-chapter-64-notice/",
+                        "https://asura.gg/i-regressed-as-the-duke-chapter-62/",
+                        "https://asura.gg/i-regressed-as-the-duke-chapter-63/",
+                        "https://asura.gg/i-regressed-as-the-duke-chapter-64-notice/",
                     ]
                 ),
                 test_subject=Asura
@@ -820,4 +820,4 @@ if __name__ == "__main__":
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("mangabaz"))
+    # asyncio.run(test_single_scanlator("asura"))
