@@ -312,7 +312,7 @@ class CommandsCog(commands.Cog):
             (Manganato, "Manganato", "https://manganato.com/", "https://manganato.com/manga-m123456"),
             (TritiniaScans, "TritiniaScans", "https://tritinia.org", "https://tritinia.org/manga/manga-title/"),
             (FlameScans, "FlameScans", "https://flamescans.org/", "https://flamescans.org/series/manga-title/"),
-            (Asura, "Asura", "https://asurascans.com/", "https://asurascans.com/manga/manga-title/"),
+            (Asura, "Asura", "https://asura.gg/", "https://asura.gg/manga/manga-title/"),
             (ReaperScans, "ReaperScans", "https://reaperscans.com/",
              "https://reaperscans.com/comics/12351-manga-title/"),
             (Comick, "Comick", "https://comick.app/", "https://comick.app/comic/manga-title/"),

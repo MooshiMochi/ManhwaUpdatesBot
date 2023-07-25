@@ -745,7 +745,7 @@ class Asura(ABCScan):
     icon_url = "https://www.asura.gg/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
     base_url = "https://www.asura.gg/"
     fmt_url = base_url + "manga/{manga_url_name}"
-    name = "asurascans"
+    name = "asura"
     id_first = False
     rate_limiter.root.manager.getLimiter(get_url_hostname(base_url), calls=15, period=Minutes.ONE)  # 4s interval
 
@@ -763,15 +763,15 @@ class Asura(ABCScan):
     @staticmethod
     def _fix_chapter_url(chapter_url: str) -> str:
         """This will add the ID to the URL all the time for consistency.
-        Mainly doing this bc asurascans are cheeky and are changing the URLs from time to time...
+        Mainly doing this bc asura are cheeky and are changing the URLs from time to time...
         """
-        pattern1 = re.compile(r"asurascans\.com/\d{9,}-", re.MULTILINE)
-        pattern2 = re.compile(r"asurascans\.com/manga/\d{9,}-", re.MULTILINE)
+        pattern1 = re.compile(r"asura\.gg/\d{9,}-", re.MULTILINE)
+        pattern2 = re.compile(r"asura\.gg/manga/\d{9,}-", re.MULTILINE)
 
         if pattern1.search(chapter_url):
-            return pattern1.sub("asurascans.com/", chapter_url)
+            return pattern1.sub("asura.gg/", chapter_url)
         elif pattern2.search(chapter_url):
-            return pattern2.sub("asurascans.com/manga/", chapter_url)
+            return pattern2.sub("asura.gg/manga/", chapter_url)
         return chapter_url
 
     @classmethod
