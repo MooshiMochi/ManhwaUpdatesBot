@@ -39,12 +39,16 @@ class Bot:
         self.mangadex_api = MangaDexAPI(self.session)
         self.comick_api = ComickAppAPI(self.session)
 
+    async def async_init(self):
+        await self.db.async_init()
+
     async def close(self):
         # await self.cf_scraper.close()
         await self.session.close()
         self.curl_session.close() if self.curl_session else None
 
     async def __aenter__(self):
+        await self.db.async_init()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -731,6 +735,7 @@ class TestCases(dict):
         super().__init__(**self.testCases)
 
     async def __aenter__(self):
+        await self.test_setup.bot.async_init()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -746,6 +751,7 @@ async def main():
 
 async def sub_main():
     test_setup = SetupTest()
+    await test_setup.bot.async_init()
 
     testCase = TestCase(
         test_setup,

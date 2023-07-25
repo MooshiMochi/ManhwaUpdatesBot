@@ -232,10 +232,11 @@ def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto
             "presences": False,
             "message_content": False,
         },
-        "extensions": ["src.ext.config", "src.ext.commands", "src.ext.dev", "src.ext.bookmark"],
+        "extensions": ["src.ext.config", "src.ext.commands", "src.ext.dev", "src.ext.bookmark", "src.ext.update_check"],
         "prefix": "m!",
         "constants": {
-            "synced": False,
+            "first_bot_startup": True,
+            "autosync": True,
             "log-channel-id": 0,
             "owner-ids": [0],
             "test-guild-id": 0,

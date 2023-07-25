@@ -144,3 +144,5 @@ logs/restart.txt
 browser_data/
 
 local/
+
+config.yml.copy
