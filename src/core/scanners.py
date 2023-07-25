@@ -742,8 +742,8 @@ class FlameScans(ABCScan):
 
 class Asura(ABCScan):
     rx: re.Pattern = RegExpressions.asura_url
-    icon_url = "https://www.asura.gg/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
-    base_url = "https://www.asura.gg/"
+    icon_url = "https://asura.gg/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
+    base_url = "https://asura.gg/"
     fmt_url = base_url + "manga/{manga_url_name}"
     name = "asura"
     id_first = False
