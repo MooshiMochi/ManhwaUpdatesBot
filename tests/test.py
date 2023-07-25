@@ -816,11 +816,8 @@ if __name__ == "__main__":
 
     setup_logging(level=logging.INFO)
 
-    # asyncio.run(main())
+    asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    asyncio.run(test_single_scanlator("mangabaz"))
-
-# Manganato, ReaperScans, LuminousScans, Mangapill, Bato
-# Mangadex ?
+    # asyncio.run(test_single_scanlator("mangabaz"))
