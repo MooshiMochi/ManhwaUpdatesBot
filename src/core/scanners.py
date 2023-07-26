@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 import re
 
-from discord import File
 from bs4 import BeautifulSoup
 from datetime import datetime
 from src.static import Constants, RegExpressions
@@ -1078,19 +1077,13 @@ class ReaperScans(ABCScan):
         new_chapters: list[Chapter] = [
             chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
         ]
-        if new_chapters:  # only fetch chapter image if there are new chapters to send updates for
-            image_bytes_buffer = await cls._fetch_image_bytes(bot, manga.cover_url)
-        else:
-            image_bytes_buffer = None
 
         return ChapterUpdate(
             new_chapters, cover_url, completed, [
                 {
                     "embed": cls._create_chapter_embed(
-                        "Reaper Scans", "attachment://img.png", manga.human_name, chapter.url, chapter.name
+                        "Reaper Scans", Constants.no_img_available_url, manga.human_name, chapter.url, chapter.name
                     ),
-                    "file": File(image_bytes_buffer, "img.png") if image_bytes_buffer else None,
-                    "buffer": image_bytes_buffer  # pass the buffer as a kwarg to be able to seek(0) later
                 }
                 for chapter in new_chapters
             ]
