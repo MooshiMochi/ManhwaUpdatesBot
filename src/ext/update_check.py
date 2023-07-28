@@ -107,6 +107,10 @@ class UpdateCheckCog(commands.Cog):
                         update_check_result.new_cover_url
                     )
 
+                    if len(update_check_result.new_chapters) - i > 10:  # only alert for last 10 chapters.
+                        continue
+                    # else: <= 10
+
                     if not guild_configs:
                         continue
 
@@ -158,15 +162,15 @@ class UpdateCheckCog(commands.Cog):
     async def check_updates_task(self):
         self.bot.logger.info("Checking for updates...")
         try:
-            series_to_delete: list[Manga] = await self.bot.db.get_series_to_delete()
-            if series_to_delete:
-                self.bot.logger.warning(
-                    "Deleting the following series: ================="
-                    + "\n".join(
-                        f'({x.scanlator}) ' + x.human_name for x in series_to_delete
-                    )
-                )
-                await self.bot.db.bulk_delete_series([m.id for m in series_to_delete])
+            # series_to_delete: list[Manga] = await self.bot.db.get_series_to_delete()
+            # if series_to_delete:
+            #     self.bot.logger.warning(
+            #         "Deleting the following series: ================="
+            #         + "\n".join(
+            #             f'({x.scanlator}) ' + x.human_name for x in series_to_delete
+            #         )
+            #     )
+            #     await self.bot.db.bulk_delete_series([m.id for m in series_to_delete])
 
             series_to_update: list[Manga] = await self.bot.db.get_series_to_update()
 

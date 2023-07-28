@@ -369,7 +369,7 @@ class ABCScan(ABC):
         curr_chapter = await cls.get_curr_chapter(bot, manga_id, manga_url)
         available_chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
         is_completed = await cls.is_series_completed(bot, manga_id, manga_url)
-        return Manga(
+        return_obj = Manga(
             manga_id,
             human_name,
             manga_url,
@@ -380,6 +380,8 @@ class ABCScan(ABC):
             is_completed,
             cls.name,
         )
+        await bot.db.add_series(return_obj)  # save to database for future use.
+        return return_obj
 
     @classmethod
     async def make_bookmark_object(
@@ -849,8 +851,12 @@ class GuildSettings:
     ) -> None:
         self._bot: MangaClient = bot
         self.guild: discord.Guild = bot.get_guild(guild_id)
-        self.channel: discord.TextChannel = self.guild.get_channel(channel_id)
-        self.role: Optional[discord.Role] = self.guild.get_role(updates_role_id)
+        if self.guild:
+            self.channel: discord.TextChannel = self.guild.get_channel(channel_id)
+            self.role: Optional[discord.Role] = self.guild.get_role(updates_role_id)
+        else:
+            self.channel: Optional[discord.TextChannel] = None
+            self.role: Optional[discord.Role] = None
         self.webhook: discord.Webhook = discord.Webhook.from_url(
             webhook_url, session=bot.session, client=bot
         )

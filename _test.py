@@ -4,7 +4,13 @@ import logging
 import sys
 from typing import Dict, Optional
 
-from src.core import CachedClientSession, CachedCurlCffiSession, ComickAppAPI, Database, MangaDexAPI
+from src.core import (
+    CachedClientSession,
+    CachedCurlCffiSession,
+    ComickAppAPI,
+    Database,
+    MangaDexAPI,
+)
 from src.core.scanners import SCANLATORS
 from src.utils import time_string_to_seconds
 
@@ -23,7 +29,9 @@ class Bot:
         self.mangadex_api = MangaDexAPI(self.session)
         self.comick_api = ComickAppAPI(self.session)
         self.curl_session = CachedCurlCffiSession(
-            impersonate="chrome101", name="cache.curl_cffi", proxies={"http": proxy_url, "https": proxy_url}
+            impersonate="chrome101",
+            name="cache.curl_cffi",
+            proxies={"http": proxy_url, "https": proxy_url},
         )
         self.logger = logging.getLogger("bot")
 
@@ -51,7 +59,8 @@ def default_id_func(manga_url: str) -> str:
 
 def load_config() -> Dict:
     import yaml
-    with open("../config.yml", "r") as f:
+
+    with open("config.yml", "r") as f:
         config = yaml.safe_load(f)
     return config
 
@@ -75,37 +84,11 @@ async def main():
     Bot.config = config
     Bot.proxy_addr = proxy_url
 
-    from src.core.scanners import Bato
+    from pprint import pprint
 
     async with Bot(proxy_url=proxy_url) as bot:
-        url = "https://bato.to/title/128011-hide-well-or-i-ll-see-your-xx"
-        manga_id = await Bato.get_manga_id(bot, url)
-
-        synopsis = await Bato.get_synopsis(bot, manga_id, url)
-        print(synopsis)
-
-
-async def test_ratelimit():
-    config = load_config()
-    proxy_url = fmt_proxy(**config["proxy"])
-
-    Bot.config = config
-    Bot.proxy_addr = proxy_url
-
-    total = 0
-    print("Beginning test...")
-    async with Bot(proxy_url=proxy_url) as bot:
-        while True:
-            r = await bot.curl_session.get("https://reaperscans.com/comics/8556-the-novels-extra",
-                                           impersonate="chrome101")
-            if r.status_code == 429:
-                print(f"Ratelimited! Total requests: {total}")
-                break
-            elif r.status_code != 200:
-                print(f"Error! Status code: {r.status_code}. Total requests: {total}")
-                break
-            total += 1
-            print(f"Total requests: {total}")
+        result = await bot.mangadex_api.search("The Novel's Extra", limit=1)
+        pprint(result)
 
 
 async def raw():
@@ -116,4 +99,4 @@ async def raw():
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(test_ratelimit())
+    asyncio.run(main())

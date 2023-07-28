@@ -34,7 +34,7 @@ def bind_autocomplete(callback: Callable, bind_to_object: object) -> Callable:
 
 async def scanlator(_, current: str) -> list[discord.app_commands.Choice[str]]:
     return [
-        app_commands.Choice(name=_scanlator.name, value=_scanlator.name) for _scanlator in SCANLATORS.values()
+        app_commands.Choice(name=_scanlator.name.title(), value=_scanlator.name) for _scanlator in SCANLATORS.values()
         if _scanlator.name.lower().startswith(current.lower()) and hasattr(_scanlator, "search")
     ]
 
