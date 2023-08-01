@@ -603,20 +603,20 @@ class TestCases(dict):
             ),
             "leviatanscans": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://en.leviatanscans.com/manga/trash-of-the-counts-family/"),
+                test_data=TestInputData("https://en.leviatanscans.com/manga/8th-class-mage-returns-1/"),
                 expected_result=ExpectedResult(
                     scanlator_name="leviatanscans",
-                    manga_url="https://en.leviatanscans.com/manga/trash-of-the-counts-family/",
-                    completed=False,
-                    human_name="Trash of the Count’s Family",
-                    manga_id=default_id_func("https://en.leviatanscans.com/manga/trash-of-the-counts-family"),
-                    curr_chapter_url="https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-92/",
-                    first_chapter_url="https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-0/",
-                    cover_image="https://en.leviatanscans.com/wp-content/uploads/2023/04/bannerTCF.jpg",
+                    manga_url="https://en.leviatanscans.com/manga/8th-class-mage-returns-1/",
+                    completed=True,
+                    human_name="8th-Class Mage Returns",
+                    manga_id=default_id_func("https://en.leviatanscans.com/manga/8th-class-mage-returns-1"),
+                    curr_chapter_url="https://en.leviatanscans.com/manga/8th-class-mage-returns-1/chapter-81/",
+                    first_chapter_url="https://en.leviatanscans.com/manga/8th-class-mage-returns-1/chapter-1/",
+                    cover_image="https://en.leviatanscans.com/wp-content/uploads/2023/05/banner-8CMR.png",
                     last_3_chapter_urls=[
-                        "https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-90/",
-                        "https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-91/",
-                        "https://en.leviatanscans.com/manga/trash-of-the-counts-family/chapter-92/",
+                        "https://en.leviatanscans.com/manga/8th-class-mage-returns-1/chapter-79/",
+                        "https://en.leviatanscans.com/manga/8th-class-mage-returns-1/chapter-80/",
+                        "https://en.leviatanscans.com/manga/8th-class-mage-returns-1/chapter-81/",
                     ],
                 ),
                 test_subject=LeviatanScans
@@ -820,4 +820,4 @@ if __name__ == "__main__":
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("asura"))
+    # asyncio.run(test_single_scanlator("leviatanscans"))
