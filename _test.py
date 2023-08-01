@@ -85,9 +85,11 @@ async def main():
     Bot.proxy_addr = proxy_url
 
     from pprint import pprint
+    from src.core.scanners import LeviatanScans
 
     async with Bot(proxy_url=proxy_url) as bot:
-        result = await bot.mangadex_api.search("The Novel's Extra", limit=1)
+        url = "https://en.leviatanscans.com/manga/my-dad-is-too-strong-1/"
+        result = await LeviatanScans.get_all_chapters(bot, "", url)
         pprint(result)
 
 

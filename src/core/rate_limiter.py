@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import random
 import sys
 import time
 from math import floor
@@ -131,8 +132,9 @@ class Limiter:
             if self.delay_remaining > max_delay and is_user_request:
                 raise RateLimitExceeded(self, "Delay between request has been reached", self.delay_remaining)
             else:
-                logger.debug(f"[{self.name}] Delaying for {self.delay_remaining:.2f} seconds")
-                await asyncio.sleep(self.delay_remaining)  # wait a bit for the delay to end
+                extra_delay = random.uniform(0.5, 1.5)  # add a bit of randomness to the delay
+                logger.debug(f"[{self.name}] Delaying for {self.delay_remaining + extra_delay:.2f} seconds")
+                await asyncio.sleep(self.delay_remaining + extra_delay)  # wait a bit for the delay to end
 
         if is_user_request:
             self.num_user_calls_on_hold = max(0, self.num_user_calls_on_hold - 1)

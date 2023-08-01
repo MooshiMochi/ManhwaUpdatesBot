@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Self, TYPE_CHECKING
+from typing import Iterable, Optional, Self, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -23,7 +23,7 @@ from src.utils import (
     create_bookmark_embed,
     respond_if_limit_reached, sort_bookmarks,
     group_items_by,
-    get_manga_scanlator_class,
+    get_manga_scanlator_class
 )
 from src.enums import BookmarkSortType, BookmarkViewType
 
@@ -346,13 +346,192 @@ class BookmarkView(BaseView):
         await interaction.response.edit_message(embed=self._get_display_embed())
 
 
+class PaginatorView(discord.ui.View):
+    def __init__(
+            self,
+            items: list[Union[str, int, discord.Embed]] = None,
+            interaction: Union[discord.Interaction, Context] = None,
+            timeout: float = 3 * 3600  # 3 hours
+    ) -> None:
+        self.items = items
+        self.interaction: discord.Interaction = interaction
+        self.page: int = 0
+        self.message: Optional[discord.Message] = None
+
+        if not self.items and not self.interaction:
+            raise AttributeError(
+                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through as well "
+                "as the interaction."
+            )
+
+        elif not items:
+            raise AttributeError(
+                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through."
+            )
+
+        elif not interaction:
+            raise AttributeError("The command interaction was not provided.")
+
+        if not isinstance(items, Iterable):
+            raise AttributeError(
+                "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
+            )
+
+        elif not all(isinstance(item, (str, int, discord.Embed)) for item in items):
+            raise AttributeError(
+                "All items within the iterable must be of type 'str', 'int' or 'discord.Embed'."
+            )
+
+        super().__init__(timeout=timeout)
+        self.items = list(self.items)
+
+    def __get_response_kwargs(self):
+        if isinstance(self.items[self.page], discord.Embed):
+            return {"embed": self.items[self.page]}
+        else:
+            return {"content": self.items[self.page]}
+
+    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple)
+    async def _first_page(
+            self, interaction: discord.Interaction, _
+    ):
+        self.page = 0
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple)
+    async def back(self, interaction: discord.Interaction, _):
+        self.page -= 1
+        if self.page == -1:
+            self.page = len(self.items) - 1
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red)
+    async def _stop(self, interaction: discord.Interaction, _):
+        await interaction.response.edit_message(view=None)
+        self.stop()
+
+    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple)
+    async def forward(self, interaction: discord.Interaction, _):
+        self.page += 1
+        if self.page == len(self.items):
+            self.page = 0
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple)
+    async def _last_page(
+            self, interaction: discord.Interaction, _
+    ):
+        self.page = len(self.items) - 1
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if isinstance(self.interaction, discord.Interaction):
+            author = self.interaction.user
+        else:
+            author = self.interaction.author
+
+        if author.id == interaction.user.id:
+            return True
+        else:
+            embed = discord.Embed(title=f"🚫 You cannot use this menu!", color=0xFF0000)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return False
+
+    async def on_timeout(self) -> None:
+        if self.message is not None:
+            await self.message.edit(view=None)
+        self.stop()
+
+    async def on_error(
+            self, interaction: discord.Interaction, error: Exception, item
+    ) -> None:
+        if isinstance(error, TimeoutError):
+            pass
+        else:
+            em = discord.Embed(
+                title=f"🚫 An unknown error occurred!",
+                description=f"{str(error)[-1500:]}",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=em, ephemeral=True)
+
+
 class SubscribeView(View):
     def __init__(
             self,
             bot: MangaClient,
-    ):
-        super().__init__(timeout=None)
+            items: list[Union[str, int, discord.Embed]] = None,
+            author_id: int = None
+    ) -> None:
         self.bot: MangaClient = bot
+        self.items = items
+        self.page: int = 0
+        self.author_id: int = author_id
+
+        if not self.author_id:
+            pass
+
+        elif not isinstance(items, Iterable):
+            raise AttributeError(
+                "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
+            )
+
+        elif not all(isinstance(item, discord.Embed) for item in items):
+            raise AttributeError(
+                "All items within the iterable must be of type 'discord.Embed'."
+            )
+
+        super().__init__(timeout=None)
+        if self.items:
+            self.items = list(self.items)
+
+    def __get_response_kwargs(self):
+        if isinstance(self.items[self.page], discord.Embed):
+            return {"embed": self.items[self.page]}
+        else:
+            return {"content": self.items[self.page]}
+
+    def _delete_nav_buttons(self):
+        for child in self.children:
+            if child.row == 0:
+                self.remove_item(child)
+
+    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_left")
+    async def _first_page(
+            self, interaction: discord.Interaction, _
+    ):
+        self.page = 0
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, custom_id="nav_left")
+    async def back(self, interaction: discord.Interaction, _):
+        self.page -= 1
+        if self.page == -1:
+            self.page = len(self.items) - 1
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, custom_id="nav_stop")
+    async def _stop(self, interaction: discord.Interaction, _):
+        self._delete_nav_buttons()
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, custom_id="nav_right")
+    async def forward(self, interaction: discord.Interaction, _):
+        self.page += 1
+        if self.page == len(self.items):
+            self.page = 0
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_right")
+    async def _last_page(
+            self, interaction: discord.Interaction, _
+    ):
+        self.page = len(self.items) - 1
+        await interaction.response.edit_message(**self.__get_response_kwargs())
+
+    @discord.ui.button(style=discord.ButtonStyle.grey, disabled=True, custom_id="none_one")
+    async def _none_one(self, interaction: discord.Interaction, _):
+        pass
 
     @discord.ui.button(
         label="Subscribe",
@@ -361,8 +540,10 @@ class SubscribeView(View):
         custom_id="search_subscribe",
     )
     async def subscribe(self, interaction: discord.Interaction, _):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+
         message: discord.Message = interaction.message
-        manga_home_url = message.embeds[0].fields[-1].value
+        manga_home_url = message.embeds[0].url
 
         scanlator: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_home_url)
 
@@ -379,7 +560,7 @@ class SubscribeView(View):
                 )
                 em.description = "You are already subscribed to this series."
                 em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-                return await interaction.response.send_message(embed=em, ephemeral=True)
+                return await interaction.followup.send(embed=em, ephemeral=True)
 
         manga: Manga | None = await respond_if_limit_reached(
             scanlator.make_manga_object(self.bot, series_id, manga_url),
@@ -387,11 +568,14 @@ class SubscribeView(View):
         )
         if manga == "LIMIT_REACHED":
             return
-        # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, manga_url)
 
         if manga.completed:
             raise MangaCompletedOrDropped(manga.url)
 
+        # by default, searching for a manga will save it to DB, so no need to re-add it to database
+        # But we will add it anyway in case of any updates to the manga.
+        # Even though if it's saved in DB, it will get fetched from DB so that doesn't really make sense,
+        # but it is what it is.
         await self.bot.db.add_series(manga)
 
         await self.bot.db.subscribe_user(
@@ -406,7 +590,94 @@ class SubscribeView(View):
         embed.set_image(url=manga.cover_url)
         embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @discord.ui.button(style=discord.ButtonStyle.grey, disabled=True, custom_id="none_two")
+    async def _none_two(self, interaction: discord.Interaction, _):
+        pass
+
+    @discord.ui.button(
+        label="Bookmark",
+        style=ButtonStyle.blurple,
+        emoji="🔖",
+        custom_id="search_bookmark"
+    )
+    async def bookmark(self, interaction: discord.Interaction, _):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+
+        manga_url = interaction.message.embeds[0].url
+        # get the scanlator
+        scanlator = get_manga_scanlator_class(SCANLATORS, url=manga_url)
+
+        # get the ID:
+        manga_id = await scanlator.get_manga_id(self.bot, manga_url)
+        user_bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
+        for bookmark in user_bookmarks:
+            if bookmark.manga.id == manga_id:
+                return await interaction.followup.send(embed=discord.Embed(
+                    title="Already Bookmarked",
+                    description="You have already bookmarked this series.",
+                    color=discord.Color.red()
+                ), ephemeral=True)
+        # make bookmark obj
+        bookmark_obj = await scanlator.make_bookmark_object(
+            self.bot, manga_id, manga_url, interaction.user.id, interaction.guild_id
+        )
+        await self.bot.db.upsert_bookmark(bookmark_obj)
+
+        embed = discord.Embed(
+            title="Bookmarked!",
+            color=discord.Color.green(),
+            description=f"Successfully bookmarked **[{bookmark_obj.manga.human_name}]({bookmark_obj.manga.url})**",
+        )
+        embed.set_image(url=bookmark_obj.manga.cover_url)
+        embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @discord.ui.button(style=discord.ButtonStyle.grey, disabled=True, custom_id="none_three")
+    async def _none_three(self, interaction: discord.Interaction, _):
+        pass
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        custom_id = interaction.data["custom_id"]
+        if custom_id.startswith("nav"):
+            if self.author_id is None:
+                self._delete_nav_buttons()
+                await interaction.response.edit_message(view=self)
+                # await interaction.followup.send(
+                #     discord.Embed(
+                #         title="🚫 There are no items to paginate!",
+                #         color=0xFF0000,
+                #         description="This menu has been updated. Please use any of the buttons below."
+                #     )
+                # )
+                return False
+            elif self.author_id == interaction.user.id:
+                return True
+            else:
+                embed = discord.Embed(
+                    title=f"🚫 You cannot use this menu!",
+                    color=0xFF0000,
+                    description="Try the buttons below. They should work 😉!"
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return False
+        else:
+            return True
+
+    async def on_error(
+            self, interaction: discord.Interaction, error: Exception, item
+    ) -> None:
+        if isinstance(error, TimeoutError):
+            pass
+        else:
+            em = discord.Embed(
+                title=f"🚫 An unknown error occurred!",
+                description=f"{str(error)[-1500:]}",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=em, ephemeral=True)
 
 
 class ConfirmView(BaseView):

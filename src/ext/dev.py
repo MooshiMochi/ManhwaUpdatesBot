@@ -19,8 +19,8 @@ import discord
 from discord import Object
 from discord.ext import commands
 
-from src.core.objects import PaginatorView, TextPageSource, GuildSettings
-from src.ui.views import ConfirmView
+from src.core.objects import TextPageSource, GuildSettings
+from src.ui.views import ConfirmView, PaginatorView
 
 
 class Restricted(commands.Cog):

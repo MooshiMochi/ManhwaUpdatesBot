@@ -88,12 +88,15 @@ class MangaDexAPI:
         result = await self.__request(
             "GET", endpoint, params=params
         )
-        for x in range(len(result.copy())):
-            if result["data"][x]["attributes"]["volume"] is None:
-                result["data"][x]["attributes"]["volume"] = 0
-        result = sorted(result["data"], key=lambda _x: (
-            float(_x['attributes']['volume'] or 0), float(_x['attributes']['chapter'])
-        ))
+        if result.get("data"):
+            for x in range(len(result.copy())):
+                if result["data"][x]["attributes"]["volume"] is None:
+                    result["data"][x]["attributes"]["volume"] = 0
+            result = sorted(result["data"], key=lambda _x: (
+                float(_x['attributes']['volume'] or 0), float(_x['attributes']['chapter'])
+            ))
+        else:
+            result = result["data"] or []
         return list(result)
 
     async def search(

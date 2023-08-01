@@ -13,8 +13,8 @@ from discord.ext import commands
 
 from src.core.errors import MangaCompletedOrDropped
 from src.core.scanners import *
-from src.core.objects import Manga, PaginatorView
-from src.ui.views import SubscribeView
+from src.core.objects import Manga
+from src.ui.views import SubscribeView, PaginatorView
 from src.utils import (
     group_items_by,
     create_embeds,
@@ -523,7 +523,7 @@ class CommandsCog(commands.Cog):
             query: str,
             scanlator_website: Optional[str] = None,
     ) -> None:
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         cannot_search_em = discord.Embed(
             title="Error",
             description=(
@@ -571,8 +571,8 @@ class CommandsCog(commands.Cog):
                     f"No results were found for `{query}`", ephemeral=True
                 )
             else:
-                paginator_view = PaginatorView(items=results, interaction=interaction, timeout=3600)
-                await interaction.followup.send(embed=results[0], view=paginator_view)
+                view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)
+                await interaction.followup.send(embed=results[0], view=view, ephemeral=False)
                 return
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from asyncio import TimeoutError
-from typing import Any, Iterable, TYPE_CHECKING, Union
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
@@ -14,7 +13,6 @@ from typing import Optional
 import aiohttp
 import discord
 from bs4 import BeautifulSoup
-from discord.ext.commands import Context
 from discord.ext.commands import Paginator as CommandPaginator
 from abc import ABC, abstractmethod
 import hashlib
@@ -358,6 +356,8 @@ class ABCScan(ABC):
         Returns:
             Manga/None - The Manga object if the manga is found, otherwise `None`.
         """
+        if not manga_id:
+            manga_id = await cls.get_manga_id(bot, manga_url)
         db_object: Manga = await bot.db.get_series(manga_id)
         if db_object:
             return db_object
@@ -474,116 +474,6 @@ class ABCScan(ABC):
             str/None - The cover image URL of the manga.
         """
         raise NotImplementedError
-
-
-class PaginatorView(discord.ui.View):
-    def __init__(
-            self,
-            items: list[Union[str, int, discord.Embed]] = None,
-            interaction: Union[discord.Interaction, Context] = None,
-            timeout: float = 3 * 3600  # 3 hours
-    ) -> None:
-        self.items = items
-        self.interaction: discord.Interaction = interaction
-        self.page: int = 0
-        self.message: Optional[discord.Message] = None
-
-        if not self.items and not self.interaction:
-            raise AttributeError(
-                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through as well "
-                "as the interaction."
-            )
-
-        elif not items:
-            raise AttributeError(
-                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through."
-            )
-
-        elif not interaction:
-            raise AttributeError("The command interaction was not provided.")
-
-        if not isinstance(items, Iterable):
-            raise AttributeError(
-                "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
-            )
-
-        elif not all(isinstance(item, (str, int, discord.Embed)) for item in items):
-            raise AttributeError(
-                "All items within the iterable must be of type 'str', 'int' or 'discord.Embed'."
-            )
-
-        super().__init__(timeout=timeout)
-        self.items = list(self.items)
-
-    def __get_response_kwargs(self):
-        if isinstance(self.items[self.page], discord.Embed):
-            return {"embed": self.items[self.page]}
-        else:
-            return {"content": self.items[self.page]}
-
-    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple)
-    async def _first_page(
-            self, interaction: discord.Interaction, _
-    ):
-        self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())
-
-    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple)
-    async def back(self, interaction: discord.Interaction, _):
-        self.page -= 1
-        if self.page == -1:
-            self.page = len(self.items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())
-
-    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red)
-    async def _stop(self, interaction: discord.Interaction, _):
-        await interaction.response.edit_message(view=None)
-        self.stop()
-
-    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple)
-    async def forward(self, interaction: discord.Interaction, _):
-        self.page += 1
-        if self.page == len(self.items):
-            self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())
-
-    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple)
-    async def _last_page(
-            self, interaction: discord.Interaction, _
-    ):
-        self.page = len(self.items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if isinstance(self.interaction, discord.Interaction):
-            author = self.interaction.user
-        else:
-            author = self.interaction.author
-
-        if author.id == interaction.user.id:
-            return True
-        else:
-            embed = discord.Embed(title=f"🚫 You cannot use this menu!", color=0xFF0000)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return False
-
-    async def on_timeout(self) -> None:
-        if self.message is not None:
-            await self.message.edit(view=None)
-        self.stop()
-
-    async def on_error(
-            self, interaction: discord.Interaction, error: Exception, item
-    ) -> None:
-        if isinstance(error, TimeoutError):
-            pass
-        else:
-            em = discord.Embed(
-                title=f"🚫 An unknown error occurred!",
-                description=f"{str(error)[-1500:]}",
-                color=0xFF0000,
-            )
-            await interaction.response.send_message(embed=em, ephemeral=True)
 
 
 class TextPageSource:

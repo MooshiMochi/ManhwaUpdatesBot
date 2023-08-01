@@ -385,7 +385,8 @@ def modify_embeds(
         footer_kwargs: dict = None,
         thumbnail_image_url: str | list[str] = None,
         image_url: str | list[str] = None,
-        show_page_number: bool = False
+        show_page_number: bool = False,
+        append_mode: bool = False,
 ) -> list[discord.Embed]:
     """
     Summary:
@@ -399,6 +400,7 @@ def modify_embeds(
         thumbnail_image_url: The thumbnail image URL to use.
         image_url: The image URL to use.
         show_page_number: Whether to show the page number.
+        append_mode: Whether to append to the value if it exists or overwrite the current value.
 
     Returns:
         list[discord.Embed]: The modified embeds.
@@ -411,7 +413,8 @@ def modify_embeds(
                 footer_kwargs={"text": "MangaDex"},
                 thumbnail_image_url="https://example.com/thumbnail.png",
                 image_url="https://example.com/image.png",
-                show_page_number=True
+                show_page_number=True,
+                append_mode=True,
             )
         [<discord.embeds.Embed object at 0x000001F5B1B5B4C0>, ...]
     """
