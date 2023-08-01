@@ -94,11 +94,11 @@ async def main():
 
 
 async def raw():
-    time_string = "22 mins ago".strip()
+    time_string = "a few seconds ago".strip()
     x = time_string_to_seconds(time_string)
     print(x)
 
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(main())
+    asyncio.run(raw())

@@ -146,3 +146,5 @@ browser_data/
 local/
 
 config.yml.copy
+
+_test.py

@@ -551,7 +551,7 @@ def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
 
 
 def relative_time_to_seconds(time_string) -> Optional[int]:
-    time_regex = r'(?P<value>\d+|an?)\s+(?P<unit>[a-z]+)\s+ago'
+    time_regex = r'(?P<value>\d+|an?)(?:\sfew)?\s+(?P<unit>[a-z]+)\s+ago'
     match = re.match(time_regex, time_string.strip(), re.I)
     if not match:
         raise ValueError(f'Invalid time string: {time_string}')
