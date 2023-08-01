@@ -295,8 +295,8 @@ async def determineLimitsAndPeriod(
                             try:
                                 reset_time = await _ping_for_200(request_func, *args, incremental_backoff, **kwargs)
                             except ValueError:
-                                print("Could not determine the reset time for the given request function")
-                                print("Total number of calls allowed per given time period is:", num_calls - 1)
+                                logger.error("Could not determine the reset time for the given request function")
+                                logger.info("Total number of calls allowed per given time period is:", num_calls - 1)
                                 raise
                             period = reset_time - start
                             return num_calls - 1, period
@@ -306,7 +306,7 @@ async def determineLimitsAndPeriod(
                         "with the 'status_code' or 'status' attribute."
                     )
     except asyncio.TimeoutError:
-        print("Could not determine the reset time for the given request function")
-        print(
+        logger.error("Could not determine the reset time for the given request function")
+        logger.error(
             "This is probably because the given server/website has a very high rate limit (> 10 min period)")
         raise

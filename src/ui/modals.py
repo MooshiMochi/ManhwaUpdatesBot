@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from src.core.objects import Bookmark
     from . import BookmarkView
@@ -41,4 +43,9 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         # Make sure we know what the error actually is
         self.logger.error(traceback.print_exception(type(error), error, error.__traceback__))
-        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                'Oops! Something went wrong.', ephemeral=True
+            )
+        else:
+            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)

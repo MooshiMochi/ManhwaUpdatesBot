@@ -70,6 +70,10 @@ class BaseView(View):
             await interaction.response.send_message(
                 f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
             )
+        else:
+            await interaction.followup.send(
+                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+            )
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if isinstance(self.interaction_or_ctx, discord.Interaction):
@@ -453,7 +457,10 @@ class PaginatorView(discord.ui.View):
                 description=f"{str(error)[-1500:]}",
                 color=0xFF0000,
             )
-            await interaction.response.send_message(embed=em, ephemeral=True)
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=em, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=em, ephemeral=True)
 
 
 class SubscribeView(View):
@@ -464,7 +471,7 @@ class SubscribeView(View):
             author_id: int = None
     ) -> None:
         self.bot: MangaClient = bot
-        self.items = items
+        self.items = [item for item in items if item is not None] if items else None
         self.page: int = 0
         self.author_id: int = author_id
 
@@ -476,7 +483,7 @@ class SubscribeView(View):
                 "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
             )
 
-        elif not all(isinstance(item, discord.Embed) for item in items):
+        elif not all(isinstance(item, discord.Embed) for item in self.items):
             raise AttributeError(
                 "All items within the iterable must be of type 'discord.Embed'."
             )
@@ -496,42 +503,38 @@ class SubscribeView(View):
             if child.row == 0:
                 self.remove_item(child)
 
-    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_left")
+    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_left", row=0)
     async def _first_page(
             self, interaction: discord.Interaction, _
     ):
         self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
-    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, custom_id="nav_left")
+    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, custom_id="nav_left", row=0)
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
             self.page = len(self.items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
-    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, custom_id="nav_stop")
+    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, custom_id="nav_stop", row=0)
     async def _stop(self, interaction: discord.Interaction, _):
         self._delete_nav_buttons()
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, custom_id="nav_right")
+    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, custom_id="nav_right", row=0)
     async def forward(self, interaction: discord.Interaction, _):
         self.page += 1
         if self.page == len(self.items):
             self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())
 
-    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_right")
+    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_right", row=0)
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
         self.page = len(self.items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())
-
-    @discord.ui.button(style=discord.ButtonStyle.grey, disabled=True, custom_id="none_one")
-    async def _none_one(self, interaction: discord.Interaction, _):
-        pass
 
     @discord.ui.button(
         label="Subscribe",
@@ -553,14 +556,15 @@ class SubscribeView(View):
         current_user_subs: list[Manga] = await self.bot.db.get_user_subs(
             interaction.user.id
         )
-        for manga in current_user_subs:
-            if manga.id == series_id:
-                em = discord.Embed(
-                    title="Already Subscribed", color=discord.Color.red()
-                )
-                em.description = "You are already subscribed to this series."
-                em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-                return await interaction.followup.send(embed=em, ephemeral=True)
+        if current_user_subs:
+            for manga in current_user_subs:
+                if manga.id == series_id:
+                    em = discord.Embed(
+                        title="Already Subscribed", color=discord.Color.red()
+                    )
+                    em.description = "You are already subscribed to this series."
+                    em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+                    return await interaction.followup.send(embed=em, ephemeral=True)
 
         manga: Manga | None = await respond_if_limit_reached(
             scanlator.make_manga_object(self.bot, series_id, manga_url),
@@ -592,8 +596,8 @@ class SubscribeView(View):
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @discord.ui.button(style=discord.ButtonStyle.grey, disabled=True, custom_id="none_two")
-    async def _none_two(self, interaction: discord.Interaction, _):
+    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.grey, disabled=True, custom_id="none_one")
+    async def _none_one(self, interaction: discord.Interaction, _):
         pass
 
     @discord.ui.button(
@@ -612,13 +616,14 @@ class SubscribeView(View):
         # get the ID:
         manga_id = await scanlator.get_manga_id(self.bot, manga_url)
         user_bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
-        for bookmark in user_bookmarks:
-            if bookmark.manga.id == manga_id:
-                return await interaction.followup.send(embed=discord.Embed(
-                    title="Already Bookmarked",
-                    description="You have already bookmarked this series.",
-                    color=discord.Color.red()
-                ), ephemeral=True)
+        if user_bookmarks:
+            for bookmark in user_bookmarks:
+                if bookmark.manga.id == manga_id:
+                    return await interaction.followup.send(embed=discord.Embed(
+                        title="Already Bookmarked",
+                        description="You have already bookmarked this series.",
+                        color=discord.Color.red()
+                    ), ephemeral=True)
         # make bookmark obj
         bookmark_obj = await scanlator.make_bookmark_object(
             self.bot, manga_id, manga_url, interaction.user.id, interaction.guild_id
@@ -634,10 +639,6 @@ class SubscribeView(View):
         embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @discord.ui.button(style=discord.ButtonStyle.grey, disabled=True, custom_id="none_three")
-    async def _none_three(self, interaction: discord.Interaction, _):
-        pass
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         custom_id = interaction.data["custom_id"]
@@ -677,7 +678,10 @@ class SubscribeView(View):
                 description=f"{str(error)[-1500:]}",
                 color=0xFF0000,
             )
-            await interaction.response.send_message(embed=em, ephemeral=True)
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=em, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=em, ephemeral=True)
 
 
 class ConfirmView(BaseView):
@@ -872,6 +876,10 @@ class BookmarkChapterView(View):
         )
         if not interaction.response.is_done():
             await interaction.response.send_message(
+                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
                 f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
             )
 

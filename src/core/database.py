@@ -406,9 +406,11 @@ class Database:
             list[Manga] | None: list of Manga class objects that needs to be updated.
         """
         async with aiosqlite.connect(self.db_name) as db:
+            # only update series that are not completed and are subscribed to by at least one user
             async with db.execute(
                     """
-                    SELECT * FROM series WHERE completed = 0;
+                    SELECT * FROM series WHERE
+                    completed = 0 AND id IN (SELECT series_id FROM users UNION SELECT series_id FROM bookmarks);
                     """
             ) as cursor:
                 result = await cursor.fetchall()

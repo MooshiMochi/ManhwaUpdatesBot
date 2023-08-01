@@ -542,13 +542,14 @@ class CommandsCog(commands.Cog):
                 )
             if hasattr(scanlator, "search"):
                 em = await scanlator.search(self.bot, query=query, as_em=True)
-                return await interaction.followup.send(embed=em, ephemeral=True)
+                view = SubscribeView(self.bot)
+                return await interaction.followup.send(embed=em, ephemeral=True, view=view)
             else:
                 return await interaction.followup.send(
                     embed=cannot_search_em, ephemeral=True
                 )
         elif scanlator_website:
-            scanlator = SCANLATORS.get(scanlator_website)
+            scanlator = SCANLATORS.get(scanlator_website.lower())
             if not scanlator:
                 return await interaction.followup.send(
                     f"Could not find a scanlator with the name `{scanlator_website}`.",
@@ -562,10 +563,10 @@ class CommandsCog(commands.Cog):
                     embed=cannot_search_em, ephemeral=True
                 )
         else:
-            results = [
+            results = [x for x in [
                 await scanlator.search(self.bot, query=query) for scanlator in SCANLATORS.values() if
                 hasattr(scanlator, "search")
-            ]
+            ] if x is not None]
             if not results:
                 return await interaction.followup.send(
                     f"No results were found for `{query}`", ephemeral=True

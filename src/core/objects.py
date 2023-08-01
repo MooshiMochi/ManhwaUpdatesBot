@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
 from io import BytesIO
+import os
 from .errors import URLAccessFailed
 import traceback as tb
 from datetime import datetime
@@ -806,22 +807,27 @@ class CachedResponse:
                 stored = self._data_dict[key]
             except Exception as e:
                 self._data_dict[key] = {"type": "error", "content": e}
-                if "mangadex" in str(self._response.url):
-                    print("Mangadex throws text/html instead of application/json again...")
-                    with open("logs/mangadex-error.html", "w") as f:
-                        f.write(self._data_dict.get("text"))
-                    print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
+                if isinstance(e, aiohttp.ContentTypeError):
+                    self._write_maybe_403()
                 stored = self._data_dict[key]
 
         if stored["type"] == "error":
-            if "mangadex" in str(self._response.url):
-                print("Mangadex throws text/html instead of application/json again (x2)...")
-                with open("logs/mangadex-error.html", "w") as f:
-                    f.write(self._data_dict.get("text"))
-                print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
+            if isinstance(stored["content"], aiohttp.ContentTypeError):
+                self._write_maybe_403()
             raise stored["content"]
         else:
             return stored["content"]
+
+    def _write_maybe_403(self):
+        print("Received a potential 403 error when attempting to decode JSON.")
+        folder = "logs/403s"
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        filename = folder + "/" + str(len(os.listdir(folder))) + ".html"
+
+        with open(filename, "w") as f:
+            f.write(self._data_dict.get("text"))
+        # print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
 
     async def json(self):
         return await self.try_return("json")
