@@ -338,7 +338,7 @@ class ABCScan(ABC):
         Returns
             Chapter/None - The current chapter text of the manga.
         """
-        chapters = (await cls.get_all_chapters(bot, manga_id, manga_url))
+        chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
         if chapters:
             return chapters[-1]
         return None
@@ -645,7 +645,7 @@ class Manga:
             self.url,
             self.synopsis,
             self.cover_url,
-            self.last_chapter.to_json(),
+            self.last_chapter.to_json() if self.last_chapter else None,
             self.chapters_to_text(),
             self.completed,
             self.scanlator,
