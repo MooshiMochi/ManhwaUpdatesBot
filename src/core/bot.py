@@ -153,6 +153,47 @@ class MangaClient(commands.Bot):
         except Exception as e:
             self._logger.error(f"Error while logging: {e}")
 
+    async def log_command_usage(self, interaction: discord.Interaction) -> None:
+        if not self.is_ready():
+            await self.wait_until_ready()
+        if interaction.type != discord.InteractionType.application_command:
+            return
+
+        spc = "\u200b \u200b > "
+        user = interaction.user
+        cmd_name = interaction.data["name"]
+        cmd_opts: list[dict] = interaction.data.get("options", [])
+
+        if len(cmd_opts) == 1:
+            cmd_opts = cmd_opts[0]["options"]
+            cmd_name += f" {interaction.data['options'][0]['name']}"
+            options_list = [f"{opt['name']}: {opt['value']}" for opt in cmd_opts]
+        elif len(cmd_opts) > 1:
+            options_list = [f"{opt['name']}: {opt['value']}" for opt in cmd_opts]
+        else:
+            options_list = []
+
+        fmt_opts = f'\n{spc}'.join(options_list)
+        pretty_msg = f"```\n[ Author  ] > {user}\n[ Command ] > /{cmd_name}```"
+        cmd_log_channel_id = self._config["constants"].get("command-log-channel-id")
+        cmd_log = f"[Command: {user}] > /{cmd_name}"
+        if fmt_opts:
+            cmd_log += f" {' '.join(options_list)}"
+            pretty_msg = pretty_msg[:-3] + f"\n[ Options ] > (see below)\n{spc}{fmt_opts}```"
+
+        self.logger.debug(cmd_log)
+        if not cmd_log_channel_id:
+            return
+        else:
+            channel = self.get_channel(cmd_log_channel_id)
+            if not channel:
+                return
+            try:
+                em = discord.Embed(color=0x000000, description=pretty_msg)
+                await channel.send(embed=em)
+            except Exception as e:
+                self.logger.error(f"Error while logging command usage: {e}")
+
     async def on_message(self, message: discord.Message, /) -> None:
         await self.process_commands(message)
 

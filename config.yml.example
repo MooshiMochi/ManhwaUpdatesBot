@@ -1,6 +1,7 @@
 debug: false
 constants:
   log-channel-id: 1076211859302129726
+  command-log-channel-id: 1136301113218437311
   time-for-manga-to-be-considered-stale: 7776000
   owner-ids:
     - 383287544336613385

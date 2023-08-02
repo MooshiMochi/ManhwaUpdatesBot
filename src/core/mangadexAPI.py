@@ -93,7 +93,9 @@ class MangaDexAPI:
                 if result["data"][x]["attributes"]["volume"] is None:
                     result["data"][x]["attributes"]["volume"] = 0
             result = sorted(result["data"], key=lambda _x: (
-                float(_x['attributes']['volume'] or 0), float(_x['attributes']['chapter'])
+                float(_x['attributes']['volume'] or 0), float(
+                    ''.join(filter(lambda z: z.isdigit(), _x['attributes']['chapter'])) or 0
+                )
             ))
         else:
             result = result["data"] or []

@@ -44,6 +44,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
         ):
             self.client.logger.error("I don't have permission to send messages or embed links.")
             return False
+        await self.client.log_command_usage(interaction)
         return True
 
     async def on_error(

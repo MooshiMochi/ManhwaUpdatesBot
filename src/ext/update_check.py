@@ -37,12 +37,12 @@ class UpdateCheckCog(commands.Cog):
             self.bot.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
             return
 
-        self.bot.logger.info(f"Checking for updates for {mangas[0].scanlator}...")
+        self.bot.logger.debug(f"Checking for updates for {mangas[0].scanlator}...")
         scanner = self.SCANLATORS.get(mangas[0].scanlator)
 
         disabled_scanlators = await self.bot.db.get_disabled_scanlators()
         if scanner.name in disabled_scanlators:
-            self.bot.logger.info(f"Scanlator {scanner.name} is disabled... Ignoring update check!")
+            self.bot.logger.debug(f"Scanlator {scanner.name} is disabled... Ignoring update check!")
             return
 
         for manga in mangas:
@@ -64,7 +64,7 @@ class UpdateCheckCog(commands.Cog):
                 if e.status >= 500:
                     pass  # proxy server error, ignore
                 else:
-                    self.bot.logger.warning(
+                    self.bot.logger.error(
                         f"Error while checking for updates for {manga.human_name} ({manga.id})",
                         exc_info=e,
                     )
@@ -75,7 +75,7 @@ class UpdateCheckCog(commands.Cog):
                 continue
 
             except Exception as e:
-                self.bot.logger.warning(
+                self.bot.logger.error(
                     f"Error while checking for updates for {manga.human_name} ({manga.id})",
                     exc_info=e,
                 )
@@ -156,7 +156,7 @@ class UpdateCheckCog(commands.Cog):
                 manga.update(None, None, update_check_result.new_cover_url)
                 await self.bot.db.update_series(manga)
 
-        self.bot.logger.info(f"Finished checking for updates for {mangas[0].scanlator}...")
+        self.bot.logger.debug(f"Finished checking for updates for {mangas[0].scanlator}...")
 
     @tasks.loop(hours=2.0)
     async def check_updates_task(self):
