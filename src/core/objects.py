@@ -765,7 +765,7 @@ class GuildSettings:
     def to_tuple(self) -> tuple:
         """
         Returns a tuple containing the guild settings.
-        >>> (guild_id, channel_id, updates_role_id, webhook_url)
+        >>> (Guild_id, channel_id, updates_role_id, webhook_url)
         """
         return (
             self.guild.id,
@@ -777,7 +777,7 @@ class GuildSettings:
 
 class CachedResponse:
     """
-    A class that patches the response of a aiohttp.ClientResponse to work with
+    A class that patches the response of an aiohttp.ClientResponse to work with
     the cache system.
 
     Note: the .apply_patch() method must be called before using the response object.
