@@ -40,7 +40,11 @@ def exit_bot() -> None:
 
 class _StdOutFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        return record.levelno < logging.ERROR
+        """
+        Filters the logging levels that should be written to STDOUT.
+        Anything smaller than warning goes to STDOUT, anything else goes to STDERR.
+        """
+        return record.levelno < logging.WARNING
 
 
 def setup_logging(
