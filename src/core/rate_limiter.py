@@ -263,50 +263,57 @@ async def determineLimitsAndPeriod(
 
     Returns: (int: number of calls, float: time period)
     """
-    clock = time.monotonic if hasattr(time, 'monotonic') else time.time
 
-    start = clock()
-    num_calls: int = 0
+    async def sub_coro():
+        clock = time.monotonic if hasattr(time, 'monotonic') else time.time
+
+        start = clock()
+        num_calls: int = 0
+
+        while True:
+            if inspect.iscoroutinefunction(request_func):
+                rv = await request_func(*args, **kwargs)
+            else:
+                rv = request_func(*args, **kwargs)
+            num_calls += 1
+            await asyncio.sleep(0.1)
+
+            if hasattr(rv, 'status_code') or hasattr(rv, 'status'):
+                status_code = rv.status_code if hasattr(rv, 'status_code') else rv.status
+                if status_code == 429:
+                    logger.info("Received status code: 429. Waiting for rate limit to reset...")
+                    if hasattr(rv, 'headers'):
+                        headers = rv.headers
+                        if 'X-RateLimit-Limit' in headers:
+                            limit = int(headers['X-RateLimit-Limit'])
+                            period = float(headers['X-RateLimit-Reset-After'])
+                            return limit, period + (clock() - start)
+                        elif 'Retry-After' in headers:
+                            period = float(headers['Retry-After']) + (clock() - start)
+                            return num_calls - 1, period
+                    else:
+                        try:
+                            reset_time = await _ping_for_200(request_func, *args, incremental_backoff, **kwargs)
+                        except ValueError:
+                            logger.error("Could not determine the reset time for the given request function")
+                            logger.info(f"Total number of calls allowed per given time period is: {num_calls - 1}")
+                            raise
+                        period = reset_time - start
+                        return num_calls - 1, period
+                elif status_code == 403:
+                    logger.info(f"Result: {num_calls - 1}, {clock() - start}")
+                    raise ValueError("The given website has temporarily blocked access to this webpage")
+            else:
+                raise Exception(
+                    "Cannot determine limit and period as the request function does not return a response object "
+                    "with the 'status_code' or 'status' attribute."
+                )
 
     try:
-        async with asyncio.timeout(10 * 60):
-            while True:
-                if inspect.iscoroutinefunction(request_func):
-                    rv = await request_func(*args, **kwargs)
-                else:
-                    rv = request_func(*args, **kwargs)
-                num_calls += 1
-                await asyncio.sleep(0.1)
-
-                if hasattr(rv, 'status_code') or hasattr(rv, 'status'):
-                    status_code = rv.status_code if hasattr(rv, 'status_code') else rv.status
-                    if status_code == 429:
-                        if hasattr(rv, 'headers'):
-                            headers = rv.headers
-
-                            if 'X-RateLimit-Limit' in headers:
-                                limit = int(headers['X-RateLimit-Limit'])
-                                period = float(headers['X-RateLimit-Reset-After'])
-                                return limit, period + (clock() - start)
-                            elif 'Retry-After' in headers:
-                                period = float(headers['Retry-After']) + (clock() - start)
-                                return num_calls - 1, period
-                        else:
-                            try:
-                                reset_time = await _ping_for_200(request_func, *args, incremental_backoff, **kwargs)
-                            except ValueError:
-                                logger.error("Could not determine the reset time for the given request function")
-                                logger.info("Total number of calls allowed per given time period is:", num_calls - 1)
-                                raise
-                            period = reset_time - start
-                            return num_calls - 1, period
-                else:
-                    raise Exception(
-                        "Cannot determine limit and period as the request function does not return a response object "
-                        "with the 'status_code' or 'status' attribute."
-                    )
+        return await asyncio.wait_for(sub_coro(), timeout=60 * 10)
     except asyncio.TimeoutError:
         logger.error("Could not determine the reset time for the given request function")
         logger.error(
-            "This is probably because the given server/website has a very high rate limit (> 10 min period)")
+            "This is probably because the given server/website has a very high ratelimit reset period (> 10 min period)"
+        )
         raise
