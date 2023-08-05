@@ -643,22 +643,22 @@ class TestCases(dict):
             ),
             "mangabaz": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://mangabaz.net/mangas/the-millennium-alchemist/"),
+                test_data=TestInputData("https://mangabaz.net/mangas/i-grow-stronger-by-eating/"),
                 expected_result=ExpectedResult(
                     scanlator_name="mangabaz",
-                    manga_url="https://mangabaz.net/mangas/the-millennium-alchemist/",
-                    completed=True,
-                    human_name="The Millennium Alchemist",
-                    manga_id=default_id_func("https://mangabaz.net/mangas/the-millennium-alchemist"),
-                    curr_chapter_url="https://mangabaz.net/mangas/the-millennium-alchemist/chapter-100/",
-                    first_chapter_url="https://mangabaz.net/mangas/the-millennium-alchemist/chapter-1/",
+                    manga_url="https://mangabaz.net/mangas/i-grow-stronger-by-eating/",
+                    completed=False,
+                    human_name="I Grow Stronger By Eating!",
+                    manga_id=default_id_func("https://mangabaz.net/mangas/i-grow-stronger-by-eating"),
+                    curr_chapter_url="https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/",
+                    first_chapter_url="https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-1/",
                     cover_image=(
-                        "https://mangabaz.net/wp-content/uploads/2022/08/The-Millennium-Alchemist-193x278.jpg"
+                        "https://mangabaz.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating-193x278.jpg"
                     ),
                     last_3_chapter_urls=[
-                        "https://mangabaz.net/mangas/the-millennium-alchemist/chapter-98/",
-                        "https://mangabaz.net/mangas/the-millennium-alchemist/chapter-99/",
-                        "https://mangabaz.net/mangas/the-millennium-alchemist/chapter-100/",
+                        "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-98/",
+                        "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-99/",
+                        "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/",
                     ],
                 ),
                 test_subject=Mangabaz
@@ -820,4 +820,4 @@ if __name__ == "__main__":
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("leviatanscans"))
+    # asyncio.run(test_single_scanlator("mangabaz"))
