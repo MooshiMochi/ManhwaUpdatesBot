@@ -149,9 +149,9 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
 
         if kwargs.get("headers", None) is None:
             kwargs["headers"] = {
-                # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                #               'Chrome/114.0.0.0 Safari/537.36'
-                "User-Agent": "python-requests/2.31.0"
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/114.0.0.0 Safari/537.36'
+                # "User-Agent": "python-requests/2.31.0"
             }
             kwargs["headers"] |= default_header_opts
 
