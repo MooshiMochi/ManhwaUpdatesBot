@@ -175,6 +175,7 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
             # response.cached = True
             return response
 
+        self.cookie_jar.clear()  # clear all cookies before making request
         # Cache miss, fetch and cache response
         self.logger.debug(f"Cache miss for {url}")
         await limiter.try_acquire(is_user_request=is_user_req)
@@ -219,6 +220,8 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
             # Use cached response
             response = self._cache[url]['response']
             return response
+
+        self.cookies.clear()  # clear all cookies
 
         self.logger.debug(f"Cache miss for {url}")
         await limiter.try_acquire(is_user_request=is_user_req)

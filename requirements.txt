@@ -11,4 +11,3 @@ pandas
 openpyxl
 curl_cffi
 tldextract
-pyrate-limiter
