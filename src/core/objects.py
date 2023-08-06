@@ -90,7 +90,6 @@ class Chapter:
 
 
 class ABCScan(ABC):
-    MIN_TIME_BETWEEN_REQUESTS = 1.0  # In seconds
     icon_url: str = None
     base_url: str = None
     fmt_url: str = None

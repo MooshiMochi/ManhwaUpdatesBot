@@ -401,7 +401,6 @@ class Toonily(ABCScan):
     base_url = "https://toonily.com/webtoon/"
     fmt_url = base_url + "{manga_url_name}"
     name = "toonily"
-    MIN_TIME_BETWEEN_REQUESTS = 30
     id_first = False
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=15, period=Minutes.FIVE
@@ -1710,7 +1709,7 @@ class Comick(ABCScan):
     id_first = False
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
-    ).disable()
+    ).disable()  # rate-limits handled by the API implementation in ./comickAPI.py
 
     @classmethod
     async def check_updates(
@@ -2872,8 +2871,6 @@ class OmegaScans(ABCScan):
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
     )  # 3s interval
 
-    # MIN_TIME_BETWEEN_REQUESTS = 30
-
     @staticmethod
     def _parse_time_string_to_sec(time_string: str) -> float | int:
         return time_string_to_seconds(time_string, ["%m/%d/%Y"])
@@ -3050,8 +3047,6 @@ class Bato(ABCScan):
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
     ).disable()
-
-    # MIN_TIME_BETWEEN_REQUESTS = 30
 
     @classmethod
     async def check_updates(
