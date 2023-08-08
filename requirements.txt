@@ -11,3 +11,4 @@ pandas
 openpyxl
 curl_cffi
 tldextract
+brotli

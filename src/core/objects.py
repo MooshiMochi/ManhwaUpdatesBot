@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
+from ..static import Constants
+
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
@@ -98,11 +100,13 @@ class ABCScan(ABC):
     rx: re.Pattern = None
 
     @classmethod
-    def _make_headers(cls, bot: MangaClient):
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         user_agent = bot.config.get('user-agents', {}).get(cls.name)
+        headers: dict = Constants.default_headers()
         if not user_agent:
-            return {}
-        return {"User-Agent": user_agent}
+            return headers
+        headers["User-Agent"] = user_agent
+        return headers
 
     @classmethod
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:

@@ -18,6 +18,7 @@ from src.utils import (
     replace_tag_with,
     write_to_discord_file,
     time_string_to_seconds,
+    dict_remove_keys,
 )
 from . import rate_limiter
 from src.enums import Minutes
@@ -407,6 +408,16 @@ class Toonily(ABCScan):
     )  # 20s interval
 
     @classmethod
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
+        if not url_name:
+            raise MangaNotFound(manga_url)
+        headers = super()._make_headers(bot, manga_id, manga_url)
+        headers[":Path:"] = f"/webtoon/{url_name}/"
+        headers = dict_remove_keys(headers, ["Refer", "Pragma", "Host", "Connection"])
+        return headers
+
+    @classmethod
     async def check_updates(
             cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
     ) -> ChapterUpdate:
@@ -414,7 +425,7 @@ class Toonily(ABCScan):
 
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -439,7 +450,7 @@ class Toonily(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -456,7 +467,7 @@ class Toonily(ABCScan):
             soup = BeautifulSoup(await resp.text(), "html.parser")
 
             chapter_list_container = soup.find(
-                "ul", {"class": "main version-chap no-volumn"}
+                "ul", {"class": "main version-chap no-volumn"}  # noqa
             )
             chapter_tags = chapter_list_container.find_all("a")
             chapters: list[Chapter] = []
@@ -497,7 +508,7 @@ class Toonily(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -518,7 +529,7 @@ class Toonily(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -550,14 +561,14 @@ class Toonily(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.toonily_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).group(1)
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
     async def get_cover_image(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -991,7 +1002,7 @@ class Asura(ABCScan):
     @classmethod
     def _bs_is_series_completed(cls, soup: BeautifulSoup) -> bool:
         """Returns whether the series is completed or not."""
-        status_div = soup.find("div", {"class": "imptdt"})
+        status_div = soup.find("div", {"class": "imptdt"})  # noqa
         status = status_div.find("i").text.strip()
         return status.lower() == "completed" or status.lower() == "dropped"
 
@@ -1067,6 +1078,16 @@ class Aquamanga(ABCScan):
     )  # 3s interval
 
     @classmethod
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
+        if not url_name:
+            raise MangaNotFound(manga_url)
+        headers = super()._make_headers(bot, manga_id, manga_url)
+        headers[":Path:"] = f"/read/{url_name}/"
+        headers = dict_remove_keys(headers, ["Refer", "Pragma", "Host", "Connection"])
+        return headers
+
+    @classmethod
     async def check_updates(
             cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
     ) -> ChapterUpdate:
@@ -1106,7 +1127,7 @@ class Aquamanga(ABCScan):
 
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1137,7 +1158,7 @@ class Aquamanga(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1186,7 +1207,7 @@ class Aquamanga(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1217,7 +1238,7 @@ class Aquamanga(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1247,7 +1268,7 @@ class Aquamanga(ABCScan):
     async def get_cover_image(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1354,7 +1375,7 @@ class ReaperScans(ABCScan):
         Args:
             bot: MangaClient - the bot instance
             manga_url: str - the manga url
-            page: int | None - the page number to get chapters from. If None, gets all chapters
+            page: int | None - the page number to get chapters from. If None, get all chapters
 
         Returns:
             tuple[list[Chapter] | None, int] - the list of chapters and max number of chapters there are
@@ -1420,7 +1441,7 @@ class ReaperScans(ABCScan):
             max_chapters = float("inf")
             chapters: list[Chapter] = []
             while len(chapters) < max_chapters:
-                await asyncio.sleep(1)  # add some delay to reduce ratelimits
+                await asyncio.sleep(1)  # add some delay to reduce rate-limits
                 next_page_chapters, max_chapters = await cls.get_chapters_on_page(
                     bot, manga_url, page=page
                 )
@@ -1540,6 +1561,17 @@ class AnigliScans(ABCScan):
     )  # 3s interval
 
     @classmethod
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
+        if not url_name:
+            raise MangaNotFound(manga_url)
+        headers = super()._make_headers(bot, manga_id, manga_url)
+        headers["Cache-Control"] = "no-cache"
+        headers[":Path:"] = f"/series/{url_name}/"
+        headers = dict_remove_keys(headers, ["Refer", "Pragma", "Host", "Connection"])
+        return headers
+
+    @classmethod
     async def check_updates(
             cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
     ) -> ChapterUpdate:
@@ -1547,7 +1579,7 @@ class AnigliScans(ABCScan):
 
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1572,7 +1604,7 @@ class AnigliScans(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1613,8 +1645,8 @@ class AnigliScans(ABCScan):
     @classmethod
     def _bs_is_series_completed(cls, soup: BeautifulSoup) -> bool:
         """Returns whether the series is completed or not."""
-        status_container = soup.find("div", {"class": "tsinfo"})
-        status_tag = status_container.find("div", {"class": "imptdt"})
+        status_container = soup.find("div", {"class": "tsinfo"})  # noqa
+        status_tag = status_container.find("div", {"class": "imptdt"})  # noqa
         status = status_tag.find("i").text.strip().lower()
         return status == "completed" or status == "dropped"
 
@@ -1622,7 +1654,7 @@ class AnigliScans(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1650,7 +1682,7 @@ class AnigliScans(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1678,7 +1710,7 @@ class AnigliScans(ABCScan):
     async def get_cover_image(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1802,8 +1834,8 @@ class Comick(ABCScan):
     async def search(
             cls, bot: MangaClient, query: str, as_em: bool = True
     ) -> discord.Embed | Manga | None:
-        result: list[dict] = await bot.comick_api.search(query, limit=1)
-        if not result: return None
+        result: list[dict] = await bot.comick_api.search(query, limit=1)  # noqa
+        if not result: return None  # noqa
         manga_obj = await cls.make_manga_object(
             bot,
             manga_id=result[0]["hid"],
@@ -1963,7 +1995,7 @@ class VoidScans(ABCScan):
             return False
 
         soup = BeautifulSoup(resp.text, "html.parser")
-        status_div = soup.find("div", {"class": "imptdt"})
+        status_div = soup.find("div", {"class": "imptdt"})  # noqa
         status = status_div.find("i").text.strip().lower()
         return status == "completed" or status == "dropped" or status == "canceled"
 
@@ -2115,7 +2147,7 @@ class LuminousScans(ABCScan):
                 raise URLAccessFailed(manga_url, resp.status)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
-            status_div = soup.find("div", {"class": "imptdt"})
+            status_div = soup.find("div", {"class": "imptdt"})  # noqa
             status = status_div.find("i").text.strip().lower()
             return status == "completed" or status == "dropped" or status == "canceled"
 
@@ -2999,7 +3031,7 @@ class OmegaScans(ABCScan):
                 raise URLAccessFailed(manga_url, resp.status)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
-            img = soup.find("img", {"class": "sc-fsQiph"})
+            img = soup.find("img", {"class": "sc-fsQiph"})  # noqa
             return img["src"]
 
     @classmethod
@@ -3049,6 +3081,14 @@ class Bato(ABCScan):
     ).disable()
 
     @classmethod
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        headers = super()._make_headers(bot, manga_id, manga_url)
+        headers["Cache-Control"] = "no-cache"
+        headers = dict_remove_keys(headers, ["Refer", ":Scheme:", ":Path:", ":Method:", ":Authority:"])
+        headers["Host"] = cls.base_url.removeprefix("https://").rstrip("/")
+        return headers
+
+    @classmethod
     async def check_updates(
             cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
     ) -> ChapterUpdate:
@@ -3056,7 +3096,7 @@ class Bato(ABCScan):
 
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3078,7 +3118,7 @@ class Bato(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3134,7 +3174,7 @@ class Bato(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3155,7 +3195,7 @@ class Bato(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3190,7 +3230,7 @@ class Bato(ABCScan):
     async def get_cover_image(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url, headers=cls._make_headers(bot)) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3213,7 +3253,7 @@ class Bato(ABCScan):
 
 
 SCANLATORS: dict[str, ABCScan] = {
-    # VoidScans.name: VoidScans,  # this website is actually such an ass to work with
+    # VoidScans.name: VoidScans, # Not dev friendly at all
     OmegaScans.name: OmegaScans,
     Aquamanga.name: Aquamanga,
     Toonily.name: Toonily,

@@ -732,7 +732,7 @@ class BookmarkChapterView(View):
             bookmark = Bookmark(
                 interaction.user.id,
                 manga,
-                None,  # temp value, will be updated below
+                None,  # temp value, will be updated below # noqa
                 interaction.guild_id,
             )
 

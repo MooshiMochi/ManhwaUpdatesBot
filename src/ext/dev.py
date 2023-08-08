@@ -31,7 +31,7 @@ class Restricted(commands.Cog):
 
     @staticmethod
     def _url(_id, *, animated: bool = False):
-        """Convert an emote ID to the image URL for that emote."""
+        """Convert an emote ID to the image URL for that emote."""  # noqa
         return str(discord.PartialEmoji(animated=animated, name="", id=_id).url)
 
     async def cog_load(self):
@@ -90,7 +90,7 @@ class Restricted(commands.Cog):
     async def developer(self, ctx):
         if ctx.invoked_subcommand is None:
             embed = discord.Embed(
-                title="Hmmm...",
+                title="Hmmm...",  # noqa
                 description=f"You seem lost. Try to use / for more commands.",
                 color=0xFF0000,
             )
@@ -111,7 +111,7 @@ class Restricted(commands.Cog):
         )
         await self.restart_bot(msg.jump_url)
 
-    @developer.command(name="synctree", aliases=["sync_tree"])
+    @developer.command(name="synctree", aliases=["sync_tree"])  # noqa
     async def tree_sync(
             self,
             ctx: commands.Context,
@@ -256,7 +256,7 @@ class Restricted(commands.Cog):
             return await ctx.send("Could not find command.")
 
         src = obj.callback.__code__
-        lines, firstlineno = inspect.getsourcelines(src)
+        lines, firstlineno = inspect.getsourcelines(src)  # noqa
         if not lines:
             return await ctx.send("Could not find source.")
 
@@ -511,19 +511,19 @@ class Restricted(commands.Cog):
         '!d clear_commands' | Clears the commands from all guilds
         '!d clear_commands ~' | Clears the commands in the current guild
         """
-        sync_cmd = self.client.get_command("developer synctree")
+        sync_cmd = self.client.get_command("developer synctree")  # noqa
         if not sync_cmd:
             await ctx.send("```diff\n-<[ Command not found. ]>-```")
             return
         if spec == "~":
             self.client.tree.clear_commands(guild=ctx.guild)
             await ctx.invoke(
-                sync_cmd, guilds=None, spec="~"
+                sync_cmd, guilds=None, spec="~"  # noqa
             )
         else:
             for guild in self.client.guilds:
                 self.client.tree.clear_commands(guild=guild)
-            await ctx.invoke(sync_cmd, guilds=None)
+            await ctx.invoke(sync_cmd, guilds=None)  # noqa
 
         await ctx.send(
             f"Cleared all commands {'globally' if spec is None else 'from the current guild.'}"

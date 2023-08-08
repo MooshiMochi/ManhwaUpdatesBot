@@ -49,7 +49,7 @@ class CommandsCog(commands.Cog):
                 color=0xFF0000,
             )
             em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)
+            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
 
         elif await self.bot.db.get_guild_config(interaction.guild_id) is None:
@@ -59,7 +59,7 @@ class CommandsCog(commands.Cog):
                 color=0xFF0000,
             )
             em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)
+            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
 
         return True
@@ -77,7 +77,7 @@ class CommandsCog(commands.Cog):
                 color=0xFF0000,
             )
             em.set_footer(text="Manga Bot", icon_url=self.bot.user.avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)
+            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return
 
         next_update_ts = int(updates_cog.check_updates_task.next_iteration.timestamp())
@@ -89,7 +89,7 @@ class CommandsCog(commands.Cog):
             ),
             color=discord.Color.blurple(),
         )
-        await interaction.response.send_message(embed=em, ephemeral=True)
+        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
 
     subscribe = app_commands.Group(
         name="subscribe", description="Subscribe to a manga to get notifications."
@@ -102,7 +102,7 @@ class CommandsCog(commands.Cog):
     async def subscribe_new(
             self, interaction: discord.Interaction, manga_url: str
     ) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         scanlator: ABCScan | None = None
 
@@ -131,7 +131,7 @@ class CommandsCog(commands.Cog):
             series_id = await scanlator.get_manga_id(self.bot, manga_url)
             series_url = await scanlator.fmt_manga_url(self.bot, series_id, manga_url)
         else:
-            series_url = await scanlator.fmt_manga_url(self.bot, None, manga_url)
+            series_url = await scanlator.fmt_manga_url(self.bot, None, manga_url)  # noqa
             series_id = await scanlator.get_manga_id(self.bot, series_url)
 
         manga: Manga | None = await respond_if_limit_reached(
@@ -167,7 +167,7 @@ class CommandsCog(commands.Cog):
     @app_commands.autocomplete(manga_id=autocompletes.user_subbed_manga)
     @app_commands.rename(manga_id="manga")
     async def subscribe_delete(self, interaction: discord.Interaction, manga_id: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         manga: Manga = await self.bot.db.get_series(manga_id)
 
@@ -190,7 +190,7 @@ class CommandsCog(commands.Cog):
         name="list", description="List all the manga you're subscribed to."
     )
     async def subscribe_list(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         subs: list[Manga] = await self.bot.db.get_user_subs(interaction.user.id)
         subs = sorted(subs, key=lambda x: x.human_name)
@@ -251,7 +251,7 @@ class CommandsCog(commands.Cog):
     @app_commands.autocomplete(manga_id=autocompletes.manga)
     @app_commands.rename(manga_id="manga")
     async def latest_chapter(self, interaction: discord.Interaction, manga_id: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         manga: Manga = await self.bot.db.get_series(manga_id)
 
@@ -271,7 +271,7 @@ class CommandsCog(commands.Cog):
     @app_commands.autocomplete(manga_id=autocompletes.manga)
     @app_commands.rename(manga_id="manga")
     async def chapters(self, interaction: discord.Interaction, manga_id: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         manga: Manga = await self.bot.db.get_series(manga_id)
 
@@ -429,7 +429,7 @@ class CommandsCog(commands.Cog):
 
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
 
-        await interaction.response.send_message(embed=em, ephemeral=True)
+        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
         return
 
     @app_commands.command(
@@ -473,7 +473,7 @@ class CommandsCog(commands.Cog):
             ".mooshi - the bot developer.\n\n"
         )
         em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
-        await interaction.response.send_message(embed=em, ephemeral=True)
+        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
         return
 
     @app_commands.command(
@@ -490,7 +490,7 @@ class CommandsCog(commands.Cog):
             query: str,
             scanlator_website: Optional[str] = None,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=False)  # noqa
         cannot_search_em = discord.Embed(
             title="Error",
             description=(
@@ -531,7 +531,7 @@ class CommandsCog(commands.Cog):
                 )
         else:
             results = [x for x in [
-                await scanlator.search(self.bot, query=query) for scanlator in SCANLATORS.values() if
+                await scanlator.search(self.bot, query=query) for scanlator in SCANLATORS.values() if  # noqa
                 hasattr(scanlator, "search")
             ] if x is not None]
             if not results:

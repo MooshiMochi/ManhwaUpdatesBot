@@ -710,3 +710,11 @@ async def respond_if_limit_reached(coro: Coroutine, interaction: discord.Interac
             embed=em
         )
         return "LIMIT_REACHED"
+
+
+def dict_remove_keys(d: dict, keys: list[str]) -> dict:
+    """
+    Remove keys from a dict.
+    NOTE: Does not modify the original dict
+    """
+    return {k: v for k, v in d.items() if k not in keys}
