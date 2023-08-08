@@ -711,24 +711,18 @@ class BookmarkChapterView(View):
         self.bot: MangaClient = bot
         super().__init__(timeout=None)  # View is persistent ∴ no timeout
 
-        self.manga_id: Optional[str] = None
-        self.chapter_index: Optional[int] = None
-        self.extracted: bool = False
-
     @discord.ui.button(
         label="✉️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
     )
     async def mark_read(self, interaction: discord.Interaction, btn: Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=False)
-
-        if not self.extracted:
-            await self._extract_keys(interaction, btn)
+        manga_id, chapter_index = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
-            interaction.user.id, self.manga_id
+            interaction.user.id, manga_id
         )
         if bookmark is None:
-            manga: Manga = await self.bot.db.get_series(self.manga_id)
+            manga: Manga = await self.bot.db.get_series(manga_id)
             bookmark = Bookmark(
                 interaction.user.id,
                 manga,
@@ -736,7 +730,7 @@ class BookmarkChapterView(View):
                 interaction.guild_id,
             )
 
-        if bookmark.last_read_chapter == bookmark.manga.available_chapters[self.chapter_index]:
+        if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
             return await interaction.followup.send(
                 embed=discord.Embed(
                     title="Already Read",
@@ -746,7 +740,7 @@ class BookmarkChapterView(View):
                 ephemeral=True,
             )
 
-        bookmark.last_read_chapter = bookmark.manga.available_chapters[self.chapter_index]
+        bookmark.last_read_chapter = bookmark.manga.available_chapters[chapter_index]
         bookmark.last_updated_ts = datetime.utcnow().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
 
@@ -765,13 +759,12 @@ class BookmarkChapterView(View):
         custom_id="btn_mark_unread",
     )
     async def mark_unread(self, interaction: discord.Interaction, btn: Button) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=False)
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
         # await self.bot.db.mark_chapter_unread(self.chapter)
-        if not self.extracted:
-            await self._extract_keys(interaction, btn)
+        manga_id, chapter_index = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
-            interaction.user.id, self.manga_id
+            interaction.user.id, manga_id
         )
         if bookmark is None:
             return await interaction.followup.send(
@@ -783,21 +776,21 @@ class BookmarkChapterView(View):
                 ephemeral=True,
             )
 
-        if bookmark.last_read_chapter == bookmark.manga.available_chapters[self.chapter_index]:
-            if self.chapter_index - 1 >= 0:  # if there is a previous chapter
-                bookmark.last_read_chapter = bookmark.manga.available_chapters[self.chapter_index - 1]
+        if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
+            if chapter_index - 1 >= 0:  # if there is a previous chapter
+                bookmark.last_read_chapter = bookmark.manga.available_chapters[chapter_index - 1]
                 bookmark.last_updated_ts = datetime.utcnow().timestamp()
                 await self.bot.db.upsert_bookmark(bookmark)
             else:
                 await self.bot.db.delete_bookmark(
                     interaction.user.id, bookmark.manga.id
                 )
-            del_bookmark_view = DeleteBookmarkView(self.bot, interaction, self.manga_id)
+            del_bookmark_view = DeleteBookmarkView(self.bot, interaction, manga_id)
             del_bookmark_view.message = await interaction.followup.send(
                 embed=discord.Embed(
                     title="Marked Unread",
                     description=f"Successfully marked chapter "
-                                f"{bookmark.manga.available_chapters[self.chapter_index]} as unread.",
+                                f"{bookmark.manga.available_chapters[chapter_index]} as unread.",
                     color=discord.Color.green(),
                 ),
                 ephemeral=True,
@@ -820,12 +813,11 @@ class BookmarkChapterView(View):
         custom_id="btn_last_read",
     )
     async def last_read(self, interaction: discord.Interaction, btn: Button) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=False)
-        if not self.extracted:
-            await self._extract_keys(interaction, btn)
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
+        manga_id, _ = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
-            interaction.user.id, self.manga_id
+            interaction.user.id, manga_id
         )
         if bookmark is None:
             return await interaction.followup.send(
@@ -853,16 +845,16 @@ class BookmarkChapterView(View):
             ephemeral=True,
         )
 
-    async def _extract_keys(
-            self, interaction: discord.Interaction, button: Button
-    ) -> None:
+    @staticmethod
+    def _extract_keys(
+            interaction: discord.Interaction, _: Button, /,
+    ) -> tuple[str, int]:
         key_message = interaction.message.content.split("||")[1]
         manga_id, chapter_index = key_message.split(" | ")
         manga_id = manga_id.strip().lstrip("<Manga ID: ")
         chapter_index = chapter_index.strip().lstrip("Chapter Index: ").rstrip(">")
 
-        self.manga_id, self.chapter_index = manga_id, int(chapter_index)
-        self.extracted = True
+        return manga_id, int(chapter_index)
 
     async def on_error(
             self,

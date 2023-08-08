@@ -13,11 +13,11 @@ class Constants:
     def default_headers() -> dict:
         """
         Must set the following headers:
-            :Authority:
-            :Path:
+            :Authority
+            :Path
             Refer
         If not set, you should remove them from the dict with .pop(key, default) method.
-        """  # noqa
+        """
         return {
             ":Authority": "",
             ":Method": "GET",
