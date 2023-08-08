@@ -513,13 +513,13 @@ class Database:
 
     async def get_user_bookmarks_autocomplete(self, user_id: int, current: str = None) -> list[tuple[int, str]]:
         async with aiosqlite.connect(self.db_name) as db:
-            if current is not None:
+            if current:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
                 cursor = await db.execute(
                     """
                     SELECT series.id, series.human_name FROM series 
                     JOIN bookmarks ON series.id = bookmarks.series_id 
-                    WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1;
+                    WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1
                     ORDER BY levenshtein(human_name, $2) DESC
                     LIMIT 25;
                     """,
