@@ -103,6 +103,7 @@ class ABCScan(ABC):
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         user_agent = bot.config.get('user-agents', {}).get(cls.name)
         headers: dict = Constants.default_headers()
+        headers[":Authority"] = cls.base_url.removeprefix("https://")
         if not user_agent:
             return headers
         headers["User-Agent"] = user_agent

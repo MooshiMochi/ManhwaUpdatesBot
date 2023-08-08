@@ -13,26 +13,29 @@ class Constants:
     def default_headers() -> dict:
         """
         Must set the following headers:
+            :Authority:
             :Path:
             Refer
         If not set, you should remove them from the dict with .pop(key, default) method.
         """  # noqa
         return {
-            ":Authority:": "toonily.com",
-            ":Method:": "GET",
-            ":Path:": "",
-            ":Scheme:": "https",
+            ":Authority": "",
+            ":Method": "GET",
+            ":Path": "",
+            ":Scheme": "https",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,"
                       "*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Encoding": "gzip, deflate, br",
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-            "Cache-Control": "max-age=0",
+            "Cache-Control": "no-cache",
 
-            "Connection:": "keep-alive",
+            "Content-Length": "0",
+            "Origin": "",
+            "Connection": "keep-alive",
             "Host": "",
             "Pragma": "no-cache",
 
-            "Refer": "",
+            "Referer": "",
             "Sec-Ch-Ua": '"Not.A/Brand";v="8", "Chromium";v="114", "Opera GX";v="100"',
             "Sec-Ch-Ua-Mobile": "?0",
             "Sec-Ch-Ua-Platform": '"Windows"',
@@ -43,6 +46,7 @@ class Constants:
             "Upgrade-Insecure-Requests": "1",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                           "Chrome/114.0.0.0 Safari/537.36 OPR/100.0.0.0",
+            "X-Requested-With": "XMLHttpRequest",
         }.copy()
 
 

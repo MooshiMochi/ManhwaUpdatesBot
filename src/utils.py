@@ -674,6 +674,12 @@ def is_from_stack_origin(*, class_name: str = None, function_name: str = None, f
         raise ValueError("At least one of class_name, function_name or file_name must be provided")
     call_stack = inspect.stack()
 
+    given_params: dict[str, bool | None] = {
+        "class_name": None,
+        "function_name": None,
+        "file_name": None
+    }
+
     for record in call_stack:
         frame = record[0]
         info = inspect.getframeinfo(frame)
@@ -682,15 +688,21 @@ def is_from_stack_origin(*, class_name: str = None, function_name: str = None, f
             # Get the class of the method from the frame
             method_class = getattr(inspect.getmodule(frame), class_name, None)
             if method_class is not None and method_class.__name__ == class_name:
-                return True
+                given_params["class_name"] = True
+                # return True
 
         if function_name is not None and info.function == function_name:
-            return True
+            given_params["function_name"] = True
+            # return True
 
         if file_name is not None and os.path.basename(info.filename) == file_name:
-            return True
+            given_params["file_name"] = True
+            # return True
 
-    return False
+    to_eval = [x for x in given_params.values() if x is not None]
+    if len(to_eval) == 0:
+        return False
+    return all(to_eval)
 
 
 async def respond_if_limit_reached(coro: Coroutine, interaction: discord.Interaction) -> Any | str:

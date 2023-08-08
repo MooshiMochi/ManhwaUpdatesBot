@@ -587,7 +587,7 @@ class TestCases(dict):
                     scanlator_name="luminousscans",
                     manga_url="https://luminousscans.com/series/1680246102-my-office-noonas-story/",
                     completed=True,
-                    human_name="My Office Noona’s Story",
+                    human_name="My Office Noona’s Story",  # noqa
                     manga_id="1680246102",
                     curr_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-03/",
                     first_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-prologue/",
@@ -820,4 +820,4 @@ if __name__ == "__main__":
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("mangabaz"))
+    # asyncio.run(test_single_scanlator("omegascans"))

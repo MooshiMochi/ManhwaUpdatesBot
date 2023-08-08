@@ -10,8 +10,6 @@
 
 ### Features to add:
 
-- Update the /search command to use multiple scanlators (comick, mangadex, mangapill)
-
 - When a series has been marked complete/dropped, send a notification in the updates
   channel that the series has been marked as such.
 
@@ -26,13 +24,13 @@
 - /info command that will display the currently available info on a manga.
 
 - When multiple chapters are released at once, instead of sending a message for each chapter, send them all at once
-    - If above implemented, when the "Mark as read/unread" button is pressed, add an aditional select where the user can
+    - If above implemented, when the "Mark as read/unread" button is pressed, add a select where the user can
       select which chapters they want to mark as read/unread.
 
 - When using autocomplete, prioritize the results that start with the user input, then levenshtein distance
 
-- Implement a better global rate limiter
-- (Enhancement) Create a MangaManager class that will handle all the manga related functions
+- (Enhancement) Create a MangaManager class that will handle all the manga-related functions
+- (Enhancement) Attempt to add search option for more websites
 
 ### Issues:
 

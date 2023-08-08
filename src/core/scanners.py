@@ -19,6 +19,7 @@ from src.utils import (
     write_to_discord_file,
     time_string_to_seconds,
     dict_remove_keys,
+    is_from_stack_origin
 )
 from . import rate_limiter
 from src.enums import Minutes
@@ -30,8 +31,8 @@ from .objects import ChapterUpdate, Chapter, ABCScan, Manga
 class TritiniaScans(ABCScan):
     rx: re.Pattern = RegExpressions.tritinia_url
     icon_url = "https://tritinia.org/wp-content/uploads/2021/01/unknown.png"
-    base_url = "https://tritinia.org/manga/"
-    fmt_url = base_url + "{manga}/ajax/chapters/"
+    base_url = "https://tritinia.org"
+    fmt_url = base_url + "/manga/{manga_url_name}"
     name = "tritinia"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -40,9 +41,12 @@ class TritiniaScans(ABCScan):
 
     @staticmethod
     def _ensure_manga_url(url: str) -> str:
-        if url.endswith("/") and "/ajax/chapters/" not in url:
+        if url.endswith("/"):
             url = url[:-1]
-        return url + "/ajax/chapters/"
+        if "/ajax/chapters/" not in url:
+            return url + "/ajax/chapters/"
+        else:
+            return url + "/"
 
     @classmethod
     async def check_updates(
@@ -186,8 +190,8 @@ class TritiniaScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        url_name = RegExpressions.tritinia_url.search(manga_url).group(1)
-        return cls.base_url + url_name
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
+        return cls.fmt_url.format(manga_url_name=url_name)
 
     @classmethod
     async def get_cover_image(
@@ -215,8 +219,8 @@ class TritiniaScans(ABCScan):
 class Manganato(ABCScan):
     rx: re.Pattern = RegExpressions.manganato_url
     icon_url = "https://chapmanganato.com/favicon.png"
-    base_url = "https://chapmanganato.com/manga-"
-    fmt_url = base_url + "{manga_id}"
+    base_url = "https://chapmanganato.com"
+    fmt_url = base_url + "/manga-{manga_id}"
     name = "manganato"
     id_first = True
     rate_limiter.root.manager.getLimiter(
@@ -362,7 +366,7 @@ class Manganato(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
-        return RegExpressions.manganato_url.search(manga_url).group(1)
+        return cls.rx.search(manga_url).groupdict()["id"]
 
     @classmethod
     async def fmt_manga_url(
@@ -399,8 +403,8 @@ class Manganato(ABCScan):
 class Toonily(ABCScan):
     rx: re.Pattern = RegExpressions.toonily_url
     icon_url = "https://toonily.com/wp-content/uploads/2020/01/cropped-toonfavicon-1-192x192.png"
-    base_url = "https://toonily.com/webtoon/"
-    fmt_url = base_url + "{manga_url_name}"
+    base_url = "https://toonily.com"
+    fmt_url = base_url + "/webtoon/{manga_url_name}"
     name = "toonily"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -413,8 +417,19 @@ class Toonily(ABCScan):
         if not url_name:
             raise MangaNotFound(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
-        headers[":Path:"] = f"/webtoon/{url_name}/"
-        headers = dict_remove_keys(headers, ["Refer", "Pragma", "Host", "Connection"])
+        used_headers = [
+            ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
+            "Cache-Control", "Pragma", "Referer", "Sec-Ch-Ua", "Sec-Ch-Ua-Mobile", "Sec-Ch-Ua-Platform",
+            "Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User", "Upgrade-Insecure-Requests",
+            "User-Agent",
+        ]
+        updated_headers = {
+            ":Path": f"/webtoon/{url_name}/",
+            "Referer": cls.base_url,
+            "Sec-Fetch-Site": "same-origin",
+        }
+        headers |= updated_headers
+        headers = dict_remove_keys(headers, [k for k in headers if k not in used_headers])
         return headers
 
     @classmethod
@@ -591,9 +606,9 @@ class Toonily(ABCScan):
 class MangaDex(ABCScan):
     rx: re.Pattern = RegExpressions.mangadex_url
     icon_url = "https://mangadex.org/favicon.ico"
-    base_url = "https://mangadex.org/"
-    fmt_url = base_url + "title/{manga_id}"
-    chp_url_fmt = base_url + "chapter/{chapter_id}"
+    base_url = "https://mangadex.org"
+    fmt_url = base_url + "/title/{manga_id}"
+    chp_url_fmt = base_url + "/chapter/{chapter_id}"
     name = "mangadex"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -668,7 +683,7 @@ class MangaDex(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
-        return RegExpressions.mangadex_url.search(manga_url).group(1)
+        return cls.rx.search(manga_url).groupdict()["id"]
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
@@ -735,8 +750,8 @@ class FlameScans(ABCScan):
     icon_url = (
         "https://flamescans.org/wp-content/uploads/2021/03/cropped-fds-1-192x192.png"
     )
-    base_url = "https://flamescans.org/"
-    fmt_url = base_url + "series/{manga_url_name}"
+    base_url = "https://flamescans.org"
+    fmt_url = base_url + "/series/{manga_url_name}"
     name = "flamescans"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -888,7 +903,7 @@ class FlameScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.flamescans_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -921,8 +936,8 @@ class Asura(ABCScan):
     icon_url = (
         "https://asura.gg/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
     )
-    base_url = "https://asura.gg/"
-    fmt_url = base_url + "manga/{manga_url_name}"
+    base_url = "https://asura.gg"
+    fmt_url = base_url + "/manga/{manga_url_name}"
     name = "asura"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -1045,7 +1060,7 @@ class Asura(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.asura_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -1069,8 +1084,8 @@ class Asura(ABCScan):
 class Aquamanga(ABCScan):
     rx: re.Pattern = RegExpressions.aquamanga_url
     icon_url = "https://aquamanga.com/wp-content/uploads/2021/03/cropped-cropped-favicon-1-192x192.png"
-    base_url = "https://aquamanga.com/"
-    fmt_url = base_url + "read/{manga_url_name}"
+    base_url = "https://aquamanga.com"
+    fmt_url = base_url + "/read/{manga_url_name}"
     name = "aquamanga"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -1083,8 +1098,16 @@ class Aquamanga(ABCScan):
         if not url_name:
             raise MangaNotFound(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
-        headers[":Path:"] = f"/read/{url_name}/"
-        headers = dict_remove_keys(headers, ["Refer", "Pragma", "Host", "Connection"])
+        used_headers = [
+            ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
+            "Cache-Control", "Pragma", "Sec-Ch-Ua", "Sec-Ch-Ua-Mobile", "Sec-Ch-Ua-Platform", "Sec-Fetch-Dest",
+            "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User", "Upgrade-Insecure-Requests", "User-Agent",
+        ]
+        updated_headers = {
+            ":Path": f"/read/{url_name}/",
+        }
+        headers |= updated_headers
+        headers = dict_remove_keys(headers, [k for k in headers if k not in used_headers])
         return headers
 
     @classmethod
@@ -1261,7 +1284,7 @@ class Aquamanga(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.aquamanga_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -1292,8 +1315,8 @@ class Aquamanga(ABCScan):
 class ReaperScans(ABCScan):
     rx: re.Pattern = RegExpressions.reaperscans_url
     icon_url = "https://reaperscans.com/images/icons/310x310.png"
-    base_url = "https://reaperscans.com/"
-    fmt_url = base_url + "comics/{manga_id}-{manga_url_name}"
+    base_url = "https://reaperscans.com"
+    fmt_url = base_url + "/comics/{manga_id}-{manga_url_name}"
     name = "reaperscans"
     id_first = True
     rate_limiter.root.manager.getLimiter(
@@ -1511,7 +1534,7 @@ class ReaperScans(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
-        return RegExpressions.reaperscans_url.search(manga_url).group(1)
+        return cls.rx.search(manga_url).groupdict()["id"]
 
     @classmethod
     async def is_series_completed(
@@ -1531,7 +1554,7 @@ class ReaperScans(ABCScan):
     ) -> str:
         if manga_id is None and manga_url is not None:
             manga_id = await cls.get_manga_id(bot, manga_url)
-        manga_url_name = RegExpressions.reaperscans_url.search(manga_url).group(2)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_id=manga_id, manga_url_name=manga_url_name)
 
     @classmethod
@@ -1552,8 +1575,8 @@ class ReaperScans(ABCScan):
 class AnigliScans(ABCScan):
     rx: re.Pattern = RegExpressions.anigliscans_url
     icon_url = "https://anigliscans.com/wp-content/uploads/2022/07/cropped-Untitled671_20220216124756-192x192.png"
-    base_url = "https://anigliscans.com/"
-    fmt_url = base_url + "series/{manga_url_name}"
+    base_url = "https://anigliscans.com"
+    fmt_url = base_url + "/series/{manga_url_name}"
     name = "anigliscans"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -1566,9 +1589,16 @@ class AnigliScans(ABCScan):
         if not url_name:
             raise MangaNotFound(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
-        headers["Cache-Control"] = "no-cache"
-        headers[":Path:"] = f"/series/{url_name}/"
-        headers = dict_remove_keys(headers, ["Refer", "Pragma", "Host", "Connection"])
+        used_headers = [
+            ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
+            "Cache-Control", "Pragma", "Sec-Ch-Ua", "Sec-Ch-Ua-Mobile", "Sec-Ch-Ua-Platform", "Sec-Fetch-Dest",
+            "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User", "Upgrade-Insecure-Requests", "User-Agent",
+        ]
+        updated_headers = {
+            ":Path": f"/series/{url_name}/",
+        }
+        headers |= updated_headers
+        headers = dict_remove_keys(headers, [k for k in headers if k not in used_headers])
         return headers
 
     @classmethod
@@ -1703,7 +1733,7 @@ class AnigliScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.anigliscans_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -1759,7 +1789,7 @@ class Comick(ABCScan):
     ) -> list[Chapter] | None:
         chapters = await bot.comick_api.get_chapters_list(manga_id)
         if chapters:
-            url_name = RegExpressions.comick_url.search(manga_url).group(1)
+            url_name = cls.rx.search(manga_url).groupdict()["url_name"]
             return [
                 Chapter(
                     cls.chp_url_fmt.format(
@@ -1821,7 +1851,7 @@ class Comick(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.comick_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -2003,7 +2033,7 @@ class VoidScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.voidscans_url.search(manga_url).group(1)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=manga_url_name)
 
     @classmethod
@@ -2126,7 +2156,7 @@ class LuminousScans(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str | None:
-        return RegExpressions.luminousscans_url.search(manga_url).group(1)
+        return cls.rx.search(manga_url).groupdict()["id"]
 
     @classmethod
     async def is_series_completed(
@@ -2155,7 +2185,7 @@ class LuminousScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.luminousscans_url.search(manga_url).group(2)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_id=manga_id, manga_url_name=manga_url_name)
 
     @classmethod
@@ -2184,8 +2214,8 @@ class LuminousScans(ABCScan):
 class LeviatanScans(ABCScan):
     rx: re.Pattern = RegExpressions.leviatanscans_url
     icon_url = "https://en.leviatanscans.com/wp-content/uploads/2023/04/cropped-isotiponegro-192x192.png"
-    base_url = "https://en.leviatanscans.com/manga/"
-    fmt_url = base_url + "{manga_url_name}/ajax/chapters/"
+    base_url = "https://en.leviatanscans.com"
+    fmt_url = base_url + "/manga/{manga_url_name}"
     name = "leviatanscans"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -2194,9 +2224,12 @@ class LeviatanScans(ABCScan):
 
     @staticmethod
     def _ensure_manga_url(url: str) -> str:
-        if url.endswith("/") and "/ajax/chapters/" not in url:
+        if url.endswith("/"):
             url = url[:-1]
-        return url + "/ajax/chapters/"
+        if "/ajax/chapters/" not in url:
+            return url + "/ajax/chapters/"
+        else:
+            return url + "/"
 
     @classmethod
     async def check_updates(
@@ -2323,8 +2356,8 @@ class LeviatanScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.leviatanscans_url.search(manga_url).group(1)
-        return cls.base_url + manga_url_name
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
+        return cls.fmt_url.format(manga_url_name=url_name)
 
     @classmethod
     async def get_cover_image(
@@ -2352,19 +2385,54 @@ class LeviatanScans(ABCScan):
 class DrakeScans(ABCScan):
     rx: re.Pattern = RegExpressions.drakescans_url
     icon_url = "https://i0.wp.com/drakescans.com/wp-content/uploads/2022/02/cropped-Logo_Discord-3.png"
-    base_url = "https://drakescans.com/series/"
-    fmt_url = base_url + "{manga_url_name}/ajax/chapters/"
+    base_url = "https://drakescans.com"
+    fmt_url = base_url + "/series/{manga_url_name}"
     name = "drakescans"
     id_first = False
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
     )  # 3s interval
 
+    @classmethod
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
+        if not url_name:
+            raise MangaNotFound(manga_url)
+        headers = super()._make_headers(bot, manga_id, manga_url)
+        used_header_keys = [
+            ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
+            "Cache-Control", "Content-Length", "Origin", "Pragma", "Referer", "Sec-Ch-Ua", "Sec-Ch-Ua-Mobile",
+            "Sec-Ch-Ua-Platform", "Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User",
+            "Upgrade-Insecure-Requests", "User-Agent" "X-Requested-With"
+        ]
+        updated_headers = {
+            ":Path": f"/series/{url_name}/",
+            "Origin": cls.base_url,
+            "Referer": cls.base_url + f"/series/{url_name}/",
+        }
+        to_ajax_endpoint = is_from_stack_origin(class_name=cls.__name__, function_name="get_all_chapters")
+        # if from ajax endpoint
+        if to_ajax_endpoint:
+            updated_headers |= {
+                ":Method": "POST", "Accept": "*/*", "Sec-Fetch-Dest": "empty", "Sec-Fetch-Mode": "cors",
+            }
+            updated_headers[":Path"] += "ajax/chapters/"
+            used_header_keys = list(set(used_header_keys) - {"Sec-Fetch-User", "Upgrade-Insecure-Requests"})
+        else:  # normal endpoint
+            used_header_keys = list(set(used_header_keys) - {"Content-Length", "Origin", "Referer", "X-Requested-With"})
+        updated_headers = {key: value for key, value in updated_headers.items() if key in used_header_keys}
+        headers.update(updated_headers)
+        headers = dict_remove_keys(headers, [key for key in headers if key not in used_header_keys])
+        return headers
+
     @staticmethod
     def _ensure_manga_url(url: str) -> str:
-        if url.endswith("/") and "/ajax/chapters/" not in url:
+        if url.endswith("/"):
             url = url[:-1]
-        return url + "/ajax/chapters/"
+        if "/ajax/chapters/" not in url:
+            return url + "/ajax/chapters/"
+        else:
+            return url + "/"
 
     @classmethod
     async def check_updates(
@@ -2374,7 +2442,7 @@ class DrakeScans(ABCScan):
 
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2397,7 +2465,9 @@ class DrakeScans(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+        async with bot.session.post(
+                cls._ensure_manga_url(manga_url), headers=cls._make_headers(bot, manga_id, manga_url)
+        ) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2456,7 +2526,7 @@ class DrakeScans(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2478,7 +2548,7 @@ class DrakeScans(ABCScan):
     async def get_human_name(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot,
@@ -2509,14 +2579,14 @@ class DrakeScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        url_name = RegExpressions.drakescans_url.search(manga_url).group(1)
-        return cls.base_url + url_name
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
+        return cls.fmt_url.format(manga_url_name=url_name)
 
     @classmethod
     async def get_cover_image(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
-        async with bot.session.get(manga_url) as resp:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
             if resp.status != 200:
                 return await cls.report_error(
                     bot,
@@ -2537,8 +2607,8 @@ class DrakeScans(ABCScan):
 class Mangabaz(ABCScan):
     rx: re.Pattern = RegExpressions.mangabaz_url
     icon_url = "https://mangabaz.net/wp-content/uploads/2023/06/YT-Logo.png"
-    base_url = "https://mangabaz.net/mangas/"
-    fmt_url = base_url + "{manga_url_name}/ajax/chapters/"
+    base_url = "https://mangabaz.net"
+    fmt_url = base_url + "/mangas/{manga_url_name}"
     name = "mangabaz"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -2547,9 +2617,12 @@ class Mangabaz(ABCScan):
 
     @staticmethod
     def _ensure_manga_url(url: str) -> str:
-        if url.endswith("/") and "/ajax/chapters/" not in url:
+        if url.endswith("/"):
             url = url[:-1]
-        return url + "/ajax/chapters/"
+        if "/ajax/chapters/" not in url:
+            return url + "/ajax/chapters/"
+        else:
+            return url + "/"
 
     @classmethod
     async def check_updates(
@@ -2704,8 +2777,8 @@ class Mangabaz(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        url_name = RegExpressions.mangabaz_url.search(manga_url).group(1)
-        return cls.base_url + url_name
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
+        return cls.fmt_url.format(manga_url_name=url_name)
 
     @classmethod
     async def get_cover_image(
@@ -2733,8 +2806,8 @@ class Mangabaz(ABCScan):
 class Mangapill(ABCScan):
     rx: re.Pattern = RegExpressions.mangapill_url
     icon_url = "https://mangapill.com/static/favicon/favicon-32x32.png"
-    base_url = "https://mangapill.com/"
-    fmt_url = base_url + "manga/{manga_id}/{manga_url_name}"
+    base_url = "https://mangapill.com"
+    fmt_url = base_url + "/manga/{manga_id}/{manga_url_name}"
     name = "mangapill"
     id_first = True
     rate_limiter.root.manager.getLimiter(
@@ -2790,7 +2863,7 @@ class Mangapill(ABCScan):
             chapters: list[Chapter] = []
 
             for i, chapter_tag in enumerate(reversed(chapter_container)):
-                chapter_url = cls.base_url[:-1] + chapter_tag["href"]
+                chapter_url = cls.base_url + chapter_tag["href"]
                 chapter_text = chapter_tag.text.strip()
                 chapters.append(Chapter(chapter_url, chapter_text, i))
             return chapters
@@ -2857,13 +2930,13 @@ class Mangapill(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
-        return RegExpressions.mangapill_url.search(manga_url).group(1)
+        return cls.rx.search(manga_url).groupdict()["id"]
 
     @classmethod
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        url_name = RegExpressions.mangapill_url.search(manga_url).group(2)
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         _manga_id = await cls.get_manga_id(bot, manga_url)
         if _manga_id != manga_id:
             manga_id = _manga_id
@@ -2895,8 +2968,8 @@ class Mangapill(ABCScan):
 class OmegaScans(ABCScan):
     rx: re.Pattern = RegExpressions.omegascans_url
     icon_url = "https://omegascans.org/images/webicon.png"
-    base_url = "https://omegascans.org/"
-    fmt_url = base_url + "series/{manga_url_name}"
+    base_url = "https://omegascans.org"
+    fmt_url = base_url + "/series/{manga_url_name}"
     name = "omegascans"
     id_first = False
     rate_limiter.root.manager.getLimiter(
@@ -2965,7 +3038,7 @@ class OmegaScans(ABCScan):
                 ):  # patreon SVG container for chapter
                     break  # if this is found, any further chapters will be patreon only
 
-                chapter_url = cls.base_url[:-1] + chapter_tag["href"]
+                chapter_url = cls.base_url + chapter_tag["href"]
                 chapter_text = chapter_tag.find("span").text.strip()
                 chapters.append(Chapter(chapter_url, chapter_text, i))
             return chapters
@@ -3009,7 +3082,7 @@ class OmegaScans(ABCScan):
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        url_name = RegExpressions.omegascans_url.search(manga_url).group(1)
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         return cls.fmt_url.format(manga_url_name=url_name)
 
     @classmethod
@@ -3072,8 +3145,8 @@ class OmegaScans(ABCScan):
 class Bato(ABCScan):
     rx: re.Pattern = RegExpressions.bato_url
     icon_url = "https://bato.to/amsta/img/batoto/favicon.ico"
-    base_url = "https://bato.to/"
-    fmt_url = base_url + "series/{manga_id}/{manga_url_name}"
+    base_url = "https://bato.to"
+    fmt_url = base_url + "/series/{manga_id}/{manga_url_name}"
     name = "bato.to"
     id_first = True
     rate_limiter.root.manager.getLimiter(
@@ -3082,10 +3155,20 @@ class Bato(ABCScan):
 
     @classmethod
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
+        if not url_name:
+            raise MangaNotFound(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
-        headers["Cache-Control"] = "no-cache"
-        headers = dict_remove_keys(headers, ["Refer", ":Scheme:", ":Path:", ":Method:", ":Authority:"])
-        headers["Host"] = cls.base_url.removeprefix("https://").rstrip("/")
+        used_headers = [
+            "Accept", "Accept-Encoding", "Accept-Language", "Cache-Control", "Connection", "Host", "Pragma",
+            "Sec-Ch-Ua", "Sec-Ch-Ua-Mobile", "Sec-Ch-Ua-Platform", "Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site",
+            "Sec-Fetch-User", "Upgrade-Insecure-Requests", "User-Agent",
+        ]
+        updated_headers = {
+            "Host": cls.base_url.removeprefix("https://"),
+        }
+        headers |= updated_headers
+        headers = dict_remove_keys(headers, [k for k in headers if k not in used_headers])
         return headers
 
     @classmethod
@@ -3143,7 +3226,7 @@ class Bato(ABCScan):
                 new_chapter_url = chp_tag["href"]
                 new_chapter_text = chp_tag.find("b").text.strip()
                 chapters.append(
-                    Chapter(cls.base_url[:-1] + new_chapter_url, new_chapter_text, i)
+                    Chapter(cls.base_url + new_chapter_url, new_chapter_text, i)
                 )
             return chapters
 
@@ -3216,13 +3299,13 @@ class Bato(ABCScan):
 
     @classmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
-        return RegExpressions.bato_url.search(manga_url).group(1)
+        return cls.rx.search(manga_url).groupdict()["id"]
 
     @classmethod
     async def fmt_manga_url(
             cls, bot: MangaClient, manga_id: str | None, manga_url: str
     ) -> str:
-        manga_url_name = RegExpressions.bato_url.search(manga_url).group(2)
+        manga_url_name = cls.rx.search(manga_url).groupdict()["url_name"]
         manga_id = await cls.get_manga_id(bot, manga_url)
         return cls.fmt_url.format(manga_url_name=manga_url_name, manga_id=manga_id)
 
