@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import traceback as tb
-from typing import Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import aiohttp
 import discord
 
 from src.core.errors import URLAccessFailed
 from src.core.objects import ChapterUpdate, Manga
-from src.core.scanners import ABCScan, SCANLATORS
+from src.core.scanners import SCANLATORS
 from src.ui.views import BookmarkChapterView
 from src.utils import chunked, group_items_by
 
@@ -22,8 +22,6 @@ from discord.ext import commands, tasks
 class UpdateCheckCog(commands.Cog):
     def __init__(self, bot: MangaClient) -> None:
         self.bot: MangaClient = bot
-        self.SCANLATORS: Dict[str, ABCScan] = SCANLATORS
-        self.rate_limiter = {}
 
     async def cog_load(self):
         self.bot.logger.info("Loaded Updates Cog...")
@@ -33,12 +31,12 @@ class UpdateCheckCog(commands.Cog):
         self.check_updates_task.start()
 
     async def check_updates_by_scanlator(self, mangas: list[Manga]):
-        if mangas and mangas[0].scanlator not in self.SCANLATORS:
+        if mangas and mangas[0].scanlator not in SCANLATORS:
             self.bot.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
             return
 
         self.bot.logger.debug(f"Checking for updates for {mangas[0].scanlator}...")
-        scanner = self.SCANLATORS.get(mangas[0].scanlator)
+        scanner = SCANLATORS.get(mangas[0].scanlator)
 
         disabled_scanlators = await self.bot.db.get_disabled_scanlators()
         if scanner.name in disabled_scanlators:
