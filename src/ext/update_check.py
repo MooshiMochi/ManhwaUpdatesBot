@@ -80,7 +80,7 @@ class UpdateCheckCog(commands.Cog):
                     await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
                 continue
 
-            except aiohttp.ClientConnectorError as e:
+            except aiohttp.ClientConnectorError:
                 curr_index = mangas.index(manga)
                 await self.check_updates_by_scanlator(mangas[curr_index:])
                 return  # try again from the current manga and end the current iteration.

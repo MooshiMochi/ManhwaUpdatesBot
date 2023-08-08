@@ -66,8 +66,8 @@ class BaseView(View):
         self.bot.logger.error(
             tb.print_exception(type(error), error, error.__traceback__)
         )
-        if not interaction.response.is_done():
-            await interaction.response.send_message(
+        if not interaction.response.is_done():  # noqa
+            await interaction.response.send_message(  # noqa
                 f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
             )
         else:
@@ -85,7 +85,7 @@ class BaseView(View):
             return True
         else:
             embed = discord.Embed(title=f"🚫 You cannot use this menu!", color=0xFF0000)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
             return False
 
 
@@ -240,13 +240,13 @@ class BookmarkView(BaseView):
         if view is None:
             view = self
         if len(self.bookmarks) == 0:
-            await interaction.response.edit_message(
+            await interaction.response.edit_message(  # noqa
                 view=None, embed=discord.Embed(title="You have no more bookmarks.")
             )
             self.stop()
             return
 
-        await interaction.response.edit_message(
+        await interaction.response.edit_message(  # noqa
             view=view, embed=self._get_display_embed()
         )
 
@@ -325,29 +325,29 @@ class BookmarkView(BaseView):
     @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, row=0)
     async def _first_page(self, interaction: discord.Interaction, _):
         self._increment_index(float("inf"))  # this will set index to 0 internally
-        await interaction.response.edit_message(embed=self._get_display_embed())
+        await interaction.response.edit_message(embed=self._get_display_embed())  # noqa
 
     @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, row=0)
-    async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def back(self, interaction: discord.Interaction, _):
         self._increment_index(-1)
-        await interaction.response.edit_message(embed=self._get_display_embed())
+        await interaction.response.edit_message(embed=self._get_display_embed())  # noqa
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, row=0)
-    async def _stop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.edit_message(view=None)
+    async def _stop(self, interaction: discord.Interaction, _):
+        await interaction.response.edit_message(view=None)  # noqa
         self.stop()
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, row=0)
     async def forward(
-            self, interaction: discord.Interaction, button: discord.ui.Button
+            self, interaction: discord.Interaction, _
     ):
         self._increment_index(1)
-        await interaction.response.edit_message(embed=self._get_display_embed())
+        await interaction.response.edit_message(embed=self._get_display_embed())  # noqa
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, row=0)
     async def _last_page(self, interaction: discord.Interaction, _):
         self._increment_index(float("-inf"))  # this will set index to max internally
-        await interaction.response.edit_message(embed=self._get_display_embed())
+        await interaction.response.edit_message(embed=self._get_display_embed())  # noqa
 
 
 class PaginatorView(discord.ui.View):
@@ -400,18 +400,18 @@ class PaginatorView(discord.ui.View):
             self, interaction: discord.Interaction, _
     ):
         self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple)
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
             self.page = len(self.items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red)
     async def _stop(self, interaction: discord.Interaction, _):
-        await interaction.response.edit_message(view=None)
+        await interaction.response.edit_message(view=None)  # noqa
         self.stop()
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple)
@@ -419,14 +419,14 @@ class PaginatorView(discord.ui.View):
         self.page += 1
         if self.page == len(self.items):
             self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple)
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
         self.page = len(self.items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if isinstance(self.interaction, discord.Interaction):
@@ -438,7 +438,7 @@ class PaginatorView(discord.ui.View):
             return True
         else:
             embed = discord.Embed(title=f"🚫 You cannot use this menu!", color=0xFF0000)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
             return False
 
     async def on_timeout(self) -> None:
@@ -457,10 +457,10 @@ class PaginatorView(discord.ui.View):
                 description=f"{str(error)[-1500:]}",
                 color=0xFF0000,
             )
-            if interaction.response.is_done():
+            if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=em, ephemeral=True)
             else:
-                await interaction.response.send_message(embed=em, ephemeral=True)
+                await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
 
 
 class SubscribeView(View):
@@ -508,33 +508,33 @@ class SubscribeView(View):
             self, interaction: discord.Interaction, _
     ):
         self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, custom_id="nav_left", row=0)
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
             self.page = len(self.items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, custom_id="nav_stop", row=0)
     async def _stop(self, interaction: discord.Interaction, _):
         self._delete_nav_buttons()
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(view=self)  # noqa
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, custom_id="nav_right", row=0)
     async def forward(self, interaction: discord.Interaction, _):
         self.page += 1
         if self.page == len(self.items):
             self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, custom_id="nav_fast_right", row=0)
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
         self.page = len(self.items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())
+        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(
         label="Subscribe",
@@ -543,7 +543,7 @@ class SubscribeView(View):
         custom_id="search_subscribe",
     )
     async def subscribe(self, interaction: discord.Interaction, _):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        await interaction.response.defer(thinking=True, ephemeral=True)  # noqa
 
         message: discord.Message = interaction.message
         manga_home_url = message.embeds[0].url
@@ -607,7 +607,7 @@ class SubscribeView(View):
         custom_id="search_bookmark"
     )
     async def bookmark(self, interaction: discord.Interaction, _):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        await interaction.response.defer(thinking=True, ephemeral=True)  # noqa
 
         manga_url = interaction.message.embeds[0].url
         # get the scanlator
@@ -645,7 +645,7 @@ class SubscribeView(View):
         if custom_id.startswith("nav"):
             if self.author_id is None:
                 self._delete_nav_buttons()
-                await interaction.response.edit_message(view=self)
+                await interaction.response.edit_message(view=self)  # noqa
                 # await interaction.followup.send(
                 #     discord.Embed(
                 #         title="🚫 There are no items to paginate!",
@@ -662,7 +662,7 @@ class SubscribeView(View):
                     color=0xFF0000,
                     description="Try the buttons below. They should work 😉!"
                 )
-                await interaction.response.send_message(embed=embed, ephemeral=True)
+                await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
                 return False
         else:
             return True
@@ -678,10 +678,10 @@ class SubscribeView(View):
                 description=f"{str(error)[-1500:]}",
                 color=0xFF0000,
             )
-            if interaction.response.is_done():
+            if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=em, ephemeral=True)
             else:
-                await interaction.response.send_message(embed=em, ephemeral=True)
+                await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
 
 
 class ConfirmView(BaseView):
@@ -695,13 +695,13 @@ class ConfirmView(BaseView):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, _):
-        await interaction.response.defer(ephemeral=True, thinking=False)
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
         self.value = True
         self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, _):
-        await interaction.response.defer(ephemeral=True, thinking=False)
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
         self.value = False
         self.stop()
 
@@ -715,7 +715,7 @@ class BookmarkChapterView(View):
         label="✉️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
     )
     async def mark_read(self, interaction: discord.Interaction, btn: Button) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=False)
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
         manga_id, chapter_index = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
@@ -866,8 +866,8 @@ class BookmarkChapterView(View):
         self.bot.logger.error(
             tb.print_exception(type(error), error, error.__traceback__)
         )
-        if not interaction.response.is_done():
-            await interaction.response.send_message(
+        if not interaction.response.is_done():  # noqa
+            await interaction.response.send_message(  # noqa
                 f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
             )
         else:
@@ -884,7 +884,7 @@ class DeleteBookmarkView(BaseView):
     @discord.ui.button(label="Delete 'hidden bookmark'", style=discord.ButtonStyle.red)
     async def delete_last_read(self, interaction: discord.Interaction, btn: Button):
         btn.disabled = True
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(view=self)  # noqa
 
         confirm_view: ConfirmView = ConfirmView(self.bot, interaction)
         confirm_view.message = await interaction.followup.send(

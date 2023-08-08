@@ -368,7 +368,7 @@ class TestCases(dict):
                     scanlator_name="manganato",
                     manga_url="https://chapmanganato.com/manga-hf985162",
                     completed=False,
-                    human_name="God Of Blackfield",
+                    human_name="God Of Blackfield",  # noqa
                     manga_id="hf985162",
                     curr_chapter_url="https://chapmanganato.com/manga-hf985162/chapter-155",
                     first_chapter_url="https://chapmanganato.com/manga-hf985162/chapter-1",
@@ -418,7 +418,7 @@ class TestCases(dict):
                     first_chapter_url="https://mangadex.org/chapter/388124f0-dc2e-43db-b19e-71d0e3eddfc6",
                     cover_image=(
                         "https://uploads.mangadex.org/covers/7dbeaa0e-420a-4dc0-b2d3-eb174de266da/192e6a85-80d5-42b4"
-                        "-bdda-81b56592c44f.jpg"
+                        "-bdda-81b56592c44f.jpg"  # noqa
                     ),
                     last_3_chapter_urls=[
                         "https://mangadex.org/chapter/03402aaa-8eba-43ac-a83e-ce336c75aa62",
@@ -435,7 +435,7 @@ class TestCases(dict):
                     scanlator_name="flamescans",
                     manga_url="https://flamescans.org/series/the-villainess-is-a-marionette/",
                     completed=True,
-                    human_name="The Villainess is a Marionette",
+                    human_name="The Villainess is a Marionette",  # noqa
                     manga_id=default_id_func("https://flamescans.org/series/the-villainess-is-a-marionette"),
                     curr_chapter_url="https://flamescans.org/the-villainess-is-a-marionette-chapter-69/",
                     first_chapter_url="https://flamescans.org/the-villainess-is-a-marionette-chapter-0/",
@@ -477,7 +477,7 @@ class TestCases(dict):
                     scanlator_name="aquamanga",
                     manga_url="https://aquamanga.com/read/court-swordswoman-in-another-world/",
                     completed=True,
-                    human_name="Court Swordswoman in Another World",
+                    human_name="Court Swordswoman in Another World",  # noqa
                     manga_id=default_id_func("https://aquamanga.com/read/court-swordswoman-in-another-world"),
                     curr_chapter_url="https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
                     first_chapter_url="https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-1/",
@@ -509,7 +509,7 @@ class TestCases(dict):
                     ),
                     cover_image=(
                         "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8"
-                        "/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg"
+                        "/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg"  # noqa
                     ),
                     last_3_chapter_urls=[
                         "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
@@ -591,7 +591,9 @@ class TestCases(dict):
                     manga_id="1680246102",
                     curr_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-03/",
                     first_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-prologue/",
-                    cover_image="https://luminousscans.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
+                    cover_image=(
+                        "https://luminousscans.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg"
+                    ),
                     last_3_chapter_urls=[
                         "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-01/",
                         "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-02/",
@@ -697,7 +699,7 @@ class TestCases(dict):
                     first_chapter_url="https://bato.to/chapter/1803219",
                     cover_image=(
                         "https://xfs-s118.batcg.org/thumb/W600/ampi/515"
-                        "/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg"
+                        "/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg"  # noqa
                     ),
                     last_3_chapter_urls=[
                         "https://bato.to/chapter/2018714",
@@ -744,7 +746,7 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = ["nitroscans", "voidscans"]  # going through changes on website, gotta wait till done
+        tests_to_ignore = ["voidscans"]
         # testCases.pop("voidscans", None)  # ass website to work with
         await run_tests(testCases, tests_to_ignore)
 
@@ -788,7 +790,6 @@ async def sub_main():
 
 async def paused_test():
     async with TestCases() as testCases:
-        testCases.pop("nitroscans", None)  # nitroscans went through changes. gotta implement new stuff
         for scanner, testCase in testCases.items():
             await run_single_test(testCase)
             input("Press Enter to continue...")
