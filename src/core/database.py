@@ -517,8 +517,9 @@ class Database:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
                 cursor = await db.execute(
                     """
-                    SELECT id, human_name FROM series
-                    WHERE id IN (SELECT series_id FROM bookmarks WHERE user_id = $1) AND bookmarks.user_created = 1
+                    SELECT series.id, series.human_name FROM series 
+                    JOIN bookmarks ON series.id = bookmarks.series_id 
+                    WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1;
                     ORDER BY levenshtein(human_name, $2) DESC
                     LIMIT 25;
                     """,
@@ -527,8 +528,9 @@ class Database:
             else:
                 cursor = await db.execute(
                     """
-                    SELECT id, human_name FROM series
-                    WHERE id IN (SELECT series_id FROM bookmarks WHERE user_id = $1) AND bookmarks.user_created = 1
+                    SELECT series.id, series.human_name FROM series 
+                    JOIN bookmarks ON series.id = bookmarks.series_id 
+                    WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1;
                     """,
                     (user_id,),
                 )

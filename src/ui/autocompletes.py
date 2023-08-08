@@ -64,7 +64,6 @@ async def user_bookmarks(
     bookmarks = await interaction.client.db.get_user_bookmarks_autocomplete(interaction.user.id, argument)
     if not bookmarks:
         return []
-
     return [
                discord.app_commands.Choice(
                    name=x[1][:97] + "..." if len(x[1]) > 100 else x[1],
