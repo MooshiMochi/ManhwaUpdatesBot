@@ -21,6 +21,7 @@ from discord.ext import commands
 
 from src.core.objects import TextPageSource, GuildSettings
 from src.ui.views import ConfirmView, PaginatorView
+from src.core.scanners import SCANLATORS
 
 
 class Restricted(commands.Cog):
@@ -598,14 +599,14 @@ class Restricted(commands.Cog):
     async def toggle_scanlator(self, ctx: commands.Context, *, scanlator: str):
         scanlator = scanlator.lower()
         updates_cog: commands.Cog | None = self.bot.get_cog("UpdateCheckCog")
-        if scanlator not in updates_cog.SCANLATORS:
+        if scanlator not in SCANLATORS:
             em = discord.Embed(
                 title="Scanlator not found.",
                 description=f"Scanlator `{scanlator}` not found.",
                 color=discord.Color.red()
             )
             em.description += "\n\nAvailable scanlators:\n```diff\n"
-            em.description += "+ " + " +\n+ ".join(updates_cog.SCANLATORS) + " +" + "\n```"
+            em.description += "+ " + " +\n+ ".join(SCANLATORS) + " +" + "\n```"
             await ctx.send(embed=em)
             return
         new_status = await self.bot.db.toggle_scanlator(scanlator)
