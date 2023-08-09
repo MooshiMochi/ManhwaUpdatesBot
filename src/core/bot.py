@@ -43,6 +43,8 @@ class MangaClient(commands.Bot):
         self._debug_mode: bool = False
         self.proxy_addr: Optional[str] = None
 
+        self._all_scanners: dict = SCANLATORS.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
+
     async def setup_hook(self):
         await self.db.async_init()
         if self._config["proxy"]["enabled"]:

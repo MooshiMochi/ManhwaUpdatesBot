@@ -831,7 +831,7 @@ class BookmarkChapterView(View):
 
         last_read_index = bookmark.last_read_chapter.index
         next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
-        next_not_available = "`Wait for updates!`" if bookmark.manga.completed else "`None, manga is finished!`"
+        next_not_available = "`Wait for updates!`" if not bookmark.manga.completed else "`None, manga is finished!`"
 
         await interaction.followup.send(
             embed=discord.Embed(

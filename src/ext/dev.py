@@ -598,18 +598,24 @@ class Restricted(commands.Cog):
     )
     async def toggle_scanlator(self, ctx: commands.Context, *, scanlator: str):
         scanlator = scanlator.lower()
-        updates_cog: commands.Cog | None = self.bot.get_cog("UpdateCheckCog")
-        if scanlator not in SCANLATORS:
+        # noinspection PyProtectedMember
+        if scanlator not in self.bot._all_scanners:
             em = discord.Embed(
                 title="Scanlator not found.",
                 description=f"Scanlator `{scanlator}` not found.",
                 color=discord.Color.red()
             )
             em.description += "\n\nAvailable scanlators:\n```diff\n"
-            em.description += "+ " + " +\n+ ".join(SCANLATORS) + " +" + "\n```"
+            # noinspection PyProtectedMember
+            em.description += "+ " + " +\n+ ".join(self.bot._all_scanners) + " +" + "\n```"
             await ctx.send(embed=em)
             return
         new_status = await self.bot.db.toggle_scanlator(scanlator)
+        if new_status is True:  # enabled
+            # noinspection PyProtectedMember
+            SCANLATORS[scanlator] = self.bot._all_scanners[scanlator]
+        else:
+            SCANLATORS.pop(scanlator, None)
         await ctx.send(
             f"```diff\n-<[ {scanlator} is now {'enabled' if new_status else 'disabled'} ]>-```")
 
