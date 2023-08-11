@@ -167,7 +167,7 @@ class MangaClient(commands.Bot):
         cmd_opts: list[dict] = interaction.data.get("options", [])
 
         if len(cmd_opts) == 1:
-            cmd_opts = cmd_opts[0]["options"]
+            cmd_opts = cmd_opts[0].get("options", [])
             cmd_name += f" {interaction.data['options'][0]['name']}"
             options_list = [f"{opt['name']}: {opt['value']}" for opt in cmd_opts]
         elif len(cmd_opts) > 1:
@@ -191,6 +191,7 @@ class MangaClient(commands.Bot):
             if not channel:
                 return
             try:
+                pretty_msg = pretty_msg[:4000]
                 em = discord.Embed(color=0x000000, description=pretty_msg)
                 await channel.send(embed=em)
             except Exception as e:

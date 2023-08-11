@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from src.core import MangaClient
     from src.core.objects import Bookmark
     from src.core.scanners import ABCScan
+    from src.core import CachedClientSession
 
 import os
 import re
@@ -732,15 +733,23 @@ def dict_remove_keys(d: dict, keys: list[str]) -> dict:
     return {k: v for k, v in d.items() if k not in keys}
 
 
-async def translate(session: "CachedClientSession", text: str, from_: str, to_: str) -> tuple[str, str]:
+async def translate(session: CachedClientSession, text: str, from_: str, to_: str) -> tuple[str, str]:
     """
-    :param text: Text to translate
-    :param from_: Language to translate from
-    :param to_: Language to translate to
-    :return: Tuple(translated_text, lang_from)
+    Summary:
+        Translate text from one language to another.
+        NOTE
+        :extra: This api is not guaranteed to work.
+        Set up https://libretranslate.com/?source=ja&target=en&q=Hello as a fallback
 
-    :extra: In case this api fails.
-    Set up https://libretranslate.com/?source=ja&target=en&q=Hello
+
+    Args:
+        session: CachedClientSession - the session to use to make the request
+        text: Text to translate
+        from_: Language to translate from
+        to_: Language to translate to
+
+    Returns:
+        tuple[str, str]: Translated text and language from
     """
     async with session.get(
             f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={from_}&tl={to_}&dt=t&q={text}",
