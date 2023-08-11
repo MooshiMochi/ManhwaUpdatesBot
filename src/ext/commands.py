@@ -489,6 +489,8 @@ class CommandsCog(commands.Cog):
             "`/config setup` - Set up the bot.\n"
             "`/config show` - Show the current configuration.\n"
             "`/config delete` - Delete the current configuration.\n\n"
+            "**Miscellaneous Commands:**\n"
+            "`/translate` - Translate with Google between languages.\n\n"
             "**Permissions:**\n"
             "The bot needs the following permissions to function properly:\n"
             "• Send Messages\n"
