@@ -9,6 +9,7 @@ from discord import app_commands
 
 from src.core.objects import Manga
 from src.core.scanners import SCANLATORS
+from src.static import Constants
 
 
 def bind_autocomplete(callback: Callable, bind_to_object: object) -> Callable:
@@ -108,4 +109,14 @@ async def chapters(
                    name=chp.name[:97] + ("..." if len(chp.name) > 100 else ''),
                    value=str(chp.index)
                ) for chp in _chapters
+           ][:25]
+
+
+async def google_language(
+        _: discord.Interaction, argument: str
+) -> list[discord.app_commands.Choice]:
+    return [
+               app_commands.Choice(name=lang["language"], value=lang["code"]) for lang in
+               Constants.google_translate_langs if
+               argument.lower() in lang["language"].lower()
            ][:25]

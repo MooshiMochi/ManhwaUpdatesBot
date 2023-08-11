@@ -59,6 +59,7 @@ class TritiniaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -116,6 +117,7 @@ class TritiniaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -138,6 +140,7 @@ class TritiniaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -162,6 +165,7 @@ class TritiniaScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -198,6 +202,7 @@ class TritiniaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -236,6 +241,7 @@ class Manganato(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -280,6 +286,7 @@ class Manganato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
 
         if resp.status_code != 200:
             await cls.report_error(
@@ -307,6 +314,7 @@ class Manganato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
 
         if resp.status_code != 200:
             await cls.report_error(
@@ -330,6 +338,7 @@ class Manganato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
 
         if resp.status_code != 200:
             await cls.report_error(
@@ -379,6 +388,7 @@ class Manganato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
 
         if resp.status_code != 200:
             await cls.report_error(
@@ -429,6 +439,7 @@ class Toonily(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         resp = await bot.curl_session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url))
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -454,6 +465,7 @@ class Toonily(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         resp = await bot.curl_session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url))
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -512,6 +524,7 @@ class Toonily(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         resp = await bot.curl_session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url))
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -533,6 +546,7 @@ class Toonily(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url))
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -572,6 +586,7 @@ class Toonily(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url))
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -602,6 +617,8 @@ class MangaDex(ABCScan):
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
     ).disable()  # disabled, handled in the API
+
+    # For mangadex, the 'last_known_status' variable is set in the API class @ src/core/mangadexAPI.py
 
     @classmethod
     async def check_updates(
@@ -769,6 +786,7 @@ class FlameScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -795,6 +813,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -844,6 +863,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -865,6 +885,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -899,6 +920,7 @@ class FlameScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -959,6 +981,7 @@ class Asura(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -976,6 +999,7 @@ class Asura(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1014,6 +1038,7 @@ class Asura(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1035,6 +1060,7 @@ class Asura(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1056,6 +1082,7 @@ class Asura(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1139,6 +1166,7 @@ class Aquamanga(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1170,6 +1198,7 @@ class Aquamanga(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1219,6 +1248,7 @@ class Aquamanga(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1250,6 +1280,7 @@ class Aquamanga(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1280,6 +1311,7 @@ class Aquamanga(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1362,6 +1394,7 @@ class ReaperScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
 
@@ -1397,6 +1430,7 @@ class ReaperScans(ABCScan):
             resp = await bot.curl_session.get(manga_url.rstrip("/") + f"?page={page}")
         else:
             resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
 
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
@@ -1474,6 +1508,7 @@ class ReaperScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> Chapter | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1512,6 +1547,7 @@ class ReaperScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1529,6 +1565,7 @@ class ReaperScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1550,6 +1587,7 @@ class ReaperScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
@@ -1598,6 +1636,7 @@ class AnigliScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1623,6 +1662,7 @@ class AnigliScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1673,6 +1713,7 @@ class AnigliScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1701,6 +1742,7 @@ class AnigliScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1729,6 +1771,7 @@ class AnigliScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -1760,6 +1803,8 @@ class Comick(ABCScan):
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
     ).disable()  # rate-limits handled by the API implementation in ./comickAPI.py
+
+    # For comick, the 'last_known_status' variable is set in the Comick api @ src/core/comickAPI.py
 
     @classmethod
     async def check_updates(
@@ -1907,6 +1952,7 @@ class VoidScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -1938,6 +1984,7 @@ class VoidScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -1972,6 +2019,7 @@ class VoidScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -1999,6 +2047,7 @@ class VoidScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             await cls.report_error(
                 bot,
@@ -2029,6 +2078,7 @@ class VoidScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         resp = await bot.curl_session.get(manga_url)
+        cls.last_known_status = resp.status_code, datetime.now().timestamp()
         if resp.status_code != 200:
             return await cls.report_error(
                 bot,
@@ -2066,6 +2116,7 @@ class LuminousScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2090,6 +2141,7 @@ class LuminousScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2126,6 +2178,7 @@ class LuminousScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2151,6 +2204,7 @@ class LuminousScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2181,6 +2235,7 @@ class LuminousScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2228,6 +2283,7 @@ class LeviatanScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2251,6 +2307,7 @@ class LeviatanScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2285,6 +2342,7 @@ class LeviatanScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2312,6 +2370,7 @@ class LeviatanScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2352,6 +2411,7 @@ class LeviatanScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2431,6 +2491,7 @@ class DrakeScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2456,6 +2517,7 @@ class DrakeScans(ABCScan):
         async with bot.session.post(
                 cls._ensure_manga_url(manga_url), headers=cls._make_headers(bot, manga_id, manga_url)
         ) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2515,6 +2577,7 @@ class DrakeScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2537,6 +2600,7 @@ class DrakeScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 return await cls.report_error(
                     bot,
@@ -2575,6 +2639,7 @@ class DrakeScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 return await cls.report_error(
                     bot,
@@ -2621,6 +2686,7 @@ class Mangabaz(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(cls._ensure_manga_url(manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2653,6 +2719,7 @@ class Mangabaz(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2712,6 +2779,7 @@ class Mangabaz(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2734,6 +2802,7 @@ class Mangabaz(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2773,6 +2842,7 @@ class Mangabaz(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2811,6 +2881,7 @@ class Mangapill(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2833,6 +2904,7 @@ class Mangapill(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2867,6 +2939,7 @@ class Mangapill(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2899,6 +2972,7 @@ class Mangapill(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2935,6 +3009,7 @@ class Mangapill(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -2977,6 +3052,7 @@ class OmegaScans(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3003,6 +3079,7 @@ class OmegaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3042,6 +3119,7 @@ class OmegaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3078,6 +3156,7 @@ class OmegaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3100,6 +3179,7 @@ class OmegaScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.post(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3168,6 +3248,7 @@ class Bato(ABCScan):
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3190,6 +3271,7 @@ class Bato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3246,6 +3328,7 @@ class Bato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3267,6 +3350,7 @@ class Bato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,
@@ -3302,6 +3386,7 @@ class Bato(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> str | None:
         async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
                     bot,

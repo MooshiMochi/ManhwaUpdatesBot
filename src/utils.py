@@ -730,3 +730,27 @@ def dict_remove_keys(d: dict, keys: list[str]) -> dict:
     NOTE: Does not modify the original dict
     """
     return {k: v for k, v in d.items() if k not in keys}
+
+
+async def translate(session: "CachedClientSession", text: str, from_: str, to_: str) -> tuple[str, str]:
+    """
+    :param text: Text to translate
+    :param from_: Language to translate from
+    :param to_: Language to translate to
+    :return: Tuple(translated_text, lang_from)
+
+    :extra: In case this api fails.
+    Set up https://libretranslate.com/?source=ja&target=en&q=Hello
+    """
+    async with session.get(
+            f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={from_}&tl={to_}&dt=t&q={text}",
+            cache_time=24 * 60 * 60  # 1 day caching
+    ) as r:
+        if r.status == 200:
+            resp = await r.json()
+            return (
+                " ".join([str(i[0]).strip() for i in resp[0] if i[0]]),
+                resp[-6] or resp[-7],
+            )
+        else:
+            raise Exception("Error while translating", r)

@@ -15,12 +15,14 @@ from src.core.errors import MangaCompletedOrDropped
 from src.core.scanners import *
 from src.core.objects import Manga
 from src.ui.views import SubscribeView, PaginatorView
+from src.ui.modals import InputModal
 from src.utils import (
     group_items_by,
     create_embeds,
     modify_embeds,
     get_manga_scanlator_class,
     respond_if_limit_reached,
+    translate
 )
 
 
@@ -28,6 +30,17 @@ class CommandsCog(commands.Cog):
     def __init__(self, bot: MangaClient):
         self.bot: MangaClient = bot
         self.SCANLATORS: dict[str, ABCScan] = SCANLATORS
+
+        ctx_menu_translate = app_commands.ContextMenu(
+            name="Translate",
+            callback=self.translate_context_menu
+        )
+        ctx_menu_translate_to = app_commands.ContextMenu(
+            name="Translate to...",
+            callback=self.translate_to_context_menu
+        )
+        self.bot.tree.add_command(ctx_menu_translate)
+        self.bot.tree.add_command(ctx_menu_translate_to)
 
     async def cog_load(self):
         self.bot.logger.info("Loaded Commands Cog...")
@@ -420,7 +433,20 @@ class CommandsCog(commands.Cog):
                     or user_agents.get(scanlator.name, True) is None
             ):
                 continue
-            em.description += f"• [{name}]({url})\n"
+            if scanlator.last_known_status:
+                status_code = scanlator.last_known_status[0]
+                status_ts = int(scanlator.last_known_status[1])
+            else:
+                status_code = "N/A"
+                status_ts = int(datetime.utcnow().timestamp())
+
+            status_str = (
+                "OK"
+                if status_code == 200 else "Temp-Banned"
+                if status_code == 429 else "Rate-Limited"
+                if status_code == 403 else "Unknown"
+            )
+            em.description += f"• [{name}]({url}) (`{status_code}:` {status_str} @ <t:{status_ts}:R>)\n"
             em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"
 
         em.description += "\n\n__**Note:**__"
@@ -449,7 +475,7 @@ class CommandsCog(commands.Cog):
             "`/latest` - Get the latest chapter of a manga.\n"
             "`/chapters` - Get a list of chapters of a manga.\n"
             "`/next_update_check` - Get the time until the next update check.\n"
-            "`/supported_websites` - Get a list of websites supported by the bot.\n\n"
+            "`/supported_websites` - Get a list of websites supported by the bot and the bot status on them.\n\n"
             "**Subscription Commands:**\n"
             "`/subscribe new` - Subscribe to a manga.\n"
             "`/subscribe delete` - Unsubscribe from a manga.\n"
@@ -542,6 +568,92 @@ class CommandsCog(commands.Cog):
                 view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)
                 await interaction.followup.send(embed=results[0], view=view, ephemeral=False)
                 return
+
+    @app_commands.command(name="translate", description="Translate any text from one language to another")
+    @app_commands.describe(text="The text to translate", to="The language to translate to",
+                           from_="The language to translate from")
+    @app_commands.rename(from_="from")
+    @app_commands.autocomplete(to=autocompletes.google_language, from_=autocompletes.google_language)
+    async def translate_slash(self, interaction: discord.Interaction, text: str, to: Optional[str],
+                              from_: Optional[str] = None):
+        if not from_:
+            from_ = "auto"
+
+        if not to:
+            to = "en"
+
+        if len(text) > 2000:
+            return await interaction.response.send_message(  # noqa
+                "The text is too long to translate. Max character limit is 2000.", ephemeral=True)
+
+        translated, from_ = await translate(self.bot.session, text, from_, to)
+
+        lang_from = "Unknown"
+        lang_to = "Unknown"
+        for lang in Constants.google_translate_langs:
+            if lang["code"] == from_:
+                lang_from = lang["language"]
+            if lang["code"] == to:
+                lang_to = lang["language"]
+
+        em = discord.Embed(title="Translation Complete 🈳",
+                           description=f"Language: `{lang_from}` \⟶ `{lang_to}`")
+        em.add_field(name="📥 Input", value=f"```{text}```", inline=False)
+        em.add_field(name="📤 Result",
+                     value=f"```{translated}```", inline=False)
+        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+
+    # used for the context menu ('Translate with Google')
+    async def translate_context_menu(self, interaction: discord.Interaction, message: discord.Message):
+        from_ = "auto"
+        to = "en"
+        text = message.content
+        if len(text) > 2000:
+            return await interaction.response.send_message(  # noqa
+                "The text is too long to translate. Max character limit is 2000.", ephemeral=True)
+
+        translated, from_ = await translate(self.bot.session, text, from_, to)
+        lang_from = "Unknown"
+        lang_to = "Unknown"
+        for lang in Constants.google_translate_langs:
+            if lang["code"] == from_:
+                lang_from = lang["language"]
+            if lang["code"] == to:
+                lang_to = lang["language"]
+        em = discord.Embed(title="Translation Complete 🈳",
+                           description=f"Language: `{lang_from}` \⟶ `{lang_to}`")
+        em.add_field(name="📥 Input", value=f"```{text}```", inline=False)
+        em.add_field(name="📤 Result",
+                     value=f"```{translated}```", inline=False)
+        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+
+    # used for the context menu ('Translate with Google to')
+    async def translate_to_context_menu(self, interaction: discord.Interaction, message: discord.Message):
+        modal = InputModal()
+        await interaction.response.send_modal(modal)  # noqa
+        await modal.wait()
+        if modal.language is None:
+            return await interaction.followup.send("You didn't select a language.", ephemeral=True)
+        from_ = "auto"
+        to = modal.language
+        text = message.content
+        if len(text) > 2000:
+            return await interaction.response.send_message(  # noqa
+                "The text is too long to translate. Max character limit is 2000.", ephemeral=True)
+        translated, from_ = await translate(self.bot.session, text, from_, to["code"])
+        lang_from = "Unknown"
+        lang_to = "Unknown"
+        for lang in Constants.google_translate_langs:
+            if lang["code"] == from_:
+                lang_from = lang["language"]
+            if lang["code"] == to:
+                lang_to = lang["language"]
+        em = discord.Embed(title="Translation Complete 🈳",
+                           description=f"Language: `{lang_from}` \⟶ `{lang_to}`")
+        em.add_field(name="📥 Input", value=f"```{text}```", inline=False)
+        em.add_field(name="📤 Result",
+                     value=f"```{translated}```", inline=False)
+        await interaction.followup.send(embed=em, ephemeral=True)  # noqa
 
 
 async def setup(bot: MangaClient) -> None:

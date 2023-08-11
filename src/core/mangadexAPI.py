@@ -1,9 +1,11 @@
 import asyncio
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import aiohttp
 
 from src.core.cache import CachedClientSession
+from src.core.scanners import MangaDex
 
 
 class MangaDexAPI:
@@ -41,6 +43,7 @@ class MangaDexAPI:
             async with self.session.request(
                     method, url, params=params, json=data, headers=headers, **kwargs
             ) as response:
+                MangaDex.last_known_status = (response.status, datetime.now().timestamp())
                 json_data = await response.json()
                 self.rate_limit_remaining = int(
                     response.headers.get("X-RateLimit-Remaining", "-1")
@@ -54,6 +57,7 @@ class MangaDexAPI:
                 return json_data
         except aiohttp.ServerDisconnectedError:
             self.session.logger.error("Server disconnected, retrying with new session...")
+            # noinspection PyProtectedMember
             session_proxy = self.session._proxy
             await self.session.close()
             self.session = CachedClientSession(proxy=session_proxy, name="cache.dex", trust_env=True)

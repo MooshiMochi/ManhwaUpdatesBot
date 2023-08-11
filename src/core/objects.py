@@ -98,6 +98,7 @@ class ABCScan(ABC):
     name: str = "Unknown"
     id_first: bool = False  # whether to extract ID first when using fmt_manga_url method
     rx: re.Pattern = None
+    last_known_status: tuple[int, float] | None = None
 
     @classmethod
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
@@ -113,7 +114,7 @@ class ABCScan(ABC):
     async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
         """
         Summary:
-            Reports an error to the bot's logger and/or Discord.
+            Reports an error to the bot logger and/or Discord.
 
         Args:
             bot: MangaClient - The bot instance.
@@ -295,6 +296,7 @@ class ABCScan(ABC):
         raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
         """
         Summary:
@@ -311,6 +313,7 @@ class ABCScan(ABC):
         raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
         """
         Summary:
@@ -385,7 +388,7 @@ class ABCScan(ABC):
             is_completed,
             cls.name,
         )
-        await bot.db.add_series(return_obj)  # save to database for future use.
+        await bot.db.add_series(return_obj)  # save to the database for future use.
         return return_obj
 
     @classmethod

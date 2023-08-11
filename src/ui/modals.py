@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..static import Constants
+
 if TYPE_CHECKING:
     from src.core.objects import Bookmark
     from . import BookmarkView
@@ -12,6 +14,21 @@ from logging import Logger
 # noinspection PyProtectedMember
 from src.core.database import _levenshtein_distance
 from src.enums import BookmarkViewType
+import logging
+
+
+class BaseModal(discord.ui.Modal):
+    logger = logging.getLogger("modal")
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        # Make sure we know what the error actually is
+        self.logger.error(traceback.print_exception(type(error), error, error.__traceback__))
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                'Oops! Something went wrong.', ephemeral=True
+            )
+        else:
+            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
 
 
 class SearchModal(discord.ui.Modal, title='Search Bookmark'):
@@ -49,3 +66,37 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
             )
         else:
             await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+
+
+class InputModal(BaseModal, title="Language to translate to"):
+    input_value = discord.ui.TextInput(
+        label='Language Name',
+        placeholder='Enter the language name...',
+    )
+
+    def __init__(self):
+        super().__init__()
+        self.language: dict[str, str] = {}
+
+    async def on_submit(self, interaction: discord.Interaction, /) -> None:
+        val = self.input_value.value.lower()
+
+        # begin searching for the value
+        for lang in Constants.google_translate_langs:
+            if val in lang["language"].lower():
+                self.language = lang
+                break
+        else:  # no break
+            # try to search with levenshtein distance
+            self.language = min(
+                Constants.google_translate_langs,
+                key=lambda x: _levenshtein_distance(x["language"].lower(), val)
+            )
+        if self.language is not None:
+            await interaction.response.send_message(  # noqa
+                f"Language set to {self.language['language']}.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(  # noqa
+                "Language not found.", ephemeral=True
+            )
