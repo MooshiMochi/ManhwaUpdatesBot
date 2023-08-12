@@ -337,8 +337,10 @@ class CommandsCog(commands.Cog):
             (
                 Asura,
                 "Asura",
-                "https://asura.gg/",
-                "https://asura.gg/manga/manga-title/",
+                # "https://asura.gg/",
+                # "https://asura.gg/manga/manga-title/",
+                "https://asura.nacm.xyz",  # TODO: temp asura URL
+                "https://asura.nacm.xyz/manga/manga-title/",  # TODO: temp asura URL
             ),
             (
                 ReaperScans,

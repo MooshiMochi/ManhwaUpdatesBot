@@ -943,19 +943,19 @@ class FlameScans(ABCScan):
 
 class Asura(ABCScan):
     rx: re.Pattern = RegExpressions.asura_url
+    # base_url = "https://asura.gg"
+    base_url = "https://asura.nacm.xyz"  # TODO: temp asura URL
     icon_url = (
-        "https://asura.gg/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"
+        f"{base_url}/wp-content/uploads/2021/03/cropped-Group_1-1-192x192.png"  # noqa
     )
-    base_url = "https://asura.gg"
     fmt_url = base_url + "/manga/{manga_url_name}"
     name = "asura"
     id_first = False
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=15, period=Minutes.ONE
     )  # 4s interval
-
     NOT_FOUND_IMG_URL = (
-        "https://asura.gg/wp-content/themes/mangastream/assets/images/404.png"
+        f"{base_url}/wp-content/themes/mangastream/assets/images/404.png"  # noqa
     )
 
     @classmethod
@@ -969,13 +969,18 @@ class Asura(ABCScan):
         """This will add the ID to the URL all the time for consistency.
         Mainly doing this bc asura are cheeky and are changing the URLs from time to time...
         """
-        pattern1 = re.compile(r"asura\.gg/\d{9,}-", re.MULTILINE)
-        pattern2 = re.compile(r"asura\.gg/manga/\d{9,}-", re.MULTILINE)
+        # pattern1 = re.compile(r"asura\.gg/\d{9,}-", re.MULTILINE)
+        # pattern2 = re.compile(r"asura\.gg/manga/\d{9,}-", re.MULTILINE)
+
+        pattern1 = re.compile(r"asura\.nacm\.xyz/\d{9,}-", re.MULTILINE)  # TODO: temp asura URL
+        pattern2 = re.compile(r"asura\.nacm\.xyz/\d{9,}-", re.MULTILINE)  # TODO: temp asura URL
 
         if pattern1.search(chapter_url):
-            return pattern1.sub("asura.gg/", chapter_url)
+            # return pattern1.sub("asura.gg/", chapter_url)
+            return pattern1.sub("asura.nacm.xyz/", chapter_url)  # TODO: temp asura URL  # noqa
         elif pattern2.search(chapter_url):
-            return pattern2.sub("asura.gg/manga/", chapter_url)
+            # return pattern2.sub("asura.gg/manga/", chapter_url)
+            return pattern2.sub("asura.nacm.xyz/manga/", chapter_url)  # TODO: temp asura URL  # noqa
         return chapter_url
 
     @classmethod

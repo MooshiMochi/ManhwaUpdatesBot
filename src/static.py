@@ -195,7 +195,8 @@ class RegExpressions:
     )
 
     asura_url = re.compile(
-        r"(?:https?://)?(?:www\.)?asura\.gg/(?:manga/)?(?:\d+-)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
+        r"(?:https?://)?(?:www\.)?asura\.nacm\.xyz/(?:manga/)?(?:\d+-)?(?P<url_name>[\w-]+?)"
+        r"(?:-chapter-[\d-]+)?/?(?:/.*)?$"  # TODO: Temp asura URL
     )
 
     reaperscans_url = re.compile(
