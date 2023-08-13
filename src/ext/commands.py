@@ -553,7 +553,7 @@ class CommandsCog(commands.Cog):
                 )
             if hasattr(scanlator, "search"):
                 em = await scanlator.search(self.bot, query=query, as_em=True)
-                await interaction.followup.send(embed=em, ephemeral=True)
+                await interaction.followup.send(embed=em, ephemeral=True, view=SubscribeView(self.bot))
             else:
                 return await interaction.followup.send(
                     embed=cannot_search_em, ephemeral=True

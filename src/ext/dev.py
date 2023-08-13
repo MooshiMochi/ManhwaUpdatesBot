@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from functools import partial
 from typing import Literal, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -394,12 +395,14 @@ class Restricted(commands.Cog):
         env = {
             "discord": discord,
             "client": self.client,
+            "bot": self.bot,
             "ctx": ctx,
             "channel": ctx.channel,
             "author": ctx.author,
             "guild": ctx.guild,
             "message": ctx.message,
             "self": self,
+            "SCANLATORS": SCANLATORS,
             "_": self._last_result,
         }
 
@@ -536,11 +539,13 @@ class Restricted(commands.Cog):
         help="Export the database to an Excel file.",
         brief="Export the database to an Excel file.",
     )
-    async def _export_db(self, ctx: commands.Context) -> None:
+    async def _export_db(self, ctx: commands.Context, raw: bool = False) -> None:
         await ctx.send("```diff\n-<[ Exporting database. ]>-```")
-        io_buffer: io.BytesIO = await self.client.loop.run_in_executor(None, self.client.db.export)
+        export_func = partial(self.client.db.export, raw=raw)
+        io_buffer: io.BytesIO = await self.client.loop.run_in_executor(None, export_func)
+        filename = "manga_db_raw.db" if raw else "manga_db.xlsx"
         await ctx.send(
-            file=discord.File(io_buffer, filename="manga_db.xlsx")
+            file=discord.File(io_buffer, filename=filename)
         )
 
     @developer.command(
@@ -611,7 +616,7 @@ class Restricted(commands.Cog):
             await ctx.send(embed=em)
             return
         new_status = await self.bot.db.toggle_scanlator(scanlator)
-        if new_status is True:  # enabled
+        if new_status:  # enabled
             # noinspection PyProtectedMember
             SCANLATORS[scanlator] = self.bot._all_scanners[scanlator]
         else:

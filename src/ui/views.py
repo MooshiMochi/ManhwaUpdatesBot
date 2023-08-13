@@ -491,6 +491,8 @@ class SubscribeView(View):
         super().__init__(timeout=None)
         if self.items:
             self.items = list(self.items)
+        else:
+            self._delete_nav_buttons()
 
     def __get_response_kwargs(self):
         if isinstance(self.items[self.page], discord.Embed):

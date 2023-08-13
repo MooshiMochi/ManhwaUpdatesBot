@@ -12,6 +12,7 @@ import re
 
 from bs4 import BeautifulSoup
 from datetime import datetime
+from urllib.parse import quote_plus as url_encode
 from src.static import Constants, RegExpressions
 from src.utils import (
     get_url_hostname,
@@ -736,9 +737,10 @@ class MangaDex(ABCScan):
             last_chapter = manga_obj.available_chapters[-1] if len(manga_obj.available_chapters) > 0 else "N/A"
 
             desc = f"**Num of Chapters:** {len(manga_obj.available_chapters)}\n"
-            desc += "**Status:**" + ("Completed\n" if manga_obj.completed else "Ongoing\n")
+            desc += "**Status:** " + ("Completed\n" if manga_obj.completed else "Ongoing\n")
             desc += f"**Latest Chapter:** {last_chapter}\n"
             desc += f"**First Chapter:** {first_chapter}"
+            desc += f"**Scanlator:** {manga_obj.scanlator}"
 
             return (
                 discord.Embed(
@@ -1969,7 +1971,7 @@ class VoidScans(ABCScan):
                 ),
                 file=write_to_discord_file(cls.name + ".html", resp.text),
             )
-            raise URLAccessFailed(manga_url)
+            raise URLAccessFailed(manga_url, resp.status_code)
 
         soup = BeautifulSoup(resp.text, "html.parser")
         synopsis_div = soup.find(
@@ -2001,7 +2003,7 @@ class VoidScans(ABCScan):
                 ),
                 file=write_to_discord_file(cls.name + ".html", resp.text),
             )
-            raise URLAccessFailed(manga_url)
+            raise URLAccessFailed(manga_url, resp.status_code)
 
         soup = BeautifulSoup(resp.text, "html.parser")
         chapters = soup.find("div", {"class": "eplister"}).find_all("a")
@@ -2036,7 +2038,7 @@ class VoidScans(ABCScan):
                 ),
                 file=write_to_discord_file(cls.name + ".html", resp.text),
             )
-            raise URLAccessFailed(manga_url)
+            raise URLAccessFailed(manga_url, resp.status_code)
 
         soup = BeautifulSoup(resp.text, "html.parser")
         return soup.find("h1", {"class": "entry-title"}).text
@@ -2111,6 +2113,9 @@ class LuminousScans(ABCScan):
     rate_limiter.root.manager.getLimiter(
         get_url_hostname(base_url), calls=20, period=Minutes.ONE
     )  # 3s interval
+    NOT_FOUND_IMG_URL = (
+        f"{base_url}/wp-content/themes/mangareader/assets/images/404.png"  # noqa
+    )
 
     @classmethod
     async def check_updates(
@@ -2133,9 +2138,12 @@ class LuminousScans(ABCScan):
                     ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text()),
                 )
-                raise URLAccessFailed(manga_url)
+                raise URLAccessFailed(manga_url, resp.status)
+            text = await resp.text()
+            if cls.NOT_FOUND_IMG_URL in text:
+                raise MangaNotFound(manga_url)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            soup = BeautifulSoup(text, "html.parser")
             synopsis = soup.find(
                 "div", {"class": "entry-content", "itemprop": "description"}
             )
@@ -2158,9 +2166,13 @@ class LuminousScans(ABCScan):
                     ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text()),
                 )
-                raise URLAccessFailed(manga_url)
+                raise URLAccessFailed(manga_url, resp.status)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            text = await resp.text()
+            if cls.NOT_FOUND_IMG_URL in text:
+                raise MangaNotFound(manga_url)
+
+            soup = BeautifulSoup(text, "html.parser")
             chapters = soup.find("div", {"class": "eplister"}).find_all("a")
 
             return [
@@ -2195,9 +2207,13 @@ class LuminousScans(ABCScan):
                     ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text()),
                 )
-                raise URLAccessFailed(manga_url)
+                raise URLAccessFailed(manga_url, resp.status)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            text = await resp.text()
+            if cls.NOT_FOUND_IMG_URL in text:
+                raise MangaNotFound(manga_url)
+
+            soup = BeautifulSoup(text, "html.parser")
             return soup.find("h1", {"class": "entry-title"}).text
 
     @classmethod
@@ -2223,7 +2239,11 @@ class LuminousScans(ABCScan):
                 )
                 raise URLAccessFailed(manga_url, resp.status)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            text = await resp.text()
+            if cls.NOT_FOUND_IMG_URL in text:
+                raise MangaNotFound(manga_url)
+
+            soup = BeautifulSoup(text, "html.parser")
             status_div = soup.find("div", {"class": "imptdt"})  # noqa
             status = status_div.find("i").text.strip().lower()
             return status == "completed" or status == "dropped" or status == "canceled"
@@ -2254,9 +2274,72 @@ class LuminousScans(ABCScan):
                 )
                 raise URLAccessFailed(manga_url, resp.status)
 
-            soup = BeautifulSoup(await resp.text(), "html.parser")
+            text = await resp.text()
+            if cls.NOT_FOUND_IMG_URL in text:
+                raise MangaNotFound(manga_url)
+
+            soup = BeautifulSoup(text, "html.parser")
             img_div = soup.find("div", {"class": "thumb"})
             return img_div.find("img")["src"]
+
+    @classmethod
+    async def search(
+            cls, bot: MangaClient, query: str, as_em: bool = True
+    ) -> discord.Embed | Manga | None:
+        params = {"s": url_encode(query)}
+        async with bot.session.get(cls.base_url, params=params) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_cover_image func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(resp.request_info.url, resp.status)
+
+            soup = BeautifulSoup(await resp.text(), "html.parser")
+            # get the first result, manga_url and manga_id (useless)
+            results_div = soup.find("div", {"class": "listupd"})  # noqa
+            results = results_div.find_all("div", {"class": "bsx"})  # noqa
+            if len(results) == 0:
+                return None
+
+            result_manga_url = results[0].find("a")["href"]
+            manga_id = await cls.get_manga_id(bot, result_manga_url)
+            manga_url = await cls.fmt_manga_url(bot, manga_id, result_manga_url)
+
+            manga_obj = await cls.make_manga_object(bot, manga_id, manga_url)
+
+            if as_em is False:
+                return manga_obj
+            else:
+                synopsis_text = manga_obj.synopsis
+                if len(synopsis_text) > 1024:
+                    extra = f"... [(read more)]({manga_obj.url})"
+                    len_url = len(extra)
+                    synopsis_text = synopsis_text[: 1024 - len_url] + extra
+
+                first_chapter = manga_obj.available_chapters[0] if len(manga_obj.available_chapters) > 0 else "N/A"
+                last_chapter = manga_obj.available_chapters[-1] if len(manga_obj.available_chapters) > 0 else "N/A"
+
+                desc = f"**Num of Chapters:** {len(manga_obj.available_chapters)}\n"
+                desc += "**Status:**" + ("Completed\n" if manga_obj.completed else "Ongoing\n")
+                desc += f"**Latest Chapter:** {last_chapter}\n"
+                desc += f"**First Chapter:** {first_chapter}"
+
+                return (
+                    discord.Embed(
+                        title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
+                        description=desc
+                    )
+                    .add_field(name="Synopsis", value=synopsis_text, inline=False)
+                    .set_image(url=manga_obj.cover_url)
+                )
 
 
 class LeviatanScans(ABCScan):
@@ -2300,7 +2383,7 @@ class LeviatanScans(ABCScan):
                     ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text()),
                 )
-                raise URLAccessFailed(manga_url)
+                raise URLAccessFailed(manga_url, resp.status)
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             synopsis_div = soup.find("div", {"class": "manga-about manga-info"})

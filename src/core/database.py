@@ -116,8 +116,11 @@ class Database:
                 await db.commit()
                 return result
 
-    def export(self) -> BytesIO:
+    def export(self, raw: bool = False) -> BytesIO:
         """As this function carries out non-async operations, it must be run in a thread executor."""
+        if raw is True:
+            with open(self.db_name, "rb") as f:
+                return BytesIO(f.read())
 
         with sqlite3.connect(self.db_name) as conn:
             output = BytesIO()
@@ -208,8 +211,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, completed, 
-                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
+                completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                 """,
                 (manga_obj.to_tuple()),
             )
