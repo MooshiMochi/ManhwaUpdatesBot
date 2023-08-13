@@ -440,13 +440,12 @@ class CommandsCog(commands.Cog):
                 status_ts = int(scanlator.last_known_status[1])
             else:
                 status_code = "N/A"
-                status_ts = int(datetime.utcnow().timestamp())
+                status_ts = int(datetime.now().timestamp())
 
             status_str = (
-                "OK"
-                if status_code == 200 else "Temp-Banned"
-                if status_code == 429 else "Rate-Limited"
-                if status_code == 403 else "Unknown"
+                "OK" if status_code == 200 else
+                "Rate-Limited" if status_code == 429 else
+                "Temp-Banned" if status_code == 403 else "Unknown"
             )
             em.description += f"• [{name}]({url}) (`{status_code}:` {status_str} @ <t:{status_ts}:R>)\n"
             em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"

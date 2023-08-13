@@ -822,8 +822,8 @@ if __name__ == "__main__":
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
 
-    # asyncio.run(main())
+    asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    asyncio.run(test_single_scanlator("omegascans"))
+    # asyncio.run(test_single_scanlator("omegascans"))
