@@ -719,15 +719,15 @@ class TestCases(dict):
                     completed=True,
                     human_name="Dorm Room Sisters",
                     manga_id=default_id_func("https://omegascans.org/series/dorm-room-sisters"),
-                    curr_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-93-5-review",
+                    curr_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-93-5",
                     first_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-1",
                     cover_image=(
                         "https://media.omegascans.org/file/zFSsXt/covers/12333c4d-d82c-4a88-8b55-7f5e5f266457.jpg"
                     ),
                     last_3_chapter_urls=[
                         "https://omegascans.org/series/dorm-room-sisters/chapter-92",
-                        "https://omegascans.org/series/dorm-room-sisters/chapter-93-end",
-                        "https://omegascans.org/series/dorm-room-sisters/chapter-93-5-review",
+                        "https://omegascans.org/series/dorm-room-sisters/chapter-93",
+                        "https://omegascans.org/series/dorm-room-sisters/chapter-93-5",
                     ],
                 ),
                 test_subject=OmegaScans,
@@ -822,8 +822,8 @@ if __name__ == "__main__":
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
 
-    asyncio.run(main())
+    # asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("asura"))
+    asyncio.run(test_single_scanlator("omegascans"))
