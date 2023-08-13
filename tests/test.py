@@ -582,22 +582,22 @@ class TestCases(dict):
             ),
             "luminousscans": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://luminousscans.com/series/1680246102-my-office-noonas-story/"),
+                test_data=TestInputData("https://luminousscans.com/series/1691960007-my-office-noonas-story/"),
                 expected_result=ExpectedResult(
                     scanlator_name="luminousscans",
-                    manga_url="https://luminousscans.com/series/1680246102-my-office-noonas-story/",
+                    manga_url="https://luminousscans.com/series/1691960007-my-office-noonas-story/",
                     completed=True,
                     human_name="My Office Noona’s Story",  # noqa
-                    manga_id="1680246102",
-                    curr_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-03/",
-                    first_chapter_url="https://luminousscans.com/1680246102-my-office-noonas-story-prologue/",
+                    manga_id="1691960007",
+                    curr_chapter_url="https://luminousscans.com/1691960007-my-office-noonas-story-epilogue-chapter-03/",
+                    first_chapter_url="https://luminousscans.com/1691960007-my-office-noonas-story-prologue/",
                     cover_image=(
                         "https://luminousscans.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg"
                     ),
                     last_3_chapter_urls=[
-                        "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-01/",
-                        "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-02/",
-                        "https://luminousscans.com/1680246102-my-office-noonas-story-epilogue-chapter-03/",
+                        "https://luminousscans.com/1691960007-my-office-noonas-story-epilogue-chapter-01/",
+                        "https://luminousscans.com/1691960007-my-office-noonas-story-epilogue-chapter-02/",
+                        "https://luminousscans.com/1691960007-my-office-noonas-story-epilogue-chapter-03/",
                     ],
                 ),
                 id_first=True,
