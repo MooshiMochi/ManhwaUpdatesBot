@@ -832,8 +832,12 @@ class CachedResponse:
             os.makedirs(folder)
         filename = folder + "/" + str(len(os.listdir(folder))) + ".html"
 
-        with open(filename, "w") as f:
-            f.write(self._data_dict.get("text"))
+        text = self._data_dict.get("text")
+        if text is None:
+            return
+        else:
+            with open(filename, "w") as f:
+                f.write(text)
         # print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
 
     async def json(self):
@@ -858,7 +862,7 @@ class CachedResponse:
         if preload_data:
             await self._async_init()
 
-        attributes = [("_data_dict", self._data_dict), ("json", self.json), ("text", self.text), ("read", self.read)]
+        attributes = [("_data_dict", self._data_dict), ("text", self.text), ("json", self.json), ("read", self.read)]
         for attr, value in attributes:
             setattr(self._response, attr, value)
         return self._response
