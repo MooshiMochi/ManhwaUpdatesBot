@@ -180,7 +180,7 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
         self.logger.debug(f"Cache miss for {url}")
         await limiter.try_acquire(is_user_request=is_user_req)
         response = await super()._request(method, url, *args, **kwargs)
-        response = await CachedResponse(response).apply_patch(preload_data=True)
+        response = await CachedResponse(response).apply_patch(preload_data=True)  # TODO: preload_data=False
 
         cache_time = cache_time if cache_time is not None else self._default_cache_time
         # response.cached = False
