@@ -5,6 +5,7 @@ import traceback as tb
 from typing import TYPE_CHECKING
 
 import aiohttp
+import curl_cffi.requests
 import discord
 
 from src.core.errors import URLAccessFailed
@@ -48,23 +49,34 @@ class UpdateCheckCog(commands.Cog):
                 update_check_result: ChapterUpdate = await scanner.check_updates(
                     self.bot, manga
                 )
-            except URLAccessFailed as e:
-                if e.status_code >= 500:
-                    self.bot.logger.error(f"{scanner.name} returned status code {e.status_code}. Update check stopped.")
-                    return  # cancel update check as it's unlikely to succeed.
-                elif e.status_code == 404:
-                    self.bot.logger.warning(f"{manga.scanlator} returned 404 for {manga.human_name}")
-                elif e.status_code == 429:
-                    continue  # Rate limiter should be able to handle this.
-                elif e.status_code == 403:
-                    self.bot.logger.warning(f"{manga.scanlator} returned 403 for {manga.human_name}")
-                    return  # cancel update check as it's unlikely to succeed.
-                else:
-                    await self.bot.log_to_discord(
-                        f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
-                        " while checking for updates."
-                        + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
-                    )
+            except Exception as e:
+                if isinstance(e, curl_cffi.requests.RequestsError):
+                    if e.code == 28:
+                        self.bot.logger.warning(f"{manga.scanlator} timed out while checking for updates.")
+                        return  # cancel update check as it's unlikely to succeed.
+                elif isinstance(e, URLAccessFailed):
+                    if e.status_code >= 500:
+                        self.bot.logger.error(
+                            f"{scanner.name} returned status code {e.status_code}. Update check stopped.")
+                        return  # cancel update check as it's unlikely to succeed.
+                    elif e.status_code == 404:
+                        self.bot.logger.warning(f"{manga.scanlator} returned 404 for {manga.human_name}")
+                    elif e.status_code == 429:
+                        continue  # Rate limiter should be able to handle this.
+                    elif e.status_code == 403:
+                        self.bot.logger.warning(f"{manga.scanlator} returned 403 for {manga.human_name}")
+                        return  # cancel update check as it's unlikely to succeed.
+                    else:
+                        await self.bot.log_to_discord(
+                            f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
+                            " while checking for updates."
+                            + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
+                        )
+                await self.bot.log_to_discord(
+                    f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
+                    " while checking for updates."
+                    + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
+                )
                 continue
             except aiohttp.ClientHttpProxyError as e:
                 if e.status >= 500:
