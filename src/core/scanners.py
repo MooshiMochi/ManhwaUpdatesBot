@@ -964,7 +964,37 @@ class Asura(ABCScan):
     async def check_updates(
             cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
     ) -> ChapterUpdate:
-        return await super().check_updates(bot, manga, _manga_request_url)
+        request_url = _manga_request_url or manga.url
+        try:
+            all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
+            completed: bool = await cls.is_series_completed(bot, manga.id, manga.url)
+            cover_url: str = await cls.get_cover_image(bot, manga.id, manga.url)
+            if all_chapters is None:
+                return ChapterUpdate([], cover_url, completed)
+            new_chapters: list[Chapter] = [
+                chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
+            ]
+            return ChapterUpdate(
+                new_chapters,
+                cover_url,
+                completed,
+                [
+                    {
+                        "embed": cls._create_chapter_embed(
+                            "Asura Scans",
+                            Constants.no_img_available_url,
+                            manga.human_name,
+                            chapter.url,
+                            chapter.name,
+                        ),
+                    }
+                    for chapter in new_chapters
+                ],
+            )
+        except (ValueError, AttributeError) as e:
+            await cls.report_error(bot, e, request_url=request_url)
+        except Exception as e:
+            raise e
 
     @staticmethod
     def _fix_chapter_url(chapter_url: str) -> str:
