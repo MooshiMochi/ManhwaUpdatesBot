@@ -69,7 +69,7 @@ class LegacyCog(commands.Cog):
             synopsis = result["attributes"]["description"].values()[0]
 
         em.set_image(url=cover_url)
-        em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
 
         em.description = (
             f"**Year:** {result['attributes']['year']}\n"
@@ -115,7 +115,7 @@ class LegacyCog(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot.debug and bot.test_guild_id:
-        await bot.add_cog(LegacyCog(bot), guild=discord.Object(id=bot.test_guild_id))
+    if bot.debug and bot.test_guild_ids:
+        await bot.add_cog(LegacyCog(bot), guilds=[discord.Object(id=x) for x in bot.test_guild_ids])
     else:
         await bot.add_cog(LegacyCog(bot))

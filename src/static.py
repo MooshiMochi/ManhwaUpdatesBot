@@ -3,6 +3,7 @@ import re
 
 class Emotes:
     warning = "⚠️"
+    success = "✅"
 
 
 class Constants:
@@ -17,7 +18,7 @@ class Constants:
             :Path
             Refer
         If not set, you should remove them from the dict with .pop(key, default) method.
-        """
+        """  # noqa
         return {
             ":Authority": "",
             ":Method": "GET",
@@ -100,7 +101,7 @@ class Constants:
         {"language": "Khmer", "code": "km"},
         {"language": "Korean", "code": "ko"},
         {"language": "Kurdish", "code": "ku"},
-        {"language": "Kyrgyz", "code": "ky"},
+        {"language": "Kyrgyz", "code": "ky"},  # noqa
         {"language": "Lao", "code": "lo"},
         {"language": "Latin", "code": "la"},
         {"language": "Latvian", "code": "lv"},
@@ -140,7 +141,7 @@ class Constants:
         {"language": "Swahili", "code": "sw"},
         {"language": "Swedish", "code": "sv"},
         {"language": "Tagalog (Filipino)", "code": "tl"},
-        {"language": "Tajik", "code": "tg"},
+        {"language": "Tajik", "code": "tg"},  # noqa
         {"language": "Tamil", "code": "ta"},
         {"language": "Telugu", "code": "te"},
         {"language": "Thai", "code": "th"},
@@ -247,4 +248,12 @@ class RegExpressions:
 
     omegascans_url = re.compile(
         r"(?:https?://)?(?:www\.)?omegascans\.org/series/(?P<url_name>[\w-]+)(?:/.*)?"
+    )
+
+    nightscans_url = re.compile(
+        r"(?:https?://)?(?:www\.)?nightscans\.org/series/(?P<url_name>[\w-]+)(?:/.*)?"
+    )
+
+    suryascans_url = re.compile(  # noqa
+        r"(?:https?://)?(?:www\.)?suryascans\.com/manga/(?P<url_name>[\w-]+)(?:/.*)?"
     )

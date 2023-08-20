@@ -53,12 +53,12 @@ class Database:
             )
             await db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS users (
+                CREATE TABLE IF NOT EXISTS user_subs (
                     id INTEGER NOT NULL,
                     series_id TEXT NOT NULL,
                     guild_id INTEGER NOT NULL,
                     FOREIGN KEY (series_id) REFERENCES series (id),
-                    FOREIGN KEY (guild_id) REFERENCES config (guild_id),
+                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
                     UNIQUE (id, series_id) ON CONFLICT IGNORE
                 )
                 """
@@ -81,21 +81,36 @@ class Database:
                     user_created BOOLEAN NOT NULL DEFAULT false,
                     
                     FOREIGN KEY (series_id) REFERENCES series (id),
-                    FOREIGN KEY (user_id) REFERENCES users (id),
-                    FOREIGN KEY (guild_id) REFERENCES config (guild_id),
+                    FOREIGN KEY (user_id) REFERENCES user_subs (id),
+                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
                     UNIQUE (user_id, series_id) ON CONFLICT IGNORE
                     )
                 """
             )
 
             await db.execute(
-                """CREATE TABLE IF NOT EXISTS config (
-                    guild_id INTEGER PRIMARY KEY NOT NULL,
-                    channel_id INTEGER NOT NULL,
-                    updates_role_id INTEGER DEFAULT NULL,
-                    webhook_url TEXT NOT NULL,
+                """
+                CREATE TABLE IF NOT EXISTS guild_config (
+                    guild_id INTEGER PRIMARY KEY NOT NULL,             
+                    notifications_channel_id INTEGER,
+                    default_ping_role_id INTEGER DEFAULT NULL,
+                    notifications_webhook TEXT NOT NULL,
+                    auto_create_role BOOLEAN NOT NULL DEFAULT false,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
+                """
+            )
+
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS tracked_guild_series (
+                    guild_id INTEGER NOT NULL,
+                    series_id TEXT NOT NULL,
+                    role_id INTEGER,
+                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
+                    FOREIGN KEY (series_id) REFERENCES series (id),
+                    UNIQUE (guild_id, series_id) ON CONFLICT REPLACE
+                );
                 """
             )
 
@@ -106,6 +121,17 @@ class Database:
                     enabled BOOLEAN NOT NULL DEFAULT 1
                 );
                 """
+            )
+
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS guild_created_roles (
+                    guild_id INTEGER NOT NULL,
+                    role_id INTEGER NOT NULL,
+                    UNIQUE (guild_id, role_id) ON CONFLICT REPLACE
+                );
+                """
+                # FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id)
             )
             await db.commit()
 
@@ -223,8 +249,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, completed, 
-                scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
+                completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                 """,
                 (bookmark.manga.to_tuple()),
             )
@@ -250,10 +276,12 @@ class Database:
 
     async def subscribe_user(self, user_id: int, guild_id: int, series_id: int) -> None:
         async with aiosqlite.connect(self.db_name) as db:
-            # INSERT OR IGNORE INTO users (id, series_id, guild_id) VALUES ($1, $2, $3);
+            # INSERT OR IGNORE INTO user_subs (id, series_id, guild_id) VALUES ($1, $2, $3);
             await db.execute(
                 """
-                INSERT INTO users (id, series_id, guild_id) VALUES ($1, $2, $3) ON CONFLICT(id, series_id) DO NOTHING;
+                INSERT INTO user_subs (id, series_id, guild_id) 
+                VALUES ($1, $2, $3) 
+                ON CONFLICT(id, series_id) DO NOTHING;
                 """,
                 (user_id, series_id, guild_id),
             )
@@ -274,7 +302,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             cursor = await db.execute(
                 """
-                SELECT * FROM users WHERE id = $1 AND series_id = $2;
+                SELECT * FROM user_subs WHERE id = $1 AND series_id = $2;
                 """,
                 (user_id, manga_id),
             )
@@ -313,8 +341,14 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                INSERT INTO config (guild_id, channel_id, updates_role_id, webhook_url) VALUES ($1, $2, $3, $4
-                ) ON CONFLICT(guild_id) DO UPDATE SET channel_id = $2, updates_role_id = $3, webhook_url = $4 
+                INSERT INTO guild_config (
+                    guild_id, notifications_channel_id, default_ping_role_id, notifications_webhook, auto_create_role
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT(guild_id) 
+                DO UPDATE SET 
+                    notifications_channel_id = $2, default_ping_role_id = $3, 
+                    notifications_webhook = $4, auto_create_role = $5
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
@@ -322,30 +356,99 @@ class Database:
 
             await db.commit()
 
+    async def get_all_user_subs(self, user_id: int, current: str | None) -> list[Manga]:
+        """
+        Summary:
+            Returns a list of Manga class objects each representing a manga the user is subscribed to.
+        Args:
+            user_id: The user's id.
+            current: The current search query.
+
+        Returns:
+            List[Manga] if manga are found.
+            None if no manga are found.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            query = """
+                SELECT
+                    s.id,
+                    s.human_name,
+                    s.url,
+                    s.synopsis,
+                    s.series_cover_url,
+                    s.last_chapter,
+                    s.available_chapters,
+                    s.completed,
+                    s.scanlator
+                    
+                FROM series AS s
+                INNER JOIN user_subs AS u
+                ON s.id = u.series_id
+                WHERE u.id = $1
+                """
+            if current is not None and bool(current.strip()) is True:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+                query += " ORDER BY levenshtein(human_name, $2) DESC LIMIT 25;"
+                params = (user_id, current)
+            else:
+                query += ";"
+                params = (user_id,)
+            cursor = await db.execute(
+                query,
+                params,
+            )
+            result = await cursor.fetchall()
+            if result:
+                return Manga.from_tuples(result)  # noqa
+            return []
+
     # noinspection PyUnresolvedReferences
-    async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
+    async def get_user_guild_subs(self, guild_id: int, user_id: int, current: str = None) -> list[Manga]:
         """
         Returns a list of Manga class objects each representing a manga the user is subscribed to.
         >>> [Manga, ...]
         >>> None if no manga is found.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            await db.create_function("levenshtein", 2, _levenshtein_distance)
-            if current is not None:
-                query = """
-                        SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = $1
-                        ) 
-                        ORDER BY levenshtein(human_name, $2) DESC
-                        LIMIT 25;
-                        """
-                params = (user_id, current)
-
+            query = """
+            SELECT * FROM series 
+            WHERE series.id IN (
+                SELECT series_id FROM user_subs WHERE guild_id = $1 AND id = $2
+                )
+            """
+            if current is not None and bool(current.strip()) is True:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+                query += " ORDER BY levenshtein(human_name, $3) DESC LIMIT 25;"
+                params = (guild_id, user_id, current)
             else:
-                query = """
-                        SELECT * FROM series WHERE series.id IN (SELECT series_id FROM users WHERE id = ?);
-                        """
-                params = (user_id,)
+                query += ";"
+                params = (guild_id, user_id)
+            async with db.execute(query, params) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return Manga.from_tuples(result)
+                return []
 
+    async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
+        """
+        Returns a list of Manga class objects each representing a manga the user is subscribed to.
+        >>> [Manga, ...]
+        >>> None # if no manga is found.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            query = """
+            SELECT * FROM series 
+            WHERE series.id IN (
+                SELECT series_id FROM user_subs WHERE id = $1
+                )
+            """
+            if current is not None and bool(current.strip()) is True:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+                query += " ORDER BY levenshtein(human_name, $2) DESC LIMIT 25;"
+                params = (user_id, current)
+            else:
+                query += ";"
+                params = (user_id,)
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
@@ -366,7 +469,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT * FROM series WHERE series.id NOT IN (SELECT series_id FROM users)
+                    SELECT * FROM series WHERE series.id NOT IN (SELECT series_id FROM user_subs)
                     AND series.id NOT IN (SELECT series_id FROM bookmarks);
                     """
             ) as cursor:
@@ -389,7 +492,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT guild_id FROM users WHERE series_id = $1;
+                    SELECT guild_id FROM user_subs WHERE series_id = $1;
                     """,
                     (manga_id,),
             ) as cursor:
@@ -413,7 +516,7 @@ class Database:
             async with db.execute(
                     """
                     SELECT * FROM series WHERE
-                    completed = 0 AND id IN (SELECT series_id FROM users UNION SELECT series_id FROM bookmarks);
+                    completed = 0 AND id IN (SELECT series_id FROM user_subs UNION SELECT series_id FROM bookmarks);
                     """
             ) as cursor:
                 result = await cursor.fetchall()
@@ -499,7 +602,7 @@ class Database:
                 """,
                 (user_id,),
             )
-            # INNER JOIN users
+            # INNER JOIN user_subs
             # ON b.user_id = u.id AND b.series_id = u.series_id
             result = await cursor.fetchall()
             if result:
@@ -516,7 +619,7 @@ class Database:
 
     async def get_user_bookmarks_autocomplete(self, user_id: int, current: str = None) -> list[tuple[int, str]]:
         async with aiosqlite.connect(self.db_name) as db:
-            if current:
+            if current is not None and bool(current.strip()) is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
                 cursor = await db.execute(
                     """
@@ -556,7 +659,7 @@ class Database:
             if result:
                 result = result[0]
                 chapters = Chapter.from_many_json(result)
-                if current is not None:
+                if current is not None and bool(current.strip()) is True:
                     return list(
                         sorted(
                             chapters, key=lambda x: _levenshtein_distance(x.name, current), reverse=True
@@ -572,7 +675,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT * FROM config WHERE guild_id = ?;
+                    SELECT * FROM guild_config WHERE guild_id = ?;
                     """,
                     (guild_id,),
             ) as cursor:
@@ -595,7 +698,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT * FROM config WHERE guild_id IN ({});
+                    SELECT * FROM guild_config WHERE guild_id IN ({});
                     """.format(
                         ", ".join("?" * len(guild_ids))
                     ),
@@ -622,7 +725,7 @@ class Database:
         Returns a list of Manga objects containing all series in the database.
         >>> [Manga, ...)]
         """
-        if current is not None:
+        if current is not None and bool(current.strip()) is True:
             async with aiosqlite.connect(self.db_name) as db:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
 
@@ -663,7 +766,7 @@ class Database:
             async with db.execute(
                     """
                     SELECT * FROM series WHERE series.id IN (
-                        SELECT series_id FROM users
+                        SELECT series_id FROM user_subs
                     );
                     """
             ) as cursor:
@@ -691,7 +794,7 @@ class Database:
                 """
                 UPDATE bookmarks SET last_read_chapter = $1, last_updated_ts = $2 WHERE user_id = $3 AND series_id = $4;
                 """,
-                (last_read_chapter.to_json(), datetime.utcnow().timestamp(), user_id, series_id),
+                (last_read_chapter.to_json(), datetime.now().timestamp(), user_id, series_id),
             )
             await db.commit()
 
@@ -728,7 +831,7 @@ class Database:
             await db.execute(
                 """
                 DELETE FROM series WHERE id = $1 AND id NOT IN (
-                    SELECT series_id FROM users
+                    SELECT series_id FROM user_subs
                 );
                 """,
                 (series_id,),
@@ -740,7 +843,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                DELETE FROM users WHERE id = $1 and series_id = $2;
+                DELETE FROM user_subs WHERE id = $1 and series_id = $2;
                 """,
                 (user_id, series_id),
             )
@@ -751,7 +854,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                DELETE FROM config WHERE guild_id = ?;
+                DELETE FROM guild_config WHERE guild_id = ?;
                 """,
                 (guild_id,),
             )
@@ -777,7 +880,388 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT webhook_url FROM config;
+                    SELECT notifications_webhook FROM guild_config;
                     """
             ) as cursor:
                 return set([url for url, in await cursor.fetchall()])
+
+    async def get_guild_manga_role_id(self, guild_id: int, manga_id: str) -> int | None:
+        """
+        Summary:
+            Returns the role ID to ping for the manga set in the guild's config.
+
+        Args:
+            guild_id: The guild's ID
+            manga_id: The manga's ID
+
+        Returns:
+            int | None: The role ID to ping for the manga set in the guild's config.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT role_id FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2;
+                """,
+                (guild_id, manga_id),
+            )
+            result = await cursor.fetchone()
+            if result:
+                return result[0]
+            return None
+
+    async def upsert_guild_sub_role(self, guild_id: int, manga_id: str, ping_role_id: int):
+        """
+        Summary:
+            Sets the role ID to ping for the tracked manga
+
+        Args:
+            guild_id: int - The guild's ID
+            manga_id: str - The manga's ID
+            ping_role_id: int - The role's ID
+
+        Returns:
+            None
+        """
+        await self.execute(
+            """
+            INSERT INTO tracked_guild_series (guild_id, series_id, role_id) VALUES ($1, $2, $3)
+            ON CONFLICT(guild_id, series_id) DO UPDATE SET role_id = $3;
+            """,
+            guild_id, manga_id, ping_role_id
+        )
+
+    async def delete_manga_track_instance(self, guild_id: int, manga_id: str):
+        """
+        Summary:
+            Deletes the manga track instance from the database.
+
+        Args:
+            guild_id: int - The guild's ID
+            manga_id: str - The manga's ID
+
+        Returns:
+            None
+        """
+        await self.execute(
+            """
+            DELETE FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2
+            """,
+            guild_id, manga_id
+        )
+
+    async def get_guild_tracked_manga(self, guild_id: int, current: str = None) -> list[Manga]:
+        """
+        Summary:
+            Returns a list of Manga class objects that are tracked in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+            current: str - The current search query
+
+        Returns:
+            list[Manga]: A list of Manga class objects that are tracked in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.create_function("levenshtein", 2, _levenshtein_distance)
+            if current is not None and bool(current.strip()) is True:
+                query = """
+                    SELECT * FROM series WHERE id IN (SELECT series_id FROM tracked_guild_series WHERE guild_id = $1)
+                    ORDER BY levenshtein(human_name, $2)
+                    DESC
+                    LIMIT 25;
+                """
+                params = (guild_id, current)
+            else:
+                query = """
+                    SELECT * FROM series WHERE id IN (SELECT series_id FROM tracked_guild_series WHERE guild_id = $1);
+                """
+                params = (guild_id,)
+            async with db.execute(query, params) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return Manga.from_tuples(result)
+                return []
+
+    async def is_manga_tracked(self, guild_id: int, manga_id: str) -> bool:
+        """
+        Summary:
+            Checks if a manga is tracked in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+            manga_id: str - The manga's ID
+
+        Returns:
+            bool: Whether the manga is tracked in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT * FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2;
+                """,
+                (guild_id, manga_id),
+            )
+            result = await cursor.fetchone()
+            return result is not None
+
+    async def delete_guild_user_subs(self, guild_id: int) -> int:
+        """
+        Summary:
+            Deletes all user subscriptions in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            int: The number of rows deleted.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                DELETE FROM user_subs WHERE guild_id = $1;
+                """,
+                (guild_id,),
+            )
+            await db.commit()
+            return cursor.rowcount
+
+    async def delete_guild_tracked_series(self, guild_id: int) -> int:
+        """
+        Summary:
+            Deletes all tracked series in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            int: The number of rows deleted.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                DELETE FROM tracked_guild_series WHERE guild_id = $1;
+                """,
+                (guild_id,),
+            )
+            await db.commit()
+            return cursor.rowcount
+
+    async def get_user_untracked_subs(self, user_id: int, guild_id: int | None = None) -> list[Manga]:
+        """
+        Summary:
+            Returns a list of Manga class objects
+            that are subscribed to by the user but not tracked in the guild.
+
+        Args:
+            user_id: int - The user's ID
+            guild_id: int | None - The guild's ID. If None, show all untracked manga subbed to by the user.
+
+        Returns:
+            list[Manga]:
+            A list of Manga class objects that are subscribed to by the user but not tracked in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            query = """
+            SELECT * FROM series WHERE id IN (SELECT series_id FROM user_subs WHERE id = $1)
+                    AND id NOT IN (SELECT series_id FROM tracked_guild_series
+                    """
+            if guild_id is not None:
+                query += " WHERE guild_id = $2);"
+                params = (user_id, guild_id)
+            else:
+                query += ");"
+                params = (user_id,)
+            async with db.execute(query, params) as cursor:
+                result = await cursor.fetchall()
+                if result:
+                    return Manga.from_tuples(result)
+                return []
+
+    async def has_untracked_subbed_manga(self, user_id: int, guild_id: int | None = None) -> bool:
+        """
+        Summary:
+            Checks if the user has subscribed to any manga that is not tracked in the guild.
+        Args:
+            user_id: int - The user's ID
+            guild_id: int | None - The guild's ID. If None, show all untracked manga subbed to by the user.
+
+        Returns:
+            bool: Whether the user has subscribed to any manga that is not tracked in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            query = """
+            SELECT * FROM series 
+                WHERE id IN (
+                    SELECT series_id FROM user_subs WHERE id = $1
+                    )
+                AND id NOT IN (
+                    SELECT series_id FROM tracked_guild_series
+                """
+            if guild_id is not None:
+                query += " WHERE guild_id = $2) LIMIT 1;"
+                params = (user_id, guild_id)
+            else:
+                query += ") LIMIT 1;"
+                params = (user_id,)
+            cursor = await db.execute(query, params)
+            result = await cursor.fetchone()
+            return result is not None
+
+    async def unsubscribe_user_from_all_untracked(self, user_id: int, guild_id: int | None = None) -> int:
+        """
+        Summary:
+            Unsubscribes the user from all manga that is not tracked in the guild.
+
+        Args:
+            user_id: int - The user's ID
+            guild_id: int | None - The guild's ID. If None,
+                unsubscribe from all untracked manga subbed to by the user.
+
+        Returns:
+            int: The number of rows deleted.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            query = """
+            DELETE FROM user_subs 
+                WHERE id = $1 
+                AND series_id NOT IN (
+                    SELECT series_id 
+                    FROM tracked_guild_series
+            """
+            if guild_id is not None:
+                query += " WHERE tracked_guild_series.guild_id = $2);"
+                params = (user_id, guild_id)
+            else:
+                query += ");"
+                params = (user_id,)
+            cursor = await db.execute(query, params)
+            await db.commit()
+            return cursor.rowcount
+
+    async def get_guild_tracked_role_ids(self, guild_id: int) -> list[int] | None:
+        """
+        Summary:
+            Returns a list of role IDs that are tracked in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            list[int] | None: A list of role IDs that are tracked in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT role_id FROM tracked_guild_series WHERE guild_id = $1;
+                """,
+                (guild_id,),
+            )
+            result = await cursor.fetchall()
+            if result:
+                return [row[0] for row in result]
+            return None
+
+    async def update_guild_tracked_series_ping_role(self, guild_id: int, old_role_id: int | None, new_role_id: int):
+        """
+        Summary:
+            Update the ping role for tracked manga with a default role id
+        Args:
+            guild_id: int - The guild's ID
+            old_role_id: int - The role ID to be replaced
+            new_role_id: int - The role ID to replace with
+
+        Returns:
+            None
+        """
+        if old_role_id is None:
+            query = """
+                UPDATE tracked_guild_series SET role_id = $1 WHERE guild_id = $2 AND role_id IS NULL;
+            """
+            params = (new_role_id, guild_id)
+        else:
+            query = """
+                UPDATE tracked_guild_series SET role_id = $1 WHERE guild_id = $2 AND role_id = $3;
+            """
+            params = (new_role_id, guild_id, old_role_id)
+        await self.execute(
+            query,
+            *params
+        )
+
+    async def add_bot_created_role(self, guild_id: int, role_id: int) -> None:
+        """
+        Summary:
+            Adds a bot-created role to the database.
+        Args:
+            guild_id: int - The guild's ID
+            role_id: int - The role's ID
+
+        Returns:
+            None
+        """
+        await self.execute(
+            """
+            INSERT INTO bot_created_roles (guild_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;
+            """,
+            guild_id, role_id
+        )
+
+    async def remove_bot_created_role(self, guild_id: int, role_id: int) -> None:
+        """
+        Summary:
+            Removes a bot-created role from the database.
+        Args:
+            guild_id: int - The guild's ID
+            role_id: int - The role's ID
+
+        Returns:
+            None
+        """
+        await self.execute(
+            """
+            DELETE FROM bot_created_roles WHERE guild_id = $1 AND role_id = $2;
+            """,
+            guild_id, role_id
+        )
+
+    async def get_all_guild_bot_created_roles(self, guild_id: int) -> list[int]:
+        """
+        Summary:
+            Returns a list of bot-created role IDs in the guild.
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            list[int]: A list of bot-created role IDs in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT role_id FROM bot_created_roles WHERE guild_id = $1;
+                """,
+                (guild_id,),
+            )
+            result = await cursor.fetchall()
+            if result:
+                return [row[0] for row in result]
+            return []
+
+    async def delete_all_guild_created_roles(self, guild_id: int) -> None:
+        """
+        Summary:
+            Deletes all bot-created roles in the guild.
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            None
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                    """
+                    DELETE FROM bot_created_roles WHERE guild_id = $1;
+                    """,
+                    (guild_id,)
+            ) as cursor:
+                await db.commit()
+                return cursor.rowcount

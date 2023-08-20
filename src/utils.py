@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from functools import partial
 from itertools import islice
-from typing import Any, Coroutine, Optional, TYPE_CHECKING
+from typing import Any, Coroutine, List, Optional, TYPE_CHECKING
 
 import aiohttp
 import bs4
@@ -253,8 +253,8 @@ def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto
             "enabled": True,
             "ip": "2.56.119.93",  # user webshare.io proxy (I recommend)
             "port": 5074,
-            "username": "difemjzc",
-            "password": "em03wrup0hod",
+            "username": "difemjzc",  # noqa
+            "password": "em03wrup0hod",  # noqa
         },
         "user-agents": {
             "aquamanga": None,
@@ -392,7 +392,7 @@ def modify_embeds(
         thumbnail_image_url: str | list[str] = None,
         image_url: str | list[str] = None,
         show_page_number: bool = False,
-        append_mode: bool = False,
+        # append_mode: bool = False,  # TODO: Implement this ig?
 ) -> list[discord.Embed]:
     """
     Summary:
@@ -406,7 +406,7 @@ def modify_embeds(
         thumbnail_image_url: The thumbnail image URL to use.
         image_url: The image URL to use.
         show_page_number: Whether to show the page number.
-        append_mode: Whether to append to the value if it exists or overwrite the current value.
+        # append_mode: Whether to append to the value if it exists or overwrite the current value.
 
     Returns:
         list[discord.Embed]: The modified embeds.
@@ -475,7 +475,7 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
 
         f"**Completed:** `{bool(bookmark.manga.completed)}`\n"
     )
-    em.set_footer(text="Manga Updates", icon_url=bot.user.avatar.url)
+    em.set_footer(text="Manhwa Updates", icon_url=bot.user.avatar.url)
     em.set_author(
         name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.url, icon_url=scanlator_icon_url
     )
@@ -506,16 +506,21 @@ def sort_bookmarks(bookmarks: list[Bookmark], sort_type: BookmarkSortType) -> li
         raise ValueError(f"Invalid sort type: {sort_type.value}")
 
 
-def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
+def group_items_by(
+        items: list[Any], key_path: list[str], as_dict: bool = False
+) -> dict[str, list[Any]] | list[list[Any]]:
     """
     Groups items by a key path.
 
     Parameters:
         items (List): The items to group.
         key_path (List[str]): The key path to use, where each element is an attribute name.
+        as_dict (bool): Whether to return the groups as a dictionary.
 
     Returns:
         List[List[Any]]: The grouped items.
+                    Or
+        Dict[Any, List[Any]]: The grouped items.
 
     Examples:
         >>> from enum import Enum
@@ -530,15 +535,17 @@ def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
         [[<Color.RED: 1>, <Color.RED: 1>], [<Color.GREEN: 2>], [<Color.BLUE: 3>]]
     """
     if not key_path:
-        return [items]
+        return [items] if not as_dict else items
 
-    # Define a helper function to get the value of an attribute path in an object
+        # Define a helper function to get the value of an attribute path in an object
+
     def get_attr(obj, path):
         for attr in path:
             obj = getattr(obj, attr)
         return obj
 
-    # Group the items by the first key in the key path
+        # Group the items by the first key in the key path
+
     key = key_path[0]
     groups = {}
     for item in items:
@@ -549,15 +556,19 @@ def group_items_by(items: list[Any], key_path: list[str]) -> list[list[Any]]:
 
     # Recursively group the items by the remaining keys in the key path
     sub_key_path = key_path[1:]
-    sub_groups = []
-    for group in groups.values():
-        sub_groups.extend(group_items_by(group, sub_key_path))
-
-    return sub_groups
+    if as_dict:
+        for group_key, group in groups.items():
+            groups[group_key] = group_items_by(group, sub_key_path, as_dict=True)
+        return groups
+    else:
+        sub_groups = []
+        for group in groups.values():
+            sub_groups.extend(group_items_by(group, sub_key_path, as_dict=False))
+        return sub_groups
 
 
 def relative_time_to_seconds(time_string) -> Optional[int]:
-    time_regex = r'(?P<value>\d+|an?)(?:\sfew)?\s+(?P<unit>[a-z]+)\s+ago'
+    time_regex = r'(?P<value>\d+|an?)(?:\sfew)?\s+(?P<unit>[a-z]+)\s+ago'  # noqa
     match = re.match(time_regex, time_string.strip(), re.I)
     if not match:
         raise ValueError(f'Invalid time string: {time_string}')
@@ -584,7 +595,7 @@ def time_string_to_seconds(time_str: str, formats: list[str] = None) -> int:
     """Convert a time string to seconds since the epoch"""
     try:
         return relative_time_to_seconds(time_str)
-    except ValueError as e:
+    except ValueError as e:  # noqa
         # print(e)
         pass
 
@@ -622,7 +633,7 @@ def chunked(iterable, n, strict=False):
         >>> list(chunked([1, 2, 3, 4, 5, 6], 3))
         [[1, 2, 3], [4, 5, 6]]
 
-    By the default, the last yielded list will have fewer than *n* elements
+    By default, the last yielded list will have fewer than *n* elements
     if the length of *iterable* is not divisible by *n*:
 
         >>> list(chunked([1, 2, 3, 4, 5, 6, 7, 8], 3))
@@ -631,7 +642,7 @@ def chunked(iterable, n, strict=False):
     To use a fill-in value instead, see the :func:`grouper` recipe.
 
     If the length of *iterable* is not divisible by *n* and *strict* is
-    ``True``, then ``ValueError`` will be raised before the last
+    `True`, then `ValueError` will be raised before the last
     list is yielded.
 
     """
@@ -707,18 +718,18 @@ def is_from_stack_origin(*, class_name: str = None, function_name: str = None, f
 
 
 async def respond_if_limit_reached(coro: Coroutine, interaction: discord.Interaction) -> Any | str:
-    if not interaction.response.is_done():
-        await interaction.response.defer(ephemeral=True, thinking=True)
+    if not interaction.response.is_done():  # noqa
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
     try:
         return await coro
     except RateLimitExceeded as e:
-        next_try_ts = datetime.utcnow().timestamp() + e.period_remaining
+        next_try_ts = datetime.now().timestamp() + e.period_remaining
         em = discord.Embed(title="Rate Limit Exceeded", color=discord.Color.red())
         em.description = (
             f"Rate limit exceeded for this website.\n"
             f"Please try again in <t:{int(next_try_ts)}:R>."
         )
-        em.set_footer(text="Manga Updates", icon_url=interaction.client.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=interaction.client.user.avatar.url)
         await interaction.followup.send(
             embed=em
         )
@@ -763,3 +774,77 @@ async def translate(session: CachedClientSession, text: str, from_: str, to_: st
             )
         else:
             raise Exception("Error while translating", r)
+
+
+def create_dynamic_grouped_embeds(
+        data_dicts: list[dict], fmt_line: str, group_key: str, indexed: bool = True, per_page: Optional[int] = None
+) -> list[discord.Embed]:
+    """
+    Summary:
+        Generates a list of embeds from provided data dictionaries, grouped by a specified key.
+        The data within each group is formatted using the provided format line.
+        An index can be added to each entry for easy referencing.
+
+    Parameters:
+        data_dicts (List[dict]): A list of dictionaries containing data to be grouped and formatted.
+        fmt_line (str): The format string to use for each entry.
+            Can contain placeholders referring to keys in the data dictionaries.
+        group_key (str): The key in the dictionaries by which the data should be grouped.
+        indexed (bool, optional): Whether to prepend an index to each entry. Defaults to True.
+        per_page (Optional[int], optional): The maximum number of entries in each embed. If None, no limit is applied.
+            Defaults to None.
+
+    Returns:
+        List[Embed]: A list of embeds with the grouped and formatted data.
+
+    Raises:
+        ValueError: If the provided group_key is not found in any of the data dictionaries.
+
+    Examples:
+        >>> data = [{"scanlator": "GroupA", "name": "Manga1", "chapter": "Ch1"}, {"scanlator": "GroupB", "name": "Manga2", "chapter": "Ch2"}]  # noqa
+        >>> create_dynamic_grouped_embeds_v3(data, "{index}. {name} - {chapter}", group_key="scanlator", indexed=True, per_page=1)  # noqa
+        [<Embed object with description "GroupA\n1. Manga1 - Ch1">, <Embed object with description "GroupB\n2. Manga2 - Ch2">] # noqa
+    """
+    grouped = {}
+    for data in data_dicts:
+        if group_key not in data:
+            raise ValueError(f"The group key '{group_key}' was not found in the data dictionary.")
+
+        group_value = data[group_key]
+        if group_value not in grouped:
+            grouped[group_value] = []
+        grouped[group_value].append(data)
+
+    # Creating embeds
+    embeds = []
+    max_desc_length = 4096
+    append_last = False
+    embed = discord.Embed(title="", description="", color=discord.Color.blurple())
+    line_index = 0
+
+    for group_value, data_list in grouped.items():
+        embed.description += f"\n**{group_value}**\n"
+        for data in data_list:
+            line_index += 1
+            formatted_data = fmt_line.format(index=(line_index if indexed else ""), **data)
+
+            if len(embed.description) + len(formatted_data) + len(group_value) + 5 > max_desc_length:
+                embeds.append(embed)
+                embed = discord.Embed(title="", description="", color=discord.Color.blurple())
+
+            elif per_page is not None and line_index > 0 and line_index % per_page == 0:
+                embeds.append(embed)
+                embed = discord.Embed(title="", description="", color=discord.Color.blurple())
+
+            # Append group_value name only if it's a new group
+            if formatted_data == data_list[0]:
+                embed.description += f"\n**{group_value}**\n"
+            embed.description += formatted_data + "\n"
+
+            if data == data_list[-1] and data == data_dicts[-1]:
+                append_last = True
+
+    if append_last:
+        embeds.append(embed)
+
+    return embeds

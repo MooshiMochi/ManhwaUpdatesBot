@@ -28,7 +28,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             interaction: discord.Interaction, embed: discord.Embed, ephemeral: bool = True
     ) -> None:
         try:
-            await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
+            await interaction.response.send_message(embed=embed, ephemeral=ephemeral)  # noqa
         except (InteractionResponded, discord.errors.HTTPException):
             await interaction.followup.send(embed=embed)
 
@@ -72,9 +72,23 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=f"Sorry, you need to have the role <@&{error.missing_role}> to execute that command.",
             )
 
-        elif isinstance(error, MangaNotFound):
+        elif isinstance(error, MangaNotFoundError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Manga not found!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, MangaNotTrackedError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Manga not tracked!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, CustomError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Error!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
@@ -86,7 +100,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
-        elif isinstance(error, BookmarkNotFound):
+        elif isinstance(error, BookmarkNotFoundError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Bookmark not found!",
                 color=0xFF0000,
@@ -100,7 +114,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
-        elif isinstance(error, ChapterNotFound):
+        elif isinstance(error, ChapterNotFoundError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Chapter not found!",
                 color=0xFF0000,
@@ -116,7 +130,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             )
 
         elif isinstance(error, app_commands.errors.BotMissingPermissions):
-            perms = ", ".join(error.missing_perms)
+            perms = ", ".join(error.missing_perms)  # noqa
             if "send_messages" in perms:
                 return
             embed = discord.Embed(
@@ -130,7 +144,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
         elif isinstance(error, app_commands.errors.CommandOnCooldown):
             tdl_obj = timedelta(seconds=error.retry_after)
             time_as_string: str = (
-                tdl_obj.strftime("`%M min and %S sec`")
+                tdl_obj.strftime("`%M min and %S sec`")  # noqa
                 if tdl_obj.seconds >= 60
                 else f"`{tdl_obj.seconds} sec`"
             )
@@ -163,7 +177,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 )
 
         elif isinstance(error, ignore_args):
-            self.client._logger.warning(f"Ignoring exception: {error}")
+            self.client.logger.warning(f"Ignoring exception: {error}")
             return
 
         else:

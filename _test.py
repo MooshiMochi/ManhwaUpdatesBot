@@ -84,13 +84,14 @@ async def main():
     Bot.config = config
     Bot.proxy_addr = proxy_url
 
-    from pprint import pprint
-    from src.core.scanners import LeviatanScans
+    from src.core.scanners import DrakeScans
+    # from src.core.scanners import Toonily, Aquamanga, AnigliScans, DrakeScans, Bato
 
     async with Bot(proxy_url=proxy_url) as bot:
-        url = "https://en.leviatanscans.com/manga/my-dad-is-too-strong-1/"
-        result = await LeviatanScans.get_all_chapters(bot, "", url)
-        pprint(result)
+        url = "https://drakescans.com/series/spirit-pet-creation-simulator1/"
+        # result = await DrakeScans.get_synopsis(bot, "", url)
+        await DrakeScans.get_all_chapters(bot, "", url)
+        # pprint(result)
 
 
 async def raw():
@@ -101,4 +102,4 @@ async def raw():
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(raw())
+    asyncio.run(main())

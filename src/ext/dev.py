@@ -650,8 +650,10 @@ class Restricted(commands.Cog):
         brief="Send a global update.",
     )
     async def g_update(self, ctx: commands.Context, *, message: str):
-        bottom_text = "\n\n*If you have any questions, please join [SkyHub](https://discord.gg/EQ83EWW7Nu) and ping " \
-                      "`.mooshi`.*"
+        bottom_text = (
+            "\n\n*If you have any questions, please join the [Support Server]("
+            "https://discord.gg/TYkw8VBZkr) and ping `.mooshi`.*"
+        )
         message += bottom_text
         em = discord.Embed(
             title="⚠️ Important Update ⚠️",
@@ -672,9 +674,11 @@ class Restricted(commands.Cog):
         guild_configs_to_notify: list[GuildSettings] = []
         # ensure that the channel in each guild config exists
         for guild_config in guild_configs:
-            if not guild_config.channel:
+            if not guild_config.notifications_channel:
                 continue
-            bot_channel_perms = guild_config.channel.permissions_for(guild_config.channel.guild.me)
+            bot_channel_perms = guild_config.notifications_channel.permissions_for(
+                guild_config.notifications_channel.guild.me
+            )
             if bot_channel_perms.send_messages and bot_channel_perms.embed_links:
                 guild_configs_to_notify.append(guild_config)
 
@@ -708,15 +712,15 @@ class Restricted(commands.Cog):
 
         successes = 0
         for guild_config in guild_configs_to_notify:
-            if guild_config.role:
-                role_mention = guild_config.role.mention
-                if guild_config.role.id == guild_config.channel.guild.id:
+            if guild_config.default_ping_role:
+                role_mention = guild_config.default_ping_role.mention
+                if guild_config.default_ping_role.id == guild_config.notifications_channel.guild.id:
                     role_mention = "@everyone"
             else:
                 role_mention = None
 
             try:
-                await guild_config.channel.send(
+                await guild_config.notifications_channel.send(
                     f"||{role_mention}||" if role_mention is not None else None,
                     embed=em,
                     allowed_mentions=discord.AllowedMentions(roles=True)

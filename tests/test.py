@@ -228,6 +228,11 @@ class Test:
                 print(f"   ↳ Got: {result.new_chapters[i].url}")
         return evaluated
 
+    async def show_synopsis(self) -> bool:
+        result = await self.test_subject.get_synopsis(self._bot, self.manga_id, self.fmt_url)
+        print(result)
+        return result is not None and result.strip() != ""
+
     def scanlator_name(self) -> bool:
         evaluated: bool = self.test_subject.name == self.expected_result.scanlator_name
         if not evaluated:
@@ -253,13 +258,20 @@ class Test:
             checks_to_run[0], checks_to_run[1] = checks_to_run[1], checks_to_run[0]
 
         if test_method != "all":
-            method_to_test = [check for check in checks_to_run if check[0].__name__ == test_method]
-            if not method_to_test:
-                print(f"❌ [{self.expected_result.scanlator_name}] No test method named {test_method}")
-                print("Available test methods:")
-                print("\n".join([check[0].__name__ for check in checks_to_run]))
-            checks_to_run = checks_to_run[:2]
-            checks_to_run.extend(method_to_test)
+            if test_method != "show_synopsis":
+                method_to_test = [check for check in checks_to_run if check[0].__name__ == test_method]
+                if not method_to_test:
+                    print(f"❌ [{self.expected_result.scanlator_name}] No test method named {test_method}")
+                    print("Available test methods:")
+                    print("\n".join([check[0].__name__ for check in checks_to_run]))
+                checks_to_run = checks_to_run[:2]
+                checks_to_run.extend(method_to_test)
+            else:
+                checks_to_run = [
+                    (self.get_manga_id, "❌ Failed to get manga id"),
+                    (self.fmt_manga_url, "❌ Failed to format manga url"),
+                    (self.show_synopsis, "❌ Failed to get synopsis")
+                ]
 
         for check, error_msg in checks_to_run:
             try:
@@ -731,7 +743,47 @@ class TestCases(dict):
                     ],
                 ),
                 test_subject=OmegaScans,
-            )
+            ),
+            "nightscans": TestCase(
+                self.test_setup,
+                test_data=TestInputData("https://nightscans.org/series/all-attributes-in-martial-arts/"),
+                expected_result=ExpectedResult(
+                    scanlator_name="nightscans",
+                    manga_url="https://nightscans.org/series/all-attributes-in-martial-arts",
+                    completed=True,
+                    human_name="All-Attributes in Martial Arts",  # noqa
+                    manga_id=default_id_func("https://nightscans.org/series/all-attributes-in-martial-arts"),
+                    curr_chapter_url="https://nightscans.org/all-attribute-in-martial-arts-chapter-70/",
+                    first_chapter_url="https://nightscans.org/all-attribute-martial-arts-00/",
+                    cover_image="https://nightscans.org/wp-content/uploads/2023/03/AAAMAcover_result.webp",
+                    last_3_chapter_urls=[
+                        "https://nightscans.org/all-attribute-in-martial-arts-chapter-68/",
+                        "https://nightscans.org/all-attribute-in-martial-arts-chapter-69/",
+                        "https://nightscans.org/all-attribute-in-martial-arts-chapter-70/",
+                    ]
+                ),
+                test_subject=NightScans
+            ),
+            "suryascans": TestCase(  # noqa
+                self.test_setup,
+                test_data=TestInputData("https://suryascans.com/manga/modern-dude-in-the-murim/"),
+                expected_result=ExpectedResult(
+                    scanlator_name="suryascans",  # noqa
+                    manga_url="https://suryascans.com/manga/modern-dude-in-the-murim",
+                    completed=False,
+                    human_name="Modern Dude in the Murim",  # noqa
+                    manga_id=default_id_func("https://suryascans.com/manga/modern-dude-in-the-murim"),
+                    curr_chapter_url="https://suryascans.com/modern-dude-in-the-murim-chapter-22/",
+                    first_chapter_url="https://suryascans.com/modern-dude-in-the-murim-chapter-1/",
+                    cover_image="https://suryascans.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
+                    last_3_chapter_urls=[
+                        "https://suryascans.com/modern-dude-in-the-murim-chapter-20/",
+                        "https://suryascans.com/modern-dude-in-the-murim-chapter-21/",
+                        "https://suryascans.com/modern-dude-in-the-murim-chapter-22/",
+                    ]
+                ),
+                test_subject=SuryaScans
+            ),
         }
 
         super().__init__(**self.testCases)
@@ -747,7 +799,7 @@ class TestCases(dict):
 async def main():
     async with TestCases() as testCases:
         tests_to_ignore = ["voidscans"]
-        # testCases.pop("voidscans", None)  # ass website to work with
+        # testCases.pop("voidscans", None)  # bad website to work with
         await run_tests(testCases, tests_to_ignore)
 
 
@@ -799,8 +851,19 @@ async def paused_test():
 
 async def test_single_method():
     async with TestCases() as testCases:
-        test_method = "first_chapter_url"
-        await run_single_test(testCases["reaperscans"], test_method=test_method)
+        # Available methods:
+        # fmt_manga_url
+        # get_manga_id
+        # is_completed
+        # human_name
+        # curr_chapter_url
+        # first_chapter_url
+        # cover_image
+        # check_updates
+        # scanlator_name
+        # show_synopsis
+        test_method = "cover_image"
+        await run_single_test(testCases["drakescans"], test_method=test_method)
 
 
 async def test_single_scanlator(scanlator: str):
@@ -826,4 +889,4 @@ if __name__ == "__main__":
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("omegascans"))
+    # asyncio.run(test_single_scanlator("drakescans"))

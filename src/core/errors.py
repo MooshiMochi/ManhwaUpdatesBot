@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -13,7 +14,18 @@ class BaseError(CommandInvokeError):
     pass
 
 
-class MangaNotFound(BaseError):
+class GuildNotConfiguredError(BaseError):
+    """Raised when the guild is not configured."""
+
+    def __init__(self, guild_id: int):
+        self.guild_id = guild_id
+        self.error_msg = f"""
+        The guild with ID `{self.guild_id}` is not configured.
+        Consider using `/config guild` to configure the guild.
+        """
+
+
+class MangaNotFoundError(BaseError):
     """Raised when a manga is not found."""
 
     def __init__(self, manga_url: str):
@@ -21,6 +33,18 @@ class MangaNotFound(BaseError):
         self.error_msg = f"""
         The manga you entered was not found.
         ```diff\n- {self.manga_url}```
+        """
+
+
+class MangaNotTrackedError(BaseError):
+    """Raised when a manga is not tracked."""
+
+    def __init__(self, manga_url: str):
+        self.manga_url = manga_url
+        self.error_msg = f"""
+        The manga you entered is not tracked.
+        ```diff\n- {self.manga_url}```
+        Use `/track new` to track the manga.
         """
 
 
@@ -37,8 +61,8 @@ class URLAccessFailed(BaseError):
         self.arg_error_msg = error_msg
 
 
-class BookmarkNotFound(BaseError):
-    """Raised when a manga is not found in the bookmarks table."""
+class BookmarkNotFoundError(BaseError):
+    """Raised when a manga is not found in the bookmark table."""
 
     def __init__(self, manga_url: str | None = None):
         self.manga_url = manga_url
@@ -48,8 +72,8 @@ class BookmarkNotFound(BaseError):
             self.error_msg = f"You have not bookmarked [this manga]({self.manga_url})."
 
 
-class ChapterNotFound(BaseError):
-    """Raised when a chapter is not found in the bookmarks table."""
+class ChapterNotFoundError(BaseError):
+    """Raised when a chapter is not found in the bookmark table."""
 
     def __init__(self, chapter_url: str | None = None):
         self.chapter_url = chapter_url
@@ -86,9 +110,30 @@ class RateLimitExceeded(Exception):
 
         :param Limiter limiter: The rate limiter that raised the exception.
         :param string message: Custom exception message.
-        :param float period_remaining: The time remaining until the rate limit is reset.
+        :param float period_remaining: The remaining time until the rate limit is reset.
         """
         super(RateLimitExceeded, self).__init__(f"{message}. Try again in {period_remaining} seconds.")
         self.limiter = limiter
         self.period_remaining = period_remaining
         self.message: str = message
+
+
+class WebhookNotFoundError(BaseError):
+    """Raised when the webhook is not found."""
+
+    def __init__(self, webhook_url: str):
+        self.webhook_id = re.search(
+            r"https://discord\.com/api/webhooks/(?P<ID>\d+)/(:?.+)?",
+            webhook_url
+        ).groupdict().get("ID", "Not Found")
+        self.error_msg = f"""
+        The webhook with ID `{self.webhook_id}` is not found.
+        Consider using `/config subscribe setup` to create a new one.
+        """
+
+
+class CustomError(BaseError):
+    """Raised when a custom error is raised."""
+
+    def __init__(self, error_msg: str):
+        self.error_msg = error_msg

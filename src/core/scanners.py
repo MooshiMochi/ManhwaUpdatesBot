@@ -25,7 +25,7 @@ from src.utils import (
 from . import rate_limiter
 from src.enums import Minutes
 
-from .errors import MangaNotFound, URLAccessFailed
+from .errors import MangaNotFoundError, URLAccessFailed
 from .objects import ChapterUpdate, Chapter, ABCScan, Manga
 
 
@@ -41,7 +41,7 @@ class TritiniaScans(ABCScan):
     )  # 3s interval
 
     @staticmethod
-    def _ensure_manga_url(url: str) -> str:
+    def _ensure_ajax_url(url: str) -> str:
         if url.endswith("/"):
             url = url[:-1]
         if "/ajax/chapters/" not in url:
@@ -59,7 +59,7 @@ class TritiniaScans(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+        async with bot.session.post(cls._ensure_ajax_url(manga_url)) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
@@ -305,7 +305,7 @@ class Manganato(ABCScan):
         text = resp.text
 
         if "404 - PAGE NOT FOUND" in text:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
 
         soup = BeautifulSoup(resp.text, "html.parser")
         return cls._bs_is_series_completed(soup)
@@ -426,7 +426,7 @@ class Toonily(ABCScan):
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
         if not url_name:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
         used_headers = ["User-Agent"]
         return {k: v for k, v in headers.items() if k in used_headers}
@@ -1023,7 +1023,7 @@ class Asura(ABCScan):
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
         if cls.NOT_FOUND_IMG_URL in text:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
         synopsis = soup.find(
@@ -1041,7 +1041,7 @@ class Asura(ABCScan):
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
         if cls.NOT_FOUND_IMG_URL in text:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
         chapter_list_container = soup.find("div", {"class": "eplister"})
@@ -1080,7 +1080,7 @@ class Asura(ABCScan):
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
         if cls.NOT_FOUND_IMG_URL in text:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
         title_tag = soup.find("h1", {"class": "entry-title"})
@@ -1102,7 +1102,7 @@ class Asura(ABCScan):
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
         if cls.NOT_FOUND_IMG_URL in text:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
         return cls._bs_is_series_completed(soup)
@@ -1124,7 +1124,7 @@ class Asura(ABCScan):
             raise URLAccessFailed(manga_url, resp.status_code)
         text = resp.text
         if cls.NOT_FOUND_IMG_URL in text:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
 
         soup = BeautifulSoup(text, "html.parser")
         cover_image = soup.find("div", {"class": "thumb", "itemprop": "image"}).find(
@@ -1148,7 +1148,7 @@ class Aquamanga(ABCScan):
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
         if not url_name:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
         used_headers = [
             ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
@@ -1650,7 +1650,7 @@ class AnigliScans(ABCScan):
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
         if not url_name:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
         used_headers = [
             ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
@@ -2171,7 +2171,7 @@ class LuminousScans(ABCScan):
                 raise URLAccessFailed(manga_url, resp.status)
             text = await resp.text()
             if cls.NOT_FOUND_IMG_URL in text:
-                raise MangaNotFound(manga_url)
+                raise MangaNotFoundError(manga_url)
 
             soup = BeautifulSoup(text, "html.parser")
             synopsis = soup.find(
@@ -2200,7 +2200,7 @@ class LuminousScans(ABCScan):
 
             text = await resp.text()
             if cls.NOT_FOUND_IMG_URL in text:
-                raise MangaNotFound(manga_url)
+                raise MangaNotFoundError(manga_url)
 
             soup = BeautifulSoup(text, "html.parser")
             chapters = soup.find("div", {"class": "eplister"}).find_all("a")
@@ -2241,7 +2241,7 @@ class LuminousScans(ABCScan):
 
             text = await resp.text()
             if cls.NOT_FOUND_IMG_URL in text:
-                raise MangaNotFound(manga_url)
+                raise MangaNotFoundError(manga_url)
 
             soup = BeautifulSoup(text, "html.parser")
             return soup.find("h1", {"class": "entry-title"}).text
@@ -2271,7 +2271,7 @@ class LuminousScans(ABCScan):
 
             text = await resp.text()
             if cls.NOT_FOUND_IMG_URL in text:
-                raise MangaNotFound(manga_url)
+                raise MangaNotFoundError(manga_url)
 
             soup = BeautifulSoup(text, "html.parser")
             status_div = soup.find("div", {"class": "imptdt"})  # noqa
@@ -2306,7 +2306,7 @@ class LuminousScans(ABCScan):
 
             text = await resp.text()
             if cls.NOT_FOUND_IMG_URL in text:
-                raise MangaNotFound(manga_url)
+                raise MangaNotFoundError(manga_url)
 
             soup = BeautifulSoup(text, "html.parser")
             img_div = soup.find("div", {"class": "thumb"})
@@ -2384,7 +2384,7 @@ class LeviatanScans(ABCScan):
     )  # 3s interval
 
     @staticmethod
-    def _ensure_manga_url(url: str) -> str:
+    def _ensure_ajax_url(url: str) -> str:
         if url.endswith("/"):
             url = url[:-1]
         if "/ajax/chapters/" not in url:
@@ -2424,7 +2424,7 @@ class LeviatanScans(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+        async with bot.session.post(cls._ensure_ajax_url(manga_url)) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
@@ -2487,7 +2487,7 @@ class LeviatanScans(ABCScan):
     async def is_series_completed(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> bool:
-        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+        async with bot.session.post(cls._ensure_ajax_url(manga_url)) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
@@ -2563,7 +2563,7 @@ class DrakeScans(ABCScan):
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
         if not url_name:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
         used_header_keys = [
             ":Authority", ":Method", ":Path", ":Scheme", "Accept", "Accept-Encoding", "Accept-Language",
@@ -2592,7 +2592,7 @@ class DrakeScans(ABCScan):
         return headers
 
     @staticmethod
-    def _ensure_manga_url(url: str) -> str:
+    def _ensure_ajax_url(url: str) -> str:
         if url.endswith("/"):
             url = url[:-1]
         if "/ajax/chapters/" not in url:
@@ -2633,7 +2633,7 @@ class DrakeScans(ABCScan):
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
         async with bot.session.post(
-                cls._ensure_manga_url(manga_url), headers=cls._make_headers(bot, manga_id, manga_url)
+                cls._ensure_ajax_url(manga_url), headers=cls._make_headers(bot, manga_id, manga_url)
         ) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
@@ -2707,7 +2707,7 @@ class DrakeScans(ABCScan):
                     ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text()),
                 )
-                raise MangaNotFound(manga_url=manga_url)
+                raise MangaNotFoundError(manga_url=manga_url)
 
             text = await resp.text()
             soup = BeautifulSoup(text, "html.parser")
@@ -2772,7 +2772,7 @@ class DrakeScans(ABCScan):
 
             soup = BeautifulSoup(await resp.text(), "html.parser")
             img = soup.find("div", {"class": "summary_image"}).find("img")
-            return img["src"]
+            return img["data-src"]
 
 
 class Mangabaz(ABCScan):
@@ -2787,7 +2787,7 @@ class Mangabaz(ABCScan):
     )  # 3s interval
 
     @staticmethod
-    def _ensure_manga_url(url: str) -> str:
+    def _ensure_ajax_url(url: str) -> str:
         if url.endswith("/"):
             url = url[:-1]
         if "/ajax/chapters/" not in url:
@@ -2803,7 +2803,7 @@ class Mangabaz(ABCScan):
 
     @classmethod
     async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
-        async with bot.session.get(cls._ensure_manga_url(manga_url)) as resp:
+        async with bot.session.get(cls._ensure_ajax_url(manga_url)) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
@@ -2836,7 +2836,7 @@ class Mangabaz(ABCScan):
     async def get_all_chapters(
             cls, bot: MangaClient, manga_id: str, manga_url: str
     ) -> list[Chapter] | None:
-        async with bot.session.post(cls._ensure_manga_url(manga_url)) as resp:
+        async with bot.session.post(cls._ensure_ajax_url(manga_url)) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
                 await cls.report_error(
@@ -2909,7 +2909,7 @@ class Mangabaz(ABCScan):
                     ),
                     file=write_to_discord_file(cls.name + ".html", await resp.text()),
                 )
-                raise MangaNotFound(manga_url=manga_url)
+                raise MangaNotFoundError(manga_url=manga_url)
 
             text = await resp.text()
             soup = BeautifulSoup(text, "html.parser")
@@ -3343,7 +3343,7 @@ class Bato(ABCScan):
     def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
         url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
         if not url_name:
-            raise MangaNotFound(manga_url)
+            raise MangaNotFoundError(manga_url)
         headers = super()._make_headers(bot, manga_id, manga_url)
         used_headers = [
             "Accept", "Accept-Encoding", "Accept-Language", "Cache-Control", "Connection", "Host", "Pragma",
@@ -3526,6 +3526,361 @@ class Bato(ABCScan):
             return image_url
 
 
+class NightScans(ABCScan):
+    icon_url = "https://nightscans.org/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png"
+    base_url = "https://nightscans.org"
+    fmt_url = base_url + "/series/{manga_url_name}"
+    name = "nightscans"
+    id_first = False
+    rx: re.Pattern = RegExpressions.nightscans_url
+    rate_limiter.root.manager.getLimiter(
+        get_url_hostname(base_url), calls=15, period=Minutes.FIVE
+    )  # 20s interval
+
+    @classmethod
+    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
+        url_name = cls.rx.search(manga_url).groupdict().get("url_name", None)
+        if not url_name:
+            raise MangaNotFoundError(manga_url)
+        headers = super()._make_headers(bot, manga_id, manga_url)
+        used_headers = ["User-Agent"]
+        return {k: v for k, v in headers.items() if k in used_headers}
+
+    @classmethod
+    async def check_updates(
+            cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
+    ) -> ChapterUpdate:
+        return await super().check_updates(bot, manga, _manga_request_url)
+
+    @classmethod
+    async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_synopsis func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+            soup = BeautifulSoup(text, "html.parser")
+            synopsis = soup.find(
+                "div", {"class": "entry-content", "itemprop": "description"}
+            )
+            return synopsis.text.strip()
+
+    @classmethod
+    async def get_all_chapters(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> list[Chapter] | None:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_all_chapters func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            chapters = soup.find("div", {"class": "eplister"}).find_all("a")
+            return [
+                Chapter(
+                    chapter["href"],
+                    chapter.find("span", {"class": "chapternum"}).text,
+                    i,
+                )
+                for i, chapter in enumerate(reversed(chapters))
+            ]
+
+    @classmethod
+    async def get_curr_chapter(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> Chapter | None:
+        return await super().get_curr_chapter(bot, manga_id, manga_url)
+
+    @classmethod
+    def _bs_is_series_completed(cls, soup: BeautifulSoup) -> bool:
+        """Returns whether the series is completed or not."""
+        status_div = soup.find("div", {"class": "imptdt"})  # noqa
+        status = status_div.find("i").text.strip()
+        return status.lower() == "completed" or status.lower() == "dropped"
+
+    @classmethod
+    async def is_series_completed(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> bool:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run is_series_completed func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            return cls._bs_is_series_completed(soup)
+
+    @classmethod
+    async def get_human_name(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_human_name func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            return soup.find("h1", {"class": "entry-title"}).text.strip()
+
+    @classmethod
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(
+            bot, await cls.fmt_manga_url(bot, None, manga_url)
+        )
+
+    @classmethod
+    async def fmt_manga_url(
+            cls, bot: MangaClient, manga_id: str | None, manga_url: str
+    ) -> str:
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
+        return cls.fmt_url.format(manga_url_name=url_name)
+
+    @classmethod
+    async def get_cover_image(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        async with bot.session.get(manga_url, headers=cls._make_headers(bot, manga_id, manga_url)) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_cover_image func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            img_div = soup.find("div", {"class": "thumb", "itemprop": "image"})
+            return img_div.find("img")["data-lazy-src"]
+
+
+class SuryaScans(ABCScan):
+    icon_url = "https://suryascans.com/wp-content/uploads/2022/09/cropped-surya-logo1x-192x192.png"
+    base_url = "https://suryascans.com"
+    fmt_url = base_url + "/manga/{manga_url_name}"
+    name = "suryascans"  # noqa
+    id_first = False
+    rx: re.Pattern = RegExpressions.suryascans_url
+    rate_limiter.root.manager.getLimiter(
+        get_url_hostname(base_url), calls=15, period=Minutes.FIVE
+    )  # 20s interval
+
+    @classmethod
+    async def check_updates(
+            cls, bot: MangaClient, manga: Manga, _manga_request_url: str | None = None
+    ) -> ChapterUpdate:
+        return await super().check_updates(bot, manga, _manga_request_url)
+
+    @classmethod
+    async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
+        async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_synopsis func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+            soup = BeautifulSoup(text, "html.parser")
+            synopsis = soup.find(
+                "div", {"class": "entry-content", "itemprop": "description"}
+            )
+            return synopsis.text.strip()
+
+    @classmethod
+    async def get_all_chapters(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> list[Chapter] | None:
+        async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_all_chapters func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            chapters = soup.find("div", {"class": "eplister"}).find_all("a")
+            return [
+                Chapter(
+                    chapter["href"],
+                    chapter.find("span", {"class": "chapternum"}).text,
+                    i,
+                )
+                for i, chapter in enumerate(reversed(chapters))
+            ]
+
+    @classmethod
+    async def get_curr_chapter(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> Chapter | None:
+        return await super().get_curr_chapter(bot, manga_id, manga_url)
+
+    @classmethod
+    def _bs_is_series_completed(cls, soup: BeautifulSoup) -> bool:
+        """Returns whether the series is completed or not."""
+        status_div = soup.find("div", {"class": "imptdt"})  # noqa
+        status = status_div.find("i").text.strip()
+        return status.lower() == "completed" or status.lower() == "dropped"
+
+    @classmethod
+    async def is_series_completed(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> bool:
+        async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run is_series_completed func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            return cls._bs_is_series_completed(soup)
+
+    @classmethod
+    async def get_human_name(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_human_name func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            return soup.find("h1", {"class": "entry-title"}).text.strip()
+
+    @classmethod
+    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+        return await super().get_manga_id(
+            bot, await cls.fmt_manga_url(bot, None, manga_url)
+        )
+
+    @classmethod
+    async def fmt_manga_url(
+            cls, bot: MangaClient, manga_id: str | None, manga_url: str
+    ) -> str:
+        url_name = cls.rx.search(manga_url).groupdict()["url_name"]
+        return cls.fmt_url.format(manga_url_name=url_name)
+
+    @classmethod
+    async def get_cover_image(
+            cls, bot: MangaClient, manga_id: str, manga_url: str
+    ) -> str | None:
+        async with bot.session.get(manga_url) as resp:
+            cls.last_known_status = resp.status, datetime.now().timestamp()
+            if resp.status != 200:
+                await cls.report_error(
+                    bot,
+                    Exception(
+                        "Failed to run get_cover_image func. Status: "
+                        + str(resp.status)
+                        + " Request URL: "
+                        + str(resp.url)
+                    ),
+                    file=write_to_discord_file(cls.name + ".html", await resp.text()),
+                )
+                raise URLAccessFailed(manga_url, resp.status)
+
+            text = await resp.text()
+
+            soup = BeautifulSoup(text, "html.parser")
+            img_div = soup.find("div", {"class": "thumb", "itemprop": "image"})
+            return img_div.find("img")["src"]
+
+
 SCANLATORS: dict[str, ABCScan] = {
     VoidScans.name: VoidScans,
     OmegaScans.name: OmegaScans,
@@ -3545,4 +3900,6 @@ SCANLATORS: dict[str, ABCScan] = {
     Mangabaz.name: Mangabaz,
     Mangapill.name: Mangapill,
     Bato.name: Bato,
+    NightScans.name: NightScans,
+    SuryaScans.name: SuryaScans,
 }

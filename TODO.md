@@ -2,7 +2,13 @@
 
 ### Websites to add:
 
-      Nothing at the moment...    
+      https://arcanescans.com/
+      https://lynxscans.com/
+      https://nocturnalscans.com/
+      https://lhtranslation.net/
+      https://astrascans.com/
+      https://xcalibrscans.com/webcomics/
+      https://ravenscans.com/
 
 ### Cloudflare protected websites to add:
 
@@ -29,9 +35,12 @@
 
 - When using autocomplete, prioritize the results that start with the user input, then levenshtein distance
 
+- In the bookmark autocompletes, write the scanlator name in brackets then title '(asura) Title'
 - (Enhancement) Create a MangaManager class that will handle all the manga-related functions
 - (Enhancement) Attempt to add search option for more websites
 
 ### Issues:
 
-- None known at the moment...
+- Luminous scans is changing the ID their manhwa URLs. This makes it impossible to store their website URLs.
+    - Solution: Change the way updates are checked. Should go to main webpage and scrape from there rather than
+    - individual URLs.

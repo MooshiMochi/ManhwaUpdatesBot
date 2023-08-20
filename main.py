@@ -79,7 +79,10 @@ async def main():
 if __name__ == "__main__":
     try:
         if os.name == "nt" and sys.version_info >= (3, 8):
+            import tracemalloc
+
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            tracemalloc.start()
 
         asyncio.run(main())
     except KeyboardInterrupt:

@@ -29,7 +29,7 @@ class MangaClient(commands.Bot):
             **kwargs,
         )
         self._config = None
-        self.test_guild_id = None
+        self.test_guild_ids = None
         self.db = Database(self, "database.db")
         self._logger: logging.Logger = logging.getLogger("bot")
 
@@ -120,7 +120,7 @@ class MangaClient(commands.Bot):
 
     def load_config(self, config: dict):
         self.owner_ids = config["constants"].get("owner-ids", [self.owner_id])
-        self.test_guild_id = config["constants"].get("test-guild-id")
+        self.test_guild_ids = config["constants"].get("test-guild-ids")
         self.log_channel_id: int = config["constants"].get("log-channel-id")
         self._debug_mode: bool = config.get("debug", False)
 
@@ -206,25 +206,25 @@ class MangaClient(commands.Bot):
             return
 
         if (
-                guild_config.channel is None
+                guild_config.notifications_channel is None
         ):  # if we can't find the channel, we can't send updates so delete guild config entirely
             await self.db.delete_config(guild.id)
             return
 
         try:
-            channel_webhooks = await guild_config.channel.webhooks()
+            channel_webhooks = await guild_config.notifications_channel.webhooks()
         except discord.Forbidden:
             await self.db.delete_config(guild.id)
             return
 
-        if channel_webhooks and guild_config.webhook in channel_webhooks:
+        if channel_webhooks and guild_config.notifications_webhook in channel_webhooks:
             return  # Everything is fine, we have a webhook in the channel
         else:
             try:
-                guild_config.webhook = await guild_config.channel.create_webhook(
-                    name="Manga Updates",
+                guild_config.notifications_webhook = await guild_config.notifications_channel.create_webhook(
+                    name="Manhwa Updates",
                     avatar=await self.user.avatar.read(),
-                    reason="Manga Updates",
+                    reason="Manhwa Updates",
                 )
                 await self.db.upsert_config(guild_config)
             except discord.Forbidden:

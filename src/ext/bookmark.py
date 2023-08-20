@@ -18,7 +18,7 @@ from src.enums import BookmarkViewType
 
 from src.core.objects import ABCScan
 from src.core.scanners import SCANLATORS
-from src.core.errors import MangaNotFound, BookmarkNotFound, ChapterNotFound
+from src.core.errors import MangaNotFoundError, BookmarkNotFoundError, ChapterNotFoundError
 
 from src.utils import get_manga_scanlator_class, create_bookmark_embed, respond_if_limit_reached
 from src.ui import autocompletes
@@ -38,7 +38,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.rename(manga_url_or_id="manga_url")
     @app_commands.autocomplete(manga_url_or_id=autocompletes.user_subbed_manga)
     async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         scanner: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_url_or_id)
         manga_url = manga_url_or_id
@@ -50,13 +50,15 @@ class BookmarkCog(commands.Cog):
                     "The URL you provided does not follow any of the known url formats.\n"
                     "See `/supported_websites` for a list of supported websites and their url formats."
                 )
-                em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+                em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
                 return await interaction.followup.send(embed=em, ephemeral=True)
 
             manga_id = await scanner.get_manga_id(self.bot, manga_url_or_id)
         else:
             manga_id = manga_url_or_id
             manga_obj = await self.bot.db.get_series(manga_id)
+            if not manga_obj:
+                raise MangaNotFoundError(manga_url_or_id)
             scanner = get_manga_scanlator_class(SCANLATORS, key=manga_obj.scanlator)
             manga_url = manga_obj.url
 
@@ -78,7 +80,7 @@ class BookmarkCog(commands.Cog):
             if bookmark == "LIMIT_REACHED":
                 return
             elif not bookmark:
-                raise MangaNotFound(manga_url_or_id)
+                raise MangaNotFoundError(manga_url_or_id)
             try:
                 bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
             except IndexError:
@@ -91,7 +93,7 @@ class BookmarkCog(commands.Cog):
                 )
 
         bookmark.user_created = True
-        bookmark.last_updated_ts = datetime.utcnow().timestamp()
+        bookmark.last_updated_ts = datetime.now().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanner.icon_url)
         await interaction.followup.send(
@@ -104,11 +106,15 @@ class BookmarkCog(commands.Cog):
     @app_commands.describe(series_id="The name of the bookmarked manga you want to view")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     async def bookmark_view(self, interaction: discord.Interaction, series_id: Optional[str] = None):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
 
         if not bookmarks:
-            return await interaction.followup.send("You have no bookmarks", ephemeral=True)
+            return await interaction.followup.send(embed=discord.Embed(
+                title="No Bookmarks",
+                description="You have no bookmarks.",
+                color=discord.Color.red(),
+            ), ephemeral=True)
 
         # remove unsupported websites
         bookmarks = [bookmark for bookmark in bookmarks if bookmark.manga.scanlator in SCANLATORS]
@@ -121,11 +127,11 @@ class BookmarkCog(commands.Cog):
                 hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
                 if hidden_bookmark:
                     em = create_bookmark_embed(self.bot, hidden_bookmark, hidden_bookmark.scanner.icon_url)
-                    await interaction.response.followup.send(embed=em, ephemeral=True)
+                    await interaction.response.followup.send(embed=em, ephemeral=True)  # noqa
                     view.stop()
                     return
 
-                raise BookmarkNotFound()
+                raise BookmarkNotFoundError()
             view.visual_item_index = bookmark_index
 
         # noinspection PyProtectedMember
@@ -141,22 +147,22 @@ class BookmarkCog(commands.Cog):
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     @app_commands.autocomplete(chapter_index=autocompletes.chapters)
     async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
         if not bookmark:
-            raise BookmarkNotFound()
+            raise BookmarkNotFoundError()
 
         try:
             chapter_index = int(chapter_index)
         except ValueError:
-            raise ChapterNotFound()
+            raise ChapterNotFoundError()
         try:
             new_chapter = bookmark.manga.available_chapters[chapter_index]
         except (IndexError, TypeError):
-            raise ChapterNotFound()
+            raise ChapterNotFoundError()
 
         bookmark.last_read_chapter = new_chapter
-        bookmark.last_updated_ts = datetime.utcnow().timestamp()
+        bookmark.last_updated_ts = datetime.now().timestamp()
 
         user_subscribed: bool = False
         # no need to worry about available_chapters being empty because it's handled above
@@ -192,15 +198,15 @@ class BookmarkCog(commands.Cog):
     @app_commands.describe(series_id="The name of the bookmarked manga you want to delete")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     async def bookmark_delete(self, interaction: discord.Interaction, series_id: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         deleted: bool = await self.bot.db.delete_bookmark(interaction.user.id, series_id)
         if not deleted:
-            raise BookmarkNotFound()
+            raise BookmarkNotFoundError()
         return await interaction.followup.send("Successfully deleted bookmark", ephemeral=True)
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot.debug and bot.test_guild_id:
-        await bot.add_cog(BookmarkCog(bot), guild=discord.Object(id=bot.test_guild_id))
+    if bot.debug and bot.test_guild_ids:
+        await bot.add_cog(BookmarkCog(bot), guilds=[discord.Object(id=x) for x in bot.test_guild_ids])
     else:
         await bot.add_cog(BookmarkCog(bot))

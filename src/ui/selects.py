@@ -10,7 +10,7 @@ import discord
 from src.core.objects import Chapter, Bookmark
 from discord.ui import Select
 from src.enums import BookmarkSortType, BookmarkViewType
-from src.core.errors import ChapterNotFound
+from src.core.errors import ChapterNotFoundError
 
 
 class SortTypeSelect(Select):
@@ -128,7 +128,7 @@ class ChapterSelect(Select):
             chapter_index: int = int(self.values[0])
             new_last_read_chapter = self.bookmark.manga.available_chapters[chapter_index]
         except (IndexError, TypeError):
-            raise ChapterNotFound()
+            raise ChapterNotFoundError()
 
         self.bookmark.last_read_chapter = new_last_read_chapter
 

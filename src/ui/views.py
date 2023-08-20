@@ -21,7 +21,7 @@ from src.core.errors import MangaCompletedOrDropped
 
 from src.utils import (
     create_bookmark_embed,
-    respond_if_limit_reached, sort_bookmarks,
+    create_dynamic_grouped_embeds, modify_embeds, respond_if_limit_reached, sort_bookmarks,
     group_items_by,
     get_manga_scanlator_class
 )
@@ -63,16 +63,17 @@ class BaseView(View):
             item: discord.ui.Button,
             /,
     ) -> None:
-        self.bot.logger.error(
-            tb.print_exception(type(error), error, error.__traceback__)
+        traceback = "".join(
+            tb.format_exception(type(error), error, error.__traceback__)
         )
+        self.bot.logger.error(traceback)
         if not interaction.response.is_done():  # noqa
             await interaction.response.send_message(  # noqa
-                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
             )
         else:
             await interaction.followup.send(
-                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
             )
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -355,7 +356,9 @@ class PaginatorView(discord.ui.View):
             self,
             items: list[Union[str, int, discord.Embed]] = None,
             interaction: Union[discord.Interaction, Context] = None,
-            timeout: float = 3 * 3600  # 3 hours
+            timeout: float = 3 * 3600,  # 3 hours,
+            *args,
+            **kwargs
     ) -> None:
         self.items = items
         self.interaction: discord.Interaction = interaction
@@ -388,6 +391,10 @@ class PaginatorView(discord.ui.View):
 
         super().__init__(timeout=timeout)
         self.items = list(self.items)
+        if len(self.items) == 1:  # no need to paginate if there's only 1 item to display
+            for _child in self.children:
+                if _child.row == 0:
+                    self.remove_item(_child)
 
     def __get_response_kwargs(self):
         if isinstance(self.items[self.page], discord.Embed):
@@ -395,33 +402,33 @@ class PaginatorView(discord.ui.View):
         else:
             return {"content": self.items[self.page]}
 
-    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, row=0)
     async def _first_page(
             self, interaction: discord.Interaction, _
     ):
         self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
-    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, row=0)
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
             self.page = len(self.items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
-    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, row=0)
     async def _stop(self, interaction: discord.Interaction, _):
         await interaction.response.edit_message(view=None)  # noqa
         self.stop()
 
-    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, row=0)
     async def forward(self, interaction: discord.Interaction, _):
         self.page += 1
         if self.page == len(self.items):
             self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
-    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, row=0)
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
@@ -452,11 +459,16 @@ class PaginatorView(discord.ui.View):
         if isinstance(error, TimeoutError):
             pass
         else:
+            traceback = "".join(
+                tb.format_exception(type(error), error, error.__traceback__)
+            )
             em = discord.Embed(
                 title=f"🚫 An unknown error occurred!",
-                description=f"{str(error)[-1500:]}",
+                description=f"{traceback[-2000:]}",
                 color=0xFF0000,
             )
+            interaction.client.logger.error(traceback)
+
             if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=em, ephemeral=True)
             else:
@@ -555,8 +567,8 @@ class SubscribeView(View):
         manga_url: str = manga_home_url
         series_id = await scanlator.get_manga_id(self.bot, manga_url)
 
-        current_user_subs: list[Manga] = await self.bot.db.get_user_subs(
-            interaction.user.id
+        current_user_subs: list[Manga] = await self.bot.db.get_user_guild_subs(
+            interaction.guild_id, interaction.user.id
         )
         if current_user_subs:
             for manga in current_user_subs:
@@ -565,7 +577,7 @@ class SubscribeView(View):
                         title="Already Subscribed", color=discord.Color.red()
                     )
                     em.description = "You are already subscribed to this series."
-                    em.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+                    em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
                     return await interaction.followup.send(embed=em, ephemeral=True)
 
         manga: Manga | None = await respond_if_limit_reached(
@@ -594,7 +606,7 @@ class SubscribeView(View):
             description=f"Successfully subscribed to **[{manga.human_name}]({manga.url})!**",
         )
         embed.set_image(url=manga.cover_url)
-        embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -638,7 +650,7 @@ class SubscribeView(View):
             description=f"Successfully bookmarked **[{bookmark_obj.manga.human_name}]({bookmark_obj.manga.url})**",
         )
         embed.set_image(url=bookmark_obj.manga.cover_url)
-        embed.set_footer(text="Manga Updates", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -675,11 +687,15 @@ class SubscribeView(View):
         if isinstance(error, TimeoutError):
             pass
         else:
+            traceback = "".join(
+                tb.format_exception(type(error), error, error.__traceback__)
+            )
             em = discord.Embed(
                 title=f"🚫 An unknown error occurred!",
-                description=f"{str(error)[-1500:]}",
+                description=f"{traceback[-2000:]}",
                 color=0xFF0000,
             )
+            interaction.client.logger.error(traceback)
             if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=em, ephemeral=True)
             else:
@@ -743,7 +759,7 @@ class BookmarkChapterView(View):
             )
 
         bookmark.last_read_chapter = bookmark.manga.available_chapters[chapter_index]
-        bookmark.last_updated_ts = datetime.utcnow().timestamp()
+        bookmark.last_updated_ts = datetime.now().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
 
         await interaction.followup.send(
@@ -781,7 +797,7 @@ class BookmarkChapterView(View):
         if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
             if chapter_index - 1 >= 0:  # if there is a previous chapter
                 bookmark.last_read_chapter = bookmark.manga.available_chapters[chapter_index - 1]
-                bookmark.last_updated_ts = datetime.utcnow().timestamp()
+                bookmark.last_updated_ts = datetime.now().timestamp()
                 await self.bot.db.upsert_bookmark(bookmark)
             else:
                 await self.bot.db.delete_bookmark(
@@ -825,7 +841,7 @@ class BookmarkChapterView(View):
             return await interaction.followup.send(
                 embed=discord.Embed(
                     title="Not Read",
-                    description="This chapter is not marked as read.",
+                    description="You haven't read any chapters of this manga yet.",
                     color=discord.Color.red(),
                 ),
                 ephemeral=True,
@@ -865,16 +881,17 @@ class BookmarkChapterView(View):
             item: discord.ui.Button,
             /,
     ) -> None:
-        self.bot.logger.error(
-            tb.print_exception(type(error), error, error.__traceback__)
+        traceback = "".join(
+            tb.format_exception(type(error), error, error.__traceback__)
         )
+        self.bot.logger.error(traceback)
         if not interaction.response.is_done():  # noqa
             await interaction.response.send_message(  # noqa
-                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
             )
         else:
             await interaction.followup.send(
-                f"An error occurred: ```py\n{str(error)[-1800:]}```", ephemeral=True
+                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
             )
 
 
@@ -922,3 +939,150 @@ class DeleteBookmarkView(BaseView):
             view=None
         )
         self.stop()
+
+
+class SupportView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(
+            discord.ui.Button(
+                label="Support Server",
+                url="https://discord.gg/TYkw8VBZkr",
+                style=discord.ButtonStyle.blurple,
+            )
+        )
+        self.add_item(
+            discord.ui.Button(
+                label="Invite",
+                url="https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296"
+                    "&scope=bot%20applications.commands",
+                style=discord.ButtonStyle.blurple,
+            )
+        )
+        self.add_item(
+            discord.ui.Button(
+                label="GitHub",
+                url="https://github.com/MooshiMochi/ManhwaUpdatesBot",
+                style=discord.ButtonStyle.blurple,
+            )
+        )
+
+
+class SubscribeListPaginatorView(PaginatorView):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if kwargs.get("unsub_button_only", None) is True:
+            for child in self.children:
+                if child.row == 1:
+                    self.remove_item(child)
+        else:
+            for child in self.children:
+                if child.row == 2:
+                    self.remove_item(child)
+
+        self.is_global_view: bool = kwargs.get("_global", False)
+
+    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.grey, disabled=True, row=1)
+    async def _none_one(self, interaction: discord.Interaction, _):
+        pass
+
+    @discord.ui.button(label="Show Untracked Manhwa", style=discord.ButtonStyle.blurple, row=1)
+    async def show_untracked(self, interaction: discord.Interaction, _):
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
+        bot: MangaClient = interaction.client
+        mangas: list[Manga] = await bot.db.get_user_untracked_subs(
+            interaction.user.id, interaction.guild_id if not self.is_global_view else None
+        )
+        grouped_by_scanlator: dict[str, list[Manga]] = group_items_by(mangas, ["scanlator"], as_dict=True)
+        grouped_list = []
+        for key, value in grouped_by_scanlator.items():
+            for manga in value:
+                grouped_list.extend(
+                    [{"scanlator": key.title(), "manga": manga, "last_chapter": manga.last_chapter}]
+                )
+        embeds = create_dynamic_grouped_embeds(
+            grouped_list, "**{index}.** {manga} - {last_chapter}", group_key="scanlator"
+        )
+        embeds = modify_embeds(
+            embeds, title_kwargs={
+                "title": f"Your{' Global' if self.is_global_view else ''} Untracked Manhwa",
+                "color": discord.Colour.blurple()
+            },
+            show_page_number=True,
+        )
+
+        if not embeds:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="No Untracked Manhwa",
+                    description="You have no untracked manhwa.",
+                    color=discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+
+        paginator_view = SubscribeListPaginatorView(
+            embeds, interaction, unsub_button_only=True, _global=self.is_global_view
+        )
+        paginator_view.message = await interaction.followup.send(
+            embed=embeds[0],
+            view=paginator_view
+        )
+
+    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.grey, disabled=True, row=1)
+    async def _none_two(self, interaction: discord.Interaction, _):
+        pass
+
+    @discord.ui.button(label="Unsubscribe from all untracked Manhwa", style=discord.ButtonStyle.red, row=2)
+    async def unsubscribe_all(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(view=self)  # noqa
+        bot: MangaClient = interaction.client
+        mangas: list[Manga] = await bot.db.get_user_untracked_subs(
+            interaction.user.id, interaction.guild_id
+        )
+        if not mangas:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="No Untracked Manhwa",
+                    description="You are not subscribed to any untracked manhwa.",
+                    color=discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+
+        confirm_view: ConfirmView = ConfirmView(bot, interaction)
+        confirm_view.message = await interaction.followup.send(
+            embed=discord.Embed(
+                title="Are you sure?",
+                description=f"Are you sure you want to unsubscribe from all untracked manhwa?",
+                color=discord.Color.red()
+            ),
+            ephemeral=True,
+            view=confirm_view
+        )
+        await confirm_view.wait()
+
+        if confirm_view.value is None or confirm_view.value is False:  # cancelled = False
+            button.disabled = False
+            await interaction.edit_original_response(view=self)
+            await confirm_view.message.delete()
+            return
+
+        if self.is_global_view:
+            unsub_count = await bot.db.unsubscribe_user_from_all_untracked(interaction.user.id)
+        else:
+            unsub_count = await bot.db.unsubscribe_user_from_all_untracked(interaction.user.id, interaction.guild_id)
+
+        await confirm_view.message.edit(
+            embed=discord.Embed(
+                title="Unsubscribed",
+                description=(
+                    f"Successfully unsubscribed from {unsub_count} untracked manhwa"
+                    f"{' globally' if self.is_global_view else ''}."
+                ),
+                color=discord.Color.green(),
+            ),
+            view=None
+        )

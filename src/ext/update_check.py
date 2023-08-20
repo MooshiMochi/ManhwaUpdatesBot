@@ -72,10 +72,16 @@ class UpdateCheckCog(commands.Cog):
                             " while checking for updates."
                             + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
                         )
+                else:
+                    self.bot.logger.error(
+                        f"Error while checking for updates for [{manga.human_name}]({manga.url})",
+                        exc_info=e,
+                    )
+                    traceback = "".join(
+                        tb.format_exception(type(e), e, e.__traceback__)
+                    )
                     await self.bot.log_to_discord(
-                        f"Accessing {e.manga_url} failed with status code {e.status_code or 'unknown'}"
-                        " while checking for updates."
-                        + (f"\nError: {e.arg_error_msg}" if e.arg_error_msg else "")
+                        f"Error when checking updates for [{manga.human_name}]({manga.url}): {traceback}"
                     )
                 continue
             except aiohttp.ClientHttpProxyError as e:
@@ -97,7 +103,7 @@ class UpdateCheckCog(commands.Cog):
                 await self.check_updates_by_scanlator(mangas[curr_index:])
                 return  # try again from the current manga and end the current iteration.
 
-            except Exception as e:
+            except Exception as e:  # noqa
                 self.bot.logger.error(
                     f"Error while checking for updates for {manga.human_name} ({manga.id})",
                     exc_info=e,
@@ -130,7 +136,7 @@ class UpdateCheckCog(commands.Cog):
                         update_check_result.new_cover_url
                     )
 
-                    if len(update_check_result.new_chapters) - i > 10:  # only alert for last 10 chapters.
+                    if len(update_check_result.new_chapters) - i > 10:  # only alert for the last 10 chapters.
                         continue
                     # else: <= 10
 
@@ -144,22 +150,27 @@ class UpdateCheckCog(commands.Cog):
                         self.bot.logger.warning(f"Extra kwargs must be a dict, ignoring extra kwargs:\n{extra_kwargs}")
 
                     for guild_config in guild_configs:
-                        if not guild_config.webhook:
+                        if not guild_config.notifications_webhook:
                             self.bot.logger.debug(
-                                f"Webhook not found for guild {guild_config.guild_id}"
+                                f"Webhook not found for guild {guild_config.guild.id}"
                             )
                             continue
 
                         try:
-                            role_ping = "" if not guild_config.role else f"{guild_config.role.mention} "
+                            ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_config.guild.id, manga.id)
+                            if ping_role_id:
+                                ping_role = guild_config.guild.get_role(ping_role_id)
+                            else:
+                                ping_role = None
+                            pinged_role = "" if not ping_role else f"{ping_role.mention} "
 
                             if buffer := extra_kwargs.pop("buffer", None):
                                 buffer.seek(0)
 
-                            await guild_config.webhook.send(
+                            await guild_config.notifications_webhook.send(
                                 (
                                     f"||<Manga ID: {manga.id} | Chapter Index: {chapter.index}>||\n"
-                                    f"{role_ping}**{manga.human_name}** **{chapter.name}**"
+                                    f"{pinged_role}**{manga.human_name}** **{chapter.name}**"
                                     f" has been released!\n{chapter.url}"
                                 ),
                                 allowed_mentions=discord.AllowedMentions(roles=True),
@@ -223,7 +234,7 @@ class UpdateCheckCog(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot.debug and bot.test_guild_id:
-        await bot.add_cog(UpdateCheckCog(bot), guild=discord.Object(id=bot.test_guild_id))
+    if bot.debug and bot.test_guild_ids:
+        await bot.add_cog(UpdateCheckCog(bot), guilds=[discord.Object(id=x) for x in bot.test_guild_ids])
     else:
         await bot.add_cog(UpdateCheckCog(bot))

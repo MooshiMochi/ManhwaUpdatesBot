@@ -216,7 +216,7 @@ class ABCScan(ABC):
             ChapterUpdate - The update result.
 
         Raises:
-            MangaNotFound - If the manga is not found in the scanlator's website.
+            MangaNotFoundError - If the manga is not found in the scanlator's website.
             URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         request_url = _manga_request_url or manga.url
@@ -267,7 +267,7 @@ class ABCScan(ABC):
             bool - `True` if the series is completed/dropped, otherwise `False`.
 
         Raises:
-            MangaNotFound - If the manga is not found in the scanlator's website.
+            MangaNotFoundError - If the manga is not found in the scanlator's website.
             URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         raise NotImplementedError
@@ -290,7 +290,7 @@ class ABCScan(ABC):
             str - The human-readable name of the manga.
 
         Raises:
-            MangaNotFound - If the manga is not found in the scanlator's website.
+            MangaNotFoundError - If the manga is not found in the scanlator's website.
             URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
         raise NotImplementedError
@@ -430,7 +430,7 @@ class ABCScan(ABC):
             manga,
             last_read_chapter,  # last_read_chapter
             guild_id,
-            datetime.utcnow().timestamp(),
+            datetime.now().timestamp(),
         )
 
     @classmethod
@@ -665,6 +665,9 @@ class Manga:
     def __repr__(self) -> str:
         return f"Manga({self.human_name} - {self.last_chapter.name})"
 
+    def __str__(self) -> str:
+        return f"[{self.human_name}]({self.url})"
+
     def __eq__(self, other: Manga):
         if isinstance(other, Manga):
             return self.url == other.url and self.human_name == other.human_name or self.id == other.id
@@ -688,7 +691,7 @@ class Bookmark:
         if last_updated_ts is not None:
             self.last_updated_ts: float = float(last_updated_ts)
         else:
-            self.last_updated_ts: float = datetime.utcnow().timestamp()
+            self.last_updated_ts: float = datetime.now().timestamp()
 
         self.user_created: bool = user_created
 
@@ -729,7 +732,7 @@ class Bookmark:
     async def update_last_read_chapter(self, bot: MangaClient, chapter: Chapter) -> bool:
         """Update the last read chapter of the bookmark."""
         self.last_read_chapter = chapter
-        self.last_updated_ts = datetime.utcnow().timestamp()
+        self.last_updated_ts = datetime.now().timestamp()
         return await bot.db.upsert_bookmark(self)
 
     def __repr__(self) -> str:
@@ -741,23 +744,25 @@ class GuildSettings:
             self,
             bot: MangaClient,
             guild_id: int,
-            channel_id: int,
-            updates_role_id: int,
-            webhook_url: str,
+            notifications_channel_id: int,
+            default_ping_role_id: int,
+            notifications_webhook: str,
+            auto_create_role: bool = False,
             *args,
             **kwargs,
     ) -> None:
         self._bot: MangaClient = bot
         self.guild: discord.Guild = bot.get_guild(guild_id)
         if self.guild:
-            self.channel: discord.TextChannel = self.guild.get_channel(channel_id)
-            self.role: Optional[discord.Role] = self.guild.get_role(updates_role_id)
+            self.notifications_channel: discord.TextChannel = self.guild.get_channel(notifications_channel_id)
+            self.default_ping_role: Optional[discord.Role] = self.guild.get_role(default_ping_role_id)
         else:
-            self.channel: Optional[discord.TextChannel] = None
-            self.role: Optional[discord.Role] = None
-        self.webhook: discord.Webhook = discord.Webhook.from_url(
-            webhook_url, session=bot.session, client=bot
+            self.notifications_channel: Optional[discord.TextChannel] = None
+            self.default_ping_role: Optional[discord.Role] = None
+        self.notifications_webhook: discord.Webhook = discord.Webhook.from_url(
+            notifications_webhook, session=bot.session, client=bot
         )
+        self.auto_create_role: bool = auto_create_role
         self._args = args
         self._kwargs = kwargs
 
@@ -772,13 +777,13 @@ class GuildSettings:
     def to_tuple(self) -> tuple:
         """
         Returns a tuple containing the guild settings.
-        >>> (Guild_id, channel_id, updates_role_id, webhook_url)
         """
         return (
             self.guild.id,
-            self.channel.id,
-            self.role.id if hasattr(self.role, "id") else None,
-            self.webhook.url,
+            self.notifications_channel.id,
+            self.default_ping_role.id if self.default_ping_role else None,
+            self.notifications_webhook.url,
+            self.auto_create_role
         )
 
 
@@ -792,8 +797,8 @@ class CachedResponse:
     Example:
     >>> async with aiohttp.ClientSession() as session:
     >>>     async with session.get("https://example.com") as response:
-    >>>         cached_response = await CachedResponse(response).apply_patch()
-    >>>         await cached_response.json()
+    >>>         cached_response = await CachedResponse(response).apply_patch()  # noqa
+    >>>         await cached_response.json()  # noqa
     """
 
     def __init__(self, response: aiohttp.ClientResponse):

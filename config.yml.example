@@ -17,7 +17,7 @@ extensions:
   - src.ext.update_check
 prefix: '?'
 privileged-intents:
-  members: false
+  members: true  # must be true for the bot to work correctly
   message_content: true
   presences: false
 proxy:
@@ -30,3 +30,4 @@ user-agents:
     aquamanga: null
     anigliscans: null
     toonily: null
+    nightscans: null

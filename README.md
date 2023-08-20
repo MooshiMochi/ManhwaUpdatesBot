@@ -1,9 +1,56 @@
 # ManhwaUpdatesBot
 
+### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands)
+
 ## About:
 
 This is a bot that will periodically check for updates on the manga that you have subscribed to and alert you when there
 is a new chapter available.
+
+More websites will be added in the future as I find them. If you want a website to be added, please reach out to me
+in the [support server](https://discord.gg/5mqkKVQDYJ).\
+Additionally, websites that are heavily protected by Cloudflare will not be added (I will list the ones I tried to
+add that fit these criteria at the bottom of this file).
+
+If you want to leave a suggesting of a website that I should implement for this, send me a DM over on .mooshi on
+discord!
+
+The bot can also translate messages / text to different languages using Google Translate.
+You can right-click a message > apps > Translate to translate a message or use the /translate command
+
+## Commands:
+
+### General Commands:
+
+`/help` - Get started with Manga Updates Bot (this message).\
+`/search` - Search for a manga on MangaDex.\
+`/latest` - Get the latest chapter of a manga.\
+`/chapters` - Get a list of chapters of a manga.\
+`/next_update_check` - Get the time until the next update check.\
+`/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
+
+### Subscription Commands:
+
+`/subscribe new` - Subscribe to a manga.\
+`/subscribe delete` - Unsubscribe from a manga.\
+`/subscribe list` - List all your subscribed manga.
+
+### Bookmark Commands:
+
+`/bookmark new` - Bookmark a manga.\
+`/bookmark view` - View your bookmarked manga.\
+`/bookmark delete` - Delete a bookmark.\
+`/bookmark update` - Update a bookmark.
+
+### Config Commands:
+
+`/config setup` - Set up the bot.\
+`/config show` - Show the current configuration.\
+`/config delete` - Delete the current configuration.
+
+### Miscellaneous Commands:
+
+`/translate` - Translate with Google between languages.
 
 ## Requirements:
 
@@ -27,19 +74,11 @@ This bot currently only supports the following websites:
 - https://en.leviatanscans.com
 - https://aquamanga.com (requires explicit permission from the website owner)
 - https://omegascans.org
+- https://nightscans.org (requires explicit permission from the website owner)
+- https://suryascans.com
+- https://void-scans.com
 
-[//]: # (- https://void-scans.com)
-
-Note: More websites will be added in the future, but only if I have some manga on it that I am reading, so don't hope
-for too much.
-Additionally, websites that are heavily protected by Cloudflare will also not be added (I will list the ones I tried to
-add that fit these criteria at the bottom of this file).
-
-If you want to leave a suggesting of a website that I should implement for this, send me a DM over on Mooshi#6669 on
-discord!
-Or you can contact me through my email at rchiriac16@gmail.com
-
-### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands)
+## Setup:
 
 How to set up the bot:
 
@@ -66,7 +105,7 @@ How to set up the bot:
 
 ## Notes
 
-The following websites will not work unless a custom user-agent allowed by the owner is used:
+For developers: The following websites will not work unless a custom user-agent allowed by the owner is used:
 
 - https://aquamanga.com
 - https://anigliscans.com
@@ -84,3 +123,7 @@ The following websites will not work unless a custom user-agent allowed by the o
    ```
    Nothing here yet.
    ```
+
+## Support
+
+If you have any questions, feel free to join the [Support Server](https://discord.gg/5mqkKVQDYJ) and ask there.
