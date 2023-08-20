@@ -126,6 +126,7 @@ class CommandsCog(commands.Cog):
     )
     @app_commands.checks.bot_has_permissions(manage_roles=True)
     @app_commands.checks.has_permissions(manage_roles=True)
+    @app_commands.autocomplete(manga_url=autocompletes.manga)
     async def track_new(
             self, interaction: discord.Interaction, manga_url: str, ping_role: Optional[discord.Role] = None
     ) -> None:
@@ -142,34 +143,41 @@ class CommandsCog(commands.Cog):
             ),
         ).set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
 
-        for scan in self.SCANLATORS.values():
-            if scan.rx.search(manga_url):
-                scanlator = scan
-                break
+        manga: Manga | None = None
 
-        if (
-                scanlator is None
-                or self.bot.config["user-agents"].get(scanlator.name, "N/A") is None
-        ):
-            await interaction.followup.send(embed=error_em, ephemeral=True)
-            return
+        if RegExpressions.url.search(manga_url):
+            for scan in self.SCANLATORS.values():
+                if scan.rx.search(manga_url):
+                    scanlator = scan
+                    break
 
-        if scanlator.id_first:
-            series_id = await scanlator.get_manga_id(self.bot, manga_url)
-            series_url = await scanlator.fmt_manga_url(self.bot, series_id, manga_url)
+            if (
+                    scanlator is None
+                    or self.bot.config["user-agents"].get(scanlator.name, "N/A") is None
+            ):
+                await interaction.followup.send(embed=error_em, ephemeral=True)
+                return
+
+            if scanlator.id_first:
+                series_id = await scanlator.get_manga_id(self.bot, manga_url)
+                series_url = await scanlator.fmt_manga_url(self.bot, series_id, manga_url)
+            else:
+                series_url = await scanlator.fmt_manga_url(self.bot, None, manga_url)  # noqa
+                series_id = await scanlator.get_manga_id(self.bot, series_url)
+
+            manga: Manga | None = await respond_if_limit_reached(
+                scanlator.make_manga_object(self.bot, series_id, series_url), interaction
+            )
+            # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
+            if manga == "LIMIT_REACHED":
+                return  # Return because we already responded with the respond_if_limit_reached func above
+            elif not manga:
+                raise MangaNotFoundError(manga_url)
         else:
-            series_url = await scanlator.fmt_manga_url(self.bot, None, manga_url)  # noqa
-            series_id = await scanlator.get_manga_id(self.bot, series_url)
-
-        manga: Manga | None = await respond_if_limit_reached(
-            scanlator.make_manga_object(self.bot, series_id, series_url), interaction
-        )
-        # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
-        if manga == "LIMIT_REACHED":
-            return  # Return because we already responded with the respond_if_limit_reached func above
+            manga = await self.bot.db.get_series(manga_url)
 
         if manga.completed:
-            raise MangaCompletedOrDropped(series_url)
+            raise MangaCompletedOrDropped(manga.url)
 
         guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
         if guild_config is None:
