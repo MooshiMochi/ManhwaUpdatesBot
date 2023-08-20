@@ -748,6 +748,7 @@ class GuildSettings:
             default_ping_role_id: int,
             notifications_webhook: str,
             auto_create_role: bool = False,
+            dev_notifications_ping: bool = True,
             *args,
             **kwargs,
     ) -> None:
@@ -763,6 +764,7 @@ class GuildSettings:
             notifications_webhook, session=bot.session, client=bot
         )
         self.auto_create_role: bool = auto_create_role
+        self.dev_notifications_ping: bool = dev_notifications_ping
         self._args = args
         self._kwargs = kwargs
 
@@ -783,7 +785,8 @@ class GuildSettings:
             self.notifications_channel.id,
             self.default_ping_role.id if self.default_ping_role else None,
             self.notifications_webhook.url,
-            self.auto_create_role
+            self.auto_create_role,
+            self.dev_notifications_ping,
         )
 
 

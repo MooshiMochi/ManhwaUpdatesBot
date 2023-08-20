@@ -68,7 +68,8 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
     @app_commands.describe(
         channel="The channel to send updates to.",
         auto_create_role="Whether to automatically create a role for new tracked series or use default role.",
-        role="The default role to ping when a new update is released."
+        role="The default role to ping when a new update is released.",
+        ping_for_dev_notifications="Whether to ping the default role when the developer sends a manual update."
     )
     async def _setup(
             self,
@@ -76,20 +77,20 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             channel: discord.TextChannel,
             auto_create_role: Optional[bool] = False,
             role: Optional[discord.Role] = None,
+            ping_for_dev_notifications: Optional[bool] = True
     ):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
-        if channel.permissions_for(interaction.guild.me).manage_webhooks is False:
-            return await interaction.followup.send(
-                embed=(
-                    discord.Embed(
-                        title="Not Enough Permissions",
-                        description=(
-                            "I don't have permission to manage webhooks in that channel.\n"
-                            "Please provide a channel where I can manage webhooks."
-                        ),
-                        color=discord.Color.red())),
-            )
+        manage_webhooks_perms = channel.permissions_for(interaction.guild.me).manage_webhooks
+        send_messages_perms = channel.permissions_for(interaction.guild.me).send_messages
+        attach_files_perms = channel.permissions_for(interaction.guild.me).attach_files
+        send_links_perms = channel.permissions_for(interaction.guild.me).embed_links
+        required_perms = [manage_webhooks_perms, send_messages_perms, attach_files_perms, send_links_perms]
+        if not all(required_perms):
+            raise app_commands.errors.BotMissingPermissions([
+                "manage_webhooks", "send_messages", "attach_files", "embed_links"
+            ])
+
         if role:
             if role.is_bot_managed():
                 return await interaction.followup.send(
@@ -143,7 +144,8 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                     )
 
         guild_config: GuildSettings = GuildSettings(
-            self.bot, interaction.guild_id, channel.id, default_role_id, webhook.url, auto_create_role
+            self.bot, interaction.guild_id, channel.id, default_role_id, webhook.url, auto_create_role,
+            ping_for_dev_notifications
         )
         await self.bot.db.upsert_config(guild_config)
 
@@ -155,12 +157,14 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                 "> **Updates Role:** {}\n"
                 "> **Webhook Details:**\n"
                 "> \u200b \u200b- ID: {}\n"
-                "> **Auto Create Role:** {}"
+                "> **Auto Create Role:** {}\n"
+                "> **Ping for Dev Notifications:** {}"
             ).format(
                 guild_config.notifications_channel.id,
                 f'<@&{guild_config.default_ping_role.id}>' if guild_config.default_ping_role else "`None set`",
                 guild_config.notifications_webhook.id,
                 auto_create_role,
+                ping_for_dev_notifications,
             ),
             colour=discord.Colour.green()
         )
@@ -194,12 +198,14 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                 "> **Updates Role:** {}\n"
                 "> **Webhook Details:**\n"
                 "> \u200b \u200b- ID: {}\n"
-                "> **Auto Create Role:** {}"
+                "> **Auto Create Role:** {}\n"
+                "> **Ping for Dev Notifications:** {}"
             ).format(
                 guild_config.notifications_channel.id,
                 f'<@&{guild_config.default_ping_role.id}>' if guild_config.default_ping_role else "`None set`",
                 guild_config.notifications_webhook.id,
                 bool(guild_config.auto_create_role),
+                bool(guild_config.dev_notifications_ping),
             ),
             colour=discord.Colour.green()
         )
@@ -288,7 +294,8 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                     "> **Updates Role:** None\n"
                     "> **Webhook Details:**\n"
                     "> \u200b \u200b- ID: Deleted\n"
-                    "> **Auto Create Role:** Deleted"
+                    "> **Auto Create Role:** Deleted\n"
+                    "> **Ping for Dev Notifications:** Deleted\n"
                     + (f"\n> **Deleted Tracked Series:** {deleted_tracked_manga}" if deleted_tracked_manga else '')
                     + (f"\n> **Deleted Roles:** {deleted_roles}" if deleted_roles else '')
             ),

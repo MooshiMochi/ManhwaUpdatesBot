@@ -96,6 +96,7 @@ class Database:
                     default_ping_role_id INTEGER DEFAULT NULL,
                     notifications_webhook TEXT NOT NULL,
                     auto_create_role BOOLEAN NOT NULL DEFAULT false,
+                    dev_notifications_ping BOOLEAN NOT NULL DEFAULT true,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
                 """
@@ -342,13 +343,14 @@ class Database:
             await db.execute(
                 """
                 INSERT INTO guild_config (
-                    guild_id, notifications_channel_id, default_ping_role_id, notifications_webhook, auto_create_role
+                    guild_id, notifications_channel_id, default_ping_role_id, 
+                    notifications_webhook, auto_create_role, dev_notifications_ping
                 )
-                VALUES ($1, $2, $3, $4, $5)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT(guild_id) 
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
-                    notifications_webhook = $4, auto_create_role = $5
+                    notifications_webhook = $4, auto_create_role = $5, dev_notifications_ping = $6
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
@@ -675,7 +677,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT * FROM guild_config WHERE guild_id = ?;
+                    SELECT * FROM guild_config WHERE guild_id = $1;
                     """,
                     (guild_id,),
             ) as cursor:
@@ -854,7 +856,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                DELETE FROM guild_config WHERE guild_id = ?;
+                DELETE FROM guild_config WHERE guild_id = $1;
                 """,
                 (guild_id,),
             )

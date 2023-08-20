@@ -712,7 +712,7 @@ class Restricted(commands.Cog):
 
         successes = 0
         for guild_config in guild_configs_to_notify:
-            if guild_config.default_ping_role:
+            if guild_config.default_ping_role and guild_config.dev_notifications_ping:
                 role_mention = guild_config.default_ping_role.mention
                 if guild_config.default_ping_role.id == guild_config.notifications_channel.guild.id:
                     role_mention = "@everyone"
