@@ -125,7 +125,7 @@ class Database:
 
             await db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS guild_created_roles (
+                CREATE TABLE IF NOT EXISTS bot_created_roles (
                     guild_id INTEGER NOT NULL,
                     role_id INTEGER NOT NULL,
                     UNIQUE (guild_id, role_id) ON CONFLICT REPLACE
