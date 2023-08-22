@@ -798,7 +798,7 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = ["voidscans"]
+        tests_to_ignore = ["luminousscans"]  # I've to fix the update check function
         # testCases.pop("voidscans", None)  # bad website to work with
         await run_tests(testCases, tests_to_ignore)
 
@@ -885,8 +885,8 @@ if __name__ == "__main__":
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
 
-    # asyncio.run(main())
+    asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    asyncio.run(test_single_scanlator("mangabaz"))
+    # asyncio.run(test_single_scanlator("mangabaz"))
