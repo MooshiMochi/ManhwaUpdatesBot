@@ -20,7 +20,7 @@ rem Check Python version
 %PYTHON_EXE% -c "import sys; sys.exit(not (sys.version_info.major >= 3 and sys.version_info.minor >= 10))"
 
 if %errorlevel% neq 0 (
-    echo You need at least Python 3.11 to run the bot.
+    echo You need at least Python 3.10 to run the bot.
     pause
     exit /b 1
 )

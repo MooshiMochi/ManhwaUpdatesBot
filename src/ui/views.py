@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional, Self, TYPE_CHECKING, Union
+from typing import Iterable, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -115,7 +115,7 @@ class BookmarkView(BaseView):
         self._btn_callbacks = CustomButtonCallbacks(self.bot, self)
         self.load_components()
 
-    def _load_visual_components_preset(self) -> Self:
+    def _load_visual_components_preset(self) -> BookmarkView:
         self.clear_components()
         self.add_item(ViewTypeSelect(self.view_type, row=2))
 
@@ -146,7 +146,7 @@ class BookmarkView(BaseView):
         )
         return self
 
-    def _load_text_components_preset(self) -> Self:
+    def _load_text_components_preset(self) -> BookmarkView:
         self.clear_components()
         self.add_item(SortTypeSelect(self.sort_type, row=1))
         self.add_item(ViewTypeSelect(self.view_type, row=2))
@@ -166,7 +166,7 @@ class BookmarkView(BaseView):
         _add_blank_buttons()
         return self
 
-    def load_components(self) -> Self:
+    def load_components(self) -> BookmarkView:
         if self.view_type == BookmarkViewType.VISUAL:
             self._load_visual_components_preset()
         else:
@@ -223,7 +223,7 @@ class BookmarkView(BaseView):
             if item.row is not None and item.row == 0:
                 item.disabled = not on
 
-    def clear_components(self) -> Self:
+    def clear_components(self) -> BookmarkView:
         """
         Summary:
             Clears all components from the view. (Except the navigation buttons)
@@ -237,7 +237,7 @@ class BookmarkView(BaseView):
             self.remove_item(item)
         return self
 
-    async def update(self, interaction: discord.Interaction, view: Self | None = None):
+    async def update(self, interaction: discord.Interaction, view: BookmarkView | None = None):
         if view is None:
             view = self
         if len(self.bookmarks) == 0:
