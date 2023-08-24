@@ -845,7 +845,11 @@ class CachedResponse:
             return
         else:
             with open(filename, "w") as f:
-                f.write(text)
+                if isinstance(text, str):
+                    f.write(text)
+                else:
+                    f.write(json.dumps(text))
+            print("Wrote 403 response to " + filename)
         # print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
 
     async def json(self):
