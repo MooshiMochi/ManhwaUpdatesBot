@@ -11,16 +11,24 @@ if [ ! -f $CONFIG_FILE_NAME ]; then
 fi
 
 # check if the current Python version is at least the required version
-if ! $PYTHON_EXE -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else -1)' > /dev/null; then
-  echo "Using Python $PYTHON_EXE, version $PYTHON_VERSION_REQUIRED or later is not found."
-  PYTHON_EXE="python"
-  echo "Attempting to use $PYTHON_EXE instead."
+if ! $PYTHON_EXE -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else -1)' > /dev/null 2>&1; then  # false
+	echo "Using '$PYTHON_EXE' executable: version $PYTHON_VERSION_REQUIRED or later is not found."
+	PYTHON_EXE="python3"
+	echo "Attempting to use '$PYTHON_EXE' executable instead."
 
-  # if the required version is not found, try with the "python" command
-  if ! $PYTHON_EXE -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else -1)' > /dev/null; then
-    echo "Unable to find a compatible version of Python. Please install Python $PYTHON_VERSION_REQUIRED or later and try again."
-    exit 1
-  fi
+	for minor_ver in {19..10..1}  # going in reverse to use the latest available version
+	do
+		PYTHON_EXE="python3.$minor_ver"
+
+		if ! (! $PYTHON_EXE -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else -1)' > /dev/null 2>&1); then
+			echo "Found a compatible python version. Using $PYTHON_EXE"
+			break
+
+		elif [ "$minor_ver" -eq 10 ]; then
+			echo "Unable to find a compatible version of Python. Please install Python $PYTHON_VERSION_REQUIRED or later and try again."
+			exit 1
+		fi
+	done;
 fi
 
 # Continue with script if Python version is sufficient

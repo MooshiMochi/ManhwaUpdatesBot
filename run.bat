@@ -1,29 +1,37 @@
 @echo off
+setlocal enabledelayedexpansion
 set CONFIG_FILE_NAME=config.yml
+set VENV_NAME=venv
 set PYTHON_EXE=python
-set VENV_NAME=.venv
+set PYTHON_VERSION_REQUIRED=3.10
 
-%PYTHON_EXE% --version >nul 2>&1
+rem Check if the current Python version is at least the required version
+%PYTHON_EXE% -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)"
 if %errorlevel% neq 0 (
-    echo Python is not installed. Please install Python and try again.
+    set "PYTHON_EXE=python3"
+    !PYTHON_EXE! -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Found a compatible Python version. Using !PYTHON_EXE!
+        goto continue
+    ) else (
+    echo Using '!PYTHON_EXE!' executable: version %PYTHON_VERSION_REQUIRED% or later not found.
+    set PYTHON_EXE=py
+    echo Attempting to use '%PYTHON_EXE%' executable instead.
 
-    set PYTHON_EXE=python3
-    %PYTHON_EXE% --version >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo Python is not installed. Please install Python and try again.
-        pause
-        exit /b 1
+    for /L %%i in (19, -1, 10) do (
+        set "PYTHON_EXE=py -3.%%i"
+        !PYTHON_EXE! -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>&1
+        if !errorlevel! equ 0 (
+            echo Found a compatible Python version. Using !PYTHON_EXE!
+            goto continue
+        )
+    )
+    echo Unable to find a compatible version of Python. Please install Python %PYTHON_VERSION_REQUIRED% or later and try again.
+    goto common_exit
     )
 )
 
-rem Check Python version
-%PYTHON_EXE% -c "import sys; sys.exit(not (sys.version_info.major >= 3 and sys.version_info.minor >= 10))"
-
-if %errorlevel% neq 0 (
-    echo You need at least Python 3.10 to run the bot.
-    pause
-    exit /b 1
-)
+:continue
 
 rem Check if config file exists. If it doesn't, copy the example config file.
 if not exist %CONFIG_FILE_NAME% (
@@ -56,3 +64,7 @@ cls
 
 rem Run main.py
 %VENV_NAME%\Scripts\python main.py
+
+:common_exit
+pause
+exit /b 1
