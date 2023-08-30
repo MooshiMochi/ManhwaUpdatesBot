@@ -11,13 +11,13 @@ if [ ! -f $CONFIG_FILE_NAME ]; then
 fi
 
 # check if the current Python version is at least the required version
-if $PYTHON_EXE -c "import sys; sys.exit(sys.version_info >= (3, 10))"; then
+if ! $PYTHON_EXE -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else -1)' > /dev/null; then
   echo "Using Python $PYTHON_EXE, version $PYTHON_VERSION_REQUIRED or later is not found."
   PYTHON_EXE="python"
   echo "Attempting to use $PYTHON_EXE instead."
 
   # if the required version is not found, try with the "python" command
-  if $PYTHON_EXE -c "import sys; sys.exit(sys.version_info >= (3, 10))"; then
+  if ! $PYTHON_EXE -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else -1)' > /dev/null; then
     echo "Unable to find a compatible version of Python. Please install Python $PYTHON_VERSION_REQUIRED or later and try again."
     exit 1
   fi
