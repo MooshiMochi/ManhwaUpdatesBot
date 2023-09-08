@@ -707,8 +707,8 @@ class CommandsCog(commands.Cog):
             (
                 LSComic,
                 "LSComic",
-                "https://en.leviatanscans.com/",
-                "https://en.leviatanscans.com/home/manga/manga-title/",
+                "https://lscomic.com/",
+                "https://lscomic.com/home/manga/manga-title/",
             ),
             (
                 Bato,

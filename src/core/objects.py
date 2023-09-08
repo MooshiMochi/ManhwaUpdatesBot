@@ -470,7 +470,8 @@ class ABCScan(ABC, ABCScanMixin):
             manga_id: str,
             manga_url: str,
             user_id: int,
-            guild_id: int
+            guild_id: int,
+            user_created: bool = False,
     ) -> Bookmark | None:
         """
         Summary:
@@ -481,6 +482,7 @@ class ABCScan(ABC, ABCScanMixin):
             manga_url: str - The URL of the manga's home page.
             user_id: int - The ID of the user.
             guild_id: int - The ID of the guild.
+            user_created: bool - Whether the user created the bookmark or not.
 
         Returns:
             Bookmark/None - The Bookmark object if the manga is found, otherwise `None`.
@@ -502,6 +504,7 @@ class ABCScan(ABC, ABCScanMixin):
             last_read_chapter,  # last_read_chapter
             guild_id,
             datetime.now().timestamp(),
+            user_created,
         )
 
     @classmethod
