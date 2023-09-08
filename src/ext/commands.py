@@ -708,7 +708,7 @@ class CommandsCog(commands.Cog):
                 LSComic,
                 "LSComic",
                 "https://lscomic.com/",
-                "https://lscomic.com/home/manga/manga-title/",
+                "https://lscomic.com/manga/manga-title/",
             ),
             (
                 Bato,
