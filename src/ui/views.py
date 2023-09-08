@@ -640,7 +640,7 @@ class SubscribeView(View):
                     ), ephemeral=True)
         # make bookmark obj
         bookmark_obj = await scanlator.make_bookmark_object(
-            manga_id, manga_url, interaction.user.id, interaction.guild_id
+            manga_id, manga_url, interaction.user.id, interaction.guild_id, user_created=True
         )
         await self.bot.db.upsert_bookmark(bookmark_obj)
 
