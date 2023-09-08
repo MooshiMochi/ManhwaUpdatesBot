@@ -165,7 +165,7 @@ class Restricted(commands.Cog):
             except (commands.ExtensionNotLoaded, commands.ExtensionAlreadyLoaded, commands.ExtensionNotFound):
                 pass
 
-        self.client.logger.info("Client reloaded.")
+        self.client.logger.info("Synced local code with GitHub repo.")
 
     @developer.command(
         name="loaded_cogs",

@@ -365,7 +365,9 @@ class UpdateCheckCog(commands.Cog):
 
         for manga in mangas:
             await asyncio.sleep(3600)  # 1 hour
-            update_check_result: ChapterUpdate | str = await self.handle_exception(scanner.check_updates(manga))
+            update_check_result: ChapterUpdate | str = await self.handle_exception(
+                scanner.check_updates(manga), scanner, manga.url
+            )
             if isinstance(update_check_result, str):
                 next_step = update_check_result
                 match next_step:

@@ -25,7 +25,7 @@ class LegacyCog(commands.Cog):
     async def dex_search(self, interaction: discord.Interaction, query: str):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if RegExpressions.mangadex_url.search(query) and (manga_id := await MangaDex.get_manga_id(self.bot, query)):
+        if RegExpressions.mangadex_url.search(query) and (manga_id := await MangaDex.get_manga_id(query)):
             response: dict[str, Any] = await self.bot.mangadex_api.get_manga(manga_id)
         else:
             response: dict[str, Any] = await self.bot.mangadex_api.search(
@@ -69,7 +69,7 @@ class LegacyCog(commands.Cog):
             synopsis = result["attributes"]["description"].values()[0]
 
         em.set_image(url=cover_url)
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         em.description = (
             f"**Year:** {result['attributes']['year']}\n"
