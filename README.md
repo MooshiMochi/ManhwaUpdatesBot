@@ -2,6 +2,8 @@
 
 ### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands)
 
+### Consider supporting me through [Ko-fi](https://ko-fi.com/mooshi69) or [Patreon](https://patreon.com/mooshi69).
+
 ## About:
 
 This is a bot that will periodically check for updates on the manga that you have subscribed to and alert you when there
@@ -29,9 +31,23 @@ You can right-click a message > apps > Translate to translate a message or use t
 `/next_update_check` - Get the time until the next update check.\
 `/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
 
+### Config Commands:
+
+`/config setup` - Set up the bot.\
+`/config show` - Show the current configuration.\
+`/config delete` - Delete the current configuration.
+
+### Tracking Commands:
+
+###### (_Requires the `Manage Roles` permission._)
+
+`/track new` - Track a manga.\
+`/track delete` - Delete a tracked manga.\
+`/track list` - List all your tracked manga.
+
 ### Subscription Commands:
 
-`/subscribe new` - Subscribe to a manga.\
+`/subscribe new` - Subscribe to a tracked manga.\
 `/subscribe delete` - Unsubscribe from a manga.\
 `/subscribe list` - List all your subscribed manga.
 
@@ -42,19 +58,11 @@ You can right-click a message > apps > Translate to translate a message or use t
 `/bookmark delete` - Delete a bookmark.\
 `/bookmark update` - Update a bookmark.
 
-### Config Commands:
-
-`/config setup` - Set up the bot.\
-`/config show` - Show the current configuration.\
-`/config delete` - Delete the current configuration.
-
 ### Miscellaneous Commands:
 
 `/translate` - Translate with Google between languages.
 
-## Requirements:
-
-- Python 3.10+
+## Supported Websites:
 
 This bot currently only supports the following websites:
 
@@ -77,6 +85,12 @@ This bot currently only supports the following websites:
 - https://nightscans.org (requires explicit permission from the website owner)
 - https://suryascans.com
 - https://void-scans.com
+
+# Developers Section
+
+## Requirements:
+
+- Python 3.10+
 
 ## Setup:
 
@@ -126,4 +140,4 @@ For developers: The following websites will not work unless a custom user-agent 
 
 ## Support
 
-If you have any questions, feel free to join the [Support Server](https://discord.gg/5mqkKVQDYJ) and ask there.
+If you have any questions, feel free to join the [Support Server](https://discord.gg/TYkw8VBZkr) and ask there.

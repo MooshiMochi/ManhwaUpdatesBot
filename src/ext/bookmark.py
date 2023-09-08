@@ -36,11 +36,15 @@ class BookmarkCog(commands.Cog):
     @bookmark_group.command(name="new", description="Bookmark a new manga")
     @app_commands.describe(manga_url_or_id="The name of the bookmarked manga you want to view")
     @app_commands.rename(manga_url_or_id="manga_url")
-    @app_commands.autocomplete(manga_url_or_id=autocompletes.user_subbed_manga)
+    @app_commands.autocomplete(manga_url_or_id=autocompletes.manga)
     async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         scanner: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_url_or_id)
+        for scan in SCANLATORS.values():
+            if scan.rx.search(manga_url_or_id):
+                scanner = scan
+                break
         manga_url = manga_url_or_id
 
         if RegExpressions.url.search(manga_url_or_id):
@@ -50,10 +54,10 @@ class BookmarkCog(commands.Cog):
                     "The URL you provided does not follow any of the known url formats.\n"
                     "See `/supported_websites` for a list of supported websites and their url formats."
                 )
-                em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+                em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
                 return await interaction.followup.send(embed=em, ephemeral=True)
 
-            manga_id = await scanner.get_manga_id(self.bot, manga_url_or_id)
+            manga_id = await scanner.get_manga_id(manga_url_or_id)
         else:
             manga_id = manga_url_or_id
             manga_obj = await self.bot.db.get_series(manga_id)
@@ -70,7 +74,7 @@ class BookmarkCog(commands.Cog):
 
             bookmark = await respond_if_limit_reached(
                 scanner.make_bookmark_object(
-                    self.bot, manga_id, manga_url, interaction.user.id, interaction.guild.id
+                    manga_id, manga_url, interaction.user.id, interaction.guild.id
                 ),
                 interaction
             )
@@ -165,33 +169,32 @@ class BookmarkCog(commands.Cog):
         bookmark.last_updated_ts = datetime.now().timestamp()
 
         user_subscribed: bool = False
+        should_track: bool = False
         # no need to worry about available_chapters being empty because it's handled above
         if bookmark.last_read_chapter == bookmark.manga.available_chapters[-1] and not bookmark.manga.completed:
-            # check if user is subscribed to the manga with manga.id
+            # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
-            user_subscribed = True
-            if not await self.bot.db.is_user_subscribed(interaction.user.id, bookmark.manga.id):
+            is_tracked: bool = await self.bot.db.is_manga_tracked(interaction.guild_id, bookmark.manga.id)
+            if not await self.bot.db.is_user_subscribed(interaction.user.id, bookmark.manga.id) and is_tracked:
                 await self.bot.db.subscribe_user(interaction.user.id, bookmark.guild_id, bookmark.manga.id)
+                user_subscribed = True
+            elif not is_tracked:
+                should_track = True
 
         await self.bot.db.upsert_bookmark(bookmark)
+        success_em = discord.Embed(
+            title="Bookmark Updated",
+            description=f"Successfully updated bookmark to {bookmark.last_read_chapter}",
+            color=discord.Color.green(),
+        )
         if user_subscribed:
-            await interaction.followup.send(
-                embed=discord.Embed(
-                    title="Bookmark Updated",
-                    description=f"Successfully updated bookmark to {bookmark.last_read_chapter} and subscribed you to "
-                                f"updates for {bookmark.manga.human_name}",
-                    color=discord.Color.green(),
-                ),
-                ephemeral=True,
-            )
+            success_em.description += f" and subscribed you to updates for {bookmark.manga.human_name}"
+            await interaction.followup.send(embed=success_em, ephemeral=True)
+        elif should_track:
+            success_em.description += "\n\n*You should consider tracking and subscribing to this manga to get updates.*"
+            await interaction.followup.send(embed=success_em, ephemeral=True)
         else:
-            await interaction.followup.send(
-                embed=discord.Embed(
-                    title="Bookmark Updated",
-                    description=f"Successfully updated bookmark to {bookmark.last_read_chapter}",
-                    color=discord.Color.green(),
-                ), ephemeral=True
-            )
+            await interaction.followup.send(embed=success_em, ephemeral=True)
 
     @bookmark_group.command(name="delete", description="Delete a bookmark")
     @app_commands.rename(series_id="manga")

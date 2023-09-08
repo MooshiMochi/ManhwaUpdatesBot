@@ -8,9 +8,10 @@ constants:
   first_bot_startup: true
   autosync: true
   test-guild-id: 1066891416934023218
-  cache-retention-seconds: 300
+  cache-retention-seconds: 3600
 extensions:
   - src.ext.config
+  - src.core.handlers.txt_command_error
   - src.ext.commands
   - src.ext.dev
   - src.ext.bookmark

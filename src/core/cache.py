@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Set, Union
 
 import aiohttp
 import curl_cffi.requests
+from curl_cffi.requests import Response
 
 from src.core.objects import CachedResponse
 from src.static import EMPTY
@@ -44,7 +45,10 @@ class BaseCacheSessionMixin:
         )
 
         if self._proxy:
-            self.logger.info("Using proxy: " + self._proxy)
+            proxy_str = self._proxy
+            if "@" in proxy_str:
+                proxy_str = proxy_str.split("//")[0] + "//" + "[PROXY USER]:[PROXY PASSWORD]@" + proxy_str.split("@")[1]
+            self.logger.info("Using proxy: " + proxy_str)
 
         # Start a background task to periodically clear the cache
         self._clear_cache_task = asyncio.create_task(self._clear_cache_periodically())
@@ -164,27 +168,28 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
         is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
         limiter: rate_limiter.Limiter = self.getLimiter(hostname)
 
-        if url in self._ignored_urls or self._is_discord_api_url(url):
-            await limiter.try_acquire(is_user_request=is_user_req)
+        cached_url = url.removesuffix("/")
+        if cached_url in self._ignored_urls or self._is_discord_api_url(url):
+            # await limiter.try_acquire(is_user_request=is_user_req)
             return await super()._request(method, url, *args, **kwargs)
 
-        if url in self._cache and self._cache[url]['expires'] > asyncio.get_event_loop().time():
+        elif cached_url in self._cache and self._cache[cached_url]['expires'] > asyncio.get_event_loop().time():
             self.logger.debug(f"Cache hit for {url}")
             # Use cached response
-            response = self._cache[url]['response']
+            response = self._cache[cached_url]['response']
             # response.cached = True
             return response
 
         self.cookie_jar.clear()  # clear all cookies before making request
         # Cache miss, fetch and cache response
         self.logger.debug(f"Cache miss for {url}")
-        await limiter.try_acquire(is_user_request=is_user_req)
+        # await limiter.try_acquire(is_user_request=is_user_req)
         response = await super()._request(method, url, *args, **kwargs)
         response = await CachedResponse(response).apply_patch(preload_data=True)  # TODO: preload_data=False
 
         cache_time = cache_time if cache_time is not None else self._default_cache_time
         # response.cached = False
-        self._cache[url] = {
+        self._cache[cached_url] = {
             'response': response,
             'expires': asyncio.get_event_loop().time() + cache_time
         }
@@ -203,33 +208,34 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
         BaseCacheSessionMixin.__init__(self, ignored_urls, name=name, proxy=proxy)
         super().__init__(*args, **kwargs)
 
-    async def request(self, method, url, cache_time: Optional[int] = None, *args, **kwargs):
+    async def request(self, method, url, cache_time: Optional[int] = None, *args, **kwargs) -> Response:
         self.logger.debug("Making request...")
 
         hostname = get_url_hostname(url)
         is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
         limiter: rate_limiter.Limiter = self.getLimiter(hostname)
 
-        if url in self._ignored_urls or self._is_discord_api_url(url):
+        cached_url = url.removesuffix("/")
+        if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
-            await limiter.try_acquire(is_user_request=is_user_req)
+            # await limiter.try_acquire(is_user_request=is_user_req)  # TODO: Re-enable rate limiter
             return await super().request(method, url, *args, **kwargs)
 
-        elif url in self._cache and self._cache[url]['expires'] > asyncio.get_event_loop().time():
+        elif cached_url in self._cache and self._cache[cached_url]['expires'] > asyncio.get_event_loop().time():
             self.logger.debug(f"Cache hit for {url}")
             # Use cached response
-            response = self._cache[url]['response']
+            response = self._cache[cached_url]['response']
             return response
 
         self.cookies.clear()  # clear all cookies
 
         self.logger.debug(f"Cache miss for {url}")
-        await limiter.try_acquire(is_user_request=is_user_req)
+        # await limiter.try_acquire(is_user_request=is_user_req)
         response = await super().request(method, url, *args, **kwargs)
 
         cache_time = cache_time if cache_time is not None else self._default_cache_time
         # response.cached = False
-        self._cache[url] = {
+        self._cache[cached_url] = {
             'response': response,
             'expires': asyncio.get_event_loop().time() + cache_time
         }

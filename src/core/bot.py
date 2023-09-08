@@ -1,10 +1,10 @@
+import io
 import logging
 import os
 from typing import Optional, Union
 
 import aiohttp
 import discord
-from curl_cffi.requests import AsyncSession
 from discord import Intents
 from discord.ext import commands
 
@@ -35,7 +35,7 @@ class MangaClient(commands.Bot):
 
         # Placeholder values. These are set in .setup_hook() below
         self._session: Union[aiohttp.ClientSession, CachedClientSession] = None
-        self.curl_session: AsyncSession = None
+        self.curl_session: CachedCurlCffiSession = None
         self.mangadex_api: MangaDexAPI = None
         self.comick_api: ComickAppAPI = None
 
@@ -126,6 +126,15 @@ class MangaClient(commands.Bot):
 
         self._config: dict = config
 
+    def load_scanlators(self, scanlators: dict):
+        self._all_scanners.update(scanlators)
+        for scanlator in scanlators.values():
+            scanlator.bot = self
+            scanlator.call_init()
+        for scanlator in self._all_scanners.values():
+            scanlator.bot = self
+            scanlator.call_init()
+
     async def on_ready(self):
         self._logger.info(f"{self.user.name}#{self.user.discriminator} is ready!")
 
@@ -148,9 +157,23 @@ class MangaClient(commands.Bot):
         if not channel:
             return
         try:
-            if content and len(content) > 1997:
-                content = "..." + content[-1997:]
-
+            if content and len(content) > 2000:
+                # try to send it as a file
+                buffer = io.BytesIO(content.encode("utf-8"))
+                file = discord.File(fp=buffer, filename="log.py")
+                if kwargs.get("file") is None:
+                    kwargs["file"] = file
+                    content = None
+                else:
+                    files_kwarg = kwargs.get("files")
+                    if files_kwarg is None:
+                        kwargs["files"] = [file]
+                        content = None
+                    elif len(files_kwarg) < 10:
+                        kwargs["files"].append(file)
+                        content = None
+                    else:
+                        content = "..." + content[-1997:]
             await channel.send(content, **kwargs)
         except Exception as e:
             self._logger.error(f"Error while logging: {e}")
@@ -223,7 +246,7 @@ class MangaClient(commands.Bot):
             try:
                 guild_config.notifications_webhook = await guild_config.notifications_channel.create_webhook(
                     name="Manhwa Updates",
-                    avatar=await self.user.avatar.read(),
+                    avatar=await self.user.display_avatar.read(),
                     reason="Manhwa Updates",
                 )
                 await self.db.upsert_config(guild_config)

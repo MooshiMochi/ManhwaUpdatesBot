@@ -30,7 +30,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                 description="This command can only be used in a server.",
                 color=0xFF0000,
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
 
@@ -43,7 +43,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             em.description += (
                 "\nThis is important so I can send updates to the channel you specify."
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
 
@@ -60,10 +60,10 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             description="You don't have permission to do that.",
             color=0xFF0000,
         )
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
         await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
         return False
-
+    
     @app_commands.command(name="setup", description="Setup the bot for this server.")
     @app_commands.describe(
         channel="The channel to send updates to.",
@@ -80,7 +80,8 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             ping_for_dev_notifications: Optional[bool] = True
     ):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-
+        # TODO: Implement a new config system that uses buttons instead of slash command parameters.
+        # TODO: Add option not to send chapter update buttons (as requested)
         manage_webhooks_perms = channel.permissions_for(interaction.guild.me).manage_webhooks
         send_messages_perms = channel.permissions_for(interaction.guild.me).send_messages
         attach_files_perms = channel.permissions_for(interaction.guild.me).attach_files
@@ -127,7 +128,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
 
         webhook: discord.Webhook = await channel.create_webhook(
             name="Manhwa Updates",
-            avatar=await self.bot.user.avatar.read(),
+            avatar=await self.bot.user.display_avatar.read(),
             reason="Manhwa Updates",
         )
         default_role_id = role.id if role else None
@@ -169,7 +170,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             colour=discord.Colour.green()
         )
 
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         return await interaction.followup.send(embed=em, ephemeral=True)
 
@@ -188,7 +189,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                 color=0xFF0000,
                 description="There is no config for this server.\nSetup the bot with `/config setup`."
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         em = discord.Embed(
@@ -209,7 +210,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             ),
             colour=discord.Colour.green()
         )
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
         return await interaction.followup.send(embed=em, ephemeral=True)
 
     @app_commands.command(
@@ -231,7 +232,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
                 color=0xFF0000,
                 description="There is no config for this server.\nSetup the bot with `/config setup`."
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         deleted_tracked_manga = None
@@ -302,7 +303,7 @@ class ConfigCog(GroupCog, name="config", description="Config commands."):
             colour=discord.Colour.red()
         )
 
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         return await interaction.followup.send(embed=em, ephemeral=True)
 

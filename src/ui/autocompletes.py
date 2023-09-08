@@ -151,7 +151,8 @@ async def google_language(
 
 @try_except
 async def tracked_manga(interaction: discord.Interaction, argument: str) -> list[discord.app_commands.Choice]:
-    guild_tracked_manga = await interaction.client.db.get_guild_tracked_manga(interaction.guild_id, current=argument)
+    guild_tracked_manga = await interaction.client.db.get_all_guild_tracked_manga(interaction.guild_id,
+                                                                                  current=argument)
     if not guild_tracked_manga:
         return []
 

@@ -38,6 +38,7 @@
 - In the bookmark autocompletes, write the scanlator name in brackets then title '(asura) Title'
 - (Enhancement) Create a MangaManager class that will handle all the manga-related functions
 - (Enhancement) Attempt to add search option for more websites
+- Create a PartialManga class that will store the manga name, manga id and manga url. Use it for search results.
 
 ### Issues:
 

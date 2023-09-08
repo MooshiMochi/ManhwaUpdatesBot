@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import TYPE_CHECKING
 
 import aiofiles
 
 if TYPE_CHECKING:
-    from .bot import MangaClient
+    from src.core.bot import MangaClient
 
 import traceback as tb
 from datetime import timedelta
@@ -15,7 +16,7 @@ from discord import InteractionResponded, app_commands
 
 from src.static import Emotes
 
-from .errors import *
+from src.core.errors import *
 
 
 class BotCommandTree(discord.app_commands.CommandTree):
@@ -25,12 +26,12 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
     @staticmethod
     async def _respond_with_check(
-            interaction: discord.Interaction, embed: discord.Embed, ephemeral: bool = True
+            interaction: discord.Interaction, embed: discord.Embed, ephemeral: bool = True, **kwargs
     ) -> None:
         try:
-            await interaction.response.send_message(embed=embed, ephemeral=ephemeral)  # noqa
+            await interaction.response.send_message(embed=embed, ephemeral=ephemeral, **kwargs)  # noqa
         except (InteractionResponded, discord.errors.HTTPException):
-            await interaction.followup.send(embed=embed)
+            await interaction.followup.send(embed=embed, **kwargs)
 
     async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
         """
@@ -63,7 +64,8 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
         ignore_args = (app_commands.CheckFailure, app_commands.CommandNotFound)
 
-        self.client.logger.error(f"New error of type: {type(error)}")
+        # self.client.logger.error(f"New error of type: {type(error)}")
+        send_kwargs = {}
 
         if isinstance(error, app_commands.errors.MissingRole):
             embed = discord.Embed(
@@ -184,23 +186,15 @@ class BotCommandTree(discord.app_commands.CommandTree):
             embed = discord.Embed(
                 title=f"{Emotes.warning} An unknown error occurred!",
                 color=0xFF0000,
-                description=f"",
+                description=f"{error}",
             )
             traceback = "".join(
                 tb.format_exception(type(error), error, error.__traceback__)
             )
 
-            final_traceback = f"```py\n{traceback}\n```"[-2000:]
-
-            # for key in config.keys():
-            #     if key in ["SETTINGS", "INTENTS"]:
-            #         continue
-            #     for sub_key in config[key]:
-            #         final_traceback = final_traceback.replace(
-            #             config[key][sub_key], sub_key
-            #         )
-
-            embed.description += final_traceback
+            buffer = BytesIO(traceback.encode("utf-8"))
+            file = discord.File(buffer, filename="error.py")
+            send_kwargs["file"] = file
 
             self.client.logger.error(
                 f"{Emotes.warning} An unhandled error has occurred: {str(error)} - More details can be found in "
@@ -211,4 +205,4 @@ class BotCommandTree(discord.app_commands.CommandTree):
             ) as logfile:
                 await logfile.write(f"{tb.format_exc()}\n\n{error}")
 
-        await self._respond_with_check(interaction, embed)
+        await self._respond_with_check(interaction, embed, **send_kwargs)

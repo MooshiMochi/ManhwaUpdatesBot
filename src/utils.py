@@ -45,7 +45,7 @@ class _StdOutFilter(logging.Filter):
         Filters the logging levels that should be written to STDOUT.
         Anything smaller than warning goes to STDOUT, anything else goes to STDERR.
         """
-        return record.levelno < logging.WARNING
+        return record.levelno < logging.ERROR
 
 
 def setup_logging(
@@ -101,6 +101,14 @@ def setup_logging(
     root.addHandler(ERR)
 
 
+def test_logger(logger: logging.Logger) -> None:
+    logger.debug("Testing debug logging")
+    logger.info("Testing info logging")
+    logger.warning("Testing warning logging")
+    logger.error("Testing error logging")
+    logger.critical("Testing critical logging")
+
+
 async def ensure_proxy(config, logger) -> None:
     async with aiohttp.ClientSession() as session:
         proxy_ip = config["proxy"]["ip"]
@@ -132,7 +140,9 @@ async def ensure_proxy(config, logger) -> None:
                         proxy_url = f"http://{proxy_user}:{proxy_password}@{proxy_ip}:{proxy_port}"
                     else:
                         proxy_url = f"http://{proxy_ip}:{proxy_port}"
-                    logger.info(f"   - Testing proxy {proxy_url}...")
+                    proxy_str = proxy_url.replace(
+                        proxy_user, '[PROXY USER]').replace(proxy_password, '[PROXY PASSWORD]')
+                    logger.info(f"   - Testing proxy {proxy_str}...")
                     async with session.get("https://www.youtube.com", proxy=proxy_url, ssl=False) as r:
                         if r.status == 200:
                             logger.info(
@@ -326,7 +336,7 @@ def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, k
 
     elif url is not None:
         for name, obj in RegExpressions.__dict__.items():
-            if isinstance(obj, re.Pattern) and name.count("_") == 1:
+            if isinstance(obj, re.Pattern) and name.count("_") == 1 and name.split("_")[1] == "url":
                 if obj.search(url):
                     return d.get(name.split("_")[0])
         return None
@@ -475,7 +485,7 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
 
         f"**Completed:** `{bool(bookmark.manga.completed)}`\n"
     )
-    em.set_footer(text="Manhwa Updates", icon_url=bot.user.avatar.url)
+    em.set_footer(text="Manhwa Updates", icon_url=bot.user.display_avatar.url)
     em.set_author(
         name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.url, icon_url=scanlator_icon_url
     )
@@ -729,7 +739,7 @@ async def respond_if_limit_reached(coro: Coroutine, interaction: discord.Interac
             f"Rate limit exceeded for this website.\n"
             f"Please try again in <t:{int(next_try_ts)}:R>."
         )
-        em.set_footer(text="Manhwa Updates", icon_url=interaction.client.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=interaction.client.user.display_avatar.url)
         await interaction.followup.send(
             embed=em
         )

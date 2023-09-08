@@ -64,7 +64,7 @@ class CommandsCog(commands.Cog):
                 description="This command can only be used in a server.",
                 color=0xFF0000,
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
 
@@ -80,10 +80,9 @@ class CommandsCog(commands.Cog):
                 description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
                 color=0xFF0000,
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
-
         return True
 
     @app_commands.command(
@@ -98,7 +97,7 @@ class CommandsCog(commands.Cog):
                 description="The update check cog is not loaded.",
                 color=0xFF0000,
             )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return
 
@@ -141,9 +140,7 @@ class CommandsCog(commands.Cog):
                 "The URL you provided does not follow any of the known url formats.\n"
                 "See `/supported_websites` for a list of supported websites and their url formats."
             ),
-        ).set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
-
-        manga: Manga | None = None
+        ).set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         if RegExpressions.url.search(manga_url):
             for scan in self.SCANLATORS.values():
@@ -157,16 +154,17 @@ class CommandsCog(commands.Cog):
             ):
                 await interaction.followup.send(embed=error_em, ephemeral=True)
                 return
-
             if scanlator.id_first:
-                series_id = await scanlator.get_manga_id(self.bot, manga_url)
-                series_url = await scanlator.fmt_manga_url(self.bot, series_id, manga_url)
+                series_id = await scanlator.get_manga_id(manga_url)
+                series_url = await scanlator.fmt_manga_url(series_id, manga_url)
             else:
-                series_url = await scanlator.fmt_manga_url(self.bot, None, manga_url)  # noqa
-                series_id = await scanlator.get_manga_id(self.bot, series_url)
+                series_url = await scanlator.fmt_manga_url(None, manga_url)  # noqa
+                series_id = await scanlator.get_manga_id(series_url)
+
+            # request_url = scanlator.prep_request_url(series_id, series_url)
 
             manga: Manga | None = await respond_if_limit_reached(
-                scanlator.make_manga_object(self.bot, series_id, series_url), interaction
+                scanlator.make_manga_object(series_id, series_url), interaction
             )
             # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
             if manga == "LIMIT_REACHED":
@@ -199,8 +197,8 @@ class CommandsCog(commands.Cog):
                     else:
                         ping_role = await interaction.guild.create_role(name=role_name, mentionable=True)
                         await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
-                elif guild_config.default_ping_role is not None:
-                    ping_role = guild_config.default_ping_role
+                # elif guild_config.default_ping_role is not None:
+                #     ping_role = guild_config.default_ping_role
 
         elif ping_role.is_bot_managed():
             return await interaction.followup.send(
@@ -240,7 +238,7 @@ class CommandsCog(commands.Cog):
             description=description,
         )
         embed.set_image(url=manga.cover_url)
-        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -351,13 +349,13 @@ class CommandsCog(commands.Cog):
     async def track_list(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
-        tracked_manga: list[Manga] = await self.bot.db.get_guild_tracked_manga(interaction.guild_id)
+        tracked_manga: list[Manga] = await self.bot.db.get_all_guild_tracked_manga(interaction.guild_id)
         tracked_manga = sorted(tracked_manga, key=lambda x: x.human_name)
 
         if not tracked_manga:
             em = discord.Embed(title="Nothing found", color=discord.Color.red())
             em.description = "There are no tracked manga in this server."
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         grouped = group_items_by(tracked_manga, ["scanlator"])
@@ -419,10 +417,24 @@ class CommandsCog(commands.Cog):
     ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
+        if RegExpressions.url.search(manga_id):
+            input_url = manga_id
+            scanlator = get_manga_scanlator_class(SCANLATORS, url=input_url)
+            if scanlator is None:
+                raise MangaNotFoundError(input_url)
+            if scanlator.id_first:
+                manga_id = await scanlator.get_manga_id(input_url)
+            else:
+                manga_url = await scanlator.fmt_manga_url("", input_url)
+                manga_id = await scanlator.get_manga_id(manga_url)
+
+        is_tracked = await self.bot.db.is_manga_tracked(interaction.guild_id, manga_id)
         manga = await self.bot.db.get_series(manga_id)
         if not manga:
+            raise MangaNotFoundError(manga_id)
+        elif not is_tracked:
             raise MangaNotTrackedError(manga_id)
-        if manga.completed:
+        elif manga.completed:
             raise MangaCompletedOrDropped(manga.url)
 
         guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
@@ -467,7 +479,7 @@ class CommandsCog(commands.Cog):
             description=description,
         )
         embed.set_image(url=manga.cover_url)
-        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -496,7 +508,7 @@ class CommandsCog(commands.Cog):
 
         em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
         em.description = f"Successfully unsubscribed from {manga}."
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=em, ephemeral=True)
         return
@@ -518,7 +530,7 @@ class CommandsCog(commands.Cog):
         if not subs:
             em = discord.Embed(title="No Subscriptions", color=discord.Color.red())
             em.description = "You have no subscriptions."
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
         grouped = group_items_by(subs, ["scanlator"])
@@ -586,7 +598,7 @@ class CommandsCog(commands.Cog):
         em.description = (
             f"The latest chapter of {manga} is {manga.last_chapter}."
         )
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=em, ephemeral=True)
         return
@@ -653,8 +665,8 @@ class CommandsCog(commands.Cog):
                 "Asura",
                 # "https://asura.gg/",
                 # "https://asura.gg/manga/manga-title/",
-                "https://asura.nacm.xyz",  # TODO: temp asura URL
-                "https://asura.nacm.xyz/manga/manga-title/",  # TODO: temp asura URL
+                "https://asuracomics.com",  # TODO: temp asura URL
+                "https://asuracomics.com/manga/manga-title/",  # TODO: temp asura URL
             ),
             (
                 ReaperScans,
@@ -693,8 +705,8 @@ class CommandsCog(commands.Cog):
                 "https://mangapill.com/manga/12351/manga-title/",
             ),
             (
-                LeviatanScans,
-                "LeviatanScans",
+                LSComic,
+                "LSComic",
                 "https://en.leviatanscans.com/",
                 "https://en.leviatanscans.com/home/manga/manga-title/",
             ),
@@ -780,7 +792,7 @@ class CommandsCog(commands.Cog):
         em.description += "\nMore websites will be added in the future. "
         em.description += "Don't forget to leave suggestions on websites I should add."
 
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
         return
@@ -842,7 +854,7 @@ Ensure the bot has these permissions for smooth operation.
 - For further assistance or questions, join our [support server](https://discord.gg/TYkw8VBZkr) and contact the bot developer.
     """.strip()
         )
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
         await interaction.response.send_message(embed=em, ephemeral=True, view=SupportView())  # noqa
         return
 
@@ -869,6 +881,13 @@ Ensure the bot has these permissions for smooth operation.
             ),
             color=discord.Color.red(),
         )
+        no_results_em = discord.Embed(
+            title="Error",
+            description=(
+                f"No results were found for `{query}`.\n"
+            ),
+            color=discord.Color.red(),
+        )
         if RegExpressions.url.search(
                 query
         ):  # if the query is a URL, try to get the manga from the URL
@@ -878,7 +897,11 @@ Ensure the bot has these permissions for smooth operation.
                     f"Could not find a manga on `{query}`.", ephemeral=True
                 )
             if hasattr(scanlator, "search"):
-                em = await scanlator.search(self.bot, query=query, as_em=True)
+                em = await scanlator.search(query=query, as_em=True)
+                if em is None:
+                    return await interaction.followup.send(
+                        embed=no_results_em, ephemeral=True
+                    )
                 view = SubscribeView(self.bot)
                 return await interaction.followup.send(embed=em, ephemeral=True, view=view)
             else:
@@ -893,7 +916,11 @@ Ensure the bot has these permissions for smooth operation.
                     ephemeral=True,
                 )
             if hasattr(scanlator, "search"):
-                em = await scanlator.search(self.bot, query=query, as_em=True)
+                em = await scanlator.search(query=query, as_em=True)
+                if em is None:
+                    return await interaction.followup.send(
+                        embed=no_results_em, ephemeral=True
+                    )
                 await interaction.followup.send(embed=em, ephemeral=True, view=SubscribeView(self.bot))
             else:
                 return await interaction.followup.send(
@@ -901,12 +928,12 @@ Ensure the bot has these permissions for smooth operation.
                 )
         else:
             results = [x for x in [
-                await scanlator.search(self.bot, query=query) for scanlator in SCANLATORS.values() if  # noqa
+                await scanlator.search(query=query) for scanlator in SCANLATORS.values() if  # noqa
                 hasattr(scanlator, "search")
             ] if x is not None]
             if not results:
                 return await interaction.followup.send(
-                    f"No results were found for `{query}`", ephemeral=True
+                    embed=no_results_em, ephemeral=True
                 )
             else:
                 view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)

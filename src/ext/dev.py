@@ -41,14 +41,7 @@ class Restricted(commands.Cog):
 
     async def grab_emoji(self, url: str):
         async with self.client.session.get(url) as r:
-            empty_bytes = b""
-            result = empty_bytes
-
-            while True:
-                chunk = await r.content.read(100)
-                if chunk == empty_bytes:
-                    break
-                result += chunk
+            result = await r.read()
         return result
 
     async def run_process(self, command):
@@ -219,29 +212,28 @@ class Restricted(commands.Cog):
     )
     @commands.is_owner()
     @commands.guild_only()
-    async def gib(self, ctx, emoji: discord.PartialEmoji, emoji2=None):
-
-        url = self._url(_id=emoji.id, animated=emoji.animated)
-        result = await self.grab_emoji(url)
-
-        new_emoji = await ctx.guild.create_custom_emoji(
-            name=f"{emoji.name}", image=result
-        )
-
-        if emoji2:
-
-            url2 = self._url(_id=emoji2.id, animated=emoji2.animated)
-            result2 = await self.grab_emoji(url2)
-
-            new_emoji2 = await ctx.guild.create_custom_emoji(
-                name=f"{emoji2.name}", image=result2
+    async def gib(self, ctx, *emojis: discord.PartialEmoji):
+        new_emojis = []
+        for emoji in emojis:
+            if not isinstance(emoji, discord.PartialEmoji):
+                self.bot.logger.warning(f"Emoji {emoji} is not a partial emoji.")
+                continue
+            url = self._url(_id=emoji.id, animated=emoji.animated)
+            result = await self.grab_emoji(url)
+            try:
+                new_emoji = await ctx.guild.create_custom_emoji(
+                    name=f"{emoji.name}", image=bytes(result)
+                )
+            except Exception as e:
+                await ctx.send("".join(tb.format_exception(type(e), e, e.__traceback__))[-2000:])
+                continue
+            new_emojis.append(new_emoji)
+        if new_emojis:
+            await ctx.send(
+                f"{' | '.join([str(emoji) for emoji in new_emojis])}"
             )
-
-            return await ctx.send(content=f"{new_emoji} | {new_emoji2}")
-
         else:
-            await ctx.send(new_emoji)
-            return
+            await ctx.send("No emojis were created.")
 
     @developer.command(
         name="source",
@@ -493,7 +485,7 @@ class Restricted(commands.Cog):
             return await ctx.send("```diff\n-<[ No logs. ]>-```")
 
         pages = TextPageSource(
-            "\n".join(lines).replace(self.client.config["token"], "[TOKEN]"),
+            "".join(lines).replace(self.client.config["token"], "[TOKEN]"),
             code_block=True,
         ).getPages()
 
@@ -604,25 +596,42 @@ class Restricted(commands.Cog):
     async def toggle_scanlator(self, ctx: commands.Context, *, scanlator: str):
         scanlator = scanlator.lower()
         # noinspection PyProtectedMember
-        if scanlator not in self.bot._all_scanners:
-            em = discord.Embed(
-                title="Scanlator not found.",
-                description=f"Scanlator `{scanlator}` not found.",
-                color=discord.Color.red()
-            )
-            em.description += "\n\nAvailable scanlators:\n```diff\n"
+        if scanlator != "all":
+            if scanlator not in self.bot._all_scanners:
+                em = discord.Embed(
+                    title="Scanlator not found.",
+                    description=f"Scanlator `{scanlator}` not found.",
+                    color=discord.Color.red()
+                )
+                em.description += "\n\nAvailable scanlators:\n```diff\n"
+                # noinspection PyProtectedMember
+                em.description += "+ " + " +\n+ ".join(self.bot._all_scanners) + " +" + "\n```"
+                await ctx.send(embed=em)
+                return
+        if scanlator == "all":
             # noinspection PyProtectedMember
-            em.description += "+ " + " +\n+ ".join(self.bot._all_scanners) + " +" + "\n```"
-            await ctx.send(embed=em)
-            return
-        new_status = await self.bot.db.toggle_scanlator(scanlator)
-        if new_status:  # enabled
-            # noinspection PyProtectedMember
-            SCANLATORS[scanlator] = self.bot._all_scanners[scanlator]
+            _looping_item = self.bot._all_scanners.keys()
         else:
-            SCANLATORS.pop(scanlator, None)
+            _looping_item = [scanlator]
+        results = []
+        for scanlator in _looping_item:
+            new_status = await self.bot.db.toggle_scanlator(scanlator)
+            if new_status:  # enabled
+                # noinspection PyProtectedMember
+                SCANLATORS[scanlator] = self.bot._all_scanners[scanlator]
+            else:
+                SCANLATORS.pop(scanlator, None)
+            if new_status:
+                scanlator_str = f"+<[ {scanlator:^15} ]>+\n"
+            else:
+                scanlator_str = f"-<[ {scanlator:^15} ]>-\n"
+            results.append(scanlator_str)
+        result_str = ''.join(results)
         await ctx.send(
-            f"```diff\n-<[ {scanlator} is now {'enabled' if new_status else 'disabled'} ]>-```")
+            embed=discord.Embed(title=f"Toggled {len(results)} scanlators", description=f"```diff\n{result_str}```")
+        )
+        # await ctx.send(
+        #     f"```diff\n-<[ {scanlator} is now {'enabled' if new_status else 'disabled'} ]>-```")
 
     @developer.command(
         name="disabled_scanlators",

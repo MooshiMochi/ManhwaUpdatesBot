@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from src.core import MangaClient
     from src.core.objects import Bookmark
     from . import BookmarkView
-
+    from .views import ConfirmView
 
 import discord
 
@@ -22,9 +24,39 @@ class CustomButtonCallbacks:
             self.bot.logger,
             self.view,
         )
-        await interaction.response.send_modal(modal)
+        await interaction.response.send_modal(modal)  # noqa
 
-    async def delete_button_callback(self, interaction: discord.Interaction):
+    async def delete_button_callback(self, interaction: discord.Interaction, confirm_view_cls: type[ConfirmView]):
+        _conf_view = confirm_view_cls(self.bot, interaction)
+        msg = await interaction.response.send_message(  # noqa
+            embed=discord.Embed(
+                title="Are you sure?",
+                description="Are you sure you want to delete this bookmark?",
+                color=discord.Color.red()
+            ),
+            view=_conf_view,
+            ephemeral=True
+        )
+        await _conf_view.wait()
+        if _conf_view.value is None:
+            _conf_view.stop()
+            return await interaction.edit_original_response(
+                embed=discord.Embed(
+                    title="Bookmark Deletion Cancelled",
+                    description="Bookmark deletion cancelled.",
+                    color=discord.Color.red()
+                ), view=None
+            )
+        elif _conf_view.value is False:
+            _conf_view.stop()
+            return await interaction.edit_original_response(
+                embed=discord.Embed(
+                    title="Bookmark Deletion Cancelled",
+                    description="Bookmark deletion cancelled.",
+                    color=discord.Color.red()
+                ), view=None
+            )
+
         bookmark: Bookmark = self.view.bookmarks[self.view.visual_item_index]
         # noinspection PyProtectedMember
         bookmark_embed = self.view._get_display_embed()
@@ -51,4 +83,4 @@ class CustomButtonCallbacks:
         self.view.add_item(
             ChapterSelect(curr_bookmark)
         )
-        return await interaction.response.edit_message(view=self.view)
+        return await interaction.response.edit_message(view=self.view)  # noqa

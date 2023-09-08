@@ -5,13 +5,14 @@ import sys
 
 from discord import Intents
 from discord.errors import LoginFailure
-from discord.utils import setup_logging
 
 from src.core import BotCommandTree, CachedClientSession, MangaClient
 from src.core.cache import CachedCurlCffiSession
 from src.core.scanners import SCANLATORS
-from src.utils import (ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, setup_logging,
-                       silence_debug_loggers)
+from src.utils import (
+    ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, setup_logging, silence_debug_loggers,
+    test_logger
+)
 
 
 async def load_extensions(client: MangaClient, extensions: list[str]) -> None:
@@ -27,6 +28,23 @@ def ensure_logs() -> None:
             f.write("")
 
 
+async def custom_initializer(bot: MangaClient, _logger: logging.Logger) -> None:
+    """
+    Summary:
+        This function is called after the bot has been initialized and before it logs in.
+
+    Args:
+        bot: The bot instance.
+        _logger: The logger instance.
+
+    Returns:
+        None
+    """
+    _logger.info("Running custom initializer...")
+    for scanlator in SCANLATORS.values():
+        scanlator.call_init()
+
+
 async def main():
     _logger = logging.getLogger("main")
     config = load_config(_logger)
@@ -34,6 +52,8 @@ async def main():
         setup_logging(level=logging.DEBUG)
     else:
         setup_logging(level=logging.INFO)
+
+    test_logger(_logger)
 
     _logger.info("Starting bot...")
     config = ensure_configs(_logger, config, SCANLATORS)
@@ -58,11 +78,13 @@ async def main():
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
     client.load_config(config)
+    client.load_scanlators(SCANLATORS)
 
     await ensure_environment(client, _logger)
     await ensure_proxy(config, _logger)
 
     async with client:
+        await custom_initializer(client, _logger)
         await load_extensions(client, config["extensions"])
         try:
             await client.start(config["token"])

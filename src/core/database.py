@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .bot import MangaClient
 
 from src.core.objects import GuildSettings, Manga, Bookmark, Chapter
+from src.core.scanners import SCANLATORS
 from io import BytesIO
 import pandas as pd
 import sqlite3
@@ -39,11 +40,9 @@ class Database:
                     human_name TEXT NOT NULL,
                     url TEXT NOT NULL,
                     synopsis TEXT,
-                                        
                     series_cover_url TEXT NOT NULL,
-                    
-                    last_chapter TEXT NOT NULL,
-                    available_chapters TEXT NOT NULL,
+                    last_chapter TEXT,
+                    available_chapters TEXT,
                     
                     completed BOOLEAN NOT NULL DEFAULT false,
                     scanlator TEXT NOT NULL DEFAULT 'Unknown',
@@ -67,7 +66,7 @@ class Database:
             await db.execute(
                 # user_id: the discord ID of the user the bookmark belongs to
                 # series_id: the ID of the series from the series table
-                # last_read_chapter: the last chapter the user read
+                # last_read_chapter_index: the last chapter the user read
                 # guild_id: the discord guild the user bookmarked the manga from
                 # last_updated_ts: the timestamp of the last time the bookmark was updated by the user
                 # user_created: whether the bookmark was created by the user or by the bot
@@ -75,7 +74,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS bookmarks (
                     user_id INTEGER NOT NULL,
                     series_id TEXT NOT NULL,
-                    last_read_chapter TEXT DEFAULT NULL,
+                    last_read_chapter_index TEXT DEFAULT NULL,
                     guild_id INTEGER NOT NULL,
                     last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     user_created BOOLEAN NOT NULL DEFAULT false,
@@ -241,7 +240,7 @@ class Database:
                 INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
                 completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                 """,
-                (manga_obj.to_tuple()),
+                (SCANLATORS[manga_obj.scanlator].unload_manga_objects([manga_obj])[0].to_tuple()),
             )
 
             await db.commit()
@@ -253,22 +252,22 @@ class Database:
                 INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
                 completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                 """,
-                (bookmark.manga.to_tuple()),
+                (SCANLATORS[bookmark.manga.scanlator].unload_manga_objects([bookmark.manga])[0].to_tuple()),
             )
 
             await db.execute(
                 """
                 INSERT INTO bookmarks (
                     user_id,
-                    series_id, 
-                    last_read_chapter,
+                    series_id,
+                    last_read_chapter_index,
                     guild_id,
                     last_updated_ts,
                     user_created
                     ) 
                 VALUES ($1, $2, $3, $4, $5, $6) 
                 ON CONFLICT(user_id, series_id) DO 
-                UPDATE SET last_read_chapter=$3, last_updated_ts=$5, user_created=$6;
+                UPDATE SET last_read_chapter_index=$3, last_updated_ts=$5, user_created=$6;
                 """,
                 (bookmark.to_tuple()),
             )
@@ -326,10 +325,10 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                INSERT INTO bookmarks (user_id, series_id, last_read_chapter, guild_id, last_updated_ts, user_created) 
+                INSERT INTO bookmarks (user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, user_created) 
                 VALUES ($1, $2, $3, $4, $5, false) 
                 ON CONFLICT(user_id, series_id) 
-                DO UPDATE SET last_read_chapter = $3, last_updated_ts = $5;
+                DO UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
                 """,
                 (user_id, manga.id, chapter.to_json(), guild_id, datetime.now()),
             )
@@ -428,7 +427,8 @@ class Database:
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
                 return []
 
     async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
@@ -454,7 +454,8 @@ class Database:
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
                 return []
 
     async def get_series_to_delete(self) -> list[Manga] | None:
@@ -477,13 +478,14 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
                 return None
 
     async def get_manga_guild_ids(self, manga_id: str | int) -> list[int]:
         """
         Summary:
-            Returns a list of guild ids that has subscribed to the manga.
+            Returns a list of guild ids that track the manga.
 
         Parameters:
             manga_id (str|int): The id of the manga.
@@ -494,7 +496,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT guild_id FROM user_subs WHERE series_id = $1;
+                    SELECT guild_id FROM tracked_guild_series WHERE series_id = $1;
                     """,
                     (manga_id,),
             ) as cursor:
@@ -518,12 +520,17 @@ class Database:
             async with db.execute(
                     """
                     SELECT * FROM series WHERE
-                    completed = 0 AND id IN (SELECT series_id FROM user_subs UNION SELECT series_id FROM bookmarks);
+                    completed = 0 AND id IN (
+                        SELECT series_id FROM user_subs 
+                        UNION SELECT series_id FROM bookmarks 
+                        UNION SELECT series_id FROM tracked_guild_series
+                        );
                     """
             ) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
                 return None
 
     async def get_user_bookmark(self, user_id: int, series_id: str) -> Bookmark | None:
@@ -533,7 +540,7 @@ class Database:
                 SELECT
                     b.user_id,
                     b.series_id,
-                    b.last_read_chapter,
+                    b.last_read_chapter_index,
                     b.guild_id,
                     b.last_updated_ts,
                     b.user_created,
@@ -582,7 +589,7 @@ class Database:
                 SELECT
                     b.user_id,
                     b.series_id,
-                    b.last_read_chapter,
+                    b.last_read_chapter_index,
                     b.guild_id,
                     b.last_updated_ts,
                     b.user_created,
@@ -720,7 +727,30 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
-                    return Manga.from_tuple(result)
+                    manga_obj = Manga.from_tuple(result)
+                    return (await SCANLATORS[manga_obj.scanlator].load_manga_objects([manga_obj]))[0]
+
+    async def get_series_title(self, series_id: str) -> str | None:
+        """
+        Summary:
+            Returns the 'human_name' of a series.
+
+        Args:
+            series_id: The id of the series.
+
+        Returns:
+            str | None: The title of the series.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            async with db.execute(
+                    """
+                    SELECT human_name FROM series WHERE id = ?;
+                    """,
+                    (series_id,),
+            ) as cursor:
+                result = await cursor.fetchone()
+                if result:
+                    return result[0]
 
     async def get_all_series(self, current: str = None, *, autocomplete: bool = False) -> list[Manga] | None:
         """
@@ -748,7 +778,8 @@ class Database:
                         """
                 ) as cursor:
                     if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)
+                        objects = Manga.from_tuples(result)
+                        return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
         else:
             async with aiosqlite.connect(self.db_name) as db:
                 async with db.execute(
@@ -757,7 +788,8 @@ class Database:
                         """
                 ) as cursor:
                     if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)
+                        objects = Manga.from_tuples(result)
+                        return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
 
     async def get_all_subscribed_series(self) -> list[Manga]:
         """
@@ -776,7 +808,8 @@ class Database:
                 if not result:
                     return []
                 else:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
 
     async def update_series(self, manga: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -784,19 +817,23 @@ class Database:
                 """
                 UPDATE series SET last_chapter = $1, series_cover_url = $2, available_chapters = $3 WHERE id = $4;
                 """,
-                (manga.last_chapter.to_json(), manga.cover_url, manga.chapters_to_text(), manga.id),
+                (
+                    manga.last_chapter.to_json() if manga.last_chapter is not None else None,
+                    manga.cover_url,
+                    manga.chapters_to_text(),
+                    manga.id),
             )
             if result.rowcount < 1:
                 raise ValueError(f"No series with ID {manga.id} was found.")
             await db.commit()
 
-    async def update_last_read_chapter(self, user_id: int, series_id: str, last_read_chapter: Chapter) -> None:
+    async def update_last_read_chapter_index(self, user_id: int, series_id: str, last_read_chapter_index: int) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                UPDATE bookmarks SET last_read_chapter = $1, last_updated_ts = $2 WHERE user_id = $3 AND series_id = $4;
+                UPDATE bookmarks SET last_read_chapter_index = $1, last_updated_ts = $2 WHERE user_id = $3 AND series_id = $4;
                 """,
-                (last_read_chapter.to_json(), datetime.now().timestamp(), user_id, series_id),
+                (last_read_chapter_index, datetime.now().timestamp(), user_id, series_id),
             )
             await db.commit()
 
@@ -951,7 +988,7 @@ class Database:
             guild_id, manga_id
         )
 
-    async def get_guild_tracked_manga(self, guild_id: int, current: str = None) -> list[Manga]:
+    async def get_all_guild_tracked_manga(self, guild_id: int, current: str = None) -> list[Manga]:
         """
         Summary:
             Returns a list of Manga class objects that are tracked in the guild.
@@ -981,7 +1018,8 @@ class Database:
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
                 return []
 
     async def is_manga_tracked(self, guild_id: int, manga_id: str) -> bool:
@@ -1076,7 +1114,8 @@ class Database:
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return Manga.from_tuples(result)
+                    objects = Manga.from_tuples(result)
+                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
                 return []
 
     async def has_untracked_subbed_manga(self, user_id: int, guild_id: int | None = None) -> bool:

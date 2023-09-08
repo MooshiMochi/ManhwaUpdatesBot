@@ -132,6 +132,15 @@ class WebhookNotFoundError(BaseError):
         """
 
 
+class MissingUserAgentError(BaseError):
+    def __init__(self, scanlator: str):
+        self.scanlator = scanlator
+        self.error_msg = f"""
+        The user agent for `{self.scanlator}` is missing.
+        Please contact the website owner to obtain one.
+        """
+
+
 class CustomError(BaseError):
     """Raised when a custom error is raised."""
 

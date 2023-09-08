@@ -39,7 +39,7 @@ class SortTypeSelect(Select):
         new_sort_type = BookmarkSortType(self.values[0])
         changed: bool = self.view.change_sort_type(new_sort_type)
         if not changed:
-            await interaction.response.defer(ephemeral=True, thinking=False)
+            await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
             return
 
         else:
@@ -75,7 +75,7 @@ class ViewTypeSelect(Select):
         new_view_type = BookmarkViewType(self.values[0])
         changed: bool = self.view.change_view_type(new_view_type)
         if not changed:
-            await interaction.response.defer(ephemeral=True, thinking=False)
+            await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
             return
 
         else:
@@ -137,16 +137,20 @@ class ChapterSelect(Select):
         # If last_read_chapter == last_chapter and manga not completed, subscribe user
         bot: MangaClient = self.view.bot
         user_subscribed: bool = False
+        should_track: bool = False
         if self.bookmark.last_read_chapter == self.bookmark.manga.available_chapters[
             -1
         ] and not self.bookmark.manga.completed:
             # check if user is subscribed to the manga with manga.id
             # if not, subscribe user
             user_subscribed = True
-            if not await bot.db.is_user_subscribed(interaction.user.id, self.bookmark.manga.id):
+            is_tracked: bool = await bot.db.is_manga_tracked(interaction.guild_id, self.bookmark.manga.id)
+            if not await bot.db.is_user_subscribed(interaction.user.id, self.bookmark.manga.id) and is_tracked:
                 await bot.db.subscribe_user(
                     interaction.user.id, self.bookmark.guild_id, self.bookmark.manga.id
                 )
+            elif not is_tracked:
+                should_track = True
         # -----
 
         self.view.clear_components()
@@ -155,24 +159,21 @@ class ChapterSelect(Select):
 
         await self.view.update(interaction)
 
-        if user_subscribed:
-            if interaction.response.is_done():
-                await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Bookmark Updated",
-                        description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter} and "
-                                    f"subscribed you to updates for {self.bookmark.manga.human_name}",
-                        color=discord.Color.green(),
-                    ),
-                    ephemeral=True,
-                )
+        success_em = discord.Embed(
+            title="Bookmark Updated",
+            description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter}",
+            color=discord.Color.green(),
+        )
+        if should_track:
+            success_em.description += "\n\n*You should consider tracking and subscribing to this manga to get updates.*"
+            if interaction.response.is_done():  # noqa
+                await interaction.followup.send(embed=success_em, ephemeral=True)
             else:
-                await interaction.response.send_message(
-                    embed=discord.Embed(
-                        title="Bookmark Updated",
-                        description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter} and "
-                                    f"subscribed you to updates for {self.bookmark.manga.human_name}",
-                        color=discord.Color.green(),
-                    ),
-                    ephemeral=True
-                )
+                await interaction.response.send_message(embed=success_em, ephemeral=True)  # noqa
+
+        elif user_subscribed:
+            success_em.description += f" and subscribed you to updates for {self.bookmark.manga.human_name}"
+            if interaction.response.is_done():  # noqa
+                await interaction.followup.send(embed=success_em, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=success_em, ephemeral=True)  # noqa

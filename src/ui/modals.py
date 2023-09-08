@@ -23,12 +23,12 @@ class BaseModal(discord.ui.Modal):
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         # Make sure we know what the error actually is
         self.logger.error(traceback.print_exception(type(error), error, error.__traceback__))
-        if interaction.response.is_done():
+        if interaction.response.is_done():  # noqa
             await interaction.followup.send(
                 'Oops! Something went wrong.', ephemeral=True
             )
         else:
-            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)  # noqa
 
 
 class SearchModal(discord.ui.Modal, title='Search Bookmark'):
@@ -60,12 +60,12 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         # Make sure we know what the error actually is
         self.logger.error(traceback.print_exception(type(error), error, error.__traceback__))
-        if interaction.response.is_done():
+        if interaction.response.is_done():  # noqa
             await interaction.followup.send(
                 'Oops! Something went wrong.', ephemeral=True
             )
         else:
-            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)  # noqa
 
 
 class InputModal(BaseModal, title="Language to translate to"):

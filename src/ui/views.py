@@ -135,7 +135,7 @@ class BookmarkView(BaseView):
         delete_btn = Button(
             style=ButtonStyle.red, label="Delete", custom_id="delete_btn", row=3
         )
-        delete_btn.callback = partial(self._btn_callbacks.delete_button_callback)
+        delete_btn.callback = partial(self._btn_callbacks.delete_button_callback, confirm_view_cls=ConfirmView)
 
         self.add_item(update_btn)
         self.add_item(search_btn)
@@ -565,7 +565,7 @@ class SubscribeView(View):
         scanlator: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_home_url)
 
         manga_url: str = manga_home_url
-        series_id = await scanlator.get_manga_id(self.bot, manga_url)
+        series_id = await scanlator.get_manga_id(manga_url)
 
         current_user_subs: list[Manga] = await self.bot.db.get_user_guild_subs(
             interaction.guild_id, interaction.user.id
@@ -577,11 +577,11 @@ class SubscribeView(View):
                         title="Already Subscribed", color=discord.Color.red()
                     )
                     em.description = "You are already subscribed to this series."
-                    em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+                    em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
                     return await interaction.followup.send(embed=em, ephemeral=True)
 
         manga: Manga | None = await respond_if_limit_reached(
-            scanlator.make_manga_object(self.bot, series_id, manga_url),
+            scanlator.make_manga_object(series_id, manga_url),
             interaction
         )
         if manga == "LIMIT_REACHED":
@@ -606,7 +606,7 @@ class SubscribeView(View):
             description=f"Successfully subscribed to **[{manga.human_name}]({manga.url})!**",
         )
         embed.set_image(url=manga.cover_url)
-        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -628,7 +628,7 @@ class SubscribeView(View):
         scanlator = get_manga_scanlator_class(SCANLATORS, url=manga_url)
 
         # get the ID:
-        manga_id = await scanlator.get_manga_id(self.bot, manga_url)
+        manga_id = await scanlator.get_manga_id(manga_url)
         user_bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
         if user_bookmarks:
             for bookmark in user_bookmarks:
@@ -640,7 +640,7 @@ class SubscribeView(View):
                     ), ephemeral=True)
         # make bookmark obj
         bookmark_obj = await scanlator.make_bookmark_object(
-            self.bot, manga_id, manga_url, interaction.user.id, interaction.guild_id
+            manga_id, manga_url, interaction.user.id, interaction.guild_id
         )
         await self.bot.db.upsert_bookmark(bookmark_obj)
 
@@ -650,7 +650,7 @@ class SubscribeView(View):
             description=f"Successfully bookmarked **[{bookmark_obj.manga.human_name}]({bookmark_obj.manga.url})**",
         )
         embed.set_image(url=bookmark_obj.manga.cover_url)
-        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -725,9 +725,18 @@ class ConfirmView(BaseView):
 
 
 class BookmarkChapterView(View):
-    def __init__(self, bot: MangaClient):
+    def __init__(self, bot: MangaClient, chapter_link: Optional[str] = None):
         self.bot: MangaClient = bot
         super().__init__(timeout=None)  # View is persistent ∴ no timeout
+        if chapter_link:
+            _children_copy = self.children.copy()
+            self.clear_items()
+            self.add_item(discord.ui.Button(
+                label="Read Chapter",
+                url=chapter_link,
+            ))
+            for child in _children_copy:
+                self.add_item(child)
 
     @discord.ui.button(
         label="✉️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
@@ -964,6 +973,20 @@ class SupportView(discord.ui.View):
                 label="GitHub",
                 url="https://github.com/MooshiMochi/ManhwaUpdatesBot",
                 style=discord.ButtonStyle.blurple,
+            )
+        )
+        self.add_item(
+            discord.ui.Button(
+                label="Patreon",
+                url="https://www.patreon.com/mooshi69",
+                row=1
+            ),
+        )
+        self.add_item(
+            discord.ui.Button(
+                label="Ko-fi",
+                url="https://ko-fi.com/mooshi6969",
+                row=1
             )
         )
 

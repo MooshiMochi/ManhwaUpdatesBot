@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
-from ..static import Constants
+from ..static import Constants, RegExpressions
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
@@ -15,22 +15,25 @@ from datetime import datetime
 from typing import Optional
 import aiohttp
 import discord
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from discord.ext.commands import Paginator as CommandPaginator
 from abc import ABC, abstractmethod
 import hashlib
 import re
 import json
+from discord.ext import tasks
 
 
 class ChapterUpdate:
     def __init__(
             self,
+            manga_id: str,
             new_chapters: list[Chapter],
             new_cover_url: Optional[str] = None,
             series_completed: bool = False,
             extra_kwargs: list[dict[str, Any]] = None
     ):
+        self.manga_id = manga_id
         self.new_chapters = new_chapters
         self.new_cover_url = new_cover_url
         self.series_completed = series_completed
@@ -91,7 +94,7 @@ class Chapter:
         return hash((self.url, self.name, self.index))
 
 
-class ABCScan(ABC):
+class ABCScanMixin:
     icon_url: str = None
     base_url: str = None
     fmt_url: str = None
@@ -99,10 +102,43 @@ class ABCScan(ABC):
     id_first: bool = False  # whether to extract ID first when using fmt_manga_url method
     rx: re.Pattern = None
     last_known_status: tuple[int, float] | None = None
+    supports_front_page_scraping: bool = True  # Whether you can scrape for updates on the front page of the website
+    bot: MangaClient | None = None  # the bot sets this when loading the scanlator in main.py
+    requires_embed_for_chapter_updates: bool = False  # whether to make an embed when sending a chapter update
+
+    #  Mutable params that need to be initialized in the call_init method.
+    class_kwargs: dict[str, Any] = None
+    tasks: list[tasks.Loop] = None
 
     @classmethod
-    def _make_headers(cls, bot: MangaClient, manga_id: str, manga_url: str):
-        user_agent = bot.config.get('user-agents', {}).get(cls.name)
+    def call_init(cls):
+        cls.class_kwargs = cls.class_kwargs or {}
+        cls.tasks = cls.tasks or []
+
+    @classmethod
+    def _extract_manga_chapter_id(cls, manga_a_tags: list[Tag], chapter_a_tags: list[Tag]) -> None:
+        for manga_tag, chapter_tags in zip(manga_a_tags, chapter_a_tags):
+            manga_href = manga_tag["href"]
+            chapter_hrefs = [tag["href"] for tag in chapter_tags]
+            manga_id_found: bool = False
+            chapter_id_found: bool = False
+            if not chapter_id_found:
+                for chapter_href in chapter_hrefs:
+                    if (rx_result := RegExpressions.url_id.search(chapter_href)) is not None:
+                        chapter_id_found = True
+                        cls.class_kwargs["chapter_id"] = rx_result.groupdict()["id"]
+            if not manga_id_found:
+                if (rx_result := RegExpressions.url_id.search(manga_href)) is not None:
+                    manga_id_found = True
+                    cls.class_kwargs["manga_id"] = rx_result.groupdict()["id"]
+            if manga_id_found and chapter_id_found:
+                break
+
+
+class ABCScan(ABC, ABCScanMixin):
+    @classmethod
+    def _make_headers(cls):
+        user_agent = cls.bot.config.get('user-agents', {}).get(cls.name)
         headers: dict = Constants.default_headers()
         headers[":Authority"] = cls.base_url.removeprefix("https://")
         if not user_agent:
@@ -111,19 +147,55 @@ class ABCScan(ABC):
         return headers
 
     @classmethod
-    async def report_error(cls, bot: MangaClient, error: Exception, **kwargs) -> None:
+    async def load_manga_objects(cls, mangas: list[Manga]) -> list[Manga]:
+        """
+        Summary:
+            Applies any class required loading to the manga objects.
+            For example, Asura requires the respective ID to be added to the URLs before they work.
+
+        Args:
+            mangas: list[Manga] - The list of Manga objects to load.
+
+        Returns:
+            list[Manga] - The list of Manga objects after loading.
+        """
+        if isinstance(mangas, Manga):
+            mangas = [mangas]
+        return mangas
+
+    @classmethod
+    def unload_manga_objects(cls, mangas: list[Manga]) -> list[Manga]:
+        """
+        Summary:
+            Applies any class required unloading to the manga objects.
+            For example, Asura will replace the ID with `{manga_id}` so that it can be formatted when laoded again.
+
+        Args:
+            mangas: list[Manga] - The list of Manga objects to unload.
+
+        Returns:
+            list[Manga] - The list of Manga objects after unloading.
+        """
+        if isinstance(mangas, Manga):
+            mangas = [mangas]
+        return mangas
+
+    @classmethod
+    async def report_error(cls, error: Exception, **kwargs) -> None:
         """
         Summary:
             Reports an error to the bot logger and/or Discord.
 
         Args:
-            bot: MangaClient - The bot instance.
             error: Exception - The error to report.
-            **kwargs: Any - Any extra keyword arguments to pass to the logger.
+            **kwargs: Any - Any extra keyword arguments to pass to channel.send() function.
 
         Returns:
             None
         """
+        caller_func = tb.extract_stack(limit=2)[0].name
+        file = kwargs.pop("file", None)
+
         traceback = "".join(
             tb.format_exception(type(error), error, error.__traceback__)
         )
@@ -138,41 +210,15 @@ class ABCScan(ABC):
                 kwargs.pop("file")
                 if len(kwargs["files"]) > 10:
                     kwargs["files"] = kwargs["files"][:10]
-                    bot.logger.warning(
+                    cls.bot.logger.warning(
                         f"Too many files to attach to error message in {cls.name} scan."
                     )
-                    bot.logger.error(message)
+                    cls.bot.logger.error(message)
             message = f"Error in {cls.name} scan. See attached file or logs."
         try:
-            await bot.log_to_discord(message, **kwargs)
+            await cls.bot.log_to_discord(message, **kwargs)
         except AttributeError:
-            bot.logger.critical(message)
-
-    @staticmethod
-    def _create_chapter_embed(
-            scanlator_name: str, img_url: str, human_name: str, chapter_url: str, chapter_text: str
-    ) -> discord.Embed:
-        """
-        Summary:
-            Creates a chapter embed given the method parameters.
-
-        Args:
-            scanlator_name: str - The name of the scanlator.
-            img_url: str - The URL to the chapter image.
-            human_name: str - The human-readable name of the chapter.
-            chapter_url: str - The URL to the chapter.
-            chapter_text: str - The chapter text.
-
-        Returns:
-            discord.Embed - The chapter embed.
-        """
-        embed = discord.Embed(
-            title=f"{human_name} - {chapter_text}",
-            url=chapter_url)
-        embed.set_author(name=scanlator_name)
-        embed.description = f"Read {human_name} online for free on {scanlator_name}!"
-        embed.set_image(url=img_url)
-        return embed
+            cls.bot.logger.critical(message)
 
     @staticmethod
     async def _fetch_image_bytes(bot: MangaClient, image_url: str) -> BytesIO:
@@ -198,7 +244,6 @@ class ABCScan(ABC):
     @abstractmethod
     async def check_updates(
             cls,
-            bot: MangaClient,
             manga: Manga,
             _manga_request_url: str | None = None
     ) -> ChapterUpdate:
@@ -208,7 +253,6 @@ class ABCScan(ABC):
             Checks whether the series is completed or not.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga: Manga - The manga object to check for updates.
             _manga_request_url: str - The URL to request the manga's page.
 
@@ -221,19 +265,40 @@ class ABCScan(ABC):
         """
         request_url = _manga_request_url or manga.url
         try:
-            all_chapters = await cls.get_all_chapters(bot, manga.id, request_url)
-            completed: bool = await cls.is_series_completed(bot, manga.id, manga.url)
-            cover_url: str = await cls.get_cover_image(bot, manga.id, manga.url)
+            all_chapters = await cls.get_all_chapters(manga.id, request_url)
+            completed: bool = await cls.is_series_completed(manga.id, request_url)
+            cover_url: str = await cls.get_cover_image(manga.id, request_url)
             if all_chapters is None:
-                return ChapterUpdate([], cover_url, completed)
-            new_chapters: list[Chapter] = [
-                chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
-            ]
-            return ChapterUpdate(new_chapters, cover_url, completed)
+                return ChapterUpdate(manga.id, [], cover_url, completed)
+            if manga.last_chapter:
+                new_chapters: list[Chapter] = [
+                    chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
+                ]
+            else:
+                new_chapters: list[Chapter] = all_chapters
+            return ChapterUpdate(
+                manga.id, new_chapters, cover_url, completed,
+                [
+                    {"embed": cls.create_chapter_embed(manga, chapter)}
+                    for chapter in new_chapters
+                ] if cls.requires_embed_for_chapter_updates else None
+            )
         except (ValueError, AttributeError) as e:
-            await cls.report_error(bot, e, request_url=request_url)
+            await cls.report_error(e, request_url=request_url)
         except Exception as e:
             raise e
+
+    @classmethod
+    @abstractmethod
+    async def get_front_page_partial_manga(cls) -> list[PartialManga]:
+        """
+        Summary:
+            Gets the latest manga from the scanlator's front page.
+
+        Returns:
+            list[PartialManga] - A list of PartialManga objects.
+        """
+        raise NotImplementedError
 
     @staticmethod
     def _bs_is_series_completed(soup: BeautifulSoup) -> bool:
@@ -252,14 +317,13 @@ class ABCScan(ABC):
     @classmethod
     @abstractmethod
     async def is_series_completed(
-            cls, bot: MangaClient, manga_id: str, manga_url: str
+            cls, manga_id: str, manga_url: str
     ) -> bool:
         """
         Summary:
             Checks whether a series is completed/dropped or not.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -275,14 +339,13 @@ class ABCScan(ABC):
     @classmethod
     @abstractmethod
     async def get_human_name(
-            cls, bot: MangaClient, manga_id: str, manga_url: str
+            cls, manga_id: str, manga_url: str
     ) -> str:
         """
         Summary:
             Gets the human-readable name of the manga.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -297,13 +360,12 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    async def get_synopsis(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
+    async def get_synopsis(cls, manga_id: str, manga_url: str) -> str:
         """
         Summary:
             Gets the synopsis of the manga.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -314,69 +376,80 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    async def get_manga_id(cls, bot: MangaClient, manga_url: str) -> str:
+    async def get_manga_id(cls, manga_url: str) -> str:
         """
         Summary:
-            Gets the ID of the manga.
+            Creates an ID based on the manga URL.
+            Will only use the URL name to create the ID.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_url: str - The URL of the manga.
 
         Returns:
             str - The ID of the manga.
+
+        Notes: Using super().get_manga_id() suggests that the cls.id_first param is 'False'
         """
-        return hashlib.sha256(manga_url.encode()).hexdigest()
+        manga_url = await cls.fmt_manga_url("", manga_url)
+        key = cls.rx.search(manga_url).groupdict()["url_name"]
+        return hashlib.sha256(key.encode()).hexdigest()
 
     @classmethod
     @abstractmethod
     async def get_curr_chapter(
-            cls, bot: MangaClient, manga_id: str, manga_url: str
+            cls, manga_id: str, manga_url: str
     ) -> Chapter | None:
         """
         Summary:
             Gets the current chapter text of the manga.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
         Returns
             Chapter/None - The current chapter text of the manga.
         """
-        chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
+        chapters = await cls.get_all_chapters(manga_id, manga_url)
         if chapters:
             return chapters[-1]
         return None
 
     @classmethod
-    async def make_manga_object(cls, bot: MangaClient, manga_id: str, manga_url: str) -> Manga | None:
+    async def make_manga_object(cls, manga_id: str, manga_url: str,
+                                _manga_request_url: str | None = None) -> Manga | None:
         """
         Summary:
             Creates a Manga object from the scanlator's website.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
+            _manga_request_url: str - The URL to request the manga's page.
 
         Returns:
             Manga/None - The Manga object if the manga is found, otherwise `None`.
         """
+        if not _manga_request_url:
+            _manga_request_url = manga_url
         if not manga_id:
-            manga_id = await cls.get_manga_id(bot, manga_url)
-        db_object: Manga = await bot.db.get_series(manga_id)
+            if cls.id_first:
+                manga_id = await cls.get_manga_id(manga_url)
+                _manga_request_url = await cls.fmt_manga_url(manga_id, manga_url)
+            else:
+                manga_url = await cls.fmt_manga_url(manga_id, manga_url)
+                manga_id = await cls.get_manga_id(manga_url)
+        db_object: Manga = await cls.bot.db.get_series(manga_id)
         if db_object:
             return db_object
 
-        manga_url = await cls.fmt_manga_url(bot, manga_id, manga_url)
-        human_name = await cls.get_human_name(bot, manga_id, manga_url)
-        synopsis = await cls.get_synopsis(bot, manga_id, manga_url)
-        cover_url = await cls.get_cover_image(bot, manga_id, manga_url)
-        curr_chapter = await cls.get_curr_chapter(bot, manga_id, manga_url)
-        available_chapters = await cls.get_all_chapters(bot, manga_id, manga_url)
-        is_completed = await cls.is_series_completed(bot, manga_id, manga_url)
+        manga_url = await cls.fmt_manga_url(manga_id, _manga_request_url)
+        human_name = await cls.get_human_name(manga_id, _manga_request_url)
+        synopsis = await cls.get_synopsis(manga_id, _manga_request_url)
+        cover_url = await cls.get_cover_image(manga_id, _manga_request_url)
+        curr_chapter = await cls.get_curr_chapter(manga_id, _manga_request_url)
+        available_chapters = await cls.get_all_chapters(manga_id, _manga_request_url)
+        is_completed = await cls.is_series_completed(manga_id, _manga_request_url)
         return_obj = Manga(
             manga_id,
             human_name,
@@ -388,13 +461,12 @@ class ABCScan(ABC):
             is_completed,
             cls.name,
         )
-        await bot.db.add_series(return_obj)  # save to the database for future use.
+        await cls.bot.db.add_series(return_obj)  # save to the database for future use.
         return return_obj
 
     @classmethod
     async def make_bookmark_object(
             cls,
-            bot: MangaClient,
             manga_id: str,
             manga_url: str,
             user_id: int,
@@ -405,7 +477,6 @@ class ABCScan(ABC):
             Creates a Bookmark object from the scanlator's website.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
             user_id: int - The ID of the user.
@@ -414,9 +485,9 @@ class ABCScan(ABC):
         Returns:
             Bookmark/None - The Bookmark object if the manga is found, otherwise `None`.
         """
-        manga_url = await cls.fmt_manga_url(bot, manga_id, manga_url)
-        manga_id = await cls.get_manga_id(bot, manga_url)
-        manga = await cls.make_manga_object(bot, manga_id, manga_url)
+        manga_url = await cls.fmt_manga_url(manga_id, manga_url)
+        manga_id = await cls.get_manga_id(manga_url)
+        manga = await cls.make_manga_object(manga_id, manga_url)
         if manga is None:
             return None
 
@@ -435,12 +506,11 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    async def fmt_manga_url(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str:
+    async def fmt_manga_url(cls, manga_id: str, manga_url: str) -> str:
         """
         Summary:
             Creates the home page URL of the manga using the class format.
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -451,13 +521,12 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    async def get_all_chapters(cls, bot: MangaClient, manga_id: str, manga_url: str) -> list[Chapter] | None:
+    async def get_all_chapters(cls, manga_id: str, manga_url: str) -> list[Chapter] | None:
         """
         Summary:
             Gets all the chapters of the manga.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -468,13 +537,12 @@ class ABCScan(ABC):
 
     @classmethod
     @abstractmethod
-    async def get_cover_image(cls, bot: MangaClient, manga_id: str, manga_url: str) -> str | None:
+    async def get_cover_image(cls, manga_id: str, manga_url: str) -> str | None:
         """
         Summary:
             Gets the cover image of the manga.
 
         Parameters:
-            bot: MangaClient - The bot instance.
             manga_id: str - The ID of the manga.
             manga_url: str - The URL of the manga's home page.
 
@@ -482,6 +550,33 @@ class ABCScan(ABC):
             str/None - The cover image URL of the manga.
         """
         raise NotImplementedError
+
+    @classmethod
+    def create_chapter_embed(
+            cls, manga: PartialManga | Manga, chapter: Chapter, image_url: Optional[str] = None
+    ) -> discord.Embed | None:
+        """
+        Summary:
+            Creates a chapter embed given the method parameters.
+
+        Args:
+            manga: PartialManga/Manga - The manga object to create the embed from.
+            chapter: Chapter - The chapter object to create the embed from.
+            image_url: str - The image URL to use for the embed.
+
+        Returns:
+            discord.Embed - The chapter embed.
+            None if cls.requires_embed_for_chapter_updates is False
+        """
+        if not cls.requires_embed_for_chapter_updates:
+            return None
+        embed = discord.Embed(
+            title=f"{manga.human_name} - {chapter.name}",
+            url=chapter.url)
+        embed.set_author(name=cls.name.title())
+        embed.description = f"Read {manga.human_name} online for free on {cls.name.title()}!"
+        embed.set_image(url=manga.cover_url if not image_url else image_url)
+        return embed
 
 
 class TextPageSource:
@@ -509,14 +604,14 @@ class TextPageSource:
                 pages.add_line(line)
             except RuntimeError:
                 converted_lines = self.__convert_to_chunks(line)
-                for line in converted_lines:
+                for line in converted_lines:  # noqa
                     pages.add_line(line)
         self.pages = pages
 
     def getPages(self, *, page_number=True):
         """Gets the pages."""
         pages = []
-        pagenum = 1
+        pagenum = 1  # noqa
         for page in self.pages.pages:
             if page_number:
                 page += f"\nPage {pagenum}/{len(self.pages.pages)}"
@@ -530,6 +625,69 @@ class TextPageSource:
         for i in range(0, len(text), self._max_size - 300):
             chunks.append(text[i: i + self._max_size - 300])
         return chunks
+
+
+class PartialManga:
+    def __init__(
+            self,
+            manga_id: str,
+            human_name: str,
+            url: str,
+            scanlator: str,
+            cover_url: Optional[str] = None,
+            latest_chapters: list[Chapter] = None,
+            actual_url: Optional[str] = None,
+    ):
+        self._id = manga_id
+        self._human_name = human_name
+        self._url = url
+        self._scanlator = scanlator
+        self._cover_url = cover_url
+        self._latest_chapters: list[Chapter] | None = latest_chapters
+        self._actual_url = actual_url
+
+    def __repr__(self):
+        if self._latest_chapters:
+            latest_chapter_text = [f"{chp.name}" for chp in self._latest_chapters]
+        else:
+            latest_chapter_text = "N/A"
+        return f"PartialManga({self._human_name}{{{self.url}}}] - {latest_chapter_text})"
+
+    def __str__(self):
+        return f"[{self.human_name}]({self._url})"
+
+    def __eq__(self, other: PartialManga):
+        if isinstance(other, (PartialManga, Manga)):
+            return self._url == other.url and self._human_name == other.human_name or self._id == other.id
+        return False
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def human_name(self):
+        return self._human_name
+
+    @property
+    def url(self):
+        return self._url
+
+    @property
+    def scanlator(self):
+        return self._scanlator
+
+    @property
+    def cover_url(self):
+        return self._cover_url
+
+    @property
+    def latest_chapters(self):
+        return self._latest_chapters
+
+    @property
+    def actual_url(self):
+        return self._actual_url
 
 
 class Manga:
@@ -564,6 +722,9 @@ class Manga:
 
         self._completed: bool = completed
         self._scanlator: str = scanlator
+
+    def copy(self) -> "Manga":
+        return Manga.from_tuple(self.to_tuple())
 
     def update(
             self,
@@ -610,7 +771,7 @@ class Manga:
         return self._cover_url
 
     @property
-    def last_chapter(self) -> Chapter:
+    def last_chapter(self) -> Chapter | None:
         """Get the last chapter of the manga."""
         return self._last_chapter
 
@@ -660,16 +821,22 @@ class Manga:
 
     def chapters_to_text(self) -> str:
         """Convert available_chapters to TEXT (db format)"""
-        return json.dumps([x.to_dict() for x in self.available_chapters])
+        return json.dumps([x.to_dict() for x in self.available_chapters] if self.available_chapters else [])
 
     def __repr__(self) -> str:
-        return f"Manga({self.human_name} - {self.last_chapter.name})"
+        if self._last_chapter:
+            last_chapter_text = self._last_chapter.name
+        else:
+            last_chapter_text = "None"
+        return f"Manga({self.human_name} - {last_chapter_text})"
 
     def __str__(self) -> str:
         return f"[{self.human_name}]({self.url})"
 
     def __eq__(self, other: Manga):
         if isinstance(other, Manga):
+            return self.url == other.url and self.human_name == other.human_name or self.id == other.id
+        elif isinstance(other, PartialManga):
             return self.url == other.url and self.human_name == other.human_name or self.id == other.id
         return False
 
@@ -700,11 +867,11 @@ class Bookmark:
         """Create a Bookmark object from a tuple."""
         # 0 = user_id
         # 1 = manga
-        # 2 = last_read_chapter
+        # 2 = last_read_chapter_index
         # 3 = guild_id
         # 4 = last_updated_ts
         # 5 = user_created
-        last_read_chapter: Chapter = Chapter.from_dict(json.loads(data[2]))
+        last_read_chapter: Chapter = data[1].available_chapters[data[2]]
         parsed_data = list(data)
         parsed_data[2] = last_read_chapter
         return cls(*parsed_data)
@@ -719,7 +886,7 @@ class Bookmark:
         return (
             self.user_id,
             self.manga.id,
-            self.last_read_chapter.to_json(),
+            self.last_read_chapter.index,
             self.guild_id,
             self.last_updated_ts,
             self.user_created,

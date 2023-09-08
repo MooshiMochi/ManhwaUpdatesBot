@@ -4,6 +4,7 @@ import re
 class Emotes:
     warning = "⚠️"
     success = "✅"
+    error = "❌"
 
 
 class Constants:
@@ -178,6 +179,8 @@ class ScanlatorsRequiringUserAgent:
 class RegExpressions:
     chapter_num_from_url = re.compile(r"(\d+([.]\d+)?)/?$")
     url = re.compile(r"https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(%[0-9a-fA-F][0-9a-fA-F]))+")
+    url_img_size = re.compile(r"-?(?P<width>\d)+x(?P<height>\d)+")
+    url_id = re.compile(r"/(?P<id>\d+)-")
     toonily_url = re.compile(
         r"(?:https?://)?(?:www\.)?toonily\.com/webtoon/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?"
     )
@@ -191,13 +194,19 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?mangadex\.org/title/(?P<id>[a-zA-Z0-9-]+)(?:/.*)?"
     )
     flamescans_url = re.compile(
-        r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?("
-        r"?:/.*)?$"
+        r"(?:https?://)?(?:www\.)?flamescans\.org/series/(?:(?P<id>\d+)-)?(?P<url_name>\w[\w-]*?)(?:/.*)?$"
+        # r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?("
+        # r"?:/.*)?$"
     )
 
     asura_url = re.compile(
-        r"(?:https?://)?(?:www\.)?asura\.nacm\.xyz/(?:manga/)?(?:\d+-)?(?P<url_name>[\w-]+?)"
-        r"(?:-chapter-[\d-]+)?/?(?:/.*)?$"  # TODO: Temp asura URL
+        # r"(?:https?://)?(?:www\.)?asuracomics\.com/(?:manga/)?(?P<id>\d+)?-?(?P<url_name>[\w-]+?)"
+        # r"(?:-chapter-[\d-]+)?/?(?:/.*)?$"  # TODO: Temp asura URL
+        r"(?:https?://)?(?:www\.)?asuracomics\.com/manga/(?:(?P<id>\d+)-)?(?P<url_name>\w[\w-]*?)(?:/.*)?$"
+    )
+
+    luminousscans_url = re.compile(
+        r"(?:https?://)?(?:www\.)?luminousscans\.com/series/(?:(?P<id>\d+)-)?(?P<url_name>[\w-]+)"
     )
 
     reaperscans_url = re.compile(
@@ -220,12 +229,8 @@ class RegExpressions:
         r"(?:https?://)?(?:www\.)?void-scans\.com/(?:manga/)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
     )
 
-    luminousscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?luminousscans\.com/series/(?P<id>\d+)-(?P<url_name>[\w-]+)"
-    )
-
-    leviatanscans_url = re.compile(
-        r"(?:https?://)?(?:en\.)?leviatanscans\.com/manga/(?P<url_name>[\w-]+)(?:/.*)?"
+    lscomic_url = re.compile(
+        r"(?:https?://)?(?:www\.)?lscomic\.com/manga/(?P<url_name>[\w-]+)(?:/.*)?"
     )
 
     drakescans_url = re.compile(

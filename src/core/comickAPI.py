@@ -127,6 +127,7 @@ class ComickAppAPI:
             "q": query,
             "limit": limit,
             "page": 1 if page is None else page,
+            "t": "true"
         }
         params = {k: v for k, v in params.items() if v is not None}
         kwargs = {}
