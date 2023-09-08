@@ -985,7 +985,7 @@ class SupportView(discord.ui.View):
         self.add_item(
             discord.ui.Button(
                 label="Ko-fi",
-                url="https://ko-fi.com/mooshi6969",
+                url="https://ko-fi.com/mooshi69",
                 row=1
             )
         )
