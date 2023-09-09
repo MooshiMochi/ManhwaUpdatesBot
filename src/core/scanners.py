@@ -3286,7 +3286,7 @@ class LuminousScans(ABCScan):
         async with cls.bot.session.get(manga_url) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
-                if resp.status_code == 404:
+                if resp.status == 404:
                     raise MangaNotFoundError(manga_url)
                 await cls.report_error(
 
@@ -3314,7 +3314,7 @@ class LuminousScans(ABCScan):
         async with cls.bot.session.get(manga_url) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
-                if resp.status_code == 404:
+                if resp.status == 404:
                     raise MangaNotFoundError(manga_url)
                 await cls.report_error(
 
@@ -3354,7 +3354,7 @@ class LuminousScans(ABCScan):
         async with cls.bot.session.get(manga_url) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
-                if resp.status_code == 404:
+                if resp.status == 404:
                     raise MangaNotFoundError(manga_url)
                 await cls.report_error(
 
@@ -3386,7 +3386,7 @@ class LuminousScans(ABCScan):
         async with cls.bot.session.get(manga_url) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
-                if resp.status_code == 404:
+                if resp.status == 404:
                     raise MangaNotFoundError(manga_url)
                 await cls.report_error(
 
@@ -3426,7 +3426,7 @@ class LuminousScans(ABCScan):
         async with cls.bot.session.get(manga_url) as resp:
             cls.last_known_status = resp.status, datetime.now().timestamp()
             if resp.status != 200:
-                if resp.status_code == 404:
+                if resp.status == 404:
                     raise MangaNotFoundError(manga_url)
                 await cls.report_error(
 
