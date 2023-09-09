@@ -132,7 +132,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             )
 
         elif isinstance(error, app_commands.errors.BotMissingPermissions):
-            perms = ", ".join(error.missing_perms)  # noqa
+            perms = ", ".join(error.missing_permissions)  # noqa
             if "send_messages" in perms:
                 return
             embed = discord.Embed(

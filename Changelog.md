@@ -25,3 +25,4 @@
 - Changed the default `get_manga_id` method to only use the manhwa url name. This makes the function less error-prone.
 - Fixed the `Bookmark` button in the `/search` result not working properly.
 - Fixed the URL for `LSComic` in `/supported_websites` command.
+- Fixed no error being sent out when bot is missing certain permissions.
