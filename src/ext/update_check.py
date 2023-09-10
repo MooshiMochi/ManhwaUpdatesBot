@@ -10,7 +10,7 @@ import aiohttp
 import curl_cffi.requests
 import discord
 
-from src.core.errors import URLAccessFailed
+from src.core.errors import CustomError, URLAccessFailed
 from src.core.objects import ABCScan, ChapterUpdate, Manga, PartialManga
 from src.core.scanners import SCANLATORS
 from src.ui.views import BookmarkChapterView
@@ -167,10 +167,21 @@ class UpdateCheckCog(commands.Cog):
         """
         if not scanlator.supports_front_page_scraping:
             return [], mangas
-
-        partial_mangas = await scanlator.get_front_page_partial_manga()
-        if not partial_mangas:
-            return [], mangas
+        partial_mangas: list[PartialManga] = []
+        # setting a limit of 10 just in case all proxies are broken to avoid infinite loop with while loops.
+        for attempt_num in range(1, 11):
+            try:
+                partial_mangas = await scanlator.get_front_page_partial_manga()
+                if not partial_mangas:
+                    return [], mangas
+                break
+            except aiohttp.client.ClientConnectorError:
+                if attempt_num == 10:
+                    raise CustomError(
+                        f"[{scanlator.name.title()}] Failed to connect to proxy after {attempt_num} attempts.",
+                        var=attempt_num
+                    )
+                continue
 
         # assuming that partial_mangas is a list of the latest mangas, we don't need to check the other manga for
         # updates.
@@ -375,8 +386,8 @@ class UpdateCheckCog(commands.Cog):
                         continue
                     case "return":
                         return
-                    case _:
-                        raise
+                    case unknown_result:
+                        raise unknown_result
             if not update_check_result:
                 self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.human_name} status check!")
                 continue
@@ -397,10 +408,27 @@ class UpdateCheckCog(commands.Cog):
                         f"Missing permissions to send messages in {guild_config.notifications_channel}"
                     )
                     continue
+
+                ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_config.guild.id, manga.id)
+
+                if ping_role_id:
+                    ping_role = guild_config.guild.get_role(ping_role_id)
+                else:
+                    ping_role = None
+                pings = list({ping_role, guild_config.default_ping_role})  # remove duplicates
+                pings = [x.mention for x in pings if x]  # apparently role.mentionable doesn't mean you can't mention it
+                formatted_pings = "".join(pings)
+
                 await guild_config.notifications_channel.send(
-                    f"||<Manga ID: {manga.id}>||\n**{manga.human_name}** has been marked as "
-                    f"{'completed' if update_check_result.series_completed else 'ongoing'}!"
+                    f"||<Manga ID: {manga.id}>||\n{formatted_pings}",
+                    embed=discord.Embed(
+                        title=f"{manga.human_name} has been marked as {'completed' if manga.completed else 'ongoing'}!",
+                        color=discord.Color.green()
+                    )
                 )
+                self.logger.info(f"[{manga.scanlator}] {manga.human_name} has been marked "
+                                 f"as {'completed' if manga.completed else 'ongoing'}!"
+                                 )
 
         self.bot.logger.debug(f"[{mangas[0].scanlator}] Finished checking for status updates!")
 

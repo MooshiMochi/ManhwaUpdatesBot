@@ -50,7 +50,7 @@ class CommandsCog(commands.Cog):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         commands_to_check = [
             "subscribe",
-            "track"
+            "track",
         ]
         if (
                 str(interaction.command.qualified_name).split(" ")[0]
@@ -197,8 +197,6 @@ class CommandsCog(commands.Cog):
                     else:
                         ping_role = await interaction.guild.create_role(name=role_name, mentionable=True)
                         await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
-                # elif guild_config.default_ping_role is not None:
-                #     ping_role = guild_config.default_ping_role
 
         elif ping_role.is_bot_managed():
             return await interaction.followup.send(

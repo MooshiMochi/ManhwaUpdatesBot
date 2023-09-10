@@ -240,14 +240,18 @@ class BookmarkView(BaseView):
     async def update(self, interaction: discord.Interaction, view: BookmarkView | None = None):
         if view is None:
             view = self
+        if interaction.response.is_done():  # noqa
+            response_function = interaction.edit_original_response
+        else:
+            response_function = interaction.response.edit_message  # noqa
         if len(self.bookmarks) == 0:
-            await interaction.response.edit_message(  # noqa
+            await response_function(  # noqa
                 view=None, embed=discord.Embed(title="You have no more bookmarks.")
             )
             self.stop()
             return
 
-        await interaction.response.edit_message(  # noqa
+        await response_function(  # noqa
             view=view, embed=self._get_display_embed()
         )
 
@@ -551,7 +555,7 @@ class SubscribeView(View):
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(
-        label="Subscribe",
+        label="Track and Subscribe",
         style=ButtonStyle.blurple,
         emoji="📚",
         custom_id="search_subscribe",
@@ -567,6 +571,68 @@ class SubscribeView(View):
         manga_url: str = manga_home_url
         series_id = await scanlator.get_manga_id(manga_url)
 
+        manga: Manga | None = await respond_if_limit_reached(
+            scanlator.make_manga_object(series_id, manga_url),
+            interaction
+        )
+        if manga == "LIMIT_REACHED":
+            return
+
+        if manga.completed:
+            raise MangaCompletedOrDropped(manga.url)
+
+        # By default, searching for a manga will save it to DB, so no need to re-add it to database
+        # But we will add it anyway in case of any updates to the manga.
+        # Even though if it's saved in DB, it will get fetched from DB so that doesn't really make sense,
+        # but it is what it is.
+        await self.bot.db.add_series(manga)
+
+        if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga.id):
+            if not interaction.user.guild_permissions.manage_roles:
+                return await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="🚫 Missing Permissions",
+                        description="You are missing the `Manage Roles` to track this manhwa.\n"
+                                    "Inform a staff memebr to track this manhwa before you can subscribe!",
+                    ).set_author(name=self.bot.user.global_name, icon_url=self.bot.user.display_avatar.url),
+                )
+            else:
+                # check if the manga ID already has a ping role in DB
+                guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
+                if not guild_config:
+                    em = discord.Embed(
+                        title="Error",
+                        description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
+                        color=0xFF0000,
+                    )
+                    em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
+                    await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+                    return
+
+                ping_role: discord.Role | None = None
+                ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id)
+
+                if ping_role_id is None:
+                    if guild_config.auto_create_role:  # should create and not specified
+                        role_name = manga.human_name[:97] + "..." if len(manga.human_name) > 100 else manga.human_name
+                        # try to find a role with that name already
+                        existing_role = discord.utils.get(interaction.guild.roles, name=role_name)
+                        if existing_role is not None:
+                            ping_role = existing_role
+                        else:
+                            ping_role = await interaction.guild.create_role(name=role_name, mentionable=True)
+                            await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
+                await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, ping_role)
+                await self.bot.db.subscribe_user(interaction.user.id, interaction.guild_id, manga.id)
+                await interaction.response.followup.send(  # noqa
+                    embed=discord.Embed(
+                        title="Subscribed to Series",
+                        color=discord.Color.green(),
+                        description=f"Successfully tracked and subscribed to **{manga}!**",
+                    )
+                )
+                return
+
         current_user_subs: list[Manga] = await self.bot.db.get_user_guild_subs(
             interaction.guild_id, interaction.user.id
         )
@@ -579,22 +645,6 @@ class SubscribeView(View):
                     em.description = "You are already subscribed to this series."
                     em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
                     return await interaction.followup.send(embed=em, ephemeral=True)
-
-        manga: Manga | None = await respond_if_limit_reached(
-            scanlator.make_manga_object(series_id, manga_url),
-            interaction
-        )
-        if manga == "LIMIT_REACHED":
-            return
-
-        if manga.completed:
-            raise MangaCompletedOrDropped(manga.url)
-
-        # by default, searching for a manga will save it to DB, so no need to re-add it to database
-        # But we will add it anyway in case of any updates to the manga.
-        # Even though if it's saved in DB, it will get fetched from DB so that doesn't really make sense,
-        # but it is what it is.
-        await self.bot.db.add_series(manga)
 
         await self.bot.db.subscribe_user(
             interaction.user.id, interaction.guild_id, manga.id
@@ -739,7 +789,7 @@ class BookmarkChapterView(View):
                 self.add_item(child)
 
     @discord.ui.button(
-        label="✉️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
+        label="☑️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
     )
     async def mark_read(self, interaction: discord.Interaction, btn: Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=False)  # noqa

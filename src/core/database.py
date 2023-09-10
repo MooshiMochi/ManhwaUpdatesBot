@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, List, TYPE_CHECKING
 
 import aiosqlite
+import discord
 from fuzzywuzzy import fuzz
 
 if TYPE_CHECKING:
@@ -815,12 +816,13 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                UPDATE series SET last_chapter = $1, series_cover_url = $2, available_chapters = $3 WHERE id = $4;
+    UPDATE series SET last_chapter = $1, series_cover_url = $2, available_chapters = $3, completed = $4 WHERE id = $5;
                 """,
                 (
                     manga.last_chapter.to_json() if manga.last_chapter is not None else None,
                     manga.cover_url,
                     manga.chapters_to_text(),
+                    manga.completed,
                     manga.id),
             )
             if result.rowcount < 1:
@@ -948,7 +950,7 @@ class Database:
                 return result[0]
             return None
 
-    async def upsert_guild_sub_role(self, guild_id: int, manga_id: str, ping_role_id: int):
+    async def upsert_guild_sub_role(self, guild_id: int, manga_id: str, ping_role_id: int | discord.Role):
         """
         Summary:
             Sets the role ID to ping for the tracked manga
@@ -961,6 +963,8 @@ class Database:
         Returns:
             None
         """
+        if isinstance(ping_role_id, discord.Role):
+            ping_role_id = ping_role_id.id
         await self.execute(
             """
             INSERT INTO tracked_guild_series (guild_id, series_id, role_id) VALUES ($1, $2, $3)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .rate_limiter import Limiter
@@ -144,5 +144,6 @@ class MissingUserAgentError(BaseError):
 class CustomError(BaseError):
     """Raised when a custom error is raised."""
 
-    def __init__(self, error_msg: str):
+    def __init__(self, error_msg: str, var: Any = None):
         self.error_msg = error_msg
+        self.var = var

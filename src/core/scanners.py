@@ -1183,8 +1183,8 @@ class FlameScans(ABCScan):
         """
 
         escaped_base_url = cls.base_url.replace(".", "\\.")
-        chap_pattern = re.compile(rf"{escaped_base_url}/\d{9,}-", re.MULTILINE)
-        manga_pattern = re.compile(rf"{escaped_base_url}/series/\d{9,}-", re.MULTILINE)
+        chap_pattern = re.compile(rf"{escaped_base_url}/\d{{9,}}-", re.MULTILINE)
+        manga_pattern = re.compile(rf"{escaped_base_url}/series/\d{{9,}}-", re.MULTILINE)
 
         if chap_pattern.search(url_to_fix):
             chapter_id = cls.class_kwargs["chapter_id"]
@@ -1562,8 +1562,8 @@ class Asura(ABCScan):
         """
 
         escaped_base_url = cls.base_url.replace(".", "\\.")
-        chap_pattern = re.compile(rf"{escaped_base_url}/\d{9,}-", re.MULTILINE)
-        manga_pattern = re.compile(rf"{escaped_base_url}/manga/\d{9,}-", re.MULTILINE)
+        chap_pattern = re.compile(rf"{escaped_base_url}/\d{{9,}}-", re.MULTILINE)
+        manga_pattern = re.compile(rf"{escaped_base_url}/manga/\d{{9,}}-", re.MULTILINE)
 
         if chap_pattern.search(url_to_fix):
             chapter_id = cls.class_kwargs["chapter_id"]
@@ -3213,8 +3213,8 @@ class LuminousScans(ABCScan):
         """
 
         escaped_base_url = cls.base_url.replace(".", "\\.")
-        chap_pattern = re.compile(rf"{escaped_base_url}/\d{9,}-", re.MULTILINE)
-        manga_pattern = re.compile(rf"{escaped_base_url}/series/\d{9,}-", re.MULTILINE)
+        chap_pattern = re.compile(rf"{escaped_base_url}/\d{{9,}}-", re.MULTILINE)
+        manga_pattern = re.compile(rf"{escaped_base_url}/series/\d{{9,}}-", re.MULTILINE)
 
         if chap_pattern.search(url_to_fix):
             chapter_id = cls.class_kwargs["chapter_id"]

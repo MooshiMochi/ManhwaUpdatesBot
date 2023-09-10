@@ -1,5 +1,22 @@
 # Changelog
 
+#### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
+
+## // September 10th 2023
+
+- Renamed the `Subscribe` button to `Track and Subscribe` and updated its functionality accordingly.
+  This is the button that is sent when a new chapter update is found.
+- Following the above update, the emoji for the `Mark as Read` button has been changed to "☑️."
+- Added the `var` parameter to CustomError for easy access to error parameters.
+  It can be accessed through `error.var`.
+- Allow for passing of discord.Role objects in the `Database.upsert_guild_sub_role` method.
+
+### Bug Fixes:
+
+- Fixed the 'Delete' button when viewing your bookmark returning "InteractionResponded" error.
+- When a manhwa is marked as complete, it will ping and send an appropriate embed in the update channel.
+- Fixed manhwa status not being updated in the database when made as complete.
+
 ## // September 8th 2023
 
 - Added links to my [Patreon](https://patreon.com/mooshi69) and [Ko-Fi](https://ko-fi.com/mooshi69) in the `/help`
@@ -13,7 +30,7 @@
 - (Owner command) Added the option to toggle all scanlators at once with `?d tscan all` command.
 - Added the `PartialManga` class to allow for partial manga objects when not all info is available.
 
-#### Bug Fixes:
+### Bug Fixes:
 
 - Fixed most URLs not working on Asura, Flamescans and Luminous Scans
 - Fixed `/search` command returning the same result for different search queries

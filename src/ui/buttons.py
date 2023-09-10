@@ -28,19 +28,22 @@ class CustomButtonCallbacks:
 
     async def delete_button_callback(self, interaction: discord.Interaction, confirm_view_cls: type[ConfirmView]):
         _conf_view = confirm_view_cls(self.bot, interaction)
-        msg = await interaction.response.send_message(  # noqa
+        await self.view.update(interaction)
+        # await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
+        msg = await interaction.followup.send(  # noqa
             embed=discord.Embed(
                 title="Are you sure?",
                 description="Are you sure you want to delete this bookmark?",
                 color=discord.Color.red()
             ),
             view=_conf_view,
-            ephemeral=True
+            ephemeral=True,
+            wait=True
         )
         await _conf_view.wait()
         if _conf_view.value is None:
             _conf_view.stop()
-            return await interaction.edit_original_response(
+            return await msg.edit(
                 embed=discord.Embed(
                     title="Bookmark Deletion Cancelled",
                     description="Bookmark deletion cancelled.",
@@ -49,7 +52,7 @@ class CustomButtonCallbacks:
             )
         elif _conf_view.value is False:
             _conf_view.stop()
-            return await interaction.edit_original_response(
+            return await msg.edit(
                 embed=discord.Embed(
                     title="Bookmark Deletion Cancelled",
                     description="Bookmark deletion cancelled.",
@@ -62,15 +65,12 @@ class CustomButtonCallbacks:
         bookmark_embed = self.view._get_display_embed()
         await bookmark.delete(self.view.bot)
         self.view.bookmarks = [x for x in self.view.bookmarks if x.manga.id != bookmark.manga.id]
-        # noinspection PyProtectedMember
-        self.view._increment_index(-1)
-
         await self.view.update(interaction)
 
-        await interaction.followup.send(
-            f"Bookmark [{bookmark.manga.human_name}]({bookmark.manga.url}) deleted successfully.",
+        await msg.edit(
+            content=f"Bookmark [{bookmark.manga.human_name}]({bookmark.manga.url}) deleted successfully.",
             embed=bookmark_embed,
-            ephemeral=True
+            view=None
         )
 
     async def update_button_callback(self, interaction: discord.Interaction):
