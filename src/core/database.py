@@ -16,7 +16,7 @@ from src.core.scanners import SCANLATORS
 from io import BytesIO
 import pandas as pd
 import sqlite3
-from src.core.errors import DatabaseError
+from src.core.errors import CustomError, DatabaseError
 
 
 def _levenshtein_distance(a: str, b: str) -> int:
@@ -236,25 +236,35 @@ class Database:
 
     async def add_series(self, manga_obj: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
+            if manga_obj.scanlator in SCANLATORS:
+                await db.execute(
+                    """
                 INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
                 completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
-                """,
-                (SCANLATORS[manga_obj.scanlator].unload_manga_objects([manga_obj])[0].to_tuple()),
-            )
+                    """,
+                    (SCANLATORS[manga_obj.scanlator].unload_manga_objects([manga_obj])[0].to_tuple()),
+                )
 
-            await db.commit()
+                await db.commit()
+            else:
+                raise CustomError(
+                    f"[{manga_obj.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                )
 
     async def upsert_bookmark(self, bookmark: Bookmark) -> bool:
         async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
+            if bookmark.manga.scanlator in SCANLATORS:
+                await db.execute(
+                    """
                 INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
                 completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
-                """,
-                (SCANLATORS[bookmark.manga.scanlator].unload_manga_objects([bookmark.manga])[0].to_tuple()),
-            )
+                    """,
+                    (SCANLATORS[bookmark.manga.scanlator].unload_manga_objects([bookmark.manga])[0].to_tuple()),
+                )
+            else:
+                raise CustomError(
+                    f"[{bookmark.manga.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                )
 
             await db.execute(
                 """
@@ -326,7 +336,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-                INSERT INTO bookmarks (user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, user_created) 
+                INSERT INTO bookmarks (
+                    user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, user_created
+                    ) 
                 VALUES ($1, $2, $3, $4, $5, false) 
                 ON CONFLICT(user_id, series_id) 
                 DO UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
@@ -429,7 +441,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
                 return []
 
     async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
@@ -456,7 +471,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
                 return []
 
     async def get_series_to_delete(self) -> list[Manga] | None:
@@ -480,7 +498,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
                 return None
 
     async def get_manga_guild_ids(self, manga_id: str | int) -> list[int]:
@@ -531,7 +552,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
                 return None
 
     async def get_user_bookmark(self, user_id: int, series_id: str) -> Bookmark | None:
@@ -729,7 +753,8 @@ class Database:
                 result = await cursor.fetchone()
                 if result:
                     manga_obj = Manga.from_tuple(result)
-                    return (await SCANLATORS[manga_obj.scanlator].load_manga_objects([manga_obj]))[0]
+                    if manga_obj.scanlator in SCANLATORS:
+                        return (await SCANLATORS[manga_obj.scanlator].load_manga_objects([manga_obj]))[0]
 
     async def get_series_title(self, series_id: str) -> str | None:
         """
@@ -780,7 +805,10 @@ class Database:
                 ) as cursor:
                     if result := await cursor.fetchall():
                         objects = Manga.from_tuples(result)
-                        return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                        return [
+                            (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                            for x in objects if x.scanlator in SCANLATORS
+                        ]
         else:
             async with aiosqlite.connect(self.db_name) as db:
                 async with db.execute(
@@ -790,7 +818,10 @@ class Database:
                 ) as cursor:
                     if result := await cursor.fetchall():
                         objects = Manga.from_tuples(result)
-                        return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                        return [
+                            (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                            for x in objects if x.scanlator in SCANLATORS
+                        ]
 
     async def get_all_subscribed_series(self) -> list[Manga]:
         """
@@ -810,7 +841,10 @@ class Database:
                     return []
                 else:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
 
     async def update_series(self, manga: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -833,7 +867,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute(
                 """
-                UPDATE bookmarks SET last_read_chapter_index = $1, last_updated_ts = $2 WHERE user_id = $3 AND series_id = $4;
+        UPDATE bookmarks SET last_read_chapter_index = $1, last_updated_ts = $2 WHERE user_id = $3 AND series_id = $4;
                 """,
                 (last_read_chapter_index, datetime.now().timestamp(), user_id, series_id),
             )
@@ -1023,7 +1057,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
                 return []
 
     async def is_manga_tracked(self, guild_id: int, manga_id: str) -> bool:
@@ -1119,7 +1156,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
-                    return [(await SCANLATORS[x.scanlator].load_manga_objects([x]))[0] for x in objects]
+                    return [
+                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
+                        for x in objects if x.scanlator in SCANLATORS
+                    ]
                 return []
 
     async def has_untracked_subbed_manga(self, user_id: int, guild_id: int | None = None) -> bool:
