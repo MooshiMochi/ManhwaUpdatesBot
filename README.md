@@ -33,9 +33,9 @@ You can right-click a message > apps > Translate to translate a message or use t
 
 ### Config Commands:
 
-`/config setup` - Set up the bot.\
-`/config show` - Show the current configuration.\
-`/config delete` - Delete the current configuration.
+###### (_Requires the `Manage Guild` permission._)
+
+`/settings` - Edit the bot's settings on the serer.
 
 ### Tracking Commands:
 
