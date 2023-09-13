@@ -503,7 +503,7 @@ class TestCases(dict):
                     ),
                     curr_chapter_url="https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-64-notice/",
                     first_chapter_url="https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-1/",
-                    cover_image="https://img.asuracomics.com/unsafe/fit-in/180x234/https://asuracomics.com/wp-content"
+                    cover_image="https://img.asuracomics.com/unsafe/fit-in/720x936/https://asuracomics.com/wp-content"
                                 "/uploads/2022/04/unknown_1-1.png",
                     last_3_chapter_urls=[
                         "https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-62/",
@@ -777,20 +777,20 @@ class TestCases(dict):
             ),
             "nightscans": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://nightscans.org/series/all-attributes-in-martial-arts/"),
+                test_data=TestInputData("https://nightscans.net/series/all-attributes-in-martial-arts/"),
                 expected_result=ExpectedResult(
                     scanlator_name="nightscans",
-                    manga_url="https://nightscans.org/series/all-attributes-in-martial-arts",
+                    manga_url="https://nightscans.net/series/all-attributes-in-martial-arts",
                     completed=True,
                     human_name="All-Attributes in Martial Arts",  # noqa
-                    manga_id=default_id_func("https://nightscans.org/series/all-attributes-in-martial-arts"),
-                    curr_chapter_url="https://nightscans.org/all-attribute-in-martial-arts-chapter-70/",
-                    first_chapter_url="https://nightscans.org/all-attribute-martial-arts-00/",
-                    cover_image="https://nightscans.org/wp-content/uploads/2023/03/AAAMAcover_result.webp",
+                    manga_id=default_id_func("https://nightscans.net/series/all-attributes-in-martial-arts"),
+                    curr_chapter_url="https://nightscans.net/all-attribute-in-martial-arts-chapter-70/",
+                    first_chapter_url="https://nightscans.net/all-attribute-martial-arts-00/",
+                    cover_image="https://nightscans.net/wp-content/uploads/2023/03/AAAMAcover_result.webp",
                     last_3_chapter_urls=[
-                        "https://nightscans.org/all-attribute-in-martial-arts-chapter-68/",
-                        "https://nightscans.org/all-attribute-in-martial-arts-chapter-69/",
-                        "https://nightscans.org/all-attribute-in-martial-arts-chapter-70/",
+                        "https://nightscans.net/all-attribute-in-martial-arts-chapter-68/",
+                        "https://nightscans.net/all-attribute-in-martial-arts-chapter-69/",
+                        "https://nightscans.net/all-attribute-in-martial-arts-chapter-70/",
                     ]
                 ),
                 test_subject=NightScans
@@ -917,8 +917,8 @@ if __name__ == "__main__":
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
 
-    asyncio.run(main())
+    # asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("lscomic"))
+    asyncio.run(test_single_scanlator("nightscans"))

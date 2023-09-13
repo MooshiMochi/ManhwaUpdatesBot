@@ -97,6 +97,7 @@ class Database:
                     notifications_webhook TEXT NOT NULL,
                     auto_create_role BOOLEAN NOT NULL DEFAULT false,
                     dev_notifications_ping BOOLEAN NOT NULL DEFAULT true,
+                    show_update_buttons BOOLEAN NOT NULL DEFAULT true,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
                 """
@@ -356,13 +357,14 @@ class Database:
                 """
                 INSERT INTO guild_config (
                     guild_id, notifications_channel_id, default_ping_role_id, 
-                    notifications_webhook, auto_create_role, dev_notifications_ping
+                    notifications_webhook, auto_create_role, dev_notifications_ping, show_update_buttons
                 )
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT(guild_id) 
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
-                    notifications_webhook = $4, auto_create_role = $5, dev_notifications_ping = $6
+                    notifications_webhook = $4, auto_create_role = $5, dev_notifications_ping = $6,
+                    show_update_buttons = $7
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),

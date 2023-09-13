@@ -14,6 +14,7 @@ from .database import Database
 from .mangadexAPI import MangaDexAPI
 from .objects import GuildSettings
 from .scanners import SCANLATORS
+from ..overwrites import Embed
 
 
 class MangaClient(commands.Bot):
@@ -215,7 +216,7 @@ class MangaClient(commands.Bot):
                 return
             try:
                 pretty_msg = pretty_msg[:4000]
-                em = discord.Embed(color=0x000000, description=pretty_msg)
+                em = Embed(color=0x000000, description=pretty_msg, bot=self)
                 await channel.send(embed=em)
             except Exception as e:
                 self.logger.error(f"Error while logging command usage: {e}")

@@ -485,7 +485,7 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
 
         f"**Completed:** `{bool(bookmark.manga.completed)}`\n"
     )
-    em.set_footer(text="Manhwa Updates", icon_url=bot.user.display_avatar.url)
+    em.set_footer(text=bot.user.display_name, icon_url=bot.user.display_avatar.url)
     em.set_author(
         name=f"Read on {bookmark.manga.scanlator.title()}", url=bookmark.manga.url, icon_url=scanlator_icon_url
     )
@@ -739,7 +739,7 @@ async def respond_if_limit_reached(coro: Coroutine, interaction: discord.Interac
             f"Rate limit exceeded for this website.\n"
             f"Please try again in <t:{int(next_try_ts)}:R>."
         )
-        em.set_footer(text="Manhwa Updates", icon_url=interaction.client.user.display_avatar.url)
+        em.set_footer(text=interaction.client.user.display_name, icon_url=interaction.client.user.display_avatar.url)
         await interaction.followup.send(
             embed=em
         )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
 
+from src.overwrites import Embed
 from src.static import RegExpressions
 
 if TYPE_CHECKING:
@@ -49,7 +50,7 @@ class BookmarkCog(commands.Cog):
 
         if RegExpressions.url.search(manga_url_or_id):
             if not scanner:
-                em = discord.Embed(title="Invalid URL", color=discord.Color.red())
+                em = Embed(title="Invalid URL", color=discord.Color.red(), bot=self.bot)
                 em.description = (
                     "The URL you provided does not follow any of the known url formats.\n"
                     "See `/supported_websites` for a list of supported websites and their url formats."
@@ -89,7 +90,8 @@ class BookmarkCog(commands.Cog):
                 bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
             except IndexError:
                 return await interaction.followup.send(
-                    embed=discord.Embed(
+                    embed=Embed(
+                        bot=self.bot,
                         title="No chapters available",
                         description="This manga has no chapters available to read.\nConsider using `/subscribe` to "
                                     "get notified when new chapters are available.",
@@ -114,7 +116,8 @@ class BookmarkCog(commands.Cog):
         bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
 
         if not bookmarks:
-            return await interaction.followup.send(embed=discord.Embed(
+            return await interaction.followup.send(embed=Embed(
+                bot=self.bot,
                 title="No Bookmarks",
                 description="You have no bookmarks.",
                 color=discord.Color.red(),
@@ -182,7 +185,8 @@ class BookmarkCog(commands.Cog):
                 should_track = True
 
         await self.bot.db.upsert_bookmark(bookmark)
-        success_em = discord.Embed(
+        success_em = Embed(
+            bot=self.bot,
             title="Bookmark Updated",
             description=f"Successfully updated bookmark to {bookmark.last_read_chapter}",
             color=discord.Color.green(),

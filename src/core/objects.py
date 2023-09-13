@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
+from ..overwrites import Embed
 from ..static import Constants, RegExpressions
 
 if TYPE_CHECKING:
@@ -573,7 +574,8 @@ class ABCScan(ABC, ABCScanMixin):
         """
         if not cls.requires_embed_for_chapter_updates:
             return None
-        embed = discord.Embed(
+        embed = Embed(
+            bot=cls.bot,
             title=f"{manga.human_name} - {chapter.name}",
             url=chapter.url)
         embed.set_author(name=cls.name.title())
@@ -919,6 +921,7 @@ class GuildSettings:
             notifications_webhook: str,
             auto_create_role: bool = False,
             dev_notifications_ping: bool = True,
+            show_update_buttons: bool = True,
             *args,
             **kwargs,
     ) -> None:
@@ -935,6 +938,7 @@ class GuildSettings:
         )
         self.auto_create_role: bool = auto_create_role
         self.dev_notifications_ping: bool = dev_notifications_ping
+        self.show_update_buttons: bool = show_update_buttons
         self._args = args
         self._kwargs = kwargs
 
@@ -957,6 +961,7 @@ class GuildSettings:
             self.notifications_webhook.url,
             self.auto_create_role,
             self.dev_notifications_ping,
+            self.show_update_buttons,
         )
 
 
@@ -1014,7 +1019,7 @@ class CachedResponse:
         if text is None:
             return
         else:
-            with open(filename, "w") as f:
+            with open(filename, "w", encoding="utf8") as f:
                 if isinstance(text, str):
                     f.write(text)
                 else:

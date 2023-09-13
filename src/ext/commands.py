@@ -59,7 +59,8 @@ class CommandsCog(commands.Cog):
             return True
 
         if interaction.guild_id is None:
-            em = discord.Embed(
+            em = Embed(
+                bot=self.bot,
                 title="Error",
                 description="This command can only be used in a server.",
                 color=0xFF0000,
@@ -75,7 +76,8 @@ class CommandsCog(commands.Cog):
                         return True
                 except KeyError:
                     pass
-            em = discord.Embed(
+            em = Embed(
+                bot=self.bot,
                 title="Error",
                 description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
                 color=0xFF0000,
@@ -92,7 +94,8 @@ class CommandsCog(commands.Cog):
         # await interaction.response.defer(ephemeral=True, thinking=True)
         updates_cog: UpdateCheckCog | None = self.bot.get_cog("UpdateCheckCog")
         if not updates_cog:
-            em = discord.Embed(
+            em = Embed(
+                bot=self.bot,
                 title="Error",
                 description="The update check cog is not loaded.",
                 color=0xFF0000,
@@ -102,7 +105,8 @@ class CommandsCog(commands.Cog):
             return
 
         next_update_ts = int(updates_cog.check_updates_task.next_iteration.timestamp())
-        em = discord.Embed(
+        em = Embed(
+            bot=self.bot,
             title="Next Update Check",
             description=(
                 f"The next update check is scheduled for "
@@ -133,7 +137,8 @@ class CommandsCog(commands.Cog):
 
         scanlator: ABCScan | None = None
 
-        error_em = discord.Embed(
+        error_em = Embed(
+            bot=self.bot,
             title="Invalid URL",
             color=discord.Color.red(),
             description=(
@@ -201,7 +206,8 @@ class CommandsCog(commands.Cog):
         elif ping_role.is_bot_managed():
             return await interaction.followup.send(
                 embed=(
-                    discord.Embed(
+                    Embed(
+                        bot=self.bot,
                         title="Error",
                         description=(
                             "The role you provided is managed by a bot.\n"
@@ -213,7 +219,8 @@ class CommandsCog(commands.Cog):
         elif ping_role >= interaction.guild.me.top_role:
             return await interaction.followup.send(
                 embed=(
-                    discord.Embed(
+                    Embed(
+                        bot=self.bot,
                         title="Error",
                         description=(
                             "The role you provided is higher than my top role.\n"
@@ -230,7 +237,8 @@ class CommandsCog(commands.Cog):
             description = f"Tracking **[{manga.human_name}]({manga.url})** is successful!"
         description += f"\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
         description += f"\n\n**Note:** You can change the role to ping with `/track update`."
-        embed = discord.Embed(
+        embed = Embed(
+            bot=self.bot,
             title="Tracking Successful",
             color=discord.Color.green(),
             description=description,
@@ -260,7 +268,8 @@ class CommandsCog(commands.Cog):
             if role.is_bot_managed():
                 return await interaction.followup.send(
                     embed=(
-                        discord.Embed(
+                        Embed(
+                            bot=self.bot,
                             title="Error",
                             description=(
                                 "The role you provided is managed by a bot.\n"
@@ -272,7 +281,8 @@ class CommandsCog(commands.Cog):
             elif role >= interaction.guild.me.top_role:
                 return await interaction.followup.send(
                     embed=(
-                        discord.Embed(
+                        Embed(
+                            bot=self.bot,
                             title="Error",
                             description=(
                                 "The role you provided is higher than my top role.\n"
@@ -284,7 +294,8 @@ class CommandsCog(commands.Cog):
             if ping_role_id and ping_role_id == role.id:
                 return await interaction.followup.send(
                     embed=(
-                        discord.Embed(
+                        Embed(
+                            bot=self.bot,
                             title="Error",
                             description=(
                                 "The role you provided is already the role for this manga."
@@ -299,7 +310,8 @@ class CommandsCog(commands.Cog):
         manga: Manga = await self.bot.db.get_series(manga_id)
         await interaction.followup.send(
             embed=(
-                discord.Embed(
+                Embed(
+                    bot=self.bot,
                     title="Success",
                     description=(
                         f"The role for {manga} has been updated to {role.mention if role else 'nothing'}."
@@ -333,7 +345,8 @@ class CommandsCog(commands.Cog):
         await self.bot.db.delete_manga_track_instance(interaction.guild_id, manga_id)
         await interaction.followup.send(
             embed=(
-                discord.Embed(
+                Embed(
+                    bot=self.bot,
                     title="Success",
                     description=(
                         f"Successfully stopped tracking {manga}."
@@ -351,7 +364,7 @@ class CommandsCog(commands.Cog):
         tracked_manga = sorted(tracked_manga, key=lambda x: x.human_name)
 
         if not tracked_manga:
-            em = discord.Embed(title="Nothing found", color=discord.Color.red())
+            em = Embed(bot=self.bot, title="Nothing found", color=discord.Color.red())
             em.description = "There are no tracked manga in this server."
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
@@ -360,7 +373,8 @@ class CommandsCog(commands.Cog):
         embeds: list[discord.Embed] = []
 
         def _make_embed(subs_count: int) -> discord.Embed:
-            return discord.Embed(
+            return Embed(
+                bot=self.bot,
                 title=f"Tracked Manhwa ({subs_count})",
                 description="",
                 color=discord.Color.blurple(),
@@ -453,7 +467,8 @@ class CommandsCog(commands.Cog):
             if ping_role is None:
                 return await interaction.followup.send(
                     embed=(
-                        discord.Embed(
+                        Embed(
+                            bot=self.bot,
                             title="Error",
                             description=(
                                 "Even though the role exists in the server, the bot cannot find it?\n"
@@ -471,7 +486,8 @@ class CommandsCog(commands.Cog):
         description = f"Successfully subscribed to **{manga} ({ping_role.mention})!**"
         description += f"\n\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
 
-        embed = discord.Embed(
+        embed = Embed(
+            bot=self.bot,
             title="Subscribed to Series",
             color=discord.Color.green(),
             description=description,
@@ -504,7 +520,7 @@ class CommandsCog(commands.Cog):
                 await interaction.user.remove_roles(role, reason="Unsubscribed from a manga.")
         await self.bot.db.unsub_user(interaction.user.id, manga_id)
 
-        em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
+        em = Embed(bot=self.bot, title="Unsubscribed", color=discord.Color.green())
         em.description = f"Successfully unsubscribed from {manga}."
         em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
@@ -526,7 +542,7 @@ class CommandsCog(commands.Cog):
         subs = sorted(subs, key=lambda x: x.human_name)
 
         if not subs:
-            em = discord.Embed(title="No Subscriptions", color=discord.Color.red())
+            em = Embed(bot=self.bot, title="No Subscriptions", color=discord.Color.red())
             em.description = "You have no subscriptions."
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
@@ -535,7 +551,8 @@ class CommandsCog(commands.Cog):
         embeds: list[discord.Embed] = []
 
         def _make_embed(subs_count: int) -> discord.Embed:
-            return discord.Embed(
+            return Embed(
+                bot=self.bot,
                 title=f"Your{' (Global)' if _global else ''} Subscriptions ({subs_count})",
                 description="",
                 color=discord.Color.blurple(),
@@ -592,7 +609,7 @@ class CommandsCog(commands.Cog):
         manga: Manga = await self.bot.db.get_series(manga_id)
         if not manga:
             raise MangaNotFoundError(manga_id)
-        em = discord.Embed(title="Latest Chapter", color=discord.Color.green())
+        em = Embed(bot=self.bot, title="Latest Chapter", color=discord.Color.green())
         em.description = (
             f"The latest chapter of {manga} is {manga.last_chapter}."
         )
@@ -623,6 +640,10 @@ class CommandsCog(commands.Cog):
                 "title": f"Chapters for {manga.human_name}",
                 "color": discord.Color.green(),
             },
+            footer_kwargs={
+                "text": self.bot.user.display_name,
+                "icon_url": self.bot.user.display_avatar.url
+            }
         )
 
         view = PaginatorView(embeds, interaction)
@@ -632,7 +653,7 @@ class CommandsCog(commands.Cog):
         name="supported_websites", description="Get a list of supported websites."
     )
     async def supported_websites(self, interaction: discord.Interaction) -> None:
-        em = discord.Embed(title="Supported Websites", color=discord.Color.green())
+        em = Embed(bot=self.bot, title="Supported Websites", color=discord.Color.green())
         supp_webs = [
             (
                 MangaDex,
@@ -748,8 +769,8 @@ class CommandsCog(commands.Cog):
             (
                 NightScans,
                 "NightScans",
-                "https://nightscans.org/",
-                "https://nightscans.org/series/manga-title/",
+                "https://nightscans.net/",
+                "https://nightscans.net/series/manga-title/",
             ),
             (
                 SuryaScans,
@@ -799,7 +820,7 @@ class CommandsCog(commands.Cog):
         name="help", description="Get started with Manhwa Updates Bot."
     )
     async def help(self, interaction: discord.Interaction) -> None:
-        em = discord.Embed(title="Manhwa Updates Bot Help", color=discord.Color.green())
+        em = Embed(bot=self.bot, title="Manhwa Updates Bot Help", color=discord.Color.green())
         em.description = (
             """
 **Getting Started:**
@@ -871,7 +892,8 @@ Ensure the bot has these permissions for smooth operation.
             scanlator_website: Optional[str] = None,
     ) -> None:
         await interaction.response.defer(ephemeral=False)  # noqa
-        cannot_search_em = discord.Embed(
+        cannot_search_em = Embed(
+            bot=self.bot,
             title="Error",
             description=(
                 f"The bot cannot search on that website yet.\n"
@@ -879,7 +901,8 @@ Ensure the bot has these permissions for smooth operation.
             ),
             color=discord.Color.red(),
         )
-        no_results_em = discord.Embed(
+        no_results_em = Embed(
+            bot=self.bot,
             title="Error",
             description=(
                 f"No results were found for `{query}`.\n"
@@ -965,8 +988,11 @@ Ensure the bot has these permissions for smooth operation.
             if lang["code"] == to:
                 lang_to = lang["language"]
 
-        em = discord.Embed(title="Translation Complete 🈳",
-                           description=f"Language: `{lang_from}` \⟶ `{lang_to}`")
+        em = Embed(
+            bot=self.bot,
+            title="Translation Complete 🈳",
+            description=f"Language: `{lang_from}` \⟶ `{lang_to}`"
+        )
         em.add_field(name="📥 Input", value=f"```{text}```", inline=False)
         em.add_field(name="📤 Result",
                      value=f"```{translated}```", inline=False)
@@ -989,8 +1015,11 @@ Ensure the bot has these permissions for smooth operation.
                 lang_from = lang["language"]
             if lang["code"] == to:
                 lang_to = lang["language"]
-        em = discord.Embed(title="Translation Complete 🈳",
-                           description=f"Language: `{lang_from}` \⟶ `{lang_to}`")
+        em = Embed(
+            bot=self.bot,
+            title="Translation Complete 🈳",
+            description=f"Language: `{lang_from}` \⟶ `{lang_to}`"
+        )
         em.add_field(name="📥 Input", value=f"```{text}```", inline=False)
         em.add_field(name="📤 Result",
                      value=f"```{translated}```", inline=False)
@@ -1017,8 +1046,11 @@ Ensure the bot has these permissions for smooth operation.
                 lang_from = lang["language"]
             if lang["code"] == to:
                 lang_to = lang["language"]
-        em = discord.Embed(title="Translation Complete 🈳",
-                           description=f"Language: `{lang_from}` \⟶ `{lang_to}`")
+        em = Embed(
+            bot=self.bot,
+            title="Translation Complete 🈳",
+            description=f"Language: `{lang_from}` \⟶ `{lang_to}`"
+        )
         em.add_field(name="📥 Input", value=f"```{text}```", inline=False)
         em.add_field(name="📤 Result",
                      value=f"```{translated}```", inline=False)

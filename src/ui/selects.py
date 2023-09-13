@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.overwrites import Embed
+
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -159,7 +161,8 @@ class ChapterSelect(Select):
 
         await self.view.update(interaction)
 
-        success_em = discord.Embed(
+        success_em = Embed(
+            bot=interaction.client,
             title="Bookmark Updated",
             description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter}",
             color=discord.Color.green(),

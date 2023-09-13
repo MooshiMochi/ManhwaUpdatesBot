@@ -256,7 +256,7 @@ class RegExpressions:
     )
 
     nightscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?nightscans\.org/series/(?P<url_name>[\w-]+)(?:/.*)?"
+        r"(?:https?://)?(?:www\.)?nightscans\.net/series/(?P<url_name>[\w-]+)(?:/.*)?"
     )
 
     suryascans_url = re.compile(  # noqa

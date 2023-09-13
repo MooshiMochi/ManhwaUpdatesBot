@@ -9,10 +9,12 @@ from typing import TYPE_CHECKING
 import aiohttp
 import curl_cffi.requests
 import discord
+from aiohttp.client_exceptions import ClientConnectorError
 
 from src.core.errors import CustomError, URLAccessFailed
 from src.core.objects import ABCScan, ChapterUpdate, Manga, PartialManga
 from src.core.scanners import SCANLATORS
+from src.overwrites import Embed
 from src.ui.views import BookmarkChapterView
 from src.utils import chunked, group_items_by
 
@@ -52,6 +54,12 @@ class UpdateCheckCog(commands.Cog):
             return await coro
         except Exception as error:
             rv = "None"
+            if isinstance(error, ClientConnectorError):
+                self.logger.warning(
+                    f"[{scanlator.name.title()}] Faield to connect to proxy: {error}"
+                )
+                rv = "continue"
+
             if isinstance(error, curl_cffi.requests.RequestsError):
                 if error.code == 28:
                     self.logger.warning(f"{scanlator.name.title()} timed out while checking for updates.")
@@ -62,11 +70,12 @@ class UpdateCheckCog(commands.Cog):
                         f"{scanlator.name} returned status code {error.status_code}. Update check stopped.")
                     rv = "return"  # cancel update check as it's unlikely to succeed.
                 elif error.status_code == 404:
-                    self.logger.warning(f"{scanlator.name.title()} returned 404 for {req_url}")
+                    self.logger.warning(f"[{scanlator.name.title()}] returned 404 for {req_url}")
                 elif error.status_code == 429:
+                    self.logger.warning(f"[{scanlator.name.title()}] returned 429 for {req_url}")
                     rv = "continue"  # Rate limiter should be able to handle this.
                 elif error.status_code == 403:
-                    self.logger.warning(f"{scanlator.name.title()} returned 403 for {req_url}")
+                    self.logger.warning(f"[{scanlator.name.title()}] returned 403 for {req_url}")
                     rv = "return"  # cancel update check as it's unlikely to succeed.
                 else:
                     await self.bot.log_to_discord(
@@ -124,12 +133,13 @@ class UpdateCheckCog(commands.Cog):
             if isinstance(new_update, str):
                 next_step = new_update
                 match next_step:
-                    case "continue":
+                    case "continue" | "None":
                         continue
                     case "return":
                         return chapter_updates
-                    case _:
-                        raise
+                    case unknown_result:
+                        self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
+                        raise Exception(unknown_result)
             elif isinstance(new_update, ChapterUpdate):
                 if (
                         not new_update and
@@ -283,6 +293,10 @@ class UpdateCheckCog(commands.Cog):
                 formatted_pings = "".join(pings)
                 manga_title = await self.bot.db.get_series_title(update.manga_id)
                 for i, chapter in enumerate(update.new_chapters):
+                    if guild_config.show_update_buttons:
+                        view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
+                    else:
+                        view = None
                     extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
                     try:
                         await guild_config.notifications_channel.send(
@@ -293,12 +307,18 @@ class UpdateCheckCog(commands.Cog):
                             ),
                             allowed_mentions=discord.AllowedMentions(roles=True),
                             **extra_kwargs,
-                            view=BookmarkChapterView(self.bot, chapter_link=chapter.url),
+                            view=view,
                         )
                     except discord.HTTPException as e:
                         self.logger.error(
                             f"Failed to send update for {manga_title}| {chapter.name}", exc_info=e
                         )
+            next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
+            await guild_config.notifications_channel.send(
+                embed=Embed(
+                    bot=self.bot,
+                    description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>"),
+            )
 
     async def update_database_entries(self, chapter_updates: list[ChapterUpdate]) -> None:
         """
@@ -382,12 +402,13 @@ class UpdateCheckCog(commands.Cog):
             if isinstance(update_check_result, str):
                 next_step = update_check_result
                 match next_step:
-                    case "continue":
+                    case "continue" | "None":
                         continue
                     case "return":
                         return
                     case unknown_result:
-                        raise unknown_result
+                        self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
+                        raise Exception(unknown_result)
             if not update_check_result:
                 self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.human_name} status check!")
                 continue
@@ -421,7 +442,8 @@ class UpdateCheckCog(commands.Cog):
 
                 await guild_config.notifications_channel.send(
                     f"||<Manga ID: {manga.id}>||\n{formatted_pings}",
-                    embed=discord.Embed(
+                    embed=Embed(
+                        bot=self.bot,
                         title=f"{manga.human_name} has been marked as {'completed' if manga.completed else 'ongoing'}!",
                         color=discord.Color.green()
                     )

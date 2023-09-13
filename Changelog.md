@@ -2,6 +2,21 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // September 13th 2023
+
+- Created new `overwrites.py` file to contain all overwriting.
+- Changed most instances of `discord.Embed` to `overwrites.Embed`.
+- Started working on the new config system.
+- Renamed the `?d sync` command to `?d pull`
+- Renamed the `?d synctree` command to `?d sync` command and updated it to use Umbra's latest sync command
+- Removed `/config` commands and replaced them with the `/settings` command.
+
+### Bug Fixes:
+
+- Updated NightScans TLD (top level domain) from `.org` to `.net`.
+- Added internal rate limits for MangaDex API.
+- Attempted to fix LuminousScans front page scraping.
+
 ## // September 10th 2023
 
 - Renamed the `Subscribe` button to `Track and Subscribe` and updated its functionality accordingly.

@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import curl_cffi.requests
 import discord
 
+from ..overwrites import Embed
+
 if TYPE_CHECKING:
     pass
 
@@ -328,7 +330,8 @@ class TritiniaScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -633,7 +636,8 @@ class Manganato(ABCScan):
             desc += f"**Scanlator:** {cls.name.title()}"
 
             return (
-                discord.Embed(
+                Embed(
+                    bot=cls.bot,
                     title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                     description=desc
                 )
@@ -950,7 +954,8 @@ class Toonily(ABCScan):
             desc += f"**Scanlator:** {cls.name.title()}"
 
             return (
-                discord.Embed(
+                Embed(
+                    bot=cls.bot,
                     title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                     description=desc
                 )
@@ -1100,7 +1105,8 @@ class MangaDex(ABCScan):
             desc += f"**Scanlator:** {manga_obj.scanlator.title()}"
 
             return (
-                discord.Embed(
+                Embed(
+                    bot=cls.bot,
                     title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                     description=desc
                 )
@@ -1471,7 +1477,8 @@ class FlameScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -1796,7 +1803,8 @@ class Asura(ABCScan):
             desc += f"**Scanlator:** {cls.name.title()}"
 
             return (
-                discord.Embed(
+                Embed(
+                    bot=cls.bot,
                     title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                     description=desc
                 )
@@ -2118,7 +2126,8 @@ class Aquamanga(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -2707,7 +2716,8 @@ class AnigliScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -2853,7 +2863,8 @@ class Comick(ABCScan):
             desc += f"**Scanlator:** {cls.name.title()}"
 
             return (
-                discord.Embed(
+                Embed(
+                    bot=cls.bot,
                     title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                     description=desc
                 )
@@ -3126,7 +3137,8 @@ class VoidScans(ABCScan):
             desc += f"**Scanlator:** {cls.name.title()}"
 
             return (
-                discord.Embed(
+                Embed(
+                    bot=cls.bot,
                     title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                     description=desc
                 )
@@ -3175,7 +3187,11 @@ class LuminousScans(ABCScan):
             try:
                 manga_container = possible_manga_containers[1]  # TODO: Investigate IndexError here
             except IndexError:
-                return []
+                manga_container = possible_manga_containers[0]
+                await cls.report_error(
+                    Exception("IndexError in get_front_page_partial_manga func"),
+                    file=write_to_discord_file(cls.name + ".html", text)
+                )
             manga_img_tags = manga_container.find_all("img", {"class": "ts-post-image"})
             chapters_container = manga_container.find_all("div", {"class": "luf"})
             chapter_a_tags = [x.find_all("a") for x in chapters_container]
@@ -3500,7 +3516,8 @@ class LuminousScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -4310,7 +4327,8 @@ class Mangabaz(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -4602,7 +4620,8 @@ class Mangapill(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -4893,7 +4912,8 @@ class OmegaScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -5162,7 +5182,8 @@ class Bato(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -5172,8 +5193,8 @@ class Bato(ABCScan):
 
 
 class NightScans(ABCScan):
-    icon_url = "https://nightscans.org/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png"
-    base_url = "https://nightscans.org"
+    icon_url = "https://nightscans.net/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png"
+    base_url = "https://nightscans.net"
     fmt_url = base_url + "/series/{manga_url_name}"
     name = "nightscans"
     id_first = False
@@ -5454,7 +5475,8 @@ class NightScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )
@@ -5739,7 +5761,8 @@ class SuryaScans(ABCScan):
                 desc += f"**Scanlator:** {cls.name.title()}"
 
                 return (
-                    discord.Embed(
+                    Embed(
+                        bot=cls.bot,
                         title=manga_obj.human_name, url=manga_obj.url, color=discord.Color.green(),
                         description=desc
                     )

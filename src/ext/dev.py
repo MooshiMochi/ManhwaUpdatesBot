@@ -4,6 +4,8 @@ import inspect
 from functools import partial
 from typing import Literal, Optional, TYPE_CHECKING
 
+from src.overwrites import Embed
+
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -17,7 +19,6 @@ import traceback as tb
 from contextlib import redirect_stdout
 
 import discord
-from discord import Object
 from discord.ext import commands
 
 from src.core.objects import TextPageSource, GuildSettings
@@ -80,11 +81,12 @@ class Restricted(commands.Cog):
         # remove `foo`
         return content.strip("` \n")
 
-    @commands.group(help="Developer tools.", brief="Dev tools.", aliases=["d", "dev"])
+    @commands.group(help="Developer tools.", brief="Dev tools.", aliases=["d", "dev"], case_insensitive=True)
     @commands.is_owner()
     async def developer(self, ctx):
         if ctx.invoked_subcommand is None:
-            embed = discord.Embed(
+            embed = Embed(
+                bot=self.bot,
                 title="Hmmm...",  # noqa
                 description=f"You seem lost. Try to use / for more commands.",
                 color=0xFF0000,
@@ -99,57 +101,79 @@ class Restricted(commands.Cog):
     @commands.is_owner()
     async def developer_restart(self, ctx: commands.Context):
         msg = await ctx.send(
-            embed=discord.Embed(
+            embed=Embed(
+                bot=self.bot,
                 description=f"⚠️ `Restarting the bot.`",
                 color=discord.Color.dark_theme(),
             )
         )
         await self.restart_bot(msg.jump_url)
 
-    @developer.command(name="synctree", aliases=["sync_tree"])  # noqa
-    async def tree_sync(
-            self,
-            ctx: commands.Context,
-            guilds: commands.Greedy[Object],
-            spec: Optional[Literal["~"]] = None,
-    ) -> None:
+    @developer.command()
+    @commands.guild_only()
+    @commands.is_owner()
+    async def sync(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object],
+                   spec: Optional[Literal["~", "*", "^", "^^"]] = None) -> None:
         """
-        Usage:
-        '!d sync' | Synchronizes all guilds
-        '!d sync ~' | Synchronizes current guild
-        '!d sync id_1 id_2' | Synchronizes specified guilds by id
+        Summary:
+            Syncs the tree to the current guild or all guilds.
+
+        Args:
+            ctx: commands.Context - The context of the command.
+            guilds: commands.Greedy[discord.Object] - The guilds to sync to.
+            spec: Optional[Literal["~", "*", "^"]] - The specification of the sync.
+                "~" - Sync to the current guild.
+                "*" - Copy the global tree to the current guild.
+                "^" - Clear the commands in the current guild.
+                "^^" - Clear the commands in all guilds.
+                "None" - Sync to all guilds.
+
+        Returns:
+            None
         """
         if not guilds:
             if spec == "~":
-                fmt = await ctx.bot.tree.sync(guild=ctx.guild)
+                synced = await ctx.bot.tree.sync(guild=ctx.guild)
+            elif spec == "*":
+                ctx.bot.tree.copy_global_to(guild=ctx.guild)
+                synced = await ctx.bot.tree.sync(guild=ctx.guild)
+            elif spec == "^":
+                ctx.bot.tree.clear_commands(guild=ctx.guild)
+                await ctx.bot.tree.sync(guild=ctx.guild)
+                synced = []
+            elif spec == "^^":
+                ctx.bot.tree.clear_commands(guild=None)
+                await ctx.bot.tree.sync()
+                synced = []
             else:
-                fmt = await ctx.bot.tree.sync()
+                synced = await ctx.bot.tree.sync()
 
             await ctx.send(
-                f"Synced {len(fmt)} commands {'globally' if spec is None else 'to the current guild.'}"
+                f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}"
             )
             return
 
-        fmt = 0
+        ret = 0
         for guild in guilds:
             try:
                 await ctx.bot.tree.sync(guild=guild)
             except discord.HTTPException:
                 pass
             else:
-                fmt += 1
+                ret += 1
 
-        await ctx.send(f"Synced the tree to {fmt}/{len(guilds)} guilds.")
+        await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
 
     @developer.command(
-        name="sync",
-        help="Sync with GitHub and reload cogs.",
-        brief="Sync with GitHub and reload cogs.",
+        name="pull",
+        help="Pull from GitHub and reload cogs.",
+        brief="Pull from GitHub and reload cogs.",
     )
     @commands.is_owner()
-    async def developer_sync(self, ctx: commands.Context):
+    async def dev_pull(self, ctx: commands.Context):
         out = subprocess.check_output("git pull", shell=True)
-        embed = discord.Embed(
+        embed = Embed(
+            bot=self.bot,
             title="git pull",
             description=f"```py\n{out.decode('utf8')}\n```",
             color=0x00FF00,
@@ -175,7 +199,8 @@ class Restricted(commands.Cog):
     )
     @commands.is_owner()
     async def developer_loaded_cogs(self, ctx):
-        embed = discord.Embed(
+        embed = Embed(
+            bot=self.bot,
             title="Loaded cogs",
             description="```diff\n- " + "\n- ".join(self.client.cogs) + "\n```",
             color=discord.Color.red(),
@@ -281,7 +306,7 @@ class Restricted(commands.Cog):
         # if f"cogs.{filename}" not in const.extensions:
         #     text = "\n- ".join(map(lambda x: x.replace("cogs.", ""), const.extensions))
         #     return await ctx.send(
-        #         embed=discord.Embed(
+        #         embed=Embed(bot=self.bot,
         #             description=f"```diff\n- {text}\n```",
         #             color=0xFF0000,
         #             title="Available cogs",
@@ -318,7 +343,8 @@ class Restricted(commands.Cog):
         ):
             text = "\n- ".join(all_loaded_cog_paths).replace("cogs.", "")
             return await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
+                    bot=self.bot,
                     description=f"```diff\n- {text}\n```",
                     color=0xFF0000,
                     title="Available cogs",
@@ -359,7 +385,8 @@ class Restricted(commands.Cog):
                 map(lambda x: x.replace("cogs.", ""), all_loaded_cog_paths)
             )
             return await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
+                    bot=self.bot,
                     description=f"```diff\n- {text}\n```",
                     color=0xFF0000,
                     title="Available cogs",
@@ -493,40 +520,6 @@ class Restricted(commands.Cog):
         view.message = await ctx.send(view.items[0], view=view)
 
     @developer.command(
-        name="clear_commands",
-        help="Clear all commands.",
-        brief="Clear all commands.",
-    )
-    async def clear_commands(
-            self,
-            ctx: commands.Context,
-            spec: Optional[Literal["~"]] = None,
-    ) -> None:
-        """
-        Usage:
-        '!d clear_commands' | Clears the commands from all guilds
-        '!d clear_commands ~' | Clears the commands in the current guild
-        """
-        sync_cmd = self.client.get_command("developer synctree")  # noqa
-        if not sync_cmd:
-            await ctx.send("```diff\n-<[ Command not found. ]>-```")
-            return
-        if spec == "~":
-            self.client.tree.clear_commands(guild=ctx.guild)
-            await ctx.invoke(
-                sync_cmd, guilds=None, spec="~"  # noqa
-            )
-        else:
-            for guild in self.client.guilds:
-                self.client.tree.clear_commands(guild=guild)
-            await ctx.invoke(sync_cmd, guilds=None)  # noqa
-
-        await ctx.send(
-            f"Cleared all commands {'globally' if spec is None else 'from the current guild.'}"
-        )
-        return
-
-    @developer.command(
         name="export_db",
         help="Export the database to an Excel file.",
         brief="Export the database to an Excel file.",
@@ -595,10 +588,11 @@ class Restricted(commands.Cog):
     )
     async def toggle_scanlator(self, ctx: commands.Context, *, scanlator: str):
         scanlator = scanlator.lower()
-        # noinspection PyProtectedMember
         if scanlator != "all":
+            # noinspection PyProtectedMember
             if scanlator not in self.bot._all_scanners:
-                em = discord.Embed(
+                em = Embed(
+                    bot=self.bot,
                     title="Scanlator not found.",
                     description=f"Scanlator `{scanlator}` not found.",
                     color=discord.Color.red()
@@ -628,7 +622,9 @@ class Restricted(commands.Cog):
             results.append(scanlator_str)
         result_str = ''.join(results)
         await ctx.send(
-            embed=discord.Embed(title=f"Toggled {len(results)} scanlators", description=f"```diff\n{result_str}```")
+            embed=Embed(
+                bot=self.bot, title=f"Toggled {len(results)} scanlators", description=f"```diff\n{result_str}```"
+            )
         )
         # await ctx.send(
         #     f"```diff\n-<[ {scanlator} is now {'enabled' if new_status else 'disabled'} ]>-```")
@@ -640,7 +636,8 @@ class Restricted(commands.Cog):
         aliases=["dscan"]
     )
     async def disabled_scanlators(self, ctx: commands.Context):
-        em = discord.Embed(
+        em = Embed(
+            bot=self.bot,
             title="Disabled scanlators.",
             description="List of all disabled scanlators.",
             color=discord.Color.red()
@@ -664,7 +661,8 @@ class Restricted(commands.Cog):
             "https://discord.gg/TYkw8VBZkr) and ping `.mooshi`.*"
         )
         message += bottom_text
-        em = discord.Embed(
+        em = Embed(
+            bot=self.bot,
             title="⚠️ Important Update ⚠️",
             description=message,
             color=discord.Color.red()
@@ -673,7 +671,8 @@ class Restricted(commands.Cog):
 
         guild_configs = await self.bot.db.get_many_guild_config([x.id for x in self.bot.guilds])
         if not guild_configs:
-            await ctx.send(embed=discord.Embed(
+            await ctx.send(embed=Embed(
+                bot=self.bot,
                 title="⚠️ No guilds found!",
                 description="No guilds have been found in the database.",
                 color=discord.Color.red()
@@ -692,7 +691,8 @@ class Restricted(commands.Cog):
                 guild_configs_to_notify.append(guild_config)
 
         if not guild_configs_to_notify:
-            await ctx.send(embed=discord.Embed(
+            await ctx.send(embed=Embed(
+                bot=self.bot,
                 title="⚠️ Can't sent messages!",
                 description="There are no guilds for which the bot has perms to send messages.",
                 color=discord.Color.red()
@@ -707,14 +707,16 @@ class Restricted(commands.Cog):
         if view.value is None:  # timed out
             return
         elif view.value is False:  # cancelled = False
-            await view.message.edit(embed=discord.Embed(
+            await view.message.edit(embed=Embed(
+                bot=self.bot,
                 title="Cancelled!",
                 description="The message has been cancelled.",
                 color=discord.Color.red()
             ), view=None)
             return
 
-        await view.message.edit(embed=discord.Embed(
+        await view.message.edit(embed=Embed(
+            bot=self.bot,
             title="Sending...",
             description=f"Sending the message to {len(guild_configs_to_notify)} guilds...",
         ), view=None)
@@ -738,7 +740,8 @@ class Restricted(commands.Cog):
             except discord.HTTPException:
                 pass
 
-        await view.message.edit(embed=discord.Embed(
+        await view.message.edit(embed=Embed(
+            bot=self.bot,
             title="Sent!",
             description=f"Sent the message to {successes} guilds.",
             color=discord.Color.green()

@@ -7,7 +7,8 @@ constants:
     - 383287544336613385
   first_bot_startup: true
   autosync: true
-  test-guild-id: 1066891416934023218
+  test-guild-ids:
+    - 1066891416934023218
   cache-retention-seconds: 3600
 extensions:
   - src.ext.config

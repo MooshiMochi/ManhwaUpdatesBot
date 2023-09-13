@@ -18,8 +18,8 @@ class MangaDexAPI:
         self.headers = {
             "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
         }
-        self.rate_limit_remaining = None
-        self.rate_limit_reset = None
+        self.rate_limit_remaining = 300
+        self.rate_limit_reset = datetime.now().timestamp() + 60
 
         # self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
 
@@ -45,10 +45,17 @@ class MangaDexAPI:
             ) as response:
                 MangaDex.last_known_status = (response.status, datetime.now().timestamp())
                 json_data = await response.json()
-                self.rate_limit_remaining = int(
-                    response.headers.get("X-RateLimit-Remaining", "-1")
-                )
-                self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
+                if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
+                    self.rate_limit_remaining = int(limit_remaining)
+                else:
+                    self.rate_limit_remaining -= 1
+
+                if limit_reset := response.headers.get("X-RateLimit-Reset"):
+                    self.rate_limit_reset = int(limit_reset)
+                else:
+                    if datetime.now().timestamp() > self.rate_limit_reset:
+                        self.rate_limit_reset = datetime.now().timestamp() + 60
+                        self.rate_limit_remaining = 300
 
                 if response.status != 200:
                     raise Exception(

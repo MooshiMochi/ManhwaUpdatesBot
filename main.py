@@ -44,6 +44,10 @@ async def custom_initializer(bot: MangaClient, _logger: logging.Logger) -> None:
     for scanlator in SCANLATORS.values():
         scanlator.call_init()
 
+    # importing this allows for the overwriting to take place
+    _logger.info("Loading overwrites...")
+    import src.overwrites  # noqa
+
 
 async def main():
     _logger = logging.getLogger("main")
