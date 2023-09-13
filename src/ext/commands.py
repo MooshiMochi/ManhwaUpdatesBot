@@ -825,9 +825,7 @@ class CommandsCog(commands.Cog):
             """
 **Getting Started:**
 - Before using the bot, you must configure it for your server:
-  - `/config setup` - Set up or update the bot's configuration for your server.
-  - `/config show` - View the current configuration for your server.
-  - `/config clear` - Clear the bot's configuration. Use the "full_clear" option to also delete all related roles and server data from the database.
+  - `/settings` - See and edit all the bot's settings for your server. *(Requires the `Manage Server` permission)*
         
 **Tracking Manhwa:**
 *(Requires the "Manage Roles" permission)*

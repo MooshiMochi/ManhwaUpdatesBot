@@ -1194,15 +1194,15 @@ class SettingsView(BaseView):
 
         text = f"""
         **#️⃣ Updates Channel:** {channel.mention if channel else "Nont set."}
-        \u200b \u200b \u200b • `The channel the bot will send chapter updates to.`
+        \u200b \u200b \u200b **^** `The channel the bot will send chapter updates to.`
         **🔔 Default Ping Role:** {role.mention if role else "Not set."}
-        \u200b \u200b \u200b • `The role that will be pinged for all updates.`
+        \u200b \u200b \u200b **^** `The role that will be pinged for all updates.`
         **🔄️ Auto Create Role:** {'Yes' if auto_create_role else 'No'}
-        \u200b \u200b \u200b • `Whether to auto create roles for new tracked manhwa.`
+        \u200b \u200b \u200b **^** `Whether to auto create roles for new tracked manhwa.`
         **👨‍💻 Ping for Developer Updates:** {'Yes' if dev_ping else 'No'}
-        \u200b \u200b \u200b • `Whether to ping for developer updates.`
+        \u200b \u200b \u200b **^** `Whether to ping for developer updates.`
         **🔘Show Update Buttons:** {'Yes' if show_update_buttons else 'No'}
-        \u200b \u200b \u200b • `Whether to show buttons for chapter updates.`
+        \u200b \u200b \u200b **^** `Whether to show buttons for chapter updates.`
         """
         return Embed(
             bot=self.bot,
