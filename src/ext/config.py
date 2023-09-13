@@ -57,6 +57,8 @@ class ConfigCog(Cog):
     )
     async def _settings(self, interaction: discord.Interaction):
         guild_config: GuildSettings = await self.bot.db.get_guild_config(interaction.guild_id)
+        if not guild_config:
+            guild_config = GuildSettings(self.bot, interaction.guild_id, None, None)  # noqa
         view = SettingsView(self.bot, interaction, guild_config)
         # noinspection PyProtectedMember
         embed = view._create_embed()

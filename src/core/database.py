@@ -94,7 +94,6 @@ class Database:
                     guild_id INTEGER PRIMARY KEY NOT NULL,             
                     notifications_channel_id INTEGER,
                     default_ping_role_id INTEGER DEFAULT NULL,
-                    notifications_webhook TEXT NOT NULL,
                     auto_create_role BOOLEAN NOT NULL DEFAULT false,
                     dev_notifications_ping BOOLEAN NOT NULL DEFAULT true,
                     show_update_buttons BOOLEAN NOT NULL DEFAULT true,
@@ -357,14 +356,13 @@ class Database:
                 """
                 INSERT INTO guild_config (
                     guild_id, notifications_channel_id, default_ping_role_id, 
-                    notifications_webhook, auto_create_role, dev_notifications_ping, show_update_buttons
+                    auto_create_role, dev_notifications_ping, show_update_buttons
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT(guild_id) 
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
-                    notifications_webhook = $4, auto_create_role = $5, dev_notifications_ping = $6,
-                    show_update_buttons = $7
+                    auto_create_role = $4, dev_notifications_ping = $5, show_update_buttons = $6
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
@@ -949,18 +947,6 @@ class Database:
                 """
             )
             await db.commit()
-
-    async def get_webhooks(self) -> set[str]:
-        """
-        Returns a set of all webhook URLs in the config table.
-        """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT notifications_webhook FROM guild_config;
-                    """
-            ) as cursor:
-                return set([url for url, in await cursor.fetchall()])
 
     async def get_guild_manga_role_id(self, guild_id: int, manga_id: str) -> int | None:
         """

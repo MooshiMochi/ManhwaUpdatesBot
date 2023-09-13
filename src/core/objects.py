@@ -918,7 +918,6 @@ class GuildSettings:
             guild_id: int,
             notifications_channel_id: int,
             default_ping_role_id: int,
-            notifications_webhook: str,
             auto_create_role: bool = False,
             dev_notifications_ping: bool = True,
             show_update_buttons: bool = True,
@@ -933,9 +932,6 @@ class GuildSettings:
         else:
             self.notifications_channel: Optional[discord.TextChannel] = None
             self.default_ping_role: Optional[discord.Role] = None
-        self.notifications_webhook: discord.Webhook = discord.Webhook.from_url(
-            notifications_webhook, session=bot.session, client=bot
-        )
         self.auto_create_role: bool = auto_create_role
         self.dev_notifications_ping: bool = dev_notifications_ping
         self.show_update_buttons: bool = show_update_buttons
@@ -958,7 +954,6 @@ class GuildSettings:
             self.guild.id,
             self.notifications_channel.id,
             self.default_ping_role.id if self.default_ping_role else None,
-            self.notifications_webhook.url,
             self.auto_create_role,
             self.dev_notifications_ping,
             self.show_update_buttons,

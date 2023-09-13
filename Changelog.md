@@ -10,6 +10,7 @@
 - Renamed the `?d sync` command to `?d pull`
 - Renamed the `?d synctree` command to `?d sync` command and updated it to use Umbra's latest sync command
 - Removed `/config` commands and replaced them with the `/settings` command.
+- Removed webhooks from the bot alltogether (including the database).
 
 ### Bug Fixes:
 

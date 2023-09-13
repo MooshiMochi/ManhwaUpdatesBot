@@ -1171,14 +1171,16 @@ class SettingsView(BaseView):
         self.selected_option: str | None = None
 
         self.child_map: dict[
-            int | str, discord.ui.Select | discord.ui.Button | discord.ui.ChannelSelect | discord.ui.RoleSelect] = {
+            int | str, discord.ui.Select | list[discord.ui.Button]] = {
             child.row: child for child in self.children
         }
+        self.child_map.pop(4)
+
         self.child_map["default"] = self.child_map.pop(0)
         self.child_map["bool"] = self.child_map.pop(1)
         self.child_map["channel"] = self.child_map.pop(2)
         self.child_map["role"] = self.child_map.pop(3)
-        self.child_map["done"] = self.child_map.pop(4)
+        self.child_map["buttons"]: list[discord.ui.Button] = [x for x in self.children if x.row == 4]  # noqa
 
         self.clear_items()
         self._refresh_components()
@@ -1191,15 +1193,15 @@ class SettingsView(BaseView):
         show_update_buttons = self.guild_config.show_update_buttons
 
         text = f"""
-        **Updates Channel:** {channel.mention if channel else "Nont set."}
+        **#️⃣ Updates Channel:** {channel.mention if channel else "Nont set."}
         \u200b \u200b \u200b • `The channel the bot will send chapter updates to.`
-        **Default Ping Role:** {role.mention if role else "Not set."}
+        **🔔 Default Ping Role:** {role.mention if role else "Not set."}
         \u200b \u200b \u200b • `The role that will be pinged for all updates.`
-        **Auto Create Role:** {'Yes' if auto_create_role else 'No'}
+        **🔄️ Auto Create Role:** {'Yes' if auto_create_role else 'No'}
         \u200b \u200b \u200b • `Whether to auto create roles for new tracked manhwa.`
-        **Ping for Developer Updates:** {'Yes' if dev_ping else 'No'}
+        **👨‍💻 Ping for Developer Updates:** {'Yes' if dev_ping else 'No'}
         \u200b \u200b \u200b • `Whether to ping for developer updates.`
-        **Show Update Buttons:** {'Yes' if show_update_buttons else 'No'}
+        **🔘Show Update Buttons:** {'Yes' if show_update_buttons else 'No'}
         \u200b \u200b \u200b • `Whether to show buttons for chapter updates.`
         """
         return Embed(
@@ -1211,8 +1213,10 @@ class SettingsView(BaseView):
 
     def _refresh_components(self):
         self.clear_items()
-        if self.selected_option is None:
+        if self.selected_option is None or self.selected_option == "default":
             self.add_item(self.child_map["default"])
+            for item in self.child_map["buttons"]:
+                self.add_item(item)
         elif self.selected_option == "channel":
             self.add_item(self.child_map["channel"])
         elif self.selected_option == "default_ping_role":
@@ -1221,13 +1225,12 @@ class SettingsView(BaseView):
             self.add_item(self.child_map["bool"])
         else:
             raise ValueError(f"Invalid value: {self.selected_option}")
-        self.add_item(self.child_map["done"])
 
     @discord.ui.select(
         options=[
             discord.SelectOption(label="Change the updates channel", value="channel", emoji="#️⃣"),
             discord.SelectOption(label="Set Default ping role", value="default_ping_role", emoji="🔔"),
-            discord.SelectOption(label="Auto create role for new tracked manhwa", value="auto_create_role", emoji="ℹ️"),
+            discord.SelectOption(label="Auto create role for new tracked manhwa", value="auto_create_role", emoji="🔄"),
             discord.SelectOption(label="Ping for developer notifications", value="dev_ping", emoji="👨‍💻"),
             discord.SelectOption(label="Show buttons for chapter updates", value="show_update_buttons", emoji="🔘"),
         ],
@@ -1261,6 +1264,8 @@ class SettingsView(BaseView):
             self.guild_config.show_update_buttons = select.values[0] == "True"
         else:
             raise ValueError(f"Invalid value: {self.selected_option}")
+        self.selected_option = None
+        self._refresh_components()
         embed = self._create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
@@ -1275,13 +1280,16 @@ class SettingsView(BaseView):
         channel = interaction.guild.get_channel(channel_id)
         if not channel:
             embed = self._create_embed()
+            self.selected_option = None
+            self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             await interaction.followup.send(  # noqa
                 embed=Embed(
                     bot=self.bot,
                     title="Channel not found",
                     description=f"Could not find the channel <#{channel_id}>!\n"
-                                f"Please ensure I have all required permissions."
+                                f"Please ensure I have all required permissions.",
+                    colour=discord.Colour.red()
                 ),
                 ephemeral=True
             )
@@ -1294,13 +1302,15 @@ class SettingsView(BaseView):
         ]
         if not all([x[1] for x in required_perms]):
             embed = self._create_embed()
+            self.selected_option = None
+            self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             perms = ", ".join(x[0] for x in required_perms)  # noqa
             await interaction.followup.send(  # noqa
                 embed=Embed(
                     bot=interaction.client,
                     title=f"Missing Required Permissions",
-                    color=0xFF0000,
+                    colour=discord.Colour.red(),
                     description=f"Sorry, I don't have the required permissions `{perms}` for "
                                 + f"the {channel.mention}.\nPlease ask a server administrator to fix this issue.",
                 ),
@@ -1308,6 +1318,8 @@ class SettingsView(BaseView):
             )
             return
         self.guild_config.notifications_channel = channel
+        self.selected_option = None
+        self._refresh_components()
         embed = self._create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
@@ -1317,50 +1329,128 @@ class SettingsView(BaseView):
         role = interaction.guild.get_role(role_id)
         if not role:
             embed = self._create_embed()
+            self.selected_option = None
+            self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             await interaction.followup.send(  # noqa
                 embed=Embed(
                     bot=self.bot,
-                    title="Channel not found",
-                    description=f"Could not find the <@{role_id}> role!\n"
-                                f"Please ensure I have all required permissions."
+                    title="Role not found",
+                    description=f"Could not find the <@&{role_id}> role!\n"
+                                f"Please ensure I have all required permissions.",
+                    colour=discord.Colour.red()
                 ),
                 ephemeral=True
             )
             return
         elif role.position >= interaction.guild.me.top_role.position:
             embed = self._create_embed()
+            self.selected_option = None
+            self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             await interaction.followup.send(  # noqa
                 embed=Embed(
                     bot=self.bot,
                     title="Role too high",
-                    description=f"The <@{role_id}> role is too high for me to ping!\n"
-                                f"Please move it below my top role."
+                    description=f"The <@&{role_id}> role is too high for me to ping!\n"
+                                f"Please move it below my top role.",
+                    colour=discord.Colour.red(),
                 ),
                 ephemeral=True
             )
             return
         self.guild_config.default_ping_role = role
+        self.selected_option = None
+        self._refresh_components()
         embed = self._create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
     @discord.ui.button(label="Done", emoji="☑️", style=discord.ButtonStyle.green, row=4)
-    async def done_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if not self.selected_option or self.selected_option == "default":
-            await self.bot.db.upsert_config(self.guild_config)
-            await interaction.response.edit_message(  # noqa
+    async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        if not self.guild_config.notifications_channel:
+            await interaction.response.send_message(  # noqa
                 embed=Embed(
                     bot=self.bot,
-                    title="Settings Updated",
-                    description="Successfully updated the settings.",
-                    color=discord.Color.green(),
+                    title="Channel not set",
+                    description="You must set a channel to send updates to.",
+                    color=discord.Color.red(),
                 ),
-                view=None
+                ephemeral=True
             )
-            self.stop()
-        else:
-            self.selected_option = None
-            self._refresh_components()
-            embed = self._create_embed()
-            await interaction.response.edit_message(embed=embed, view=self)  # noqa
+            return
+
+        await self.bot.db.upsert_config(self.guild_config)
+        await interaction.response.edit_message(view=None)  # noqa
+        await interaction.followup.send(  # noqa
+            embed=Embed(
+                bot=self.bot,
+                title="Settings Updated",
+                description="Successfully updated the settings.",
+                color=discord.Color.green(),
+            ),
+            ephemeral=True
+        )
+        self.stop()
+
+    @discord.ui.button(label="Delete config", emoji="🗑️", style=discord.ButtonStyle.red, row=4)
+    async def delete_config_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        await self.bot.db.delete_config(interaction.guild_id)
+        await interaction.response.edit_message(view=None)  # noqa
+        bot_created_roles = await self.bot.db.get_all_guild_bot_created_roles(interaction.guild_id)
+        embed = Embed(
+            bot=self.bot,
+            title="Guild config deleted",
+            description="Successfully deleted guild settings.",
+            color=discord.Color.green(),
+        )
+        view: ConfirmView | None = None
+        send_kwargs = {"embed": embed, "wait": True, "ephemeral": True}
+        if bot_created_roles:
+            extra = f"Would you like the bot to delete all {len(bot_created_roles)} it created?"
+            embed.description += "\n" + extra
+            view = ConfirmView(self.bot, interaction)
+            send_kwargs["view"] = view
+
+        msg = await interaction.followup.send(**send_kwargs)
+        if view is not None:
+            await view.wait()
+            if view.value is False or view.value is None:
+                return await msg.edit(view=None, embed=Embed(
+                    bot=self.bot,
+                    title="Operation Cancelled",
+                    description="The bot will not delete the roles it created.",
+                    color=discord.Color.green(),
+                ))
+            else:  # value is True
+                success_count = 0
+                for role in interaction.guild.roles:
+                    if role.id in bot_created_roles:
+                        try:
+                            await role.delete()
+                            success_count += 1
+                        except discord.HTTPException:
+                            pass
+                await interaction.followup.send(
+                    embed=Embed(
+                        bot=self.bot,
+                        title="Deleted Roles",
+                        description=f"Successfully deleted {success_count} roles.",
+                        color=discord.Color.green(),
+                    ),
+                    ephemeral=True
+                )
+                await self.bot.db.delete_all_guild_created_roles(interaction.guild_id)
+        self.stop()
+
+    @discord.ui.button(label="Cancel", emoji="✖️", style=discord.ButtonStyle.red, row=4)
+    async def cancel_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        await interaction.response.edit_message(  # noqas
+            embed=Embed(
+                bot=self.bot,
+                title="Cancelled",
+                description="Setting changes have been cancelled.",
+                color=discord.Color.green(),
+            ),
+            view=None
+        )
+        self.stop()

@@ -69,7 +69,6 @@ class MangaClient(commands.Bot):
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
 
-        self._session.ignored_urls = self._session.ignored_urls.union(await self.db.get_webhooks())
         self.mangadex_api = MangaDexAPI(
             CachedClientSession(proxy=self.proxy_addr, name="cache.dex", trust_env=True)
         )
