@@ -57,8 +57,11 @@ class Chapter:
         return re.sub(r"\s+", " ", result).strip()
 
     def __repr__(self):
-        return f"[{self.name}]({self.url})"
+        return f"[{{{self.index}}}|{self.name}]({self.url})"
         # return f"Chapter(url={self.url}, name={self.name}, index={self.index})"
+
+    def __str__(self):
+        return f"[{self.name}]({self.url})"
 
     def to_dict(self):
         return {

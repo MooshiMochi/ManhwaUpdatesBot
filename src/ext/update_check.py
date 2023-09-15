@@ -33,8 +33,8 @@ class UpdateCheckCog(commands.Cog):
         self.bot.logger.info("Loaded Updates Cog...")
         self.bot.add_view(BookmarkChapterView(self.bot))
 
-        self.check_updates_task.add_exception_type(Exception)
-        self.check_manhwa_status.add_exception_type(Exception)
+        self.check_updates_task.add_exception_type(Exception, aiohttp.ClientConnectorError)
+        self.check_manhwa_status.add_exception_type(Exception, aiohttp.ClientConnectorError)
         self.check_updates_task.start()
         self.check_manhwa_status.start()
 
@@ -52,7 +52,8 @@ class UpdateCheckCog(commands.Cog):
         """
         try:
             return await coro
-        except Exception as error:
+        # Even though ClientConnectorError inherits from Exception, it's not getting caught.
+        except (Exception, ClientConnectorError) as error:
             rv = "None"
             if isinstance(error, ClientConnectorError):
                 self.logger.warning(
