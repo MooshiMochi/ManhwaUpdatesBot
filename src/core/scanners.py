@@ -1748,7 +1748,11 @@ class Asura(ABCScan):
         cover_image = soup.find("div", {"class": "thumb", "itemprop": "image"}).find(
             "img"
         )
-        return cover_image["src"] if cover_image else None
+        if cover_image:
+            img_url = cover_image["src"]
+            _start_index = img_url.index(cls.base_url)
+            img_url = img_url[_start_index:]
+            return img_url
 
     @classmethod
     async def search(
