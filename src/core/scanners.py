@@ -1514,7 +1514,8 @@ class Asura(ABCScan):
     def create_chapter_embed(
             cls, manga: PartialManga | Manga, chapter: Chapter, image_url: str | None = None
     ) -> discord.Embed | None:
-        image_url = Constants.no_img_available_url
+        _start_index = manga.cover_url.index(cls.base_url)
+        image_url = manga.cover_url[_start_index:]
         return super().create_chapter_embed(manga, chapter, image_url)
 
     @classmethod
