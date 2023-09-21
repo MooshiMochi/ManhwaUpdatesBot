@@ -120,7 +120,7 @@ class ABCScanMixin:
         cls.tasks = cls.tasks or []
 
     @classmethod
-    def _extract_manga_chapter_id(cls, manga_a_tags: list[Tag], chapter_a_tags: list[Tag]) -> None:
+    def _extract_manga_chapter_id(cls, manga_a_tags: list[Tag], chapter_a_tags: list[list[Tag]]) -> None:
         for manga_tag, chapter_tags in zip(manga_a_tags, chapter_a_tags):
             manga_href = manga_tag["href"]
             chapter_hrefs = [tag["href"] for tag in chapter_tags]

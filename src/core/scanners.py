@@ -2437,8 +2437,8 @@ class ReaperScans(ABCScan):
 
 class AnigliScans(ABCScan):
     rx: re.Pattern = RegExpressions.anigliscans_url
-    icon_url = "https://anigliscans.com/wp-content/uploads/2022/07/cropped-Untitled671_20220216124756-192x192.png"
-    base_url = "https://anigliscans.com"
+    icon_url = "https://anigliscans.xyz/wp-content/uploads/2022/07/cropped-Untitled671_20220216124756-192x192.png"
+    base_url = "https://anigliscans.xyz"
     fmt_url = base_url + "/series/{manga_url_name}"
     name = "anigliscans"
     id_first = False
@@ -3188,22 +3188,15 @@ class LuminousScans(ABCScan):
             text = await resp.text()
 
             soup = BeautifulSoup(text, "html.parser")
-            possible_manga_containers = soup.find_all("div", {"class": "listupd"})  # noqa
-            try:
-                manga_container = possible_manga_containers[1]  # TODO: Investigate IndexError here
-            except IndexError:
-                manga_container = possible_manga_containers[0]
-                await cls.report_error(
-                    Exception("IndexError in get_front_page_partial_manga func"),
-                    file=write_to_discord_file(cls.name + ".html", text)
-                )
-            manga_img_tags = manga_container.find_all("img", {"class": "ts-post-image"})
-            chapters_container = manga_container.find_all("div", {"class": "luf"})
-            chapter_a_tags = [x.find_all("a") for x in chapters_container]
-            manga_a_tags = [x[0] for x in chapter_a_tags]
-            chapter_a_tags = [x[1:] for x in chapter_a_tags]
 
-            cls._extract_manga_chapter_id(manga_a_tags, chapter_a_tags)
+            manga_divs = soup.select("div.postbody > div.bixbox:first-child > div.listupd > div.utao")
+            if not manga_divs:
+                return []
+            manga_img_tags = [x.select_one("div.imgu > a > img.ts-post-image") for x in manga_divs]
+            manga_a_tags = [x.select_one("div.luf > a") for x in manga_divs]
+            chapter_a_tags = [x.select("div.luf > ul > li > a") for x in manga_divs]
+
+            cls._extract_manga_chapter_id(manga_a_tags, list(chapter_a_tags))
 
             results: list[PartialManga] = []
             for manga_tag, chapter_tags, img_tag in zip(manga_a_tags, chapter_a_tags, manga_img_tags):
@@ -5211,7 +5204,8 @@ class NightScans(ABCScan):
     @classmethod
     def _make_headers(cls):
         headers = super()._make_headers()
-        used_headers = ["User-Agent"]
+        # used_headers = ["User-Agent"]
+        used_headers = {}
         return {k: v for k, v in headers.items() if k in used_headers}
 
     @classmethod

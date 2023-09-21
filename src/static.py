@@ -218,7 +218,7 @@ class RegExpressions:
     )
 
     anigliscans_url = re.compile(
-        r"^(?:https?://)?(?:www\.)?anigliscans\.com/(?:series/)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
+        r"^(?:https?://)?(?:www\.)?anigliscans\.xyz/(?:series/)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
     )
 
     comick_url = re.compile(

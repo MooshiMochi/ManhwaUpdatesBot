@@ -28,6 +28,21 @@ for scanlator in SCANLATORS.values():
 
 
 # noinspection PyTypeChecker
+
+class _ThirdProperties:
+    url = ""
+
+
+class User:
+    @property
+    def display_avatar(self):
+        return _ThirdProperties()
+
+    @property
+    def display_name(self):
+        return "Manhwa Updates"
+
+
 class Bot:
     def __init__(self, config: Dict):
         self.config: Dict = config
@@ -38,11 +53,12 @@ class Bot:
             "https": self.proxy_addr
         })
         self.session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
-        self.db = Database(self)
+        self.db = Database(self)  # noqa
         self.mangadex_api = MangaDexAPI(self.session)
         self.comick_api = ComickAppAPI(self.session)
         self._all_scanners: dict = SCANLATORS.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
         self.load_scanlators(SCANLATORS)
+        self.user = User()
 
     def load_scanlators(self, scanlators: dict):
         self._all_scanners.update(scanlators)
@@ -565,20 +581,20 @@ class TestCases(dict):
             ),
             "anigliscans": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://anigliscans.com/series/blooming/"),
+                test_data=TestInputData("https://anigliscans.xyz/series/blooming/"),
                 expected_result=ExpectedResult(
                     scanlator_name="anigliscans",
-                    manga_url="https://anigliscans.com/series/blooming/",
+                    manga_url="https://anigliscans.xyz/series/blooming/",
                     completed=True,
                     human_name="BLOOMING",
-                    manga_id=default_id_func("https://anigliscans.com/series/blooming"),
-                    curr_chapter_url="https://anigliscans.com/blooming-chapter-24/",
-                    first_chapter_url="https://anigliscans.com/blooming-chapter-1/",
-                    cover_image="https://anigliscans.com/wp-content/uploads/2022/07/blooming_cov.png",
+                    manga_id=default_id_func("https://anigliscans.xyz/series/blooming"),
+                    curr_chapter_url="https://anigliscans.xyz/blooming-chapter-24/",
+                    first_chapter_url="https://anigliscans.xyz/blooming-chapter-1/",
+                    cover_image="https://anigliscans.xyz/wp-content/uploads/2022/07/blooming_cov.png",
                     last_3_chapter_urls=[
-                        "https://anigliscans.com/blooming-chapter-22/",
-                        "https://anigliscans.com/blooming-chapter-23/",
-                        "https://anigliscans.com/blooming-chapter-24/",
+                        "https://anigliscans.xyz/blooming-chapter-22/",
+                        "https://anigliscans.xyz/blooming-chapter-23/",
+                        "https://anigliscans.xyz/blooming-chapter-24/",
                     ],
                 ),
                 test_subject=AnigliScans
@@ -917,8 +933,9 @@ if __name__ == "__main__":
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
 
-    asyncio.run(main())
+    if os.name != "nt":
+        asyncio.run(main())
     # asyncio.run(sub_main())
     # asyncio.run(paused_test())
     # asyncio.run(test_single_method())
-    # asyncio.run(test_single_scanlator("nightscans"))
+    asyncio.run(test_single_scanlator("anigliscans"))

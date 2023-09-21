@@ -757,8 +757,8 @@ class CommandsCog(commands.Cog):
             (
                 AnigliScans,
                 "AnigliScans",
-                "https://anigliscans.com/",
-                "https://anigliscans.com/series/manga-title/",
+                "https://anigliscans.xyz/",
+                "https://anigliscans.xyz/series/manga-title/",
             ),
             (
                 Aquamanga,
