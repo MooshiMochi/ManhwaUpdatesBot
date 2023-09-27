@@ -5,7 +5,7 @@ import discord
 from bs4 import BeautifulSoup, Tag
 
 from src.core.objects import Chapter, PartialManga
-from .classes import BasicScanlator, scanlators
+from .classes import BasicScanlator, NoStatusBasicScanlator, scanlators
 
 __all__ = (
     "scanlators",
@@ -92,7 +92,7 @@ class _ReaperScans(BasicScanlator):
         return []
 
 
-class _OmegaScans(BasicScanlator):
+class _OmegaScans(NoStatusBasicScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 

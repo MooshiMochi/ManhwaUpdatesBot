@@ -337,7 +337,7 @@ class TestCase:
         self.test = Test(self.test_setup, self.test_data, self.expected_result, self.test_subject, self.id_first)
 
     async def begin(self, test_method: str = "all") -> str:
-        if self.test_subject.name not in scanlators:
+        if self.test_subject is None or self.test_subject.name not in scanlators:
             print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
             return "N/A"
         else:
@@ -405,7 +405,7 @@ class TestCases(dict):
                         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-48/",
                     ]
                 ),
-                test_subject=scanlators["tritinia"]
+                test_subject=scanlators.get("tritinia")
             ),
             "manganato": TestCase(
                 self.test_setup,
@@ -425,7 +425,7 @@ class TestCases(dict):
                         "https://chapmanganato.com/manga-hf985162/chapter-155",
                     ]
                 ),
-                test_subject=scanlators["manganato"],
+                test_subject=scanlators.get("manganato"),
                 id_first=True
             ),
             "toonily": TestCase(
@@ -449,7 +449,7 @@ class TestCases(dict):
                         "https://toonily.com/webtoon/lucky-guy-0002/chapter-73/",
                     ]
                 ),
-                test_subject=scanlators["toonily"]
+                test_subject=scanlators.get("toonily")
             ),
             "mangadex": TestCase(
                 self.test_setup,
@@ -472,7 +472,7 @@ class TestCases(dict):
                         "https://mangadex.org/chapter/aef242d7-0051-431f-9f03-53442afdbead",
                     ]
                 ),
-                test_subject=scanlators["mangadex"],
+                test_subject=scanlators.get("mangadex"),
             ),
             "flamescans": TestCase(
                 self.test_setup,
@@ -492,7 +492,7 @@ class TestCases(dict):
                         "https://flamescans.org/1695679262-the-villainess-is-a-marionette-chapter-69/",
                     ]
                 ),
-                test_subject=scanlators["flamescans"]
+                test_subject=scanlators.get("flamescans")
             ),
             "asura": TestCase(
                 self.test_setup,
@@ -514,7 +514,7 @@ class TestCases(dict):
                         "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-64-notice/",
                     ]
                 ),
-                test_subject=scanlators["asura"]
+                test_subject=scanlators.get("asura")
             ),
             "aquamanga": TestCase(
                 self.test_setup,
@@ -536,7 +536,7 @@ class TestCases(dict):
                         "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
                     ]
                 ),
-                test_subject=scanlators["aquamanga"]
+                test_subject=scanlators.get("aquamanga")
             ),
             "reaperscans": TestCase(
                 self.test_setup,
@@ -564,7 +564,7 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=scanlators["reaperscans"],
+                test_subject=scanlators.get("reaperscans"),
             ),
             "anigliscans": TestCase(
                 self.test_setup,
@@ -584,7 +584,7 @@ class TestCases(dict):
                         "https://anigliscans.xyz/blooming-chapter-24/",
                     ],
                 ),
-                test_subject=scanlators["anigliscans"]
+                test_subject=scanlators.get("anigliscans")
             ),
             "comick": TestCase(
                 self.test_setup,
@@ -604,7 +604,7 @@ class TestCases(dict):
                         "https://comick.app/comic/00-solo-leveling/DARIhC3K",
                     ],
                 ),
-                test_subject=scanlators["comick"]
+                test_subject=scanlators.get("comick")
             ),
             "voidscans": TestCase(
                 self.test_setup,
@@ -624,7 +624,7 @@ class TestCases(dict):
                         "https://void-scans.com/superhuman-era-chapter-48/",
                     ],
                 ),
-                test_subject=scanlators["voidscans"]
+                test_subject=scanlators.get("voidscans")
             ),
             "luminousscans": TestCase(
                 self.test_setup,
@@ -647,7 +647,7 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=scanlators["luminousscans"]
+                test_subject=scanlators.get("luminousscans")
             ),
             "lscomic": TestCase(
                 self.test_setup,
@@ -667,7 +667,7 @@ class TestCases(dict):
                         "https://lscomic.com/manga/8th-class-mage-returns/chapter-81/",
                     ],
                 ),
-                test_subject=scanlators["lscomic"]
+                test_subject=scanlators.get("lscomic")
             ),
             "drakescans": TestCase(
                 self.test_setup,
@@ -687,7 +687,7 @@ class TestCases(dict):
                         "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
                     ],
                 ),
-                test_subject=scanlators["drakescans"]
+                test_subject=scanlators.get("drakescans")
             ),
             "mangabaz": TestCase(
                 self.test_setup,
@@ -709,7 +709,7 @@ class TestCases(dict):
                         "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/",
                     ],
                 ),
-                test_subject=scanlators["mangabaz"]
+                test_subject=scanlators.get("mangabaz")
             ),
             "mangapill": TestCase(
                 self.test_setup,
@@ -730,7 +730,7 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=scanlators["mangapill"]
+                test_subject=scanlators.get("mangapill")
             ),
             "bato.to": TestCase(
                 self.test_setup,
@@ -754,7 +754,7 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=scanlators["bato"]
+                test_subject=scanlators.get("bato")
             ),
             "omegascans": TestCase(
                 self.test_setup,
@@ -776,7 +776,7 @@ class TestCases(dict):
                         "https://omegascans.org/series/dorm-room-sisters/chapter-93-5",
                     ],
                 ),
-                test_subject=scanlators["omegascans"],
+                test_subject=scanlators.get("omegascans")
             ),
             "nightscans": TestCase(
                 self.test_setup,
@@ -796,7 +796,7 @@ class TestCases(dict):
                         "https://nightscans.net/all-attribute-in-martial-arts-chapter-70/",
                     ]
                 ),
-                test_subject=scanlators["nightscans"]
+                test_subject=scanlators.get("nightscans")
             ),
             "suryascans": TestCase(  # noqa
                 self.test_setup,
@@ -816,7 +816,7 @@ class TestCases(dict):
                         "https://suryascans.com/modern-dude-in-the-murim-chapter-22/",
                     ]
                 ),
-                test_subject=scanlators["suryascans"]
+                test_subject=scanlators.get("suryascans")
             ),
         }
 
@@ -868,7 +868,7 @@ async def sub_main():
             ],
         ),
         # id_first=True,
-        test_subject=scanlators["omegascans"],
+        test_subject=scanlators.get("omegascans")
     )
     try:
         await run_single_test(testCase)

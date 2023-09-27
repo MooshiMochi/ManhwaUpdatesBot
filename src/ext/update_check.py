@@ -384,68 +384,77 @@ class UpdateCheckCog(commands.Cog):
         if scanner.name in disabled_scanlators:
             self.bot.logger.debug(f"Scanlator {scanner.name} is disabled... Ignoring update check!")
             return
-
+        current_req_url: str | None = None
         for manga in mangas:
-            await asyncio.sleep(20)  # delay between each request
-            update_check_result: ChapterUpdate | str = await self.handle_exception(
-                scanner.check_updates(manga), scanner, manga.url
-            )
-            if isinstance(update_check_result, str):
-                next_step = update_check_result
-                match next_step:
-                    case "continue" | "None":
-                        continue
-                    case "return":
-                        return
-                    case unknown_result:
-                        self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
-                        raise Exception(unknown_result)
-            if not update_check_result:
-                self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.title} status check!")
-                continue
-
-            elif update_check_result.is_completed == manga.completed:
-                continue
-            else:
-                self.logger.debug(
-                    f"[{manga.scanlator.title()}] Updated status for {manga}: "
-                    f"{manga.status} -> {update_check_result.status}"
+            try:
+                await asyncio.sleep(20)  # delay between each request
+                current_req_url = manga.url
+                update_check_result: ChapterUpdate | str = await self.handle_exception(
+                    scanner.check_updates(manga), scanner, manga.url
                 )
-                manga.update(status=update_check_result.status)
-            guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)
-            guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
-            await self.bot.db.update_series(manga)
-
-            for guild_config in guild_configs:
-                if not guild_config.notifications_channel:
+                if isinstance(update_check_result, str):
+                    next_step = update_check_result
+                    match next_step:
+                        case "continue" | "None":
+                            continue
+                        case "return":
+                            return
+                        case unknown_result:
+                            self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
+                            raise Exception(unknown_result)
+                if not update_check_result:
+                    self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.title} status check!")
                     continue
-                if not guild_config.notifications_channel.permissions_for(guild_config.guild.me).send_messages:
-                    self.bot.logger.warning(
-                        f"Missing permissions to send messages in {guild_config.notifications_channel}"
-                    )
+
+                elif update_check_result.is_completed == manga.completed:
                     continue
-
-                ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_config.guild.id, manga.id)
-
-                if ping_role_id:
-                    ping_role = guild_config.guild.get_role(ping_role_id)
                 else:
-                    ping_role = None
-                pings = list({ping_role, guild_config.default_ping_role})  # remove duplicates
-                pings = [x.mention for x in pings if x]  # apparently role.mentionable doesn't mean you can't mention it
-                formatted_pings = "".join(pings)
-
-                await guild_config.notifications_channel.send(
-                    f"||<Manga ID: {manga.id}>||\n{formatted_pings}",
-                    embed=discord.Embed(
-                        title=f"{manga.title} has been marked as {'completed' if manga.completed else 'ongoing'}!",
-                        color=discord.Color.green()
+                    self.logger.debug(
+                        f"[{manga.scanlator.title()}] Updated status for {manga}: "
+                        f"{manga.status} -> {update_check_result.status}"
                     )
-                )
-                self.logger.info(f"[{manga.scanlator}] {manga.title} has been marked "
-                                 f"as {'completed' if manga.completed else 'ongoing'}!"
-                                 )
+                    manga.update(status=update_check_result.status)
+                guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)
+                guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
+                await self.bot.db.update_series(manga)
 
+                for guild_config in guild_configs:
+                    if not guild_config.notifications_channel:
+                        continue
+                    if not guild_config.notifications_channel.permissions_for(guild_config.guild.me).send_messages:
+                        self.bot.logger.warning(
+                            f"Missing permissions to send messages in {guild_config.notifications_channel}"
+                        )
+                        continue
+
+                    ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_config.guild.id, manga.id)
+
+                    if ping_role_id:
+                        ping_role = guild_config.guild.get_role(ping_role_id)
+                    else:
+                        ping_role = None
+                    pings = list({ping_role, guild_config.default_ping_role})  # remove duplicates
+                    pings = [x.mention for x in pings if
+                             x]  # apparently role.mentionable doesn't mean you can't mention it
+                    formatted_pings = "".join(pings)
+
+                    await guild_config.notifications_channel.send(
+                        f"||<Manga ID: {manga.id}>||\n{formatted_pings}",
+                        embed=discord.Embed(
+                            title=f"{manga.title} has been marked as {'completed' if manga.completed else 'ongoing'}!",
+                            color=discord.Color.green()
+                        )
+                    )
+                    self.logger.info(f"[{manga.scanlator}] {manga.title} has been marked "
+                                     f"as {'completed' if manga.completed else 'ongoing'}!"
+                                     )
+            except Exception as e:
+                self.bot.logger.debug(f"[{mangas[0].scanlator}] Checking for status updates was interrupted!")
+                traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
+                error_as_str = f"[{mangas[0].scanlator}]: URL - {current_req_url}\n{traceback}"
+                self.logger.error(error_as_str)
+                await self.bot.log_to_discord(error_as_str)
+                return
         self.bot.logger.debug(f"[{mangas[0].scanlator}] Finished checking for status updates!")
 
     @tasks.loop(hours=2.0)
@@ -516,6 +525,7 @@ class UpdateCheckCog(commands.Cog):
 
     @check_manhwa_status.before_loop
     async def before_status_check_task(self):
+        await self.bot.wait_until_ready()
         await asyncio.sleep(300)  # add a 5 min delay
 
 
