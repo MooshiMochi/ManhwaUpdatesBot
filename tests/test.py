@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
@@ -22,6 +23,8 @@ from src.static import Constants
 from src.utils import ensure_configs, load_config, setup_logging
 
 logger: logging.Logger = logging.getLogger("test")
+
+root_path = [x for x in sys.path if x.removesuffix("/").endswith("ManhwaUpdatesBot")][0]
 
 
 # noinspection PyTypeChecker
@@ -107,7 +110,7 @@ class SetupTest:
 
     @staticmethod
     def load_config() -> Dict:
-        config = load_config(logger, auto_exit=False, filepath="../tests/config.yml")
+        config = load_config(logger, auto_exit=False, filepath=os.path.join(root_path, "tests/config.yml"))
         return ensure_configs(logger, config, scanlators, auto_exit=False)
 
 
