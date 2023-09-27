@@ -33,11 +33,11 @@ class ChapterUpdate:
         self.extra_kwargs = extra_kwargs or []
 
     def __repr__(self):
-        return f"UpdateResult({len(self.new_chapters)} new chapters, status={self.status})"
+        return f"ChapterUpdate({len(self.new_chapters)} new chapters, status={self.status})"
 
     @property
     def is_completed(self):
-        return self.status.lower() in Constants.completed_status_set
+        return self.status is not None and self.status.lower() in Constants.completed_status_set
 
 
 class Chapter:
