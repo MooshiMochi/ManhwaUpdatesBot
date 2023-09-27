@@ -2,6 +2,44 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // September 26th 2023
+
+- Re-wrote the scanlator system for the bot.
+    - It now uses JSON file to add websites to the bot.
+        - See `lookup_map.json`.
+    - Created a JSON Schema file to help with adding websites.
+        - See `schema.json`
+    - Added the `json_tree.py` file to represent the JSON form of a website in python
+- Added ability to search by scanlator in autocomplete functions.
+- Added handling for trying to start the bot when not connected to a network (offline).
+- Added the `Manga.status` property (returns a String).
+- Added the `get_display_embed` method for Manga class.
+- Added the `More Info` button to the `SubscribeView` in `ui.views.py`
+- Added the `/info` command. It will display all available info the bot has on a manhwa.
+    - Removed the `/latest` command. The `/info` command has replaced its functionality
+- The `/search` command will now return a list of PartialManga objects.
+    - More info about a manga can be retrieved using the `More Info` button.
+    - The partial manga will display the URL, Cover, Title and latest chapters.
+- Moved the API classes (mangadexAPI and comickAPI) in the `./apis` folder.
+- Updated the `status_update` task. It now runs every 24 hours with 20 sec between requests.
+- Updated `tests.py` to use the new scanlator system.
+- Updated `TODO.md`.
+- Renamed the `series.completed` database column to `series.status`.
+    - Changed its datatype from `BOOLEAN` to `TEXT`.
+- Renamed the `series.human_name` database column to `series.title`.
+- Deleted the `last_known_status` property of SCANLATORS.
+- Delete SCANLATORS and relpaced it with `scanlators.scanlators`.
+- Deleted the `ABCScan` and `ABCScanUtilsMixin` classes from `objects.py`
+- Deleted the `scanners.py` file (rip 6+ months of work and 5.6k lines of code)
+- Deleted the `overwrites.py` file. It no longer has a use.
+
+### Bug Fixes:
+
+- Deleted the `overwrites.Embed` class as it was causing issues with the `Embed.__eq__` method.
+- Fixed Asura, Luminousscans and Flamescans URLs.
+- Fixed bookmark displaying `Wait For Updates!` when the manga is marked as completed for `Next Chapter` property.
+- Manually updated the URL for some comick manhwa in the database (they changed for some reason)
+
 ## // September 13th 2023
 
 - Created new `overwrites.py` file to contain all overwriting.

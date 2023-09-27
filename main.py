@@ -3,12 +3,13 @@ import logging
 import os
 import sys
 
+from aiohttp import ClientConnectorError
 from discord import Intents
 from discord.errors import LoginFailure
 
 from src.core import BotCommandTree, CachedClientSession, MangaClient
 from src.core.cache import CachedCurlCffiSession
-from src.core.scanners import SCANLATORS
+from src.core.scanlators import scanlators
 from src.utils import (
     ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, setup_logging, silence_debug_loggers,
     test_logger
@@ -41,12 +42,6 @@ async def custom_initializer(bot: MangaClient, _logger: logging.Logger) -> None:
         None
     """
     _logger.info("Running custom initializer...")
-    for scanlator in SCANLATORS.values():
-        scanlator.call_init()
-
-    # importing this allows for the overwriting to take place
-    _logger.info("Loading overwrites...")
-    import src.overwrites  # noqa
 
 
 async def main():
@@ -60,7 +55,7 @@ async def main():
     test_logger(_logger)
 
     _logger.info("Starting bot...")
-    config = ensure_configs(_logger, config, SCANLATORS)
+    config = ensure_configs(_logger, config, scanlators)
 
     ensure_logs()
 
@@ -82,7 +77,7 @@ async def main():
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
     client.load_config(config)
-    client.load_scanlators(SCANLATORS)
+    client.load_scanlators(scanlators)
 
     await ensure_environment(client, _logger)
     await ensure_proxy(config, _logger)
@@ -100,6 +95,9 @@ async def main():
             )
             await client.close()
             exit_bot()
+        except ClientConnectorError as e:
+            if e.strerror == "getaddrinfo failed":
+                _logger.critical("You are offline! Please connect to a network and try again!")
 
 
 if __name__ == "__main__":

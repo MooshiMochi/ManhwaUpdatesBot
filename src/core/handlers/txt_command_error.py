@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
-from src.overwrites import Embed
 from src.static import Emotes
 
 if TYPE_CHECKING:
@@ -58,8 +57,7 @@ class TxtCommandErrorHandler(commands.Cog):
                 e = f"{error.number} times"
             else:
                 e = f"{error.number} time"
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Woah, calm down.",
                 description=f"This command can only be used {e} {d[error.per]}.",
                 color=discord.Colour.red(),
@@ -68,8 +66,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.MissingRole):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Hey, you can't do that!",
                 description=f"Sorry, you need to have the role <@&{error.missing_role}> "
                             + "to execute that command.",
@@ -79,8 +76,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.BadLiteralArgument):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Hey, you can't do that!",
                 description=f"Sorry, argument `{error.param.name}` must be `{'` or `'.join(error.literals)}`",
                 color=discord.Colour.red(),
@@ -89,8 +85,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.MissingAnyRole):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Hey, you can't do that!",
                 description="Sorry, you need to have one of the following roles: "
                             + f"<@&{'>, <@&'.join(error.missing_roles)}> to execute that command.",
@@ -110,8 +105,7 @@ class TxtCommandErrorHandler(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             resp = f"**❗ {self.bot.user.name} lacks some permissions it needs!**"
             resp += perms
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} I can't do that.",
                 color=0xFF0000,
                 description=resp,
@@ -120,8 +114,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.TooManyArguments):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description="That's a lot of arguments. Too many in fact.",
                 color=discord.Colour.red(),
@@ -132,8 +125,7 @@ class TxtCommandErrorHandler(commands.Cog):
         elif isinstance(error, commands.MissingRequiredArgument):
             param = str(error.param.name).replace("_", " ")
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description=f"Please provide the `{param}` argument.",
                 color=discord.Colour.red(),
@@ -143,8 +135,7 @@ class TxtCommandErrorHandler(commands.Cog):
         elif isinstance(error, commands.BadUnionArgument):
             param = str(error.param.name).replace("_", " ")
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description=f"Invalid `{param}` argument. Please try again.",
                 color=discord.Colour.red(),
@@ -153,8 +144,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.BadArgument):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description=f"{error} Please try again.",
                 color=discord.Colour.red(),
@@ -164,8 +154,7 @@ class TxtCommandErrorHandler(commands.Cog):
         # If a user tries to run a restricted command
         elif isinstance(error, commands.NotOwner):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Hey, you can't do that!",
                 description="This command is restricted.",
                 color=discord.Colour.red(),
@@ -174,8 +163,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.MemberNotFound):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description="Invalid member. Please try again.",
                 color=discord.Colour.red(),
@@ -184,8 +172,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.UserNotFound):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description="Invalid user. Please try again.",
                 color=discord.Colour.red(),
@@ -194,8 +181,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.RoleNotFound):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description="Invalid role. Please try again.",
                 color=discord.Colour.red(),
@@ -204,8 +190,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.ChannelNotFound):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description="Invalid channel. Please try again.",
                 color=discord.Colour.red(),
@@ -219,8 +204,7 @@ class TxtCommandErrorHandler(commands.Cog):
         # If the command is disabled
         elif isinstance(error, commands.DisabledCommand):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Hey, you can't do that!",
                 description="This command is disabled.",
                 color=discord.Colour.red(),
@@ -229,8 +213,7 @@ class TxtCommandErrorHandler(commands.Cog):
 
         # If the command is on a cooldown
         elif isinstance(error, commands.CommandOnCooldown):
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 description=(
                     f"**⏱️ | {ctx.author.name}**! "
                     f"Try again <t:{int(datetime.now().timestamp() + error.retry_after)}:R>!"
@@ -246,8 +229,7 @@ class TxtCommandErrorHandler(commands.Cog):
                 or isinstance(error, commands.UnexpectedQuoteError)
         ):
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="That's not right.",
                 description="I don't like quotes, please omit any quotes in the command.",
                 color=discord.Colour.red(),
@@ -266,15 +248,13 @@ class TxtCommandErrorHandler(commands.Cog):
                 )
             ctx.command.reset_cooldown(ctx)
             if len(error.missing_permissions) == 1:
-                embed = Embed(
-                    bot=self.bot,
+                embed = discord.Embed(
                     title="Hey, you can't do that!",
                     description=f"Sorry, you need the permission `{perms}` to execute this command.",
                     color=discord.Colour.red(),
                 )
             else:
-                embed = Embed(
-                    bot=self.bot,
+                embed = discord.Embed(
                     title="Hey, you can't do that!",
                     description=f"Sorry, you need the permissions `{perms}` to execute this command.",
                     color=discord.Colour.red(),
@@ -289,8 +269,7 @@ class TxtCommandErrorHandler(commands.Cog):
             send_kwargs = {}
             error: Exception
             ctx.command.reset_cooldown(ctx)
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} An unknown error occurred!",
                 color=0xFF0000,
                 description=f"{error}",

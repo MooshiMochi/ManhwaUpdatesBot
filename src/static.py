@@ -11,6 +11,11 @@ class Constants:
     no_img_available_url = "https://st4.depositphotos.com/14953852/22772/v/600/depositphotos_227725020-stock" \
                            "-illustration-image-available-icon-flat-vector.jpg"
 
+    completed_status_set: set[str] = {
+        "completed", "complete", "cancel", "cancelled", "canceled", "finish", "finished", "dropped", "drop", "end",
+        "ended"
+    }
+
     @staticmethod
     def default_headers() -> dict:
         """
@@ -181,84 +186,11 @@ class RegExpressions:
     url = re.compile(r"https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(%[0-9a-fA-F][0-9a-fA-F]))+")
     url_img_size = re.compile(r"-?(?P<width>\d)+x(?P<height>\d)+")
     url_id = re.compile(r"/(?P<id>\d+)-")
-    toonily_url = re.compile(
-        r"(?:https?://)?(?:www\.)?toonily\.com/webtoon/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?"
-    )
-    manganato_url = re.compile(
-        r"(?:https?://)?(?:www\.)?(?:chap)?manganato\.com/manga-(?P<id>[a-zA-Z0-9]+)(?:/.*)?"
-    )
-    tritinia_url = re.compile(
-        r"(?:https?://)?(?:www\.)?tritinia\.org/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?"
-    )
+    float_num = re.compile(r"(?P<float_num>[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+))")
     mangadex_url = re.compile(
         r"(?:https?://)?(?:www\.)?mangadex\.org/title/(?P<id>[a-zA-Z0-9-]+)(?:/.*)?"
-    )
-    flamescans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?flamescans\.org/series/(?:(?P<id>\d+)-)?(?P<url_name>\w[\w-]*?)(?:/.*)?$"
-        # r"^(?:https?://)?(?:www\.)?flamescans\.org/(?:series/)?(?:\d+-)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?("
-        # r"?:/.*)?$"
-    )
-
-    asura_url = re.compile(
-        # r"(?:https?://)?(?:www\.)?asuracomics\.com/(?:manga/)?(?P<id>\d+)?-?(?P<url_name>[\w-]+?)"
-        # r"(?:-chapter-[\d-]+)?/?(?:/.*)?$"  # TODO: Temp asura URL
-        r"(?:https?://)?(?:www\.)?asuracomics\.com/manga/(?:(?P<id>\d+)-)?(?P<url_name>\w[\w-]*?)(?:/.*)?$"
-    )
-
-    luminousscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?luminousscans\.com/series/(?:(?P<id>\d+)-)?(?P<url_name>[\w-]+)"
-    )
-
-    reaperscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?reaperscans\.com/comics/(?P<id>[0-9]+)-(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?"
-    )
-
-    aquamanga_url = re.compile(
-        r"(?:https?://)?(?:www\.)?aquamanga\.com/read/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?"
-    )
-
-    anigliscans_url = re.compile(
-        r"^(?:https?://)?(?:www\.)?anigliscans\.xyz/(?:series/)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
     )
 
     comick_url = re.compile(
         r"(?:https?://)?(?:www\.)?comick\.app/comic/(?P<url_name>[a-zA-Z0-9-]+)(?:\??/.*)?"
-    )
-
-    voidscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?void-scans\.com/(?:manga/)?(?P<url_name>[\w-]+?)(?:-chapter-[\d-]+)?/?(?:/.*)?$"
-    )
-
-    lscomic_url = re.compile(
-        r"(?:https?://)?(?:www\.)?lscomic\.com/manga/(?P<url_name>[\w-]+)(?:/.*)?"
-    )
-
-    drakescans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?drakescans\.com/series/(?P<url_name>[\w-]+)(?:/.*)?"
-    )
-
-    mangabaz_url = re.compile(
-        r"(?:https?://)?(?:www\.)?mangabaz\.net/mangas/(?P<url_name>[\w-]+)(?:/.*)?"
-    )
-
-    mangapill_url = re.compile(
-        # r"(?:https?://)?(?:www\.)?mangapill\.com/manga/(\d+)/([\w-]+)(?:/.*)?"
-        r"(?:https?://)?(?:www\.)?mangapill\.com/(?:manga|chapters)/?(?P<id>\d+)(?:-\d+)?/(?P<url_name>[\w-]+?)("
-        r"?:-chapter-[\d-]+)?/?(?:/.*)?$"
-    )
-
-    bato_url = re.compile(
-        r"(?:https?://)?(?:www\.)?bato\.to/series/(?P<id>\d+)/(?P<url_name>[\w-]+)(?:/.*)?"
-    )
-
-    omegascans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?omegascans\.org/series/(?P<url_name>[\w-]+)(?:/.*)?"
-    )
-
-    nightscans_url = re.compile(
-        r"(?:https?://)?(?:www\.)?nightscans\.net/series/(?P<url_name>[\w-]+)(?:/.*)?"
-    )
-
-    suryascans_url = re.compile(  # noqa
-        r"(?:https?://)?(?:www\.)?suryascans\.com/manga/(?P<url_name>[\w-]+)(?:/.*)?"
     )

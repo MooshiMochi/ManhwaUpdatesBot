@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
 
+from src.static import Constants, RegExpressions
 from src.ui import autocompletes
 
 if TYPE_CHECKING:
@@ -10,9 +11,16 @@ if TYPE_CHECKING:
 
 from discord import app_commands
 from discord.ext import commands
+import discord
 
-from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped, MangaNotTrackedError, CustomError
-from src.core.scanners import *
+from src.core.errors import (
+    GuildNotConfiguredError,
+    MangaCompletedOrDropped,
+    MangaNotTrackedError,
+    CustomError,
+    MangaNotFoundError
+)
+from src.core.scanlators import scanlators
 from src.core.objects import Manga
 from src.ui.views import SubscribeListPaginatorView, SubscribeView, PaginatorView, SupportView
 from src.ui.modals import InputModal
@@ -29,7 +37,6 @@ from src.utils import (
 class CommandsCog(commands.Cog):
     def __init__(self, bot: MangaClient):
         self.bot: MangaClient = bot
-        self.SCANLATORS: dict[str, ABCScan] = SCANLATORS
 
         ctx_menu_translate = app_commands.ContextMenu(
             name="Translate",
@@ -59,8 +66,7 @@ class CommandsCog(commands.Cog):
             return True
 
         if interaction.guild_id is None:
-            em = Embed(
-                bot=self.bot,
+            em = discord.Embed(
                 title="Error",
                 description="This command can only be used in a server.",
                 color=0xFF0000,
@@ -76,8 +82,7 @@ class CommandsCog(commands.Cog):
                         return True
                 except KeyError:
                     pass
-            em = Embed(
-                bot=self.bot,
+            em = discord.Embed(
                 title="Error",
                 description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
                 color=0xFF0000,
@@ -94,8 +99,7 @@ class CommandsCog(commands.Cog):
         # await interaction.response.defer(ephemeral=True, thinking=True)
         updates_cog: UpdateCheckCog | None = self.bot.get_cog("UpdateCheckCog")
         if not updates_cog:
-            em = Embed(
-                bot=self.bot,
+            em = discord.Embed(
                 title="Error",
                 description="The update check cog is not loaded.",
                 color=0xFF0000,
@@ -105,8 +109,7 @@ class CommandsCog(commands.Cog):
             return
 
         next_update_ts = int(updates_cog.check_updates_task.next_iteration.timestamp())
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="Next Update Check",
             description=(
                 f"The next update check is scheduled for "
@@ -135,10 +138,7 @@ class CommandsCog(commands.Cog):
     ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
-        scanlator: ABCScan | None = None
-
-        error_em = Embed(
-            bot=self.bot,
+        error_em = discord.Embed(
             title="Invalid URL",
             color=discord.Color.red(),
             description=(
@@ -148,10 +148,7 @@ class CommandsCog(commands.Cog):
         ).set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         if RegExpressions.url.search(manga_url):
-            for scan in self.SCANLATORS.values():
-                if scan.rx.search(manga_url):
-                    scanlator = scan
-                    break
+            scanlator = get_manga_scanlator_class(scanlators, manga_url)
 
             if (
                     scanlator is None
@@ -159,17 +156,11 @@ class CommandsCog(commands.Cog):
             ):
                 await interaction.followup.send(embed=error_em, ephemeral=True)
                 return
-            if scanlator.id_first:
-                series_id = await scanlator.get_manga_id(manga_url)
-                series_url = await scanlator.fmt_manga_url(series_id, manga_url)
-            else:
-                series_url = await scanlator.fmt_manga_url(None, manga_url)  # noqa
-                series_id = await scanlator.get_manga_id(series_url)
 
             # request_url = scanlator.prep_request_url(series_id, series_url)
 
             manga: Manga | None = await respond_if_limit_reached(
-                scanlator.make_manga_object(series_id, series_url), interaction
+                scanlator.make_manga_object(manga_url), interaction
             )
             # manga: Manga = await scanlator.make_manga_object(self.bot, series_id, series_url)
             if manga == "LIMIT_REACHED":
@@ -194,7 +185,7 @@ class CommandsCog(commands.Cog):
 
             if ping_role_id is None:
                 if guild_config.auto_create_role:  # should create and not specified
-                    role_name = manga.human_name[:97] + "..." if len(manga.human_name) > 100 else manga.human_name
+                    role_name = manga.title[:97] + "..." if len(manga.title) > 100 else manga.title
                     # try to find a role with that name already
                     existing_role = discord.utils.get(interaction.guild.roles, name=role_name)
                     if existing_role is not None:
@@ -206,8 +197,7 @@ class CommandsCog(commands.Cog):
         elif ping_role.is_bot_managed():
             return await interaction.followup.send(
                 embed=(
-                    Embed(
-                        bot=self.bot,
+                    discord.Embed(
                         title="Error",
                         description=(
                             "The role you provided is managed by a bot.\n"
@@ -219,8 +209,7 @@ class CommandsCog(commands.Cog):
         elif ping_role >= interaction.guild.me.top_role:
             return await interaction.followup.send(
                 embed=(
-                    Embed(
-                        bot=self.bot,
+                    discord.Embed(
                         title="Error",
                         description=(
                             "The role you provided is higher than my top role.\n"
@@ -231,14 +220,13 @@ class CommandsCog(commands.Cog):
 
         if ping_role:
             await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, ping_role.id)
-            description = f"Tracking **[{manga.human_name}]({manga.url}) ({ping_role.mention})** is successful!"
+            description = f"Tracking **[{manga.title}]({manga.url}) ({ping_role.mention})** is successful!"
         else:
             await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, None)
-            description = f"Tracking **[{manga.human_name}]({manga.url})** is successful!"
+            description = f"Tracking **[{manga.title}]({manga.url})** is successful!"
         description += f"\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
         description += f"\n\n**Note:** You can change the role to ping with `/track update`."
-        embed = Embed(
-            bot=self.bot,
+        embed = discord.Embed(
             title="Tracking Successful",
             color=discord.Color.green(),
             description=description,
@@ -268,8 +256,7 @@ class CommandsCog(commands.Cog):
             if role.is_bot_managed():
                 return await interaction.followup.send(
                     embed=(
-                        Embed(
-                            bot=self.bot,
+                        discord.Embed(
                             title="Error",
                             description=(
                                 "The role you provided is managed by a bot.\n"
@@ -281,8 +268,7 @@ class CommandsCog(commands.Cog):
             elif role >= interaction.guild.me.top_role:
                 return await interaction.followup.send(
                     embed=(
-                        Embed(
-                            bot=self.bot,
+                        discord.Embed(
                             title="Error",
                             description=(
                                 "The role you provided is higher than my top role.\n"
@@ -294,8 +280,7 @@ class CommandsCog(commands.Cog):
             if ping_role_id and ping_role_id == role.id:
                 return await interaction.followup.send(
                     embed=(
-                        Embed(
-                            bot=self.bot,
+                        discord.Embed(
                             title="Error",
                             description=(
                                 "The role you provided is already the role for this manga."
@@ -310,8 +295,7 @@ class CommandsCog(commands.Cog):
         manga: Manga = await self.bot.db.get_series(manga_id)
         await interaction.followup.send(
             embed=(
-                Embed(
-                    bot=self.bot,
+                discord.Embed(
                     title="Success",
                     description=(
                         f"The role for {manga} has been updated to {role.mention if role else 'nothing'}."
@@ -345,8 +329,7 @@ class CommandsCog(commands.Cog):
         await self.bot.db.delete_manga_track_instance(interaction.guild_id, manga_id)
         await interaction.followup.send(
             embed=(
-                Embed(
-                    bot=self.bot,
+                discord.Embed(
                     title="Success",
                     description=(
                         f"Successfully stopped tracking {manga}."
@@ -361,10 +344,10 @@ class CommandsCog(commands.Cog):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         tracked_manga: list[Manga] = await self.bot.db.get_all_guild_tracked_manga(interaction.guild_id)
-        tracked_manga = sorted(tracked_manga, key=lambda x: x.human_name)
+        tracked_manga = sorted(tracked_manga, key=lambda x: x.title)
 
         if not tracked_manga:
-            em = Embed(bot=self.bot, title="Nothing found", color=discord.Color.red())
+            em = discord.Embed(title="Nothing found", color=discord.Color.red())
             em.description = "There are no tracked manga in this server."
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
@@ -373,8 +356,7 @@ class CommandsCog(commands.Cog):
         embeds: list[discord.Embed] = []
 
         def _make_embed(subs_count: int) -> discord.Embed:
-            return Embed(
-                bot=self.bot,
+            return discord.Embed(
                 title=f"Tracked Manhwa ({subs_count})",
                 description="",
                 color=discord.Color.blurple(),
@@ -389,7 +371,7 @@ class CommandsCog(commands.Cog):
 
             for manga in manga_group:
                 line_index += 1
-                to_add = f"**{line_index}.** [{manga.human_name}]({manga.url}) - {manga.last_chapter}\n"
+                to_add = f"**{line_index}.** [{manga.title}]({manga.url}) - {manga.last_chapter}\n"
 
                 if not scanlator_title_added:
                     if len(em.description) + len(manga.scanlator) + 6 > 4096:
@@ -431,14 +413,10 @@ class CommandsCog(commands.Cog):
 
         if RegExpressions.url.search(manga_id):
             input_url = manga_id
-            scanlator = get_manga_scanlator_class(SCANLATORS, url=input_url)
+            scanlator = get_manga_scanlator_class(scanlators, url=input_url)
             if scanlator is None:
                 raise MangaNotFoundError(input_url)
-            if scanlator.id_first:
-                manga_id = await scanlator.get_manga_id(input_url)
-            else:
-                manga_url = await scanlator.fmt_manga_url("", input_url)
-                manga_id = await scanlator.get_manga_id(manga_url)
+            manga_id = await scanlator.get_id(raw_url=manga_id)
 
         is_tracked = await self.bot.db.is_manga_tracked(interaction.guild_id, manga_id)
         manga = await self.bot.db.get_series(manga_id)
@@ -467,8 +445,7 @@ class CommandsCog(commands.Cog):
             if ping_role is None:
                 return await interaction.followup.send(
                     embed=(
-                        Embed(
-                            bot=self.bot,
+                        discord.Embed(
                             title="Error",
                             description=(
                                 "Even though the role exists in the server, the bot cannot find it?\n"
@@ -486,8 +463,7 @@ class CommandsCog(commands.Cog):
         description = f"Successfully subscribed to **{manga} ({ping_role.mention})!**"
         description += f"\n\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
 
-        embed = Embed(
-            bot=self.bot,
+        embed = discord.Embed(
             title="Subscribed to Series",
             color=discord.Color.green(),
             description=description,
@@ -520,7 +496,7 @@ class CommandsCog(commands.Cog):
                 await interaction.user.remove_roles(role, reason="Unsubscribed from a manga.")
         await self.bot.db.unsub_user(interaction.user.id, manga_id)
 
-        em = Embed(bot=self.bot, title="Unsubscribed", color=discord.Color.green())
+        em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
         em.description = f"Successfully unsubscribed from {manga}."
         em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
@@ -539,10 +515,10 @@ class CommandsCog(commands.Cog):
             subs: list[Manga] = await self.bot.db.get_user_subs(interaction.user.id)
         else:
             subs: list[Manga] = await self.bot.db.get_user_guild_subs(interaction.guild_id, interaction.user.id)
-        subs = sorted(subs, key=lambda x: x.human_name)
+        subs = sorted(subs, key=lambda x: x.title)
 
         if not subs:
-            em = Embed(bot=self.bot, title="No Subscriptions", color=discord.Color.red())
+            em = discord.Embed(title="No Subscriptions", color=discord.Color.red())
             em.description = "You have no subscriptions."
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
@@ -551,8 +527,7 @@ class CommandsCog(commands.Cog):
         embeds: list[discord.Embed] = []
 
         def _make_embed(subs_count: int) -> discord.Embed:
-            return Embed(
-                bot=self.bot,
+            return discord.Embed(
                 title=f"Your{' (Global)' if _global else ''} Subscriptions ({subs_count})",
                 description="",
                 color=discord.Color.blurple(),
@@ -567,7 +542,7 @@ class CommandsCog(commands.Cog):
 
             for manga in manga_group:
                 line_index += 1
-                to_add = f"**{line_index}.** [{manga.human_name}]({manga.url}) - {manga.last_chapter}\n"
+                to_add = f"**{line_index}.** [{manga.title}]({manga.url}) - {manga.last_chapter}\n"
 
                 if not scanlator_title_added:
                     if len(em.description) + len(manga.scanlator) + 6 > 4096:
@@ -598,27 +573,6 @@ class CommandsCog(commands.Cog):
         view.message = await interaction.followup.send(embed=embeds[0], view=view)
 
     @app_commands.command(
-        name="latest", description="Get the latest chapter of a manga."
-    )
-    @app_commands.describe(manga_id="The name of the manga.")
-    @app_commands.autocomplete(manga_id=autocompletes.manga)
-    @app_commands.rename(manga_id="manga")
-    async def latest_chapter(self, interaction: discord.Interaction, manga_id: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-
-        manga: Manga = await self.bot.db.get_series(manga_id)
-        if not manga:
-            raise MangaNotFoundError(manga_id)
-        em = Embed(bot=self.bot, title="Latest Chapter", color=discord.Color.green())
-        em.description = (
-            f"The latest chapter of {manga} is {manga.last_chapter}."
-        )
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-
-        await interaction.followup.send(embed=em, ephemeral=True)
-        return
-
-    @app_commands.command(
         name="chapters", description="Get a list of chapters for a manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
@@ -637,7 +591,7 @@ class CommandsCog(commands.Cog):
         modify_embeds(
             embeds,
             title_kwargs={
-                "title": f"Chapters for {manga.human_name}",
+                "title": f"Chapters for {manga.title}",
                 "color": discord.Color.green(),
             },
             footer_kwargs={
@@ -653,127 +607,125 @@ class CommandsCog(commands.Cog):
         name="supported_websites", description="Get a list of supported websites."
     )
     async def supported_websites(self, interaction: discord.Interaction) -> None:
-        em = Embed(bot=self.bot, title="Supported Websites", color=discord.Color.green())
+        em = discord.Embed(title="Supported Websites", color=discord.Color.green())
         supp_webs = [
             (
-                MangaDex,
+                scanlators.get("mangadex"),
                 "MangaDex",
                 "https://mangadex.org/",
                 "https://mangadex.org/title/1b2c3d/",
             ),
             (
-                Manganato,
+                scanlators.get("manganato"),
                 "Manganato",
                 "https://manganato.com/",
                 "https://manganato.com/manga-m123456",
             ),
             (
-                TritiniaScans,
+                scanlators.get("tritinia"),
                 "TritiniaScans",
                 "https://tritinia.org",
                 "https://tritinia.org/manga/manga-title/",
             ),
             (
-                FlameScans,
+                scanlators.get("flamescans"),
                 "FlameScans",
                 "https://flamescans.org/",
                 "https://flamescans.org/series/manga-title/",
             ),
             (
-                Asura,
+                scanlators.get("asura"),
                 "Asura",
-                # "https://asura.gg/",
-                # "https://asura.gg/manga/manga-title/",
-                "https://asuracomics.com",  # TODO: temp asura URL
-                "https://asuracomics.com/manga/manga-title/",  # TODO: temp asura URL
+                "https://asuracomics.gg",
+                "https://asuracomics.gg/manga/manga-title/",
             ),
             (
-                ReaperScans,
+                scanlators.get("reaperscans"),
                 "ReaperScans",
                 "https://reaperscans.com/",
                 "https://reaperscans.com/comics/12351-manga-title/",
             ),
             (
-                Comick,
+                scanlators.get("comick"),
                 "Comick",
                 "https://comick.app/",
                 "https://comick.app/comic/manga-title/",
             ),
             (
-                LuminousScans,
+                scanlators.get("luminousscans"),
                 "Luminous",
                 "https://luminousscans.com/",
                 "https://luminousscans.com/series/12351-manga-title/",
             ),
             (
-                DrakeScans,
+                scanlators.get("drakescans"),
                 "DrakeScans",
                 "https://drakescans.com/",
                 "https://drakescans.com/series/manga-title/",
             ),
             (
-                Mangabaz,
+                scanlators.get("mangabaz"),
                 "Mangabaz",
                 "https://mangabaz.net/",
                 "https://mangabaz.net/mangas/manga-title/",
             ),
             (
-                Mangapill,
+                scanlators.get("mangapill"),
                 "Mangapill",
                 "https://mangapill.com/",
                 "https://mangapill.com/manga/12351/manga-title/",
             ),
             (
-                LSComic,
+                scanlators.get("lscomic"),
                 "LSComic",
                 "https://lscomic.com/",
                 "https://lscomic.com/manga/manga-title/",
             ),
             (
-                Bato,
+                scanlators.get("bato"),
                 "Bato.to",
                 "https://bato.to/",
                 "https://bato.to/series/12351/manga-title/",
             ),
             (
-                Toonily,
+                scanlators.get("toonily"),
                 "Toonily",
                 "https://toonily.com",
                 "https://toonily.net/manga/manga-title/",
             ),
             (
-                OmegaScans,
+                scanlators.get("omegascans"),
                 "OmegaScans",
                 "https://omegascans.org/",
                 "https://omegascans.org/series/manga-title/",
             ),
             (
-                VoidScans,
+                scanlators.get("voidscans"),
                 "VoidScans",
                 "https://void-scans.com/",
                 "https://void-scans.com/manga/manga-title/",
             ),
             # Scanlators requiring user-agents
             (
-                AnigliScans,
+                scanlators.get("anigliscans"),
                 "AnigliScans",
                 "https://anigliscans.xyz/",
                 "https://anigliscans.xyz/series/manga-title/",
             ),
             (
-                Aquamanga,
+                scanlators.get("aquamanga"),
                 "Aquamanga",
                 "https://aquamanga.com/",
                 "https://aquamanga.com/read/manga-title/",
             ),
             (
-                NightScans,
+                scanlators.get("nightscans"),
                 "NightScans",
                 "https://nightscans.net/",
                 "https://nightscans.net/series/manga-title/",
             ),
             (
-                SuryaScans,
+                scanlators.get("suryascans"),
                 "SuryaScans",
                 "https://suryascans.com/",
                 "https://suryascans.com/manga/manga-title/",
@@ -786,25 +738,14 @@ class CommandsCog(commands.Cog):
         )
 
         for scanlator, name, url, _format in supp_webs:
-            # Only remove those that are SET to None in user-agents in config or not in SCANLATORS
+            # Only remove those that are SET to None in user-agents in config or not in scanlators
             if (
-                    scanlator.name not in SCANLATORS
+                    scanlator.name not in scanlators
                     or user_agents.get(scanlator.name, True) is None
             ):
                 continue
-            if scanlator.last_known_status:
-                status_code = scanlator.last_known_status[0]
-                status_ts = int(scanlator.last_known_status[1])
-            else:
-                status_code = "N/A"
-                status_ts = int(datetime.now().timestamp())
 
-            status_str = (
-                "OK" if status_code == 200 else
-                "Rate-Limited" if status_code == 429 else
-                "Temp-Banned" if status_code == 403 else "Unknown"
-            )
-            em.description += f"• [{name}]({url}) (`{status_code}:` {status_str} @ <t:{status_ts}:R>)\n"
+            em.description += f"• [{name}]({url})\n"
             em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"
 
         em.description += "\n\n__**Note:**__"
@@ -820,7 +761,7 @@ class CommandsCog(commands.Cog):
         name="help", description="Get started with Manhwa Updates Bot."
     )
     async def help(self, interaction: discord.Interaction) -> None:
-        em = Embed(bot=self.bot, title="Manhwa Updates Bot Help", color=discord.Color.green())
+        em = discord.Embed(title="Manhwa Updates Bot Help", color=discord.Color.green())
         em.description = (
             """
 **Getting Started:**
@@ -876,6 +817,26 @@ Ensure the bot has these permissions for smooth operation.
         return
 
     @app_commands.command(
+        name="info",
+        description="Display info about a manhwa."
+    )
+    @app_commands.rename(series_id="manhwa")
+    @app_commands.describe(series_id="The name of the manhwa you want to get info for.")
+    @app_commands.autocomplete(series_id=autocompletes.manga)
+    async def series_info(
+            self,
+            interaction: discord.Interaction,
+            series_id: str,
+    ) -> None:
+        await interaction.response.defer(ephemeral=False)  # noqa
+        manga = await self.bot.db.get_series(series_id)
+        if not manga:
+            raise MangaNotFoundError(series_id)
+        em = manga.get_display_embed(scanlators)
+        view = SubscribeView(self.bot, [em], more_info_btn=False)
+        await interaction.followup.send(embed=em, view=view)
+
+    @app_commands.command(
         name="search",
         description="Search for a manga on on all/one scanlator of choice.",
     )
@@ -890,8 +851,7 @@ Ensure the bot has these permissions for smooth operation.
             scanlator_website: Optional[str] = None,
     ) -> None:
         await interaction.response.defer(ephemeral=False)  # noqa
-        cannot_search_em = Embed(
-            bot=self.bot,
+        cannot_search_em = discord.Embed(
             title="Error",
             description=(
                 f"The bot cannot search on that website yet.\n"
@@ -899,8 +859,7 @@ Ensure the bot has these permissions for smooth operation.
             ),
             color=discord.Color.red(),
         )
-        no_results_em = Embed(
-            bot=self.bot,
+        no_results_em = discord.Embed(
             title="Error",
             description=(
                 f"No results were found for `{query}`.\n"
@@ -910,44 +869,46 @@ Ensure the bot has these permissions for smooth operation.
         if RegExpressions.url.search(
                 query
         ):  # if the query is a URL, try to get the manga from the URL
-            scanlator = get_manga_scanlator_class(SCANLATORS, url=query)
+            scanlator = get_manga_scanlator_class(scanlators, url=query)
             if scanlator is None:
                 return await interaction.followup.send(
                     f"Could not find a manga on `{query}`.", ephemeral=True
                 )
             if hasattr(scanlator, "search"):
-                em = await scanlator.search(query=query, as_em=True)
+                embeds: list[discord.Embed] = await scanlator.search(query=query, as_em=True)
+                em = (embeds or [None])[0]
                 if em is None:
                     return await interaction.followup.send(
                         embed=no_results_em, ephemeral=True
                     )
-                view = SubscribeView(self.bot)
+                view = SubscribeView(self.bot, items=[em])
                 return await interaction.followup.send(embed=em, ephemeral=True, view=view)
             else:
                 return await interaction.followup.send(
                     embed=cannot_search_em, ephemeral=True
                 )
         elif scanlator_website:
-            scanlator = SCANLATORS.get(scanlator_website.lower())
+            scanlator = scanlators.get(scanlator_website.lower())
             if not scanlator:
                 return await interaction.followup.send(
                     f"Could not find a scanlator with the name `{scanlator_website}`.",
                     ephemeral=True,
                 )
             if hasattr(scanlator, "search"):
-                em = await scanlator.search(query=query, as_em=True)
-                if em is None:
+                embeds = await scanlator.search(query=query, as_em=True)
+                if not embeds:
                     return await interaction.followup.send(
                         embed=no_results_em, ephemeral=True
                     )
-                await interaction.followup.send(embed=em, ephemeral=True, view=SubscribeView(self.bot))
+                view = SubscribeView(self.bot, items=embeds, author_id=interaction.user.id)  # noqa
+                await interaction.followup.send(embed=embeds[0], ephemeral=True, view=view)
             else:
                 return await interaction.followup.send(
                     embed=cannot_search_em, ephemeral=True
                 )
         else:
             results = [x for x in [
-                await scanlator.search(query=query) for scanlator in SCANLATORS.values() if  # noqa
+                await scanlator.search(query=query, as_em=True) for scanlator in scanlators.values() if
                 hasattr(scanlator, "search")
             ] if x is not None]
             if not results:
@@ -955,7 +916,8 @@ Ensure the bot has these permissions for smooth operation.
                     embed=no_results_em, ephemeral=True
                 )
             else:
-                view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)
+                results = [x[0] for x in results if x]  # grab first result of each
+                view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)  # noqa
                 await interaction.followup.send(embed=results[0], view=view, ephemeral=False)
                 return
 
@@ -986,8 +948,7 @@ Ensure the bot has these permissions for smooth operation.
             if lang["code"] == to:
                 lang_to = lang["language"]
 
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="Translation Complete 🈳",
             description=f"Language: `{lang_from}` \⟶ `{lang_to}`"
         )
@@ -1013,8 +974,7 @@ Ensure the bot has these permissions for smooth operation.
                 lang_from = lang["language"]
             if lang["code"] == to:
                 lang_to = lang["language"]
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="Translation Complete 🈳",
             description=f"Language: `{lang_from}` \⟶ `{lang_to}`"
         )
@@ -1044,8 +1004,7 @@ Ensure the bot has these permissions for smooth operation.
                 lang_from = lang["language"]
             if lang["code"] == to:
                 lang_to = lang["language"]
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="Translation Complete 🈳",
             description=f"Language: `{lang_from}` \⟶ `{lang_to}`"
         )

@@ -9,15 +9,13 @@
       https://astrascans.com/
       https://xcalibrscans.com/webcomics/
       https://ravenscans.com/
+      https://zeroscans.com/
 
 ### Cloudflare protected websites to add:
 
       Nothing at the moment...
 
 ### Features to add:
-
-- When a series has been marked complete/dropped, send a notification in the updates
-  channel that the series has been marked as such.
 
 - when a user leaves the server, check if they are in any other server that the bot is also in
   and update the guild_id in the database in the users and bookmarks table to that guild id.
@@ -27,21 +25,23 @@
   or
   not
 
-- /info command that will display the currently available info on a manga.
-
 - When multiple chapters are released at once, instead of sending a message for each chapter, send them all at once
     - If above implemented, when the "Mark as read/unread" button is pressed, add a select where the user can
       select which chapters they want to mark as read/unread.
 
 - When using autocomplete, prioritize the results that start with the user input, then levenshtein distance
 
-- In the bookmark autocompletes, write the scanlator name in brackets then title '(asura) Title'
-- (Enhancement) Create a MangaManager class that will handle all the manga-related functions
-- (Enhancement) Attempt to add search option for more websites
 - Create a PartialManga class that will store the manga name, manga id and manga url. Use it for search results.
+- Change the Status Check function from `updates_check.py`
+    - Should check it in batches.
+    - Each batch should containt ~ 3 - 5 manhwa per website.
+    - Example `[asura, asura, asura, toonily, toonily, toonily, ...]`
+    - This way the update check function can be run MUCH quicker, and won't impact the rate limit too much.
+    - Need to think about how to know which manhwas has been checked or not as loading all manhwa into memory is not
+      viable.
+    - Perhaps store all manhwa IDs in a SET?
+    - Maybe there's a different solution.
 
 ### Issues:
 
-- Luminous scans is changing the ID their manhwa URLs. This makes it impossible to store their website URLs.
-    - Solution: Change the way updates are checked. Should go to main webpage and scrape from there rather than
-    - individual URLs.
+Nothing here

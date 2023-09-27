@@ -8,13 +8,11 @@ import discord
 from discord import Intents
 from discord.ext import commands
 
+from .apis import ComickAppAPI, MangaDexAPI
 from .cache import CachedClientSession, CachedCurlCffiSession
-from .comickAPI import ComickAppAPI
 from .database import Database
-from .mangadexAPI import MangaDexAPI
 from .objects import GuildSettings
-from .scanners import SCANLATORS
-from ..overwrites import Embed
+from .scanlators import scanlators
 
 
 class MangaClient(commands.Bot):
@@ -44,7 +42,7 @@ class MangaClient(commands.Bot):
         self._debug_mode: bool = False
         self.proxy_addr: Optional[str] = None
 
-        self._all_scanners: dict = SCANLATORS.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
+        self._all_scanners: dict = scanlators.copy()  # You must not mutate this dict. Mutate scanlators instead.
 
     async def setup_hook(self):
         await self.db.async_init()
@@ -78,7 +76,7 @@ class MangaClient(commands.Bot):
 
     def _remove_unavailable_scanlators(self):
         for scanlator, user_agent in self._config["user-agents"].items():
-            if user_agent is None and SCANLATORS.pop(scanlator, None) is not None:
+            if user_agent is None and scanlators.pop(scanlator, None) is not None:
                 self._logger.warning(f"Removed {scanlator} from scanlators (requires approved user agent).")
 
     async def update_restart_message(self):
@@ -126,14 +124,10 @@ class MangaClient(commands.Bot):
 
         self._config: dict = config
 
-    def load_scanlators(self, scanlators: dict):
-        self._all_scanners.update(scanlators)
-        for scanlator in scanlators.values():
+    def load_scanlators(self, _scanlators: dict):
+        for scanlator in _scanlators.values():
             scanlator.bot = self
-            scanlator.call_init()
-        for scanlator in self._all_scanners.values():
-            scanlator.bot = self
-            scanlator.call_init()
+        self._all_scanners.update(_scanlators)
 
     async def on_ready(self):
         self._logger.info(f"{self.user.name}#{self.user.discriminator} is ready!")
@@ -215,7 +209,7 @@ class MangaClient(commands.Bot):
                 return
             try:
                 pretty_msg = pretty_msg[:4000]
-                em = Embed(color=0x000000, description=pretty_msg, bot=self)
+                em = discord.Embed(color=0x000000, description=pretty_msg)
                 await channel.send(embed=em)
             except Exception as e:
                 self.logger.error(f"Error while logging command usage: {e}")

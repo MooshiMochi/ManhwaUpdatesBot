@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 
 from src.core.cache import CachedClientSession
-from src.core.scanners import MangaDex
 
 
 class MangaDexAPI:
@@ -43,7 +42,6 @@ class MangaDexAPI:
             async with self.session.request(
                     method, url, params=params, json=data, headers=headers, **kwargs
             ) as response:
-                MangaDex.last_known_status = (response.status, datetime.now().timestamp())
                 json_data = await response.json()
                 if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
                     self.rate_limit_remaining = int(limit_remaining)
@@ -86,31 +84,24 @@ class MangaDexAPI:
         return None
 
     async def get_chapters_list(
-            self, manga_id: str, languages=None
+            self, manga_id: str, languages=None, offset: int = 0, limit: int = 100
     ) -> list[Dict[str, Any]]:
         """Return a list of chapters in ascending order"""
         if languages is None:
             languages = ["en"]
         endpoint = f"manga/{manga_id}/feed"
         params = {
-            "translatedLanguage[]": languages, "order[chapter]": "desc", "order[volume]": "desc"
+            "translatedLanguage[]": languages, "order[chapter]": "asc", "offset": offset, "limit": limit
         }
-        # , "limit": 50
         result = await self.__request(
             "GET", endpoint, params=params
         )
-        if result.get("data"):
-            for x in range(len(result.copy())):
-                if result["data"][x]["attributes"]["volume"] is None:
-                    result["data"][x]["attributes"]["volume"] = 0
-            result = sorted(result["data"], key=lambda _x: (
-                float(_x['attributes']['volume'] or 0), float(
-                    ''.join(filter(lambda z: z.isdigit(), _x['attributes']['chapter'])) or 0
-                )
-            ))
-        else:
-            result = result["data"] or []
-        return list(result)
+        chapters = result.get("data") or []
+
+        total_displayed = result["total"]
+        if total_displayed > limit + offset:
+            chapters.extend(await self.get_chapters_list(manga_id, languages, offset + limit, limit))
+        return list(chapters)
 
     async def search(
             self,

@@ -12,9 +12,9 @@ import discord
 from aiohttp.client_exceptions import ClientConnectorError
 
 from src.core.errors import CustomError, URLAccessFailed
-from src.core.objects import ABCScan, ChapterUpdate, Manga, PartialManga
-from src.core.scanners import SCANLATORS
-from src.overwrites import Embed
+from src.core.objects import ChapterUpdate, Manga, PartialManga
+from src.core.scanlators import scanlators
+from src.core.scanlators.classes import AbstractScanlator
 from src.ui.views import BookmarkChapterView
 from src.utils import chunked, group_items_by
 
@@ -38,7 +38,7 @@ class UpdateCheckCog(commands.Cog):
         self.check_updates_task.start()
         self.check_manhwa_status.start()
 
-    async def handle_exception(self, coro: callable, scanlator: ABCScan, req_url: str) -> str:
+    async def handle_exception(self, coro: callable, scanlator: AbstractScanlator, req_url: str) -> str:
         """
         Handles exceptions that occur while checking for updates.
 
@@ -96,10 +96,6 @@ class UpdateCheckCog(commands.Cog):
                     )
                     await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
                 rv = "continue"
-            # elif isinstance(error, aiohttp.ClientConnectorError):
-            #     curr_index = mangas.index(manga)
-            #     await self.check_updates_by_scanlator(mangas[curr_index:])
-            #     rv = "return"  # try again from the current manga and end the current iteration.
             else:
                 self.logger.error(
                     f"Error while checking for updates for {scanlator.name.title()}",
@@ -114,7 +110,7 @@ class UpdateCheckCog(commands.Cog):
                 rv = "continue"
             return rv
 
-    async def check_each_manga_url(self, scanlator: ABCScan, mangas: list[Manga]) -> list[ChapterUpdate]:
+    async def check_each_manga_url(self, scanlator: AbstractScanlator, mangas: list[Manga]) -> list[ChapterUpdate]:
         """
         Summary:
             Checks for updates by checking each manga's URL individually.
@@ -144,7 +140,7 @@ class UpdateCheckCog(commands.Cog):
             elif isinstance(new_update, ChapterUpdate):
                 if (
                         not new_update and
-                        new_update.new_cover_url == manga.cover_url and new_update.series_completed == manga.completed
+                        new_update.new_cover_url == manga.cover_url and new_update.is_completed == manga.completed
                 ):
                     continue
                 else:
@@ -154,7 +150,7 @@ class UpdateCheckCog(commands.Cog):
         return chapter_updates
 
     async def check_with_front_page_scraping(
-            self, scanlator: ABCScan, mangas: list[Manga]
+            self, scanlator: AbstractScanlator, mangas: list[Manga]
     ) -> tuple[list[ChapterUpdate], list[Manga]]:
         """
         Summary:
@@ -176,13 +172,11 @@ class UpdateCheckCog(commands.Cog):
             All error handling will be done in the caller function for simplicity.
             In this case, this is the check_updates_by_scanlator function.
         """
-        if not scanlator.supports_front_page_scraping:
-            return [], mangas
         partial_mangas: list[PartialManga] = []
         # setting a limit of 10 just in case all proxies are broken to avoid infinite loop with while loops.
         for attempt_num in range(1, 11):
             try:
-                partial_mangas = await scanlator.get_front_page_partial_manga()
+                partial_mangas = await scanlator.get_fp_partial_manga()
                 if not partial_mangas:
                     return [], mangas
                 break
@@ -237,10 +231,10 @@ class UpdateCheckCog(commands.Cog):
                         manga.id,
                         new_chapters,
                         partial_manga.cover_url,
-                        manga.completed,
+                        manga.status,
                     )
                 )
-                if scanlator.requires_embed_for_chapter_updates:
+                if scanlator.json_tree.properties.requires_update_embed:
                     manga_chapter_updates[-1].extra_kwargs = [
                         {"embed": scanlator.create_chapter_embed(partial_manga, chapter)}
                         for chapter in new_chapters
@@ -316,8 +310,7 @@ class UpdateCheckCog(commands.Cog):
                         )
             next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
             await guild_config.notifications_channel.send(
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>"),
             )
 
@@ -341,7 +334,7 @@ class UpdateCheckCog(commands.Cog):
                 total_new_chapters += 1
                 manga.update(
                     chapter,
-                    update.series_completed,
+                    update.status,
                     update.new_cover_url
                 )
             await self.bot.db.update_series(manga)
@@ -349,30 +342,27 @@ class UpdateCheckCog(commands.Cog):
             f"Inserted {total_new_chapters} chapter entries for {len(chapter_updates)} manhwa in the database"
         )
 
-    async def updated_check_updates_by_scanlator(self, mangas: list[Manga]):
+    async def check_updates_by_scanlator(self, mangas: list[Manga]):
         if not mangas:
             return  # nothing to update
-        elif mangas[0].scanlator not in SCANLATORS:
+        elif mangas[0].scanlator not in scanlators:
             self.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
             return
-        scanlator = SCANLATORS.get(mangas[0].scanlator)
+        scanlator = scanlators.get(mangas[0].scanlator)
         self.logger.debug(f"[{scanlator.name}] Checking for updates for {mangas[0].scanlator}...")
-        if scanlator.supports_front_page_scraping:
-            result = await self.handle_exception(
-                self.check_with_front_page_scraping(scanlator, mangas), scanlator, scanlator.base_url
-            )
-            if isinstance(result, tuple):
-                chapter_updates, mangas_remaining = result
-            else:  # type = str
-                return
-            if mangas_remaining:
-                self.logger.debug(
-                    f"[{scanlator.name}] Checking individual manhwa for updates: {mangas_remaining}")
-                solo_manga_updates = await self.check_each_manga_url(scanlator, mangas_remaining)
-                chapter_updates.extend(solo_manga_updates)
-        else:
-            self.logger.debug(f"[{scanlator.name}] Checking all manhwa as individual manhwa for updates!")
-            chapter_updates = await self.check_each_manga_url(scanlator, mangas)
+
+        result = await self.handle_exception(
+            self.check_with_front_page_scraping(scanlator, mangas), scanlator, scanlator.json_tree.properties.base_url
+        )
+        if isinstance(result, tuple):
+            chapter_updates, mangas_remaining = result
+        else:  # type = str
+            return
+        if mangas_remaining:
+            self.logger.debug(
+                f"[{scanlator.name}] Checking individual manhwa for updates: {mangas_remaining}")
+            solo_manga_updates = await self.check_each_manga_url(scanlator, mangas_remaining)
+            chapter_updates.extend(solo_manga_updates)
 
         if not chapter_updates:
             self.logger.debug(f"[{scanlator.name}] Finished checking for updates with no updates!")
@@ -383,12 +373,12 @@ class UpdateCheckCog(commands.Cog):
             f"[{scanlator.name}] Finished checking for updates with {len(chapter_updates)} manhwa updates!")
 
     async def check_status_update_by_scanlator(self, mangas: list[Manga]):
-        if mangas and mangas[0].scanlator not in SCANLATORS:
+        if mangas and mangas[0].scanlator not in scanlators:
             self.bot.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
             return
 
-        self.bot.logger.debug(f"Checking for updates for {mangas[0].scanlator}...")
-        scanner = SCANLATORS.get(mangas[0].scanlator)
+        self.bot.logger.debug(f"Checking for status updates for {mangas[0].scanlator}...")
+        scanner = scanlators.get(mangas[0].scanlator)
 
         disabled_scanlators = await self.bot.db.get_disabled_scanlators()
         if scanner.name in disabled_scanlators:
@@ -396,7 +386,7 @@ class UpdateCheckCog(commands.Cog):
             return
 
         for manga in mangas:
-            await asyncio.sleep(3600)  # 1 hour
+            await asyncio.sleep(20)  # delay between each request
             update_check_result: ChapterUpdate | str = await self.handle_exception(
                 scanner.check_updates(manga), scanner, manga.url
             )
@@ -411,13 +401,17 @@ class UpdateCheckCog(commands.Cog):
                         self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
                         raise Exception(unknown_result)
             if not update_check_result:
-                self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.human_name} status check!")
+                self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.title} status check!")
                 continue
 
-            elif update_check_result.series_completed == manga.completed:
+            elif update_check_result.is_completed == manga.completed:
                 continue
             else:
-                manga.update(completed=update_check_result.series_completed)
+                self.logger.debug(
+                    f"[{manga.scanlator.title()}] Updated status for {manga}: "
+                    f"{manga.status} -> {update_check_result.status}"
+                )
+                manga.update(status=update_check_result.status)
             guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)
             guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
             await self.bot.db.update_series(manga)
@@ -443,13 +437,12 @@ class UpdateCheckCog(commands.Cog):
 
                 await guild_config.notifications_channel.send(
                     f"||<Manga ID: {manga.id}>||\n{formatted_pings}",
-                    embed=Embed(
-                        bot=self.bot,
-                        title=f"{manga.human_name} has been marked as {'completed' if manga.completed else 'ongoing'}!",
+                    embed=discord.Embed(
+                        title=f"{manga.title} has been marked as {'completed' if manga.completed else 'ongoing'}!",
                         color=discord.Color.green()
                     )
                 )
-                self.logger.info(f"[{manga.scanlator}] {manga.human_name} has been marked "
+                self.logger.info(f"[{manga.scanlator}] {manga.title} has been marked "
                                  f"as {'completed' if manga.completed else 'ongoing'}!"
                                  )
 
@@ -472,16 +465,15 @@ class UpdateCheckCog(commands.Cog):
             grouped_series_to_update: list[list[Manga]] = group_items_by(series_to_update, ["scanlator"])
             grouped_series_to_update = list(sorted(grouped_series_to_update, key=lambda x: len(x)))
             _coros = [
-                # self.check_updates_by_scanlator(mangas)
-                self.updated_check_updates_by_scanlator(mangas)
+                self.check_updates_by_scanlator(mangas)
                 for mangas in grouped_series_to_update
             ]
-            chunked_coros = chunked(_coros, 2)
+            chunked_coros = chunked(_coros, 10)
             for chunk in chunked_coros:
                 await asyncio.gather(*chunk)
                 # await asyncio.sleep(20)  # no need to delay since it requests different websites
         except Exception as e:
-            self.logger.error("Error while checking for updates", exc_info=e)
+            self.logger.error("⚠️ Update Check Stopped!\n\nError while checking for updates", exc_info=e)
             traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
             await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
         finally:
@@ -512,16 +504,19 @@ class UpdateCheckCog(commands.Cog):
                 await asyncio.gather(*chunk)
 
         except Exception as e:
-            self.logger.error("Error while checking for status", exc_info=e)
+            self.logger.error("⚠️ Status Update Check Stopped!\n\nError while checking for status", exc_info=e)
             traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
             await self.bot.log_to_discord(f"Error when checking manhwa status: {traceback}")
         finally:
             self.logger.info("Status check finished =================")
 
     @check_updates_task.before_loop
-    @check_manhwa_status.before_loop
     async def before_check_updates_task(self):
         await self.bot.wait_until_ready()
+
+    @check_manhwa_status.before_loop
+    async def before_status_check_task(self):
+        await asyncio.sleep(300)  # add a 5 min delay
 
 
 async def setup(bot: MangaClient) -> None:

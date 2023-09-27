@@ -4,8 +4,6 @@ import inspect
 from functools import partial
 from typing import Literal, Optional, TYPE_CHECKING
 
-from src.overwrites import Embed
-
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -23,7 +21,7 @@ from discord.ext import commands
 
 from src.core.objects import TextPageSource, GuildSettings
 from src.ui.views import ConfirmView, PaginatorView
-from src.core.scanners import SCANLATORS
+from src.core.scanlators import scanlators
 
 
 class Restricted(commands.Cog):
@@ -85,8 +83,7 @@ class Restricted(commands.Cog):
     @commands.is_owner()
     async def developer(self, ctx):
         if ctx.invoked_subcommand is None:
-            embed = Embed(
-                bot=self.bot,
+            embed = discord.Embed(
                 title="Hmmm...",  # noqa
                 description=f"You seem lost. Try to use / for more commands.",
                 color=0xFF0000,
@@ -101,8 +98,7 @@ class Restricted(commands.Cog):
     @commands.is_owner()
     async def developer_restart(self, ctx: commands.Context):
         msg = await ctx.send(
-            embed=Embed(
-                bot=self.bot,
+            embed=discord.Embed(
                 description=f"⚠️ `Restarting the bot.`",
                 color=discord.Color.dark_theme(),
             )
@@ -172,8 +168,7 @@ class Restricted(commands.Cog):
     @commands.is_owner()
     async def dev_pull(self, ctx: commands.Context):
         out = subprocess.check_output("git pull", shell=True)
-        embed = Embed(
-            bot=self.bot,
+        embed = discord.Embed(
             title="git pull",
             description=f"```py\n{out.decode('utf8')}\n```",
             color=0x00FF00,
@@ -199,8 +194,7 @@ class Restricted(commands.Cog):
     )
     @commands.is_owner()
     async def developer_loaded_cogs(self, ctx):
-        embed = Embed(
-            bot=self.bot,
+        embed = discord.Embed(
             title="Loaded cogs",
             description="```diff\n- " + "\n- ".join(self.client.cogs) + "\n```",
             color=discord.Color.red(),
@@ -306,7 +300,7 @@ class Restricted(commands.Cog):
         # if f"cogs.{filename}" not in const.extensions:
         #     text = "\n- ".join(map(lambda x: x.replace("cogs.", ""), const.extensions))
         #     return await ctx.send(
-        #         embed=Embed(bot=self.bot,
+        #         embed=discord.Embed(
         #             description=f"```diff\n- {text}\n```",
         #             color=0xFF0000,
         #             title="Available cogs",
@@ -343,8 +337,7 @@ class Restricted(commands.Cog):
         ):
             text = "\n- ".join(all_loaded_cog_paths).replace("cogs.", "")
             return await ctx.send(
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     description=f"```diff\n- {text}\n```",
                     color=0xFF0000,
                     title="Available cogs",
@@ -385,8 +378,7 @@ class Restricted(commands.Cog):
                 map(lambda x: x.replace("cogs.", ""), all_loaded_cog_paths)
             )
             return await ctx.send(
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     description=f"```diff\n- {text}\n```",
                     color=0xFF0000,
                     title="Available cogs",
@@ -421,7 +413,7 @@ class Restricted(commands.Cog):
             "guild": ctx.guild,
             "message": ctx.message,
             "self": self,
-            "SCANLATORS": SCANLATORS,
+            "scanlators": scanlators,
             "_": self._last_result,
         }
 
@@ -517,7 +509,7 @@ class Restricted(commands.Cog):
         ).getPages()
 
         view = PaginatorView(pages, ctx)
-        view.message = await ctx.send(view.items[0], view=view)
+        view.message = await ctx.send(view.iter_items[0], view=view)
 
     @developer.command(
         name="export_db",
@@ -591,8 +583,7 @@ class Restricted(commands.Cog):
         if scanlator != "all":
             # noinspection PyProtectedMember
             if scanlator not in self.bot._all_scanners:
-                em = Embed(
-                    bot=self.bot,
+                em = discord.Embed(
                     title="Scanlator not found.",
                     description=f"Scanlator `{scanlator}` not found.",
                     color=discord.Color.red()
@@ -612,9 +603,9 @@ class Restricted(commands.Cog):
             new_status = await self.bot.db.toggle_scanlator(scanlator)
             if new_status:  # enabled
                 # noinspection PyProtectedMember
-                SCANLATORS[scanlator] = self.bot._all_scanners[scanlator]
+                scanlators[scanlator] = self.bot._all_scanners[scanlator]
             else:
-                SCANLATORS.pop(scanlator, None)
+                scanlators.pop(scanlator, None)
             if new_status:
                 scanlator_str = f"+<[ {scanlator:^15} ]>+\n"
             else:
@@ -622,8 +613,8 @@ class Restricted(commands.Cog):
             results.append(scanlator_str)
         result_str = ''.join(results)
         await ctx.send(
-            embed=Embed(
-                bot=self.bot, title=f"Toggled {len(results)} scanlators", description=f"```diff\n{result_str}```"
+            embed=discord.Embed(
+                title=f"Toggled {len(results)} scanlators", description=f"```diff\n{result_str}```"
             )
         )
         # await ctx.send(
@@ -636,8 +627,7 @@ class Restricted(commands.Cog):
         aliases=["dscan"]
     )
     async def disabled_scanlators(self, ctx: commands.Context):
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="Disabled scanlators.",
             description="List of all disabled scanlators.",
             color=discord.Color.red()
@@ -661,8 +651,7 @@ class Restricted(commands.Cog):
             "https://discord.gg/TYkw8VBZkr) and ping `.mooshi`.*"
         )
         message += bottom_text
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="⚠️ Important Update ⚠️",
             description=message,
             color=discord.Color.red()
@@ -671,8 +660,7 @@ class Restricted(commands.Cog):
 
         guild_configs = await self.bot.db.get_many_guild_config([x.id for x in self.bot.guilds])
         if not guild_configs:
-            await ctx.send(embed=Embed(
-                bot=self.bot,
+            await ctx.send(embed=discord.Embed(
                 title="⚠️ No guilds found!",
                 description="No guilds have been found in the database.",
                 color=discord.Color.red()
@@ -691,8 +679,7 @@ class Restricted(commands.Cog):
                 guild_configs_to_notify.append(guild_config)
 
         if not guild_configs_to_notify:
-            await ctx.send(embed=Embed(
-                bot=self.bot,
+            await ctx.send(embed=discord.Embed(
                 title="⚠️ Can't sent messages!",
                 description="There are no guilds for which the bot has perms to send messages.",
                 color=discord.Color.red()
@@ -707,16 +694,14 @@ class Restricted(commands.Cog):
         if view.value is None:  # timed out
             return
         elif view.value is False:  # cancelled = False
-            await view.message.edit(embed=Embed(
-                bot=self.bot,
+            await view.message.edit(embed=discord.Embed(
                 title="Cancelled!",
                 description="The message has been cancelled.",
                 color=discord.Color.red()
             ), view=None)
             return
 
-        await view.message.edit(embed=Embed(
-            bot=self.bot,
+        await view.message.edit(embed=discord.Embed(
             title="Sending...",
             description=f"Sending the message to {len(guild_configs_to_notify)} guilds...",
         ), view=None)
@@ -740,8 +725,7 @@ class Restricted(commands.Cog):
             except discord.HTTPException:
                 pass
 
-        await view.message.edit(embed=Embed(
-            bot=self.bot,
+        await view.message.edit(embed=discord.Embed(
             title="Sent!",
             description=f"Sent the message to {successes} guilds.",
             color=discord.Color.green()

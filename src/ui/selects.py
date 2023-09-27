@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.overwrites import Embed
-
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -143,7 +141,7 @@ class ChapterSelect(Select):
         if self.bookmark.last_read_chapter == self.bookmark.manga.available_chapters[
             -1
         ] and not self.bookmark.manga.completed:
-            # check if user is subscribed to the manga with manga.id
+            # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
             user_subscribed = True
             is_tracked: bool = await bot.db.is_manga_tracked(interaction.guild_id, self.bookmark.manga.id)
@@ -161,8 +159,7 @@ class ChapterSelect(Select):
 
         await self.view.update(interaction)
 
-        success_em = Embed(
-            bot=interaction.client,
+        success_em = discord.Embed(
             title="Bookmark Updated",
             description=f"Successfully updated bookmark to {self.bookmark.last_read_chapter}",
             color=discord.Color.green(),
@@ -175,7 +172,7 @@ class ChapterSelect(Select):
                 await interaction.response.send_message(embed=success_em, ephemeral=True)  # noqa
 
         elif user_subscribed:
-            success_em.description += f" and subscribed you to updates for {self.bookmark.manga.human_name}"
+            success_em.description += f" and subscribed you to updates for {self.bookmark.manga.title}"
             if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=success_em, ephemeral=True)
             else:

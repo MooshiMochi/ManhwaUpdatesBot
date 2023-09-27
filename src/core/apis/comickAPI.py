@@ -1,11 +1,9 @@
 import asyncio
-from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 
 from src.core.cache import CachedClientSession
-from src.core.scanners import Comick
 
 
 class ComickAppAPI:
@@ -31,7 +29,7 @@ class ComickAppAPI:
             data: Optional[Dict[str, Any]] = None,
             headers: Optional[Dict[str, Any]] = None,
             **kwargs
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
         url = f"{self.api_url}/{endpoint}"
         if not headers:
             headers = self.headers
@@ -42,7 +40,6 @@ class ComickAppAPI:
             async with self.session.request(
                     method, url, params=params, json=data, headers=headers, **kwargs
             ) as response:
-                Comick.last_known_status = (response.status, datetime.now().timestamp())
                 json_data = await response.json()
                 self.rate_limit_remaining = int(
                     response.headers.get("X-RateLimit-Remaining", "-1")
@@ -121,7 +118,7 @@ class ComickAppAPI:
             query: str = None,
             page: Optional[int] = None,
             limit: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         endpoint = "v1.0/search"
         params = {
             "q": query,

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .bot import MangaClient
 
 from src.core.objects import GuildSettings, Manga, Bookmark, Chapter
-from src.core.scanners import SCANLATORS
+from src.core.scanlators import scanlators
 from io import BytesIO
 import pandas as pd
 import sqlite3
@@ -28,7 +28,7 @@ class Database:
         self.client: MangaClient = client
         self.db_name = database_name
 
-        if not os.path.exists(f"./{self.db_name}"):
+        if not os.path.exists(self.db_name):
             with open(self.db_name, "w") as _:
                 ...
 
@@ -38,14 +38,14 @@ class Database:
                 """
                 CREATE TABLE IF NOT EXISTS series (
                     id TEXT PRIMARY KEY NOT NULL,
-                    human_name TEXT NOT NULL,
+                    title TEXT NOT NULL,
                     url TEXT NOT NULL,
                     synopsis TEXT,
                     series_cover_url TEXT NOT NULL,
                     last_chapter TEXT,
                     available_chapters TEXT,
                     
-                    completed BOOLEAN NOT NULL DEFAULT false,
+                    status TEXT NOT NULL DEFAULT 'Ongoing',
                     scanlator TEXT NOT NULL DEFAULT 'Unknown',
                     UNIQUE(id) ON CONFLICT IGNORE
                 )
@@ -236,13 +236,13 @@ class Database:
 
     async def add_series(self, manga_obj: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
-            if manga_obj.scanlator in SCANLATORS:
+            if manga_obj.scanlator in scanlators:
                 await db.execute(
                     """
-                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
-                completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
+                status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                     """,
-                    (SCANLATORS[manga_obj.scanlator].unload_manga_objects([manga_obj])[0].to_tuple()),
+                    ((await scanlators[manga_obj.scanlator].unload_manga([manga_obj]))[0].to_tuple()),
                 )
 
                 await db.commit()
@@ -253,13 +253,13 @@ class Database:
 
     async def upsert_bookmark(self, bookmark: Bookmark) -> bool:
         async with aiosqlite.connect(self.db_name) as db:
-            if bookmark.manga.scanlator in SCANLATORS:
+            if bookmark.manga.scanlator in scanlators:
                 await db.execute(
                     """
-                INSERT INTO series (id, human_name, url, synopsis, series_cover_url, last_chapter, available_chapters, 
-                completed, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
+                INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
+                status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO NOTHING;
                     """,
-                    (SCANLATORS[bookmark.manga.scanlator].unload_manga_objects([bookmark.manga])[0].to_tuple()),
+                    ((await scanlators[bookmark.manga.scanlator].unload_manga([bookmark.manga]))[0].to_tuple()),
                 )
             else:
                 raise CustomError(
@@ -386,13 +386,13 @@ class Database:
             query = """
                 SELECT
                     s.id,
-                    s.human_name,
+                    s.title,
                     s.url,
                     s.synopsis,
                     s.series_cover_url,
                     s.last_chapter,
                     s.available_chapters,
-                    s.completed,
+                    s.status,
                     s.scanlator
                     
                 FROM series AS s
@@ -402,7 +402,7 @@ class Database:
                 """
             if current is not None and bool(current.strip()) is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
-                query += " ORDER BY levenshtein(human_name, $2) DESC LIMIT 25;"
+                query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
                 params = (user_id, current)
             else:
                 query += ";"
@@ -417,33 +417,49 @@ class Database:
             return []
 
     # noinspection PyUnresolvedReferences
-    async def get_user_guild_subs(self, guild_id: int, user_id: int, current: str = None) -> list[Manga]:
+    async def get_user_guild_subs(
+            self,
+            guild_id: int,
+            user_id: int,
+            current: str = None,
+            autocomplete: bool = False,
+            scanlator: str | None = None
+    ) -> list[Manga]:
         """
         Returns a list of Manga class objects each representing a manga the user is subscribed to.
         >>> [Manga, ...]
         >>> None if no manga is found.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            query = """
-            SELECT * FROM series 
-            WHERE series.id IN (
-                SELECT series_id FROM user_subs WHERE guild_id = $1 AND id = $2
-                )
-            """
-            if current is not None and bool(current.strip()) is True:
+            _base = (
+                "SELECT * FROM series WHERE series.id IN (SELECT series_id FROM user_subs WHERE guild_id = $1 AND "
+                "id = $2)"
+            )
+            if autocomplete is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
-                query += " ORDER BY levenshtein(human_name, $3) DESC LIMIT 25;"
-                params = (guild_id, user_id, current)
+                is_current: bool = (current or "").strip() != ""
+                if scanlator is not None and is_current is True:
+                    query = f"{_base} AND scanlator = $3 ORDER BY levenshtein(title, $4) DESC LIMIT 25;"
+                    params = (guild_id, user_id, scanlator, current)
+                elif scanlator is not None and is_current is False:
+                    query = f"{_base} AND scanlator = $3 LIMIT 25;"
+                    params = (guild_id, user_id, scanlator)
+                elif is_current is True:
+                    query = f"{_base} ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
+                    params = (guild_id, user_id, current)
+                else:  # current False, scanlator None
+                    query = f"{_base} LIMIT 25;"
+                    params = (guild_id, user_id)
             else:
-                query += ";"
+                query = f"{_base};"
                 params = (guild_id, user_id)
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
                 return []
 
@@ -462,7 +478,7 @@ class Database:
             """
             if current is not None and bool(current.strip()) is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
-                query += " ORDER BY levenshtein(human_name, $2) DESC LIMIT 25;"
+                query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
                 params = (user_id, current)
             else:
                 query += ";"
@@ -472,8 +488,8 @@ class Database:
                 if result:
                     objects = Manga.from_tuples(result)
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
                 return []
 
@@ -499,8 +515,8 @@ class Database:
                 if result:
                     objects = Manga.from_tuples(result)
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
                 return None
 
@@ -542,7 +558,7 @@ class Database:
             async with db.execute(
                     """
                     SELECT * FROM series WHERE
-                    completed = 0 AND id IN (
+                    id IN (
                         SELECT series_id FROM user_subs 
                         UNION SELECT series_id FROM bookmarks 
                         UNION SELECT series_id FROM tracked_guild_series
@@ -552,9 +568,10 @@ class Database:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
+                    objects = [x for x in objects if not x.completed]
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
                 return None
 
@@ -571,13 +588,13 @@ class Database:
                     b.user_created,
                     
                     s.id,
-                    s.human_name,
+                    s.title,
                     s.url,
                     s.synopsis,
                     s.series_cover_url,
                     s.last_chapter,
                     s.available_chapters,
-                    s.completed,
+                    s.status,
                     s.scanlator
                     
                 FROM bookmarks AS b
@@ -620,13 +637,13 @@ class Database:
                     b.user_created,
                     
                     s.id,
-                    s.human_name,
+                    s.title,
                     s.url,
                     s.synopsis,
                     s.series_cover_url,
                     s.last_chapter,
                     s.available_chapters,
-                    s.completed,
+                    s.status,
                     s.scanlator
                     
                 FROM bookmarks AS b
@@ -651,24 +668,35 @@ class Database:
                     new_result.append(tuple(bookmark_params))
                 return Bookmark.from_tuples(new_result)
 
-    async def get_user_bookmarks_autocomplete(self, user_id: int, current: str = None) -> list[tuple[int, str]]:
+    async def get_user_bookmarks_autocomplete(
+            self, user_id: int, current: str = None, autocomplete: bool = False, scanlator: str | None = None
+    ) -> list[tuple[int, str]]:
         async with aiosqlite.connect(self.db_name) as db:
-            if current is not None and bool(current.strip()) is True:
+            if autocomplete is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
-                cursor = await db.execute(
-                    """
-                    SELECT series.id, series.human_name FROM series 
-                    JOIN bookmarks ON series.id = bookmarks.series_id 
-                    WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1
-                    ORDER BY levenshtein(human_name, $2) DESC
-                    LIMIT 25;
-                    """,
-                    (user_id, current),
+                is_current: bool = (current or "").strip() != ""
+                _base = (
+                    "SELECT series.id, series.title, series.scanlator FROM series "
+                    "JOIN bookmarks ON series.id = bookmarks.series_id "
+                    "WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1"
                 )
+                if scanlator is not None and is_current is True:
+                    query = f"{_base} AND scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
+                    params = (user_id, scanlator, current)
+                elif scanlator is not None and is_current is False:
+                    query = f"{_base} AND scanlator = $2 LIMIT 25;"
+                    params = (user_id, scanlator)
+                elif is_current is True:
+                    query = f"{_base} ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
+                    params = (user_id, current)
+                else:
+                    query = f"{_base} LIMIT 25;"
+                    params = (user_id,)
+                cursor = await db.execute(query, params)
             else:
                 cursor = await db.execute(
                     """
-                    SELECT series.id, series.human_name FROM series 
+                    SELECT series.id, series.title FROM series 
                     JOIN bookmarks ON series.id = bookmarks.series_id 
                     WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1;
                     """,
@@ -753,13 +781,13 @@ class Database:
                 result = await cursor.fetchone()
                 if result:
                     manga_obj = Manga.from_tuple(result)
-                    if manga_obj.scanlator in SCANLATORS:
-                        return (await SCANLATORS[manga_obj.scanlator].load_manga_objects([manga_obj]))[0]
+                    if manga_obj.scanlator in scanlators:
+                        return (await scanlators[manga_obj.scanlator].load_manga([manga_obj]))[0]
 
     async def get_series_title(self, series_id: str) -> str | None:
         """
         Summary:
-            Returns the 'human_name' of a series.
+            Returns the 'title' of a series.
 
         Args:
             series_id: The id of the series.
@@ -770,7 +798,7 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with db.execute(
                     """
-                    SELECT human_name FROM series WHERE id = ?;
+                    SELECT title FROM series WHERE id = ?;
                     """,
                     (series_id,),
             ) as cursor:
@@ -778,49 +806,39 @@ class Database:
                 if result:
                     return result[0]
 
-    async def get_all_series(self, current: str = None, *, autocomplete: bool = False) -> list[Manga] | None:
+    async def get_all_series(
+            self, current: str = None, *, autocomplete: bool = False, scanlator: str = None
+    ) -> list[Manga] | None:
         """
         Returns a list of Manga objects containing all series in the database.
         >>> [Manga, ...)]
         """
-        if current is not None and bool(current.strip()) is True:
-            async with aiosqlite.connect(self.db_name) as db:
+        async with aiosqlite.connect(self.db_name) as db:
+            if autocomplete is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
-
-                async with db.execute(
-                        """
-                        SELECT * FROM series
-                        ORDER BY levenshtein(human_name, ?) DESC
-                        LIMIT 25;
-                        """, (current,)
-                ) as cursor:
+                is_current: bool = (current or "").strip() != ""
+                if scanlator is not None and is_current is True:
+                    query = "SELECT * FROM series WHERE scanlator = $1 ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
+                    params = (scanlator, current)
+                elif scanlator is not None and is_current is False:
+                    query = "SELECT * FROM series WHERE scanlator = $1 LIMIT 25;"
+                    params = (scanlator,)
+                elif is_current is True:
+                    query = "SELECT * FROM series ORDER BY levenshtein(title, $1) DESC LIMIT 25;"
+                    params = (current,)
+                else:
+                    query = "SELECT * FROM series LIMIT 25;"
+                    params = None
+                async with db.execute(query, params) as cursor:
                     if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)
-        elif autocomplete:
-            async with aiosqlite.connect(self.db_name) as db:
-                async with db.execute(
-                        """
-                        SELECT * FROM series LIMIT 25;
-                        """
-                ) as cursor:
-                    if result := await cursor.fetchall():
-                        objects = Manga.from_tuples(result)
-                        return [
-                            (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                            for x in objects if x.scanlator in SCANLATORS
-                        ]
-        else:
-            async with aiosqlite.connect(self.db_name) as db:
-                async with db.execute(
-                        """
-                        SELECT * FROM series;
-                        """
-                ) as cursor:
+                        return Manga.from_tuples(result)  # no need to laod since it's used for autocomplete
+            else:
+                async with db.execute("SELECT * FROM series;") as cursor:
                     if result := await cursor.fetchall():
                         objects = Manga.from_tuples(result)
                         return [
-                            (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                            for x in objects if x.scanlator in SCANLATORS
+                            (await scanlators[x.scanlator].load_manga([x]))[0]
+                            for x in objects if x.scanlator in scanlators
                         ]
 
     async def get_all_subscribed_series(self) -> list[Manga]:
@@ -842,21 +860,21 @@ class Database:
                 else:
                     objects = Manga.from_tuples(result)
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
 
     async def update_series(self, manga: Manga) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """
-    UPDATE series SET last_chapter = $1, series_cover_url = $2, available_chapters = $3, completed = $4 WHERE id = $5;
+    UPDATE series SET last_chapter = $1, series_cover_url = $2, available_chapters = $3, status = $4 WHERE id = $5;
                 """,
                 (
                     manga.last_chapter.to_json() if manga.last_chapter is not None else None,
                     manga.cover_url,
                     manga.chapters_to_text(),
-                    manga.completed,
+                    manga.status,
                     manga.id),
             )
             if result.rowcount < 1:
@@ -1014,7 +1032,9 @@ class Database:
             guild_id, manga_id
         )
 
-    async def get_all_guild_tracked_manga(self, guild_id: int, current: str = None) -> list[Manga]:
+    async def get_all_guild_tracked_manga(
+            self, guild_id: int, current: str = None, autocomplete: bool = False, scanlator: str | None = None
+    ) -> list[Manga]:
         """
         Summary:
             Returns a list of Manga class objects that are tracked in the guild.
@@ -1022,32 +1042,41 @@ class Database:
         Args:
             guild_id: int - The guild's ID
             current: str - The current search query
+            autocomplete: bool - Whether the function is used in an autocomplete or not
+            scanlator: str - The name of the scanlator to search through
 
         Returns:
             list[Manga]: A list of Manga class objects that are tracked in the guild.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            await db.create_function("levenshtein", 2, _levenshtein_distance)
-            if current is not None and bool(current.strip()) is True:
-                query = """
-                    SELECT * FROM series WHERE id IN (SELECT series_id FROM tracked_guild_series WHERE guild_id = $1)
-                    ORDER BY levenshtein(human_name, $2)
-                    DESC
-                    LIMIT 25;
-                """
-                params = (guild_id, current)
+            _base = (
+                "SELECT * FROM series WHERE id IN (SELECT series_id FROM tracked_guild_series WHERE guild_id = $1)"
+            )
+            if autocomplete is True:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
+                is_current: bool = (current or "").strip() != ""
+                if scanlator is not None and is_current is True:
+                    query = f"{_base} AND scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
+                    params = (guild_id, scanlator, current)
+                elif scanlator is not None and is_current is False:
+                    query = f"{_base} AND scanlator = $2 LIMIT 25;"
+                    params = (guild_id, scanlator)
+                elif is_current is True:
+                    query = f"{_base} ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
+                    params = (guild_id, current)
+                else:  # current False, scanlator None
+                    query = f"{_base} LIMIT 25;"
+                    params = (guild_id,)
             else:
-                query = """
-                    SELECT * FROM series WHERE id IN (SELECT series_id FROM tracked_guild_series WHERE guild_id = $1);
-                """
+                query = f"{_base};"
                 params = (guild_id,)
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:
                     objects = Manga.from_tuples(result)
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
                 return []
 
@@ -1145,8 +1174,8 @@ class Database:
                 if result:
                     objects = Manga.from_tuples(result)
                     return [
-                        (await SCANLATORS[x.scanlator].load_manga_objects([x]))[0]
-                        for x in objects if x.scanlator in SCANLATORS
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
                     ]
                 return []
 

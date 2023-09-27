@@ -12,7 +12,6 @@ from discord import app_commands
 from discord.ext.commands import Cog
 
 from src.core.objects import GuildSettings
-from src.overwrites import Embed
 
 
 class ConfigCog(Cog):
@@ -24,8 +23,7 @@ class ConfigCog(Cog):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.guild_id is None:
-            em = Embed(
-                bot=self.bot,
+            em = discord.Embed(
                 title="Error",
                 description="This command can only be used in a server.",
                 color=0xFF0000,
@@ -42,8 +40,7 @@ class ConfigCog(Cog):
         ):
             return True
 
-        em = Embed(
-            bot=self.bot,
+        em = discord.Embed(
             title="Error",
             description="You don't have permission to do that.",
             color=0xFF0000,

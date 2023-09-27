@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Iterable, Optional, TYPE_CHECKING, Union
 
+from ..core.scanlators import scanlators
+from ..core.scanlators.classes import AbstractScanlator
+
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -15,8 +18,7 @@ from discord.ext import commands
 from discord.ui import View, Button
 from discord.ext.commands import Context
 
-from src.core.objects import Bookmark, ABCScan, GuildSettings, Manga
-from src.core.scanners import SCANLATORS
+from src.core.objects import Bookmark, GuildSettings, Manga
 from src.core.errors import MangaCompletedOrDropped
 
 from src.utils import (
@@ -26,7 +28,6 @@ from src.utils import (
     get_manga_scanlator_class
 )
 from src.enums import BookmarkSortType, BookmarkViewType
-from src.overwrites import Embed
 
 from .buttons import CustomButtonCallbacks
 from .selects import SortTypeSelect, ViewTypeSelect
@@ -50,8 +51,7 @@ class BaseView(View):
         if self.message is not None:
             await self.message.edit(
                 view=None,
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     color=discord.Color.red(),
                     title="Timed out",
                     description="No changes were made.",
@@ -87,7 +87,7 @@ class BaseView(View):
         if author.id == interaction.user.id:
             return True
         else:
-            embed = Embed(bot=self.bot, title=f"🚫 You cannot use this menu!", color=0xFF0000)
+            embed = discord.Embed(title=f"🚫 You cannot use this menu!", color=0xFF0000)
             await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
             return False
 
@@ -109,7 +109,7 @@ class BookmarkView(BaseView):
 
         self.bookmarks: list[Bookmark] = bookmarks
         # the method below will sort the bookmarks by the sort_type
-        self.text_view_embeds: list[Embed] = self._bookmarks_to_text_embeds()
+        self.text_view_embeds: list[discord.Embed] = self._bookmarks_to_text_embeds()
 
         self.text_page_index = 0
         self.visual_item_index = 0
@@ -175,14 +175,13 @@ class BookmarkView(BaseView):
             self._load_text_components_preset()
         return self
 
-    def _bookmarks_to_text_embeds(self) -> list[Embed]:
+    def _bookmarks_to_text_embeds(self) -> list[discord.Embed]:
         self.bookmarks = sort_bookmarks(self.bookmarks, self.sort_type)
         grouped = group_items_by(self.bookmarks, ["manga.scanlator"])
-        embeds: list[Embed] = []
+        embeds: list[discord.Embed] = []
 
-        def _make_embed() -> Embed:
-            return Embed(
-                bot=self.bot,
+        def _make_embed() -> discord.Embed:
+            return discord.Embed(
                 title=f"Bookmarks ({len(self.bookmarks)})",
                 color=discord.Color.blurple(),
                 description="",
@@ -197,7 +196,7 @@ class BookmarkView(BaseView):
                 line_index += 1
                 to_add = (
                     f"**{line_index}.** "
-                    f"[{bookmark.manga.human_name}]({bookmark.manga.url}) - {bookmark.last_read_chapter}\n"
+                    f"[{bookmark.manga.title}]({bookmark.manga.url}) - {bookmark.last_read_chapter}\n"
                 )
                 if not scanlator_title_added:
                     if len(em.description) + len(bookmark.manga.scanlator) + 6 > 4096:
@@ -249,7 +248,7 @@ class BookmarkView(BaseView):
             response_function = interaction.response.edit_message  # noqa
         if len(self.bookmarks) == 0:
             await response_function(  # noqa
-                view=None, embed=Embed(bot=self.bot, title="You have no more bookmarks.")
+                view=None, embed=discord.Embed(title="You have no more bookmarks.")
             )
             self.stop()
             return
@@ -300,16 +299,16 @@ class BookmarkView(BaseView):
         self.load_components()
         return True
 
-    def _get_display_embed(self) -> Embed:
+    def _get_display_embed(self) -> discord.Embed:
         if self.view_type == BookmarkViewType.TEXT:
             return self.text_view_embeds[self.text_page_index]
         else:
             idx = self.visual_item_index
             scanlator = get_manga_scanlator_class(
-                SCANLATORS, key=self.bookmarks[idx].manga.scanlator
+                scanlators, key=self.bookmarks[idx].manga.scanlator
             )
             return create_bookmark_embed(
-                self.bot, self.bookmarks[idx], scanlator.icon_url
+                self.bot, self.bookmarks[idx], scanlator.json_tree.properties.icon_url
             )
 
     def _handle_index_change(self):
@@ -361,26 +360,26 @@ class BookmarkView(BaseView):
 class PaginatorView(discord.ui.View):
     def __init__(
             self,
-            items: list[Union[str, int, Embed]] = None,
+            items: list[Union[str, int, discord.Embed]] = None,
             interaction: Union[discord.Interaction, Context] = None,
             timeout: float = 3 * 3600,  # 3 hours,
             *args,
             **kwargs
     ) -> None:
-        self.items = items
+        self.iter_items = items
         self.interaction: discord.Interaction = interaction
         self.page: int = 0
         self.message: Optional[discord.Message] = None
 
-        if not self.items and not self.interaction:
+        if not self.iter_items and not self.interaction:
             raise AttributeError(
-                "A list of items of type 'Union[str, int, Embed]' was not provided to iterate through as well as the "
-                "interaction."
+                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through as well "
+                "as the interaction."
             )
 
         elif not items:
             raise AttributeError(
-                "A list of items of type 'Union[str, int, Embed]' was not provided to iterate through."
+                "A list of items of type 'Union[str, int, discord.Embed]' was not provided to iterate through."
             )
 
         elif not interaction:
@@ -388,26 +387,26 @@ class PaginatorView(discord.ui.View):
 
         if not isinstance(items, Iterable):
             raise AttributeError(
-                "An iterable containing items of type 'Union[str, int, Embed]' classes is required."
+                "An iterable containing items of type 'Union[str, int, discord.Embed]' classes is required."
             )
 
-        elif not all(isinstance(item, (str, int, Embed)) for item in items):
+        elif not all(isinstance(item, (str, int, discord.Embed)) for item in items):
             raise AttributeError(
-                "All items within the iterable must be of type 'str', 'int' or 'Embed'."
+                "All items within the iterable must be of type 'str', 'int' or 'discord.Embed'."
             )
 
         super().__init__(timeout=timeout)
-        self.items = list(self.items)
-        if len(self.items) == 1:  # no need to paginate if there's only one item to display
+        self.iter_items = list(self.iter_items)
+        if len(self.iter_items) == 1:  # no need to paginate if there's only one item to display
             for _child in self.children:
                 if _child.row == 0:
                     self.remove_item(_child)
 
     def __get_response_kwargs(self):
-        if isinstance(self.items[self.page], Embed):
-            return {"embed": self.items[self.page]}
+        if isinstance(self.iter_items[self.page], discord.Embed):
+            return {"embed": self.iter_items[self.page]}
         else:
-            return {"content": self.items[self.page]}
+            return {"content": self.iter_items[self.page]}
 
     @discord.ui.button(label=f"⏮️", style=discord.ButtonStyle.blurple, row=0)
     async def _first_page(
@@ -420,7 +419,7 @@ class PaginatorView(discord.ui.View):
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
-            self.page = len(self.items) - 1
+            self.page = len(self.iter_items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, row=0)
@@ -431,7 +430,7 @@ class PaginatorView(discord.ui.View):
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, row=0)
     async def forward(self, interaction: discord.Interaction, _):
         self.page += 1
-        if self.page == len(self.items):
+        if self.page == len(self.iter_items):
             self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
@@ -439,7 +438,7 @@ class PaginatorView(discord.ui.View):
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
-        self.page = len(self.items) - 1
+        self.page = len(self.iter_items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -451,7 +450,7 @@ class PaginatorView(discord.ui.View):
         if author.id == interaction.user.id:
             return True
         else:
-            embed = Embed(bot=interaction.client, title=f"🚫 You cannot use this menu!", color=0xFF0000)
+            embed = discord.Embed(title=f"🚫 You cannot use this menu!", color=0xFF0000)
             await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
             return False
 
@@ -469,11 +468,11 @@ class PaginatorView(discord.ui.View):
             traceback = "".join(
                 tb.format_exception(type(error), error, error.__traceback__)
             )
-            em = Embed(bot=interaction.client,
-                       title=f"🚫 An unknown error occurred!",
-                       description=f"{traceback[-2000:]}",
-                       color=0xFF0000,
-                       )
+            em = discord.Embed(
+                title=f"🚫 An unknown error occurred!",
+                description=f"{traceback[-2000:]}",
+                color=0xFF0000,
+            )
             interaction.client.logger.error(traceback)
 
             if interaction.response.is_done():  # noqa
@@ -486,38 +485,43 @@ class SubscribeView(View):
     def __init__(
             self,
             bot: MangaClient,
-            items: list[Union[str, int, Embed]] = None,
-            author_id: int = None
+            items: list[Union[str, int, discord.Embed]] = None,
+            author_id: int = None,
+            more_info_btn: bool = True
     ) -> None:
         self.bot: MangaClient = bot
-        self.items = [item for item in items if item is not None] if items else None
+        self.iter_items = [item for item in items if item is not None] if items else None
         self.page: int = 0
         self.author_id: int = author_id
 
-        if not self.author_id:
-            pass
+        if self.iter_items:
+            if not isinstance(self.iter_items, Iterable):
+                raise AttributeError(
+                    "An iterable containing items of type 'discord.Embed' is required."
+                )
 
-        elif not isinstance(items, Iterable):
-            raise AttributeError(
-                "An iterable containing items of type 'Union[str, int, Embed]bot=self.bot,' classes is required."
-            )
-
-        elif not all(isinstance(item, Embed) for item in self.items):
-            raise AttributeError(
-                "All items within the iterable must be of type 'Embed'bot=self.bot,."
-            )
+            if not all(isinstance(item, discord.Embed) for item in self.iter_items):
+                raise AttributeError(
+                    "All items within the iterable must be of type 'discord.Embed'."
+                )
 
         super().__init__(timeout=None)
-        if self.items:
-            self.items = list(self.items)
-        else:
-            self._delete_nav_buttons()
+        if self.iter_items:
+            self.iter_items = list(self.iter_items)
+            if len(self.iter_items) == 1:
+                self._delete_nav_buttons()
+        if more_info_btn is False:
+            children = [x for x in self.children if x.row != 0]
+            target_btn = children[1]  # 2nd button
+            target_btn.disabled = True
+            target_btn.label = "\u200b"
+            target_btn.style = ButtonStyle.grey
 
     def __get_response_kwargs(self):
-        if isinstance(self.items[self.page], Embed):
-            return {"embed": self.items[self.page]}
+        if isinstance(self.iter_items[self.page], discord.Embed):
+            return {"embed": self.iter_items[self.page]}
         else:
-            return {"content": self.items[self.page]}
+            return {"content": self.iter_items[self.page]}
 
     def _delete_nav_buttons(self):
         for child in self.children:
@@ -535,7 +539,7 @@ class SubscribeView(View):
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
-            self.page = len(self.items) - 1
+            self.page = len(self.iter_items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, custom_id="nav_stop", row=0)
@@ -546,7 +550,7 @@ class SubscribeView(View):
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, custom_id="nav_right", row=0)
     async def forward(self, interaction: discord.Interaction, _):
         self.page += 1
-        if self.page == len(self.items):
+        if self.page == len(self.iter_items):
             self.page = 0
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
@@ -554,7 +558,7 @@ class SubscribeView(View):
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
-        self.page = len(self.items) - 1
+        self.page = len(self.iter_items) - 1
         await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(
@@ -569,13 +573,12 @@ class SubscribeView(View):
         message: discord.Message = interaction.message
         manga_home_url = message.embeds[0].url
 
-        scanlator: ABCScan = get_manga_scanlator_class(SCANLATORS, manga_home_url)
+        scanlator: AbstractScanlator = get_manga_scanlator_class(scanlators, manga_home_url)
 
         manga_url: str = manga_home_url
-        series_id = await scanlator.get_manga_id(manga_url)
 
         manga: Manga | None = await respond_if_limit_reached(
-            scanlator.make_manga_object(series_id, manga_url),
+            scanlator.make_manga_object(manga_url),
             interaction
         )
         if manga == "LIMIT_REACHED":
@@ -593,21 +596,22 @@ class SubscribeView(View):
         if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga.id):
             if not interaction.user.guild_permissions.manage_roles:
                 return await interaction.followup.send(
-                    embed=Embed(bot=self.bot,
-                                title="🚫 Missing Permissions",
-                                description="You are missing the `Manage Roles` to track this manhwa.\n"
-                                            "Inform a staff memebr to track this manhwa before you can subscribe!",
-                                ).set_author(name=self.bot.user.global_name, icon_url=self.bot.user.display_avatar.url),
+                    embed=discord.Embed(
+                        title="🚫 Missing Permissions",
+                        description="You are missing the `Manage Roles` to track this manhwa.\n"
+                                    "Inform a staff memebr to track this manhwa before you can subscribe!",
+                    ).set_author(name=self.bot.user.global_name,
+                                 icon_url=self.bot.user.display_avatar.url),
                 )
             else:
                 # check if the manga ID already has a ping role in DB
                 guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
                 if not guild_config:
-                    em = Embed(bot=self.bot,
-                               title="Error",
-                               description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
-                               color=0xFF0000,
-                               )
+                    em = discord.Embed(
+                        title="Error",
+                        description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
+                        color=0xFF0000,
+                    )
                     em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
                     await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
                     return
@@ -617,7 +621,7 @@ class SubscribeView(View):
 
                 if ping_role_id is None:
                     if guild_config.auto_create_role:  # should create and not specified
-                        role_name = manga.human_name[:97] + "..." if len(manga.human_name) > 100 else manga.human_name
+                        role_name = manga.title[:97] + "..." if len(manga.title) > 100 else manga.title
                         # try to find a role with that name already
                         existing_role = discord.utils.get(interaction.guild.roles, name=role_name)
                         if existing_role is not None:
@@ -628,11 +632,11 @@ class SubscribeView(View):
                 await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, ping_role)
                 await self.bot.db.subscribe_user(interaction.user.id, interaction.guild_id, manga.id)
                 await interaction.response.followup.send(  # noqa
-                    embed=Embed(bot=self.bot,
-                                title="Subscribed to Series",
-                                color=discord.Color.green(),
-                                description=f"Successfully tracked and subscribed to **{manga}!**",
-                                )
+                    embed=discord.Embed(
+                        title="Subscribed to Series",
+                        color=discord.Color.green(),
+                        description=f"Successfully tracked and subscribed to **{manga}!**",
+                    )
                 )
                 return
 
@@ -640,11 +644,11 @@ class SubscribeView(View):
             interaction.guild_id, interaction.user.id
         )
         if current_user_subs:
-            for manga in current_user_subs:
-                if manga.id == series_id:
-                    em = Embed(bot=self.bot,
-                               title="Already Subscribed", color=discord.Color.red()
-                               )
+            for loop_manga in current_user_subs:
+                if loop_manga.id == manga.id:
+                    em = discord.Embed(
+                        title="Already Subscribed", color=discord.Color.red()
+                    )
                     em.description = "You are already subscribed to this series."
                     em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
                     return await interaction.followup.send(embed=em, ephemeral=True)
@@ -653,19 +657,47 @@ class SubscribeView(View):
             interaction.user.id, interaction.guild_id, manga.id
         )
 
-        embed = Embed(bot=self.bot,
-                      title="Subscribed to Series",
-                      color=discord.Color.green(),
-                      description=f"Successfully subscribed to **[{manga.human_name}]({manga.url})!**",
-                      )
+        embed = discord.Embed(
+            title="Subscribed to Series",
+            color=discord.Color.green(),
+            description=f"Successfully subscribed to **[{manga.title}]({manga.url})!**",
+        )
         embed.set_image(url=manga.cover_url)
         embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @discord.ui.button(label="\u200b", style=discord.ButtonStyle.grey, disabled=True, custom_id="none_one")
+    @discord.ui.button(label="More Info", style=discord.ButtonStyle.blurple,
+                       custom_id="search_more_info")
     async def _none_one(self, interaction: discord.Interaction, _):
-        pass
+        await interaction.response.defer()  # noqa: PyCharm doesn't support Dynamic Typing :(
+        em = (interaction.message.embeds or [None])[0]
+        if em.description and em.description.strip() != "":
+            return  # already fetched more info before
+
+        item_index = None
+        if self.iter_items:
+            for i, embed in enumerate(self.iter_items):
+                if embed.url == em.url:
+                    item_index = i
+                    break
+
+        if em.author.name not in scanlators:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Website is disabled",
+                    description=(
+                        "This website is currently disabled"
+                        "*If you have any questions head to the support server in `/help`.*"
+                    )
+                ),
+                ephemeral=True
+            )
+        manga = await scanlators[em.author.name].make_manga_object(em.url)
+        new_em = manga.get_display_embed(scanlators)
+        if item_index:
+            self.iter_items[item_index] = new_em
+        await interaction.edit_original_response(embed=new_em)
 
     @discord.ui.button(
         label="Bookmark",
@@ -678,31 +710,29 @@ class SubscribeView(View):
 
         manga_url = interaction.message.embeds[0].url
         # get the scanlator
-        scanlator = get_manga_scanlator_class(SCANLATORS, url=manga_url)
+        scanlator = get_manga_scanlator_class(scanlators, url=manga_url)
 
         # get the ID:
-        manga_id = await scanlator.get_manga_id(manga_url)
+        manga_id = await scanlator.get_id(manga_url)
         user_bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
         if user_bookmarks:
             for bookmark in user_bookmarks:
                 if bookmark.manga.id == manga_id:
-                    return await interaction.followup.send(embed=Embed(
-                        bot=self.bot,
+                    return await interaction.followup.send(embed=discord.Embed(
                         title="Already Bookmarked",
                         description="You have already bookmarked this series.",
                         color=discord.Color.red()
                     ), ephemeral=True)
         # make bookmark obj
         bookmark_obj = await scanlator.make_bookmark_object(
-            manga_id, manga_url, interaction.user.id, interaction.guild_id, user_created=True
+            manga_url, interaction.user.id, interaction.guild_id, user_created=True
         )
         await self.bot.db.upsert_bookmark(bookmark_obj)
 
-        embed = Embed(
-            bot=self.bot,
+        embed = discord.Embed(
             title="Bookmarked!",
             color=discord.Color.green(),
-            description=f"Successfully bookmarked **[{bookmark_obj.manga.human_name}]({bookmark_obj.manga.url})**",
+            description=f"Successfully bookmarked **[{bookmark_obj.manga.title}]({bookmark_obj.manga.url})**",
         )
         embed.set_image(url=bookmark_obj.manga.cover_url)
         embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
@@ -719,11 +749,11 @@ class SubscribeView(View):
             elif self.author_id == interaction.user.id:
                 return True
             else:
-                embed = Embed(bot=self.bot,
-                              title=f"🚫 You cannot use this menu!",
-                              color=0xFF0000,
-                              description="Try the buttons below. They should work 😉!"
-                              )
+                embed = discord.Embed(
+                    title=f"🚫 You cannot use this menu!",
+                    color=0xFF0000,
+                    description="Try the buttons below. They should work 😉!"
+                )
                 await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
                 return False
         else:
@@ -738,11 +768,11 @@ class SubscribeView(View):
             traceback = "".join(
                 tb.format_exception(type(error), error, error.__traceback__)
             )
-            em = Embed(bot=self.bot,
-                       title=f"🚫 An unknown error occurred!",
-                       description=f"{traceback[-2000:]}",
-                       color=0xFF0000,
-                       )
+            em = discord.Embed(
+                title=f"🚫 An unknown error occurred!",
+                description=f"{traceback[-2000:]}",
+                color=0xFF0000,
+            )
             interaction.client.logger.error(traceback)
             if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=em, ephemeral=True)
@@ -807,11 +837,11 @@ class BookmarkChapterView(View):
 
         if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
             return await interaction.followup.send(
-                embed=Embed(bot=self.bot,
-                            title="Already Read",
-                            description="This chapter is already marked as read.",
-                            color=discord.Color.red(),
-                            ),
+                embed=discord.Embed(
+                    title="Already Read",
+                    description="This chapter is already marked as read.",
+                    color=discord.Color.red(),
+                ),
                 ephemeral=True,
             )
 
@@ -820,11 +850,11 @@ class BookmarkChapterView(View):
         await self.bot.db.upsert_bookmark(bookmark)
 
         await interaction.followup.send(
-            embed=Embed(bot=self.bot,
-                        title="Marked Read",
-                        description=f"Successfully marked chapter **{bookmark.last_read_chapter}** as read.",
-                        color=discord.Color.green(),
-                        ),
+            embed=discord.Embed(
+                title="Marked Read",
+                description=f"Successfully marked chapter **{bookmark.last_read_chapter}** as read.",
+                color=discord.Color.green(),
+            ),
             ephemeral=True,
         )
 
@@ -843,11 +873,11 @@ class BookmarkChapterView(View):
         )
         if bookmark is None:
             return await interaction.followup.send(
-                embed=Embed(bot=self.bot,
-                            title="Not Read",
-                            description="This chapter is not marked as read.",
-                            color=discord.Color.red(),
-                            ),
+                embed=discord.Embed(
+                    title="Not Read",
+                    description="This chapter is not marked as read.",
+                    color=discord.Color.red(),
+                ),
                 ephemeral=True,
             )
 
@@ -862,23 +892,23 @@ class BookmarkChapterView(View):
                 )
             del_bookmark_view = DeleteBookmarkView(self.bot, interaction, manga_id)
             del_bookmark_view.message = await interaction.followup.send(
-                embed=Embed(bot=self.bot,
-                            title="Marked Unread",
-                            description=f"Successfully marked chapter "
-                                        f"{bookmark.manga.available_chapters[chapter_index]} as unread.",
-                            color=discord.Color.green(),
-                            ),
+                embed=discord.Embed(
+                    title="Marked Unread",
+                    description=f"Successfully marked chapter "
+                                f"{bookmark.manga.available_chapters[chapter_index]} as unread.",
+                    color=discord.Color.green(),
+                ),
                 ephemeral=True,
                 view=del_bookmark_view
             )
             return
         else:
             return await interaction.followup.send(
-                embed=Embed(bot=self.bot,
-                            title="Not Read",
-                            description="This chapter is not marked as read.",
-                            color=discord.Color.red(),
-                            ),
+                embed=discord.Embed(
+                    title="Not Read",
+                    description="This chapter is not marked as read.",
+                    color=discord.Color.red(),
+                ),
                 ephemeral=True,
             )
 
@@ -896,11 +926,11 @@ class BookmarkChapterView(View):
         )
         if bookmark is None:
             return await interaction.followup.send(
-                embed=Embed(bot=self.bot,
-                            title="Not Read",
-                            description="You haven't read any chapters of this manga yet.",
-                            color=discord.Color.red(),
-                            ),
+                embed=discord.Embed(
+                    title="Not Read",
+                    description="You haven't read any chapters of this manga yet.",
+                    color=discord.Color.red(),
+                ),
                 ephemeral=True,
             )
 
@@ -909,14 +939,14 @@ class BookmarkChapterView(View):
         next_not_available = "`Wait for updates!`" if not bookmark.manga.completed else "`None, manga is finished!`"
 
         await interaction.followup.send(
-            embed=Embed(bot=self.bot,
-                        title="Last Chapter Read",
-                        description=(
-                            f"The last chapter you read **{bookmark.last_read_chapter}**.\n"
-                            f"Next chapter: {next_chapter if next_chapter else next_not_available}\n"
-                        ),
-                        color=discord.Color.green(),
-                        ),
+            embed=discord.Embed(
+                title="Last Chapter Read",
+                description=(
+                    f"The last chapter you read **{bookmark.last_read_chapter}**.\n"
+                    f"Next chapter: {next_chapter if next_chapter else next_not_available}\n"
+                ),
+                color=discord.Color.green(),
+            ),
             ephemeral=True,
         )
 
@@ -964,11 +994,11 @@ class DeleteBookmarkView(BaseView):
 
         confirm_view: ConfirmView = ConfirmView(self.bot, interaction)
         confirm_view.message = await interaction.followup.send(
-            embed=Embed(bot=self.bot,
-                        title="Are you sure?",
-                        description=f"Are you sure you want to delete the 'hidden bookmark' for this manga?",
-                        color=discord.Color.red()
-                        ),
+            embed=discord.Embed(
+                title="Are you sure?",
+                description=f"Are you sure you want to delete the 'hidden bookmark' for this manga?",
+                color=discord.Color.red()
+            ),
             ephemeral=True,
             view=confirm_view
         )
@@ -988,11 +1018,11 @@ class DeleteBookmarkView(BaseView):
         await self.message.edit(view=None)
         await self.bot.db.delete_bookmark(interaction.user.id, self.manga_id)
         await confirm_view.message.edit(
-            embed=Embed(bot=self.bot,
-                        title="Deleted",
-                        description=f"Successfully deleted the 'hidden bookmark' for this manga.",
-                        color=discord.Color.green(),
-                        ),
+            embed=discord.Embed(
+                title="Deleted",
+                description=f"Successfully deleted the 'hidden bookmark' for this manga.",
+                color=discord.Color.green(),
+            ),
             view=None
         )
         self.stop()
@@ -1089,11 +1119,11 @@ class SubscribeListPaginatorView(PaginatorView):
 
         if not embeds:
             return await interaction.followup.send(
-                embed=Embed(bot=interaction.client,
-                            title="No Untracked Manhwa",
-                            description="You have no untracked manhwa.",
-                            color=discord.Color.red(),
-                            ),
+                embed=discord.Embed(
+                    title="No Untracked Manhwa",
+                    description="You have no untracked manhwa.",
+                    color=discord.Color.red(),
+                ),
                 ephemeral=True,
             )
 
@@ -1119,21 +1149,21 @@ class SubscribeListPaginatorView(PaginatorView):
         )
         if not mangas:
             return await interaction.followup.send(
-                embed=Embed(bot=interaction.client,
-                            title="No Untracked Manhwa",
-                            description="You are not subscribed to any untracked manhwa.",
-                            color=discord.Color.red(),
-                            ),
+                embed=discord.Embed(
+                    title="No Untracked Manhwa",
+                    description="You are not subscribed to any untracked manhwa.",
+                    color=discord.Color.red(),
+                ),
                 ephemeral=True,
             )
 
         confirm_view: ConfirmView = ConfirmView(bot, interaction)
         confirm_view.message = await interaction.followup.send(
-            embed=Embed(bot=interaction.client,
-                        title="Are you sure?",
-                        description=f"Are you sure you want to unsubscribe from all untracked manhwa?",
-                        color=discord.Color.red()
-                        ),
+            embed=discord.Embed(
+                title="Are you sure?",
+                description=f"Are you sure you want to unsubscribe from all untracked manhwa?",
+                color=discord.Color.red()
+            ),
             ephemeral=True,
             view=confirm_view
         )
@@ -1151,14 +1181,14 @@ class SubscribeListPaginatorView(PaginatorView):
             unsub_count = await bot.db.unsubscribe_user_from_all_untracked(interaction.user.id, interaction.guild_id)
 
         await confirm_view.message.edit(
-            embed=Embed(bot=interaction.client,
-                        title="Unsubscribed",
-                        description=(
-                            f"Successfully unsubscribed from {unsub_count} untracked manhwa"
-                            f"{' globally' if self.is_global_view else ''}."
-                        ),
-                        color=discord.Color.green(),
-                        ),
+            embed=discord.Embed(
+                title="Unsubscribed",
+                description=(
+                    f"Successfully unsubscribed from {unsub_count} untracked manhwa"
+                    f"{' globally' if self.is_global_view else ''}."
+                ),
+                color=discord.Color.green(),
+            ),
             view=None
         )
 
@@ -1204,8 +1234,7 @@ class SettingsView(BaseView):
         **🔘Show Update Buttons:** {'Yes' if show_update_buttons else 'No'}
         \u200b \u200b \u200b **^** `Whether to show buttons for chapter updates.`
         """
-        return Embed(
-            bot=self.bot,
+        return discord.Embed(
             title="Settings",
             description=f"__Select the setting you want to edit.__\n{text}",
             color=discord.Color.blurple(),
@@ -1284,8 +1313,7 @@ class SettingsView(BaseView):
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             await interaction.followup.send(  # noqa
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     title="Channel not found",
                     description=f"Could not find the channel <#{channel_id}>!\n"
                                 f"Please ensure I have all required permissions.",
@@ -1298,7 +1326,7 @@ class SettingsView(BaseView):
         required_perms: list[tuple[str, bool]] = [
             ("Send Messages", my_perms.send_messages),
             ("Attach Files", my_perms.attach_files),
-            ("Embed Links", my_perms.embed_links)
+            ("discord.Embed Links", my_perms.embed_links)
         ]
         if not all([x[1] for x in required_perms]):
             embed = self._create_embed()
@@ -1307,8 +1335,7 @@ class SettingsView(BaseView):
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             perms = ", ".join(x[0] for x in required_perms)  # noqa
             await interaction.followup.send(  # noqa
-                embed=Embed(
-                    bot=interaction.client,
+                embed=discord.Embed(
                     title=f"Missing Required Permissions",
                     colour=discord.Colour.red(),
                     description=f"Sorry, I don't have the required permissions `{perms}` for "
@@ -1333,8 +1360,7 @@ class SettingsView(BaseView):
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             await interaction.followup.send(  # noqa
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     title="Role not found",
                     description=f"Could not find the <@&{role_id}> role!\n"
                                 f"Please ensure I have all required permissions.",
@@ -1349,8 +1375,7 @@ class SettingsView(BaseView):
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
             await interaction.followup.send(  # noqa
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     title="Role too high",
                     description=f"The <@&{role_id}> role is too high for me to ping!\n"
                                 f"Please move it below my top role.",
@@ -1369,8 +1394,7 @@ class SettingsView(BaseView):
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
         if not self.guild_config.notifications_channel:
             await interaction.response.send_message(  # noqa
-                embed=Embed(
-                    bot=self.bot,
+                embed=discord.Embed(
                     title="Channel not set",
                     description="You must set a channel to send updates to.",
                     color=discord.Color.red(),
@@ -1382,8 +1406,7 @@ class SettingsView(BaseView):
         await self.bot.db.upsert_config(self.guild_config)
         await interaction.response.edit_message(view=None)  # noqa
         await interaction.followup.send(  # noqa
-            embed=Embed(
-                bot=self.bot,
+            embed=discord.Embed(
                 title="Settings Updated",
                 description="Successfully updated the settings.",
                 color=discord.Color.green(),
@@ -1397,8 +1420,7 @@ class SettingsView(BaseView):
         await self.bot.db.delete_config(interaction.guild_id)
         await interaction.response.edit_message(view=None)  # noqa
         bot_created_roles = await self.bot.db.get_all_guild_bot_created_roles(interaction.guild_id)
-        embed = Embed(
-            bot=self.bot,
+        embed = discord.Embed(
             title="Guild config deleted",
             description="Successfully deleted guild settings.",
             color=discord.Color.green(),
@@ -1415,8 +1437,7 @@ class SettingsView(BaseView):
         if view is not None:
             await view.wait()
             if view.value is False or view.value is None:
-                return await msg.edit(view=None, embed=Embed(
-                    bot=self.bot,
+                return await msg.edit(view=None, embed=discord.Embed(
                     title="Operation Cancelled",
                     description="The bot will not delete the roles it created.",
                     color=discord.Color.green(),
@@ -1431,8 +1452,7 @@ class SettingsView(BaseView):
                         except discord.HTTPException:
                             pass
                 await interaction.followup.send(
-                    embed=Embed(
-                        bot=self.bot,
+                    embed=discord.Embed(
                         title="Deleted Roles",
                         description=f"Successfully deleted {success_count} roles.",
                         color=discord.Color.green(),
@@ -1445,8 +1465,7 @@ class SettingsView(BaseView):
     @discord.ui.button(label="Cancel", emoji="✖️", style=discord.ButtonStyle.red, row=4)
     async def cancel_btn_callback(self, interaction: discord.Interaction, _) -> None:
         await interaction.response.edit_message(  # noqas
-            embed=Embed(
-                bot=self.bot,
+            embed=discord.Embed(
                 title="Cancelled",
                 description="Setting changes have been cancelled.",
                 color=discord.Color.green(),

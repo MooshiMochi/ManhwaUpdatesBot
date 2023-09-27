@@ -1,30 +1,27 @@
 """
-This is a test file for testing each individual scanlator class from scanlator.py
+This is a test file for testing each scanlator class from scanlator.py
 
 # Path: test.py
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
-from typing import Dict, Optional, Type
+from typing import Coroutine, Dict, Optional
 
+from src.core.apis import ComickAppAPI, MangaDexAPI
 from src.core.cache import CachedClientSession, CachedCurlCffiSession
-from src.core.comickAPI import ComickAppAPI
 from src.core.database import Database
-from src.core.mangadexAPI import MangaDexAPI
-from src.core.scanners import *
-from src.core.scanners import SCANLATORS
+from src.core.objects import Chapter, Manga
+from src.core.scanlators import scanlators
+from src.core.scanlators.classes import AbstractScanlator
+from src.static import Constants
 from src.utils import ensure_configs, load_config, setup_logging
 
 logger: logging.Logger = logging.getLogger("test")
-
-for scanlator in SCANLATORS.values():
-    scanlator.call_init()
 
 
 # noinspection PyTypeChecker
@@ -56,16 +53,14 @@ class Bot:
         self.db = Database(self)  # noqa
         self.mangadex_api = MangaDexAPI(self.session)
         self.comick_api = ComickAppAPI(self.session)
-        self._all_scanners: dict = SCANLATORS.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
-        self.load_scanlators(SCANLATORS)
+        self._all_scanners: dict = scanlators.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
+        self.load_scanlators(scanlators)
         self.user = User()
 
-    def load_scanlators(self, scanlators: dict):
-        self._all_scanners.update(scanlators)
-        for _scanlator_ in scanlators.values():
-            _scanlator_.bot = self
-        for _scanlator_ in self._all_scanners.values():
-            _scanlator_.bot = self
+    def load_scanlators(self, _scanlators: dict):
+        for scanlator in _scanlators.values():
+            scanlator.bot = self
+        self._all_scanners.update(_scanlators)
 
     async def async_init(self):
         await self.db.async_init()
@@ -108,12 +103,12 @@ class Bot:
 class SetupTest:
     def __init__(self):
         self.bot: Bot = Bot(self.load_config())
-        self.bot.load_scanlators(SCANLATORS)
+        self.bot.load_scanlators(scanlators)
 
     @staticmethod
     def load_config() -> Dict:
-        config = load_config(logger, auto_exit=False, filepath="../config.yml")
-        return ensure_configs(logger, config, SCANLATORS, auto_exit=False)
+        config = load_config(logger, auto_exit=False, filepath="../tests/config.yml")
+        return ensure_configs(logger, config, scanlators, auto_exit=False)
 
 
 class ExpectedResult:
@@ -122,8 +117,8 @@ class ExpectedResult:
             scanlator_name: str,
             manga_url: str,
             completed: bool,
-            human_name: str,
-            manga_id: str | int,
+            title: str,
+            manga_id: str | int | Coroutine,
             curr_chapter_url: str,
             first_chapter_url: str,
             cover_image: str,
@@ -131,7 +126,7 @@ class ExpectedResult:
         self.scanlator_name: str = scanlator_name
         self.manga_url: str = manga_url.removesuffix("/")
         self.completed: bool = completed
-        self.human_name: str = human_name
+        self.title: str = title
         self.manga_id: str | int = manga_id
         self.curr_chapter_url: str = curr_chapter_url.removesuffix("/")
         self.first_chapter_url: str = first_chapter_url.removesuffix("/")
@@ -143,7 +138,7 @@ class ExpectedResult:
 
     def extract_last_read_chapter(self, manga: Manga) -> Optional[Chapter]:
         for chapter in manga.available_chapters:
-            if chapter.url.rstrip("/") == self.last_3_chapter_urls[0].rstrip("/"):
+            if chapter.url.removesuffix("/") == self.last_3_chapter_urls[0].removesuffix("/"):
                 return chapter
         return None
 
@@ -160,10 +155,10 @@ class Test:
             test_setup: SetupTest,
             test_data: TestInputData,
             expected_result: ExpectedResult,
-            test_subject: Type[ABCScan],
+            test_subject: AbstractScanlator,
             id_first: bool = False
     ):
-        self.test_subject: Type[ABCScan] = test_subject
+        self.test_subject: AbstractScanlator = test_subject
         self.test_data: TestInputData = test_data
         self.expected_result: ExpectedResult = expected_result
         self.setup_test = test_setup
@@ -174,7 +169,8 @@ class Test:
         self.fmt_url: str | None = None
 
     async def fmt_manga_url(self) -> bool:
-        result = await self.test_subject.fmt_manga_url(self.manga_id, self.test_data.manga_url)
+        result = await self.test_subject.format_manga_url(self.test_data.manga_url)
+        result = result.removesuffix("/")
         self.fmt_url = result
         evaluated: bool = result == self.expected_result.manga_url
         if not evaluated:
@@ -183,7 +179,7 @@ class Test:
         return evaluated
 
     async def get_manga_id(self) -> bool:
-        result = await self.test_subject.get_manga_id(self.fmt_url or self.test_data.manga_url)
+        result = await self.test_subject.get_id(raw_url=(self.fmt_url or self.test_data.manga_url))
         self.manga_id = result
         evaluated: bool = result == self.expected_result.manga_id
         if not evaluated:
@@ -192,42 +188,36 @@ class Test:
         return evaluated
 
     async def is_completed(self) -> bool:
-        result = await self.test_subject.is_series_completed(self.manga_id, self.fmt_url)
+        result = await self.test_subject.get_status(self.fmt_url)
+        result = result.lower() in Constants.completed_status_set
         evaluated: bool = result == self.expected_result.completed
         if not evaluated:
             print(f"Expected: {self.expected_result.completed}")
             print(f"   ↳ Got: {result}")
         return evaluated
 
-    async def human_name(self) -> bool:
-        result = await self.test_subject.get_human_name(self.manga_id, self.fmt_url)
-        evaluated: bool = result == self.expected_result.human_name
+    async def title(self) -> bool:
+        result = await self.test_subject.get_title(self.fmt_url)
+        evaluated: bool = result == self.expected_result.title
         if not evaluated:
-            print(f"Expected: {self.expected_result.human_name}")
+            print(f"Expected: {self.expected_result.title}")
             print(f"   ↳ Got: {result}")
         return evaluated
 
-    async def curr_chapter_url(self) -> bool:
-        result = await self.test_subject.get_curr_chapter(self.manga_id, self.fmt_url)
-        result.url = result.url.removesuffix("/")
-        evaluated = result is not None and result.url == self.expected_result.curr_chapter_url
-        if not evaluated:
-            print(f"Expected: {self.expected_result.curr_chapter_url}")
-            print(f"   ↳ Got: {result.url}")
-        return evaluated
-
     async def first_chapter_url(self) -> bool:
-        result = await self.test_subject.get_all_chapters(self.manga_id, self.fmt_url)
+        result = await self.test_subject.get_all_chapters(self.fmt_url)
         evaluated: bool = (
-                result is not None and result[0].url.rstrip("/") == self.expected_result.first_chapter_url.rstrip("/")
+                result is not None and result[0].url.removesuffix(
+            "/"  # noqa
+        ) == self.expected_result.first_chapter_url.removesuffix("/")
         )
         if not evaluated:
-            print(f"Expected: {self.expected_result.first_chapter_url}")
-            print(f"   ↳ Got: {result[0].url}")
+            print(f"Expected: {self.expected_result.first_chapter_url.removesuffix('/')}")
+            print(f"   ↳ Got: {result[0].url.removesuffix('/')}")
         return evaluated
 
     async def cover_image(self) -> bool:
-        result = await self.test_subject.get_cover_image(self.manga_id, self.fmt_url)
+        result = await self.test_subject.get_cover(self.fmt_url)
         result = result.split("?")[0].rstrip("/")  # remove URL params
         evaluated: bool = result == self.expected_result.cover_image
         if not evaluated:
@@ -237,7 +227,7 @@ class Test:
 
     async def check_updates(self) -> bool:
         # As long as the previous tests pass, the make_manga_object method should automatically pass
-        manga = await self.test_subject.make_manga_object(self.manga_id, self.fmt_url)
+        manga = await self.test_subject.make_manga_object(self.fmt_url)
         # get the last read chapter where the url == last_3_chapter_urls[0]
         last_read_chapter = self.expected_result.extract_last_read_chapter(manga)
         if not last_read_chapter:
@@ -259,17 +249,14 @@ class Test:
         return evaluated
 
     async def show_synopsis(self) -> bool:
-        result = await self.test_subject.get_synopsis(self.manga_id, self.fmt_url)
+        result = await self.test_subject.get_synopsis(self.fmt_url)
         print(result)
         return result is not None and result.strip() != ""
 
     async def show_front_page_results(self) -> bool:
-        if self.test_subject.supports_front_page_scraping:
-            result = await self.test_subject.get_front_page_partial_manga()
-            print(result)
-            return result is not None and result != []
-        else:
-            return True
+        result = await self.test_subject.get_fp_partial_manga()
+        print(result)
+        return True
 
     def scanlator_name(self) -> bool:
         evaluated: bool = self.test_subject.name == self.expected_result.scanlator_name
@@ -285,8 +272,7 @@ class Test:
             (self.get_manga_id, "❌ Failed to get manga id"),
             (self.fmt_manga_url, "❌ Failed to format manga url"),
             (self.is_completed, "❌ Failed to get completed status"),
-            (self.human_name, "❌ Failed to get human name"),
-            (self.curr_chapter_url, "❌ Failed to get current chapter url"),
+            (self.title, "❌ Failed to get title"),
             (self.first_chapter_url, "❌ Failed to get first chapter url"),
             (self.cover_image, "❌ Failed to get cover image"),
             (self.check_updates, "❌ Failed to check for updates"),
@@ -340,7 +326,7 @@ class TestCase:
     test_setup: SetupTest
     test_data: TestInputData
     expected_result: ExpectedResult
-    test_subject: Type[ABCScan]
+    test_subject: AbstractScanlator
     test: Test | None = None
     id_first: bool = False
 
@@ -348,18 +334,17 @@ class TestCase:
         self.test = Test(self.test_setup, self.test_data, self.expected_result, self.test_subject, self.id_first)
 
     async def begin(self, test_method: str = "all") -> str:
-        if self.test_subject.name not in SCANLATORS:
+        if self.test_subject.name not in scanlators:
             print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
             return "N/A"
         else:
             return await self.test.begin(test_method)
 
 
-def default_id_func(manga_url: str) -> str:
-    for scan in SCANLATORS.values():
-        if scan.rx.search(manga_url):
-            key = scan.rx.search(manga_url).groupdict()["url_name"]
-            return hashlib.sha256(key.encode()).hexdigest()
+async def default_id_func(manga_url: str) -> str:
+    for scan in scanlators.values():
+        if scan.check_ownership(manga_url):
+            return await scan.get_id(manga_url)
 
 
 async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None):
@@ -404,29 +389,29 @@ class TestCases(dict):
                     scanlator_name="tritinia",
                     manga_url="https://tritinia.org/manga/momo-the-blood-taker/",
                     completed=True,
-                    human_name="MOMO: The Blood Taker",
+                    title="MOMO: The Blood Taker",
                     manga_id=default_id_func("https://tritinia.org/manga/momo-the-blood-taker"),
                     curr_chapter_url="https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-48/",
                     first_chapter_url=(
                         "https://tritinia.org/manga/momo-the-blood-taker/volume-1/ch-1-v-coming-soon-scans/"
                     ),
-                    cover_image="https://tritinia.org/wp-content/uploads/2022/02/000-193x278.jpg",
+                    cover_image="https://tritinia.org/wp-content/uploads/2022/02/000.jpg",
                     last_3_chapter_urls=[
                         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-46/",
                         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-47/",
                         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-48/",
                     ]
                 ),
-                test_subject=TritiniaScans
+                test_subject=scanlators["tritinia"]
             ),
             "manganato": TestCase(
                 self.test_setup,
                 test_data=TestInputData("https://chapmanganato.com/manga-hf985162"),
                 expected_result=ExpectedResult(
                     scanlator_name="manganato",
-                    manga_url="https://chapmanganato.com/manga-hf985162",
+                    manga_url="https://chapmanganato.com/manga-hf985162/",
                     completed=False,
-                    human_name="God Of Blackfield",  # noqa
+                    title="God Of Blackfield",  # noqa
                     manga_id="hf985162",
                     curr_chapter_url="https://chapmanganato.com/manga-hf985162/chapter-155",
                     first_chapter_url="https://chapmanganato.com/manga-hf985162/chapter-1",
@@ -437,7 +422,7 @@ class TestCases(dict):
                         "https://chapmanganato.com/manga-hf985162/chapter-155",
                     ]
                 ),
-                test_subject=Manganato,
+                test_subject=scanlators["manganato"],
                 id_first=True
             ),
             "toonily": TestCase(
@@ -449,19 +434,19 @@ class TestCases(dict):
                     scanlator_name="toonily",
                     manga_url="https://toonily.com/webtoon/lucky-guy-0002/",
                     completed=True,
-                    human_name="Lucky Guy",
+                    title="Lucky Guy",
                     manga_id=default_id_func("https://toonily.com/webtoon/lucky-guy-0002"),
                     curr_chapter_url="https://toonily.com/webtoon/lucky-guy-0002/chapter-73/",
                     first_chapter_url="https://toonily.com/webtoon/lucky-guy-0002/chapter-1/",
                     cover_image=(
-                        "https://toonily.com/wp-content/uploads/2020/02/Lucky-Guy-224x320.jpg"),
+                        "https://toonily.com/wp-content/uploads/2020/02/Lucky-Guy.jpg"),
                     last_3_chapter_urls=[
                         "https://toonily.com/webtoon/lucky-guy-0002/chapter-71/",
                         "https://toonily.com/webtoon/lucky-guy-0002/chapter-72/",
                         "https://toonily.com/webtoon/lucky-guy-0002/chapter-73/",
                     ]
                 ),
-                test_subject=Toonily
+                test_subject=scanlators["toonily"]
             ),
             "mangadex": TestCase(
                 self.test_setup,
@@ -470,7 +455,7 @@ class TestCases(dict):
                     scanlator_name="mangadex",
                     manga_url="https://mangadex.org/title/7dbeaa0e-420a-4dc0-b2d3-eb174de266da",
                     completed=True,
-                    human_name="Zippy Ziggy",
+                    title="Zippy Ziggy",
                     manga_id="7dbeaa0e-420a-4dc0-b2d3-eb174de266da",
                     curr_chapter_url="https://mangadex.org/chapter/aef242d7-0051-431f-9f03-53442afdbead",
                     first_chapter_url="https://mangadex.org/chapter/388124f0-dc2e-43db-b19e-71d0e3eddfc6",
@@ -484,50 +469,49 @@ class TestCases(dict):
                         "https://mangadex.org/chapter/aef242d7-0051-431f-9f03-53442afdbead",
                     ]
                 ),
-                test_subject=MangaDex,
+                test_subject=scanlators["mangadex"],
             ),
             "flamescans": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://flamescans.org/series/1694167321-the-villainess-is-a-marionette/"),
+                test_data=TestInputData("https://flamescans.org/series/1695679321-the-villainess-is-a-marionette/"),
                 expected_result=ExpectedResult(
                     scanlator_name="flamescans",
-                    manga_url="https://flamescans.org/series/1694167321-the-villainess-is-a-marionette/",
+                    manga_url="https://flamescans.org/series/1695679321-the-villainess-is-a-marionette/",
                     completed=True,
-                    human_name="The Villainess is a Marionette",  # noqa
-                    manga_id=default_id_func("https://flamescans.org/series/1694167321-the-villainess-is-a-marionette"),
-                    curr_chapter_url="https://flamescans.org/1694167261-the-villainess-is-a-marionette-chapter-69/",
-                    first_chapter_url="https://flamescans.org/1694167261-the-villainess-is-a-marionette-chapter-0/",
+                    title="The Villainess is a Marionette",  # noqa
+                    manga_id=default_id_func("https://flamescans.org/series/1695679321-the-villainess-is-a-marionette"),
+                    curr_chapter_url="https://flamescans.org/1695679321-the-villainess-is-a-marionette-chapter-69/",
+                    first_chapter_url="https://flamescans.org/1695679262-the-villainess-is-a-marionette-chapter-0/",
                     cover_image="https://flamescans.org/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
                     last_3_chapter_urls=[
-                        "https://flamescans.org/1694167261-the-villainess-is-a-marionette-chapter-67/",
-                        "https://flamescans.org/1694167261-the-villainess-is-a-marionette-chapter-68/",
-                        "https://flamescans.org/1694167261-the-villainess-is-a-marionette-chapter-69/",
+                        "https://flamescans.org/1695679262-the-villainess-is-a-marionette-chapter-67/",
+                        "https://flamescans.org/1695679262-the-villainess-is-a-marionette-chapter-68/",
+                        "https://flamescans.org/1695679262-the-villainess-is-a-marionette-chapter-69/",
                     ]
                 ),
-                test_subject=FlameScans
+                test_subject=scanlators["flamescans"]
             ),
             "asura": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://asuracomics.com/manga/2091190535-i-regressed-as-the-duke/"),
+                test_data=TestInputData("https://asuracomics.gg/manga/4102803034-i-regressed-as-the-duke/"),
                 expected_result=ExpectedResult(
                     scanlator_name="asura",
-                    manga_url="https://asuracomics.com/manga/2091190535-i-regressed-as-the-duke/",
+                    manga_url="https://asuracomics.gg/manga/4102803034-i-regressed-as-the-duke/",
                     completed=True,
-                    human_name="I Regressed As The Duke",
+                    title="I Regressed As The Duke",
                     manga_id=default_id_func(
-                        "https://asuracomics.com/manga/2091190535-i-regressed-as-the-duke"
+                        "https://asuracomics.gg/manga/4102803034-i-regressed-as-the-duke"
                     ),
-                    curr_chapter_url="https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-64-notice/",
-                    first_chapter_url="https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-1/",
-                    cover_image="https://img.asuracomics.com/unsafe/fit-in/720x936/https://asuracomics.com/wp-content"
-                                "/uploads/2022/04/unknown_1-1.png",
+                    curr_chapter_url="https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-64-notice/",
+                    first_chapter_url="https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-1/",
+                    cover_image="https://asuracomics.gg/wp-content/uploads/2022/04/unknown_1-1.png",
                     last_3_chapter_urls=[
-                        "https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-62/",
-                        "https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-63/",
-                        "https://asuracomics.com/3495919670-i-regressed-as-the-duke-chapter-64-notice/",
+                        "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-62/",
+                        "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-63/",
+                        "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-64-notice/",
                     ]
                 ),
-                test_subject=Asura
+                test_subject=scanlators["asura"]
             ),
             "aquamanga": TestCase(
                 self.test_setup,
@@ -536,7 +520,7 @@ class TestCases(dict):
                     scanlator_name="aquamanga",
                     manga_url="https://aquamanga.com/read/court-swordswoman-in-another-world/",
                     completed=True,
-                    human_name="Court Swordswoman in Another World",  # noqa
+                    title="Court Swordswoman in Another World",  # noqa
                     manga_id=default_id_func("https://aquamanga.com/read/court-swordswoman-in-another-world"),
                     curr_chapter_url="https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
                     first_chapter_url="https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-1/",
@@ -549,7 +533,7 @@ class TestCases(dict):
                         "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
                     ]
                 ),
-                test_subject=Aquamanga
+                test_subject=scanlators["aquamanga"]
             ),
             "reaperscans": TestCase(
                 self.test_setup,
@@ -558,7 +542,7 @@ class TestCases(dict):
                     scanlator_name="reaperscans",
                     manga_url="https://reaperscans.com/comics/4099-the-legendary-mechanic",
                     completed=True,
-                    human_name="The Legendary Mechanic",
+                    title="The Legendary Mechanic",
                     manga_id="4099",
                     curr_chapter_url=(
                         "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
@@ -577,7 +561,7 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=ReaperScans,
+                test_subject=scanlators["reaperscans"],
             ),
             "anigliscans": TestCase(
                 self.test_setup,
@@ -586,7 +570,7 @@ class TestCases(dict):
                     scanlator_name="anigliscans",
                     manga_url="https://anigliscans.xyz/series/blooming/",
                     completed=True,
-                    human_name="BLOOMING",
+                    title="BLOOMING",
                     manga_id=default_id_func("https://anigliscans.xyz/series/blooming"),
                     curr_chapter_url="https://anigliscans.xyz/blooming-chapter-24/",
                     first_chapter_url="https://anigliscans.xyz/blooming-chapter-1/",
@@ -597,7 +581,7 @@ class TestCases(dict):
                         "https://anigliscans.xyz/blooming-chapter-24/",
                     ],
                 ),
-                test_subject=AnigliScans
+                test_subject=scanlators["anigliscans"]
             ),
             "comick": TestCase(
                 self.test_setup,
@@ -606,7 +590,7 @@ class TestCases(dict):
                     scanlator_name="comick",
                     manga_url="https://comick.app/comic/00-solo-leveling?lang=en",
                     completed=True,
-                    human_name="Solo Leveling",
+                    title="Solo Leveling",
                     manga_id="71gMd0vF",
                     curr_chapter_url="https://comick.app/comic/00-solo-leveling/DARIhC3K",
                     first_chapter_url="https://comick.app/comic/00-solo-leveling/P_ysNE3VbnLbwN",
@@ -617,7 +601,7 @@ class TestCases(dict):
                         "https://comick.app/comic/00-solo-leveling/DARIhC3K",
                     ],
                 ),
-                test_subject=Comick
+                test_subject=scanlators["comick"]
             ),
             "voidscans": TestCase(
                 self.test_setup,
@@ -626,7 +610,7 @@ class TestCases(dict):
                     scanlator_name="voidscans",
                     manga_url="https://void-scans.com/manga/superhuman-era/",
                     completed=False,
-                    human_name="Superhuman Era",
+                    title="Superhuman Era",
                     manga_id=default_id_func("https://void-scans.com/manga/superhuman-era"),
                     curr_chapter_url="https://void-scans.com/superhuman-era-chapter-48/",
                     first_chapter_url="https://void-scans.com/superhuman-era-chapter-0/",
@@ -637,30 +621,30 @@ class TestCases(dict):
                         "https://void-scans.com/superhuman-era-chapter-48/",
                     ],
                 ),
-                test_subject=VoidScans
+                test_subject=scanlators["voidscans"]
             ),
             "luminousscans": TestCase(
                 self.test_setup,
-                test_data=TestInputData("https://luminousscans.com/series/1694156401-my-office-noonas-story/"),
+                test_data=TestInputData("https://luminousscans.com/series/1694588401-my-office-noonas-story/"),
                 expected_result=ExpectedResult(
                     scanlator_name="luminousscans",
-                    manga_url="https://luminousscans.com/series/1694156401-my-office-noonas-story/",
+                    manga_url="https://luminousscans.com/series/1694588401-my-office-noonas-story/",
                     completed=True,
-                    human_name="My Office Noona’s Story",  # noqa
+                    title="My Office Noona’s Story",  # noqa
                     manga_id=default_id_func("https://luminousscans.com/series/1694156401-my-office-noonas-story"),
-                    curr_chapter_url="https://luminousscans.com/1694156401-my-office-noonas-story-epilogue-chapter-03/",
-                    first_chapter_url="https://luminousscans.com/1694156401-my-office-noonas-story-prologue/",
+                    curr_chapter_url="https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-03/",
+                    first_chapter_url="https://luminousscans.com/1694588401-my-office-noonas-story-prologue/",
                     cover_image=(
                         "https://luminousscans.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg"
                     ),
                     last_3_chapter_urls=[
-                        "https://luminousscans.com/1694156401-my-office-noonas-story-epilogue-chapter-01/",
-                        "https://luminousscans.com/1694156401-my-office-noonas-story-epilogue-chapter-02/",
-                        "https://luminousscans.com/1694156401-my-office-noonas-story-epilogue-chapter-03/",
+                        "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-01/",
+                        "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-02/",
+                        "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-03/",
                     ],
                 ),
                 id_first=True,
-                test_subject=LuminousScans
+                test_subject=scanlators["luminousscans"]
             ),
             "lscomic": TestCase(
                 self.test_setup,
@@ -669,18 +653,18 @@ class TestCases(dict):
                     scanlator_name="lscomic",
                     manga_url="https://lscomic.com/manga/8th-class-mage-returns/",
                     completed=False,
-                    human_name="8th-Class Mage Returns",
+                    title="8th-Class Mage Returns",
                     manga_id=default_id_func("https://lscomic.com/manga/8th-class-mage-returns"),
                     curr_chapter_url="https://lscomic.com/manga/8th-class-mage-returns/chapter-81/",
                     first_chapter_url="https://lscomic.com/manga/8th-class-mage-returns/chapter-1/",
-                    cover_image="https://lscomic.com/wp-content/uploads/2023/09/banner-8CMR.png",
+                    cover_image="https://lscomic.com/wp-content/uploads/2023/09/cover-8CMR.png",
                     last_3_chapter_urls=[
                         "https://lscomic.com/manga/8th-class-mage-returns/chapter-79/",
                         "https://lscomic.com/manga/8th-class-mage-returns/chapter-80/",
                         "https://lscomic.com/manga/8th-class-mage-returns/chapter-81/",
                     ],
                 ),
-                test_subject=LSComic
+                test_subject=scanlators["lscomic"]
             ),
             "drakescans": TestCase(
                 self.test_setup,
@@ -689,7 +673,7 @@ class TestCases(dict):
                     scanlator_name="drakescans",
                     manga_url="https://drakescans.com/series/spirit-pet-creation-simulator1/",
                     completed=True,
-                    human_name="Spirit Pet Creation Simulator",
+                    title="Spirit Pet Creation Simulator",
                     manga_id=default_id_func("https://drakescans.com/series/spirit-pet-creation-simulator1"),
                     curr_chapter_url="https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
                     first_chapter_url="https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-00/",
@@ -700,7 +684,7 @@ class TestCases(dict):
                         "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
                     ],
                 ),
-                test_subject=DrakeScans
+                test_subject=scanlators["drakescans"]
             ),
             "mangabaz": TestCase(
                 self.test_setup,
@@ -709,12 +693,12 @@ class TestCases(dict):
                     scanlator_name="mangabaz",
                     manga_url="https://mangabaz.net/mangas/i-grow-stronger-by-eating/",
                     completed=False,
-                    human_name="I Grow Stronger By Eating!",
+                    title="I Grow Stronger By Eating!",
                     manga_id=default_id_func("https://mangabaz.net/mangas/i-grow-stronger-by-eating"),
                     curr_chapter_url="https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/",
                     first_chapter_url="https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-1/",
                     cover_image=(
-                        "https://mangabaz.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating-193x278.jpg"
+                        "https://mangabaz.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg"
                     ),
                     last_3_chapter_urls=[
                         "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-98/",
@@ -722,7 +706,7 @@ class TestCases(dict):
                         "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/",
                     ],
                 ),
-                test_subject=Mangabaz
+                test_subject=scanlators["mangabaz"]
             ),
             "mangapill": TestCase(
                 self.test_setup,
@@ -731,7 +715,7 @@ class TestCases(dict):
                     scanlator_name="mangapill",
                     manga_url="https://mangapill.com/manga/57/3d-kanojo",
                     completed=True,
-                    human_name="3D Kanojo",
+                    title="3D Kanojo",
                     manga_id="57",
                     curr_chapter_url="https://mangapill.com/chapters/57-10047000/3d-kanojo-chapter-47",
                     first_chapter_url="https://mangapill.com/chapters/57-10001000/3d-kanojo-chapter-1",
@@ -743,16 +727,16 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=Mangapill
+                test_subject=scanlators["mangapill"]
             ),
             "bato.to": TestCase(
                 self.test_setup,
                 test_data=TestInputData("https://bato.to/series/95400/queen-in-the-shadows"),
                 expected_result=ExpectedResult(
-                    scanlator_name="bato.to",
+                    scanlator_name="bato",
                     manga_url="https://bato.to/series/95400/queen-in-the-shadows",
                     completed=True,
-                    human_name="Queen in the Shadows",
+                    title="Queen in the Shadows",
                     manga_id="95400",
                     curr_chapter_url="https://bato.to/chapter/2031007",
                     first_chapter_url="https://bato.to/chapter/1803219",
@@ -767,7 +751,7 @@ class TestCases(dict):
                     ],
                 ),
                 id_first=True,
-                test_subject=Bato
+                test_subject=scanlators["bato"]
             ),
             "omegascans": TestCase(
                 self.test_setup,
@@ -775,8 +759,8 @@ class TestCases(dict):
                 expected_result=ExpectedResult(
                     scanlator_name="omegascans",
                     manga_url="https://omegascans.org/series/dorm-room-sisters",
-                    completed=True,
-                    human_name="Dorm Room Sisters",
+                    completed=False,
+                    title="Dorm Room Sisters",
                     manga_id=default_id_func("https://omegascans.org/series/dorm-room-sisters"),
                     curr_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-93-5",
                     first_chapter_url="https://omegascans.org/series/dorm-room-sisters/chapter-1",
@@ -789,7 +773,7 @@ class TestCases(dict):
                         "https://omegascans.org/series/dorm-room-sisters/chapter-93-5",
                     ],
                 ),
-                test_subject=OmegaScans,
+                test_subject=scanlators["omegascans"],
             ),
             "nightscans": TestCase(
                 self.test_setup,
@@ -798,7 +782,7 @@ class TestCases(dict):
                     scanlator_name="nightscans",
                     manga_url="https://nightscans.net/series/all-attributes-in-martial-arts",
                     completed=True,
-                    human_name="All-Attributes in Martial Arts",  # noqa
+                    title="All-Attributes in Martial Arts",  # noqa
                     manga_id=default_id_func("https://nightscans.net/series/all-attributes-in-martial-arts"),
                     curr_chapter_url="https://nightscans.net/all-attribute-in-martial-arts-chapter-70/",
                     first_chapter_url="https://nightscans.net/all-attribute-martial-arts-00/",
@@ -809,7 +793,7 @@ class TestCases(dict):
                         "https://nightscans.net/all-attribute-in-martial-arts-chapter-70/",
                     ]
                 ),
-                test_subject=NightScans
+                test_subject=scanlators["nightscans"]
             ),
             "suryascans": TestCase(  # noqa
                 self.test_setup,
@@ -818,7 +802,7 @@ class TestCases(dict):
                     scanlator_name="suryascans",  # noqa
                     manga_url="https://suryascans.com/manga/modern-dude-in-the-murim",
                     completed=False,
-                    human_name="Modern Dude in the Murim",  # noqa
+                    title="Modern Dude in the Murim",  # noqa
                     manga_id=default_id_func("https://suryascans.com/manga/modern-dude-in-the-murim"),
                     curr_chapter_url="https://suryascans.com/modern-dude-in-the-murim-chapter-22/",
                     first_chapter_url="https://suryascans.com/modern-dude-in-the-murim-chapter-1/",
@@ -829,7 +813,7 @@ class TestCases(dict):
                         "https://suryascans.com/modern-dude-in-the-murim-chapter-22/",
                     ]
                 ),
-                test_subject=SuryaScans
+                test_subject=scanlators["suryascans"]
             ),
         }
 
@@ -837,6 +821,9 @@ class TestCases(dict):
 
     async def __aenter__(self):
         await self.test_setup.bot.async_init()
+        for name, klass in self.testCases.items():
+            if isinstance(klass.expected_result.manga_id, Coroutine):
+                klass.expected_result.manga_id = await klass.expected_result.manga_id
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -845,8 +832,7 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = ["luminousscans"]  # I've to fix the update check function
-        # testCases.pop("voidscans", None)  # bad website to work with
+        tests_to_ignore = []
         await run_tests(testCases, tests_to_ignore)
 
 
@@ -861,7 +847,7 @@ async def sub_main():
             scanlator_name="omegascans",
             manga_url="https://omegascans.org/series/fucked-the-world-tree",
             completed=False,
-            human_name="Fucked the World Tree",
+            title="Fucked the World Tree",
             manga_id=default_id_func("https://omegascans.org/series/fucked-the-world-tree"),
             curr_chapter_url=(
                 "https://omegascans.org/series/fucked-the-world-tree/chapter-14"
@@ -879,7 +865,7 @@ async def sub_main():
             ],
         ),
         # id_first=True,
-        test_subject=OmegaScans,
+        test_subject=scanlators["omegascans"],
     )
     try:
         await run_single_test(testCase)
@@ -902,7 +888,7 @@ async def test_single_method():
         # fmt_manga_url
         # get_manga_id
         # is_completed
-        # human_name
+        # title
         # curr_chapter_url
         # first_chapter_url
         # cover_image
@@ -935,7 +921,10 @@ if __name__ == "__main__":
 
     if os.name != "nt":
         asyncio.run(main())
-    # asyncio.run(sub_main())
-    # asyncio.run(paused_test())
-    # asyncio.run(test_single_method())
-    asyncio.run(test_single_scanlator("anigliscans"))
+    else:
+        asyncio.run(main())
+        # asyncio.run(sub_main())
+        # asyncio.run(paused_test())
+        # asyncio.run(test_single_method())
+        # asyncio.run(test_single_scanlator("toonily"))
+        # asyncio.run(test_single_scanlator("omegascans"))

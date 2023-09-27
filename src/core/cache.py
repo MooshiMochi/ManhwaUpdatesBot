@@ -169,6 +169,10 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
         limiter: rate_limiter.Limiter = self.getLimiter(hostname)
 
         cached_url = url.removesuffix("/")
+        url_params = kwargs.get("params")
+        if not url_params:
+            url_params = {}
+        cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # await limiter.try_acquire(is_user_request=is_user_req)
             return await super()._request(method, url, *args, **kwargs)
@@ -216,6 +220,11 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
         limiter: rate_limiter.Limiter = self.getLimiter(hostname)
 
         cached_url = url.removesuffix("/")
+        url_params = kwargs.get("params")
+        if not url_params:
+            url_params = {}
+        cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+        
         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
             # await limiter.try_acquire(is_user_request=is_user_req)  # TODO: Re-enable rate limiter

@@ -15,8 +15,8 @@ import discord
 if TYPE_CHECKING:
     from src.core import MangaClient
     from src.core.objects import Bookmark
-    from src.core.scanners import ABCScan
     from src.core import CachedClientSession
+    from src.core.scanlators.classes import AbstractScanlator
 
 import os
 import re
@@ -29,13 +29,12 @@ import yaml
 # noinspection PyPackages
 from .core.errors import RateLimitExceeded
 # noinspection PyPackages
-from .static import RegExpressions, ScanlatorsRequiringUserAgent
+from .static import ScanlatorsRequiringUserAgent
 # noinspection PyPackages
 from .enums import BookmarkSortType
 
 
 def exit_bot() -> None:
-    input("Press enter to continue...")
     exit(1)
 
 
@@ -154,16 +153,19 @@ async def ensure_proxy(config, logger) -> None:
                             )
                             exit_bot()
                             return
-                except aiohttp.ClientConnectorError:
-                    logger.critical(
-                        "   - Proxy is not valid. Please use a different proxy and try again!"
-                    )
+                except aiohttp.ClientConnectorError as e:
+                    if e.strerror == "getaddrinfo failed":
+                        logger.critical("You are offline! Please connect to a network and try again!")
+                    else:
+                        logger.critical(
+                            "   - Proxy is not valid. Please use a different proxy and try again!"
+                        )
                     exit_bot()
                     return
         else:
             if proxy_ip or proxy_port:
                 logger.warning(
-                    "   - Proxy is DISABLED but IP or port is specified."
+                    "   - Proxy is DISABLED but IP or PORT is specified. Consider enabling the proxy!"
                 )
 
 
@@ -207,7 +209,8 @@ def load_config(logger: logging.Logger, *, auto_exit: bool = True, filepath: str
             return {}
 
 
-def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto_exit: bool = True) -> Optional[dict]:
+def ensure_configs(
+        logger, config: dict, scanlators: dict[str, AbstractScanlator], *, auto_exit: bool = True) -> Optional[dict]:
     required_keys = ["token"]
     if not config:
         logger.critical(
@@ -310,7 +313,7 @@ def ensure_configs(logger, config: dict, scanlators: dict[str, ABCScan], *, auto
     return config
 
 
-def del_unavailable_scanlators(config: dict, logger: logging.Logger, scanlators: dict[str, ABCScan]):
+def del_unavailable_scanlators(config: dict, logger: logging.Logger, scanlators: dict[str, AbstractScanlator]):
     for scanlator in ScanlatorsRequiringUserAgent.scanlators:
         if config.get('user-agents', {}).get(scanlator) is None:
             logger.warning(
@@ -326,8 +329,9 @@ def silence_debug_loggers(main_logger: logging.Logger, logger_names: list) -> No
         main_logger.warning(f"Silenced debug logger: {logger_name}")
 
 
-def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, key: str = None) -> Optional[ABCScan]:
-    d: dict[str, ABCScan] = scanlators
+def get_manga_scanlator_class(
+        scanlators: dict[str, AbstractScanlator], url: str = None, key: str = None) -> Optional[AbstractScanlator]:
+    d: dict[str, AbstractScanlator] = scanlators
 
     if key is not None:
         if existing_class := d.get(key):
@@ -335,12 +339,10 @@ def get_manga_scanlator_class(scanlators: dict[str, ABCScan], url: str = None, k
         return None
 
     elif url is not None:
-        for name, obj in RegExpressions.__dict__.items():
-            if isinstance(obj, re.Pattern) and name.count("_") == 1 and name.split("_")[1] == "url":
-                if obj.search(url):
-                    return d.get(name.split("_")[0])
+        for scan in scanlators.values():
+            if scan.check_ownership(url):
+                return scan
         return None
-
     raise ValueError("Either URL or key must be provided.")
 
 
@@ -465,7 +467,7 @@ def modify_embeds(
 
 def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_url: str) -> discord.Embed:
     em = discord.Embed(
-        title=f"Bookmark: {bookmark.manga.human_name}", color=discord.Color.blurple(), url=bookmark.manga.url
+        title=f"Bookmark: {bookmark.manga.title}", color=discord.Color.blurple(), url=bookmark.manga.url
     )
     last_read_index = bookmark.last_read_chapter.index
     next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
@@ -474,16 +476,21 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
     else:
         available_chapters_str = "`Wait for updates`\n"
 
+    next_chapter_text = next_chapter
+    if not next_chapter:
+        next_chapter_text = "`Wait for updates!`"
+        if bookmark.manga.completed:
+            next_chapter_text = f"`None, manhwa is {bookmark.manga.status.lower()}`"
     em.description = (
         f"**Scanlator:** {bookmark.manga.scanlator.title()}\n"
         f"**Last Read Chapter:** {bookmark.last_read_chapter}\n"
 
         "**Next chapter:** "
-        f"{next_chapter if next_chapter else '`Wait for updates`'}\n"
+        f"{next_chapter_text}\n"
 
         f"**Available Chapters:** Up to {available_chapters_str}"
 
-        f"**Completed:** `{bool(bookmark.manga.completed)}`\n"
+        f"**Status:** `{bookmark.manga.status}`\n"
     )
     em.set_footer(text=bot.user.display_name, icon_url=bot.user.display_avatar.url)
     em.set_author(
@@ -507,9 +514,9 @@ def sort_bookmarks(bookmarks: list[Bookmark], sort_type: BookmarkSortType) -> li
     """
     ctype = type(bookmarks)
     # sort alphabetically first, then sort by whatever the sort type is.
-    bookmarks = sorted(bookmarks, key=lambda b: b.manga.human_name.lower())
+    bookmarks = sorted(bookmarks, key=lambda b: b.manga.title.lower())
     if sort_type == BookmarkSortType.ALPHABETICAL:
-        return ctype(sorted(bookmarks, key=lambda b: b.manga.human_name.lower()))
+        return ctype(sorted(bookmarks, key=lambda b: b.manga.title.lower()))
     elif sort_type == BookmarkSortType.LAST_UPDATED_TIMESTAMP:
         return ctype(sorted(bookmarks, key=lambda b: b.last_updated_ts, reverse=True))
     else:
@@ -798,7 +805,7 @@ def create_dynamic_grouped_embeds(
     Parameters:
         data_dicts (List[dict]): A list of dictionaries containing data to be grouped and formatted.
         fmt_line (str): The format string to use for each entry.
-            Can contain placeholders referring to keys in the data dictionaries.
+            It Can contain placeholders referring to keys in the data dictionaries.
         group_key (str): The key in the dictionaries by which the data should be grouped.
         indexed (bool, optional): Whether to prepend an index to each entry. Defaults to True.
         per_page (Optional[int], optional): The maximum number of entries in each embed. If None, no limit is applied.

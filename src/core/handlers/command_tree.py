@@ -15,7 +15,6 @@ import discord
 from discord import InteractionResponded, app_commands
 
 from src.static import Emotes
-from src.overwrites import Embed
 
 from src.core.errors import *
 
@@ -27,7 +26,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
     @staticmethod
     async def _respond_with_check(
-            interaction: discord.Interaction, embed: Embed, ephemeral: bool = True, **kwargs
+            interaction: discord.Interaction, embed: discord.Embed, ephemeral: bool = True, **kwargs
     ) -> None:
         try:
             await interaction.response.send_message(embed=embed, ephemeral=ephemeral, **kwargs)  # noqa
@@ -69,72 +68,63 @@ class BotCommandTree(discord.app_commands.CommandTree):
         send_kwargs = {}
 
         if isinstance(error, app_commands.errors.MissingRole):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Hey, you can't do that!",
                 color=0xFF0000,
                 description=f"Sorry, you need to have the role <@&{error.missing_role}> to execute that command.",
             )
 
         elif isinstance(error, MangaNotFoundError):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Manga not found!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, MangaNotTrackedError):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Manga not tracked!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, CustomError):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Error!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, MangaCompletedOrDropped):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Manga already completed or dropped!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, BookmarkNotFoundError):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Bookmark not found!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, URLAccessFailed):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Failed to access URL!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, ChapterNotFoundError):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Chapter not found!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
 
         elif isinstance(error, app_commands.errors.MissingAnyRole):
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} Hey, you can't do that!",
                 color=0xFF0000,
                 description="Sorry, you need to have one of the following roles: "
@@ -145,8 +135,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             perms = ", ".join(error.missing_permissions)  # noqa
             if "send_messages" in perms:
                 return
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} I can't do that.",
                 color=0xFF0000,
                 description=f"Sorry, I require the permission(s) `{perms}` to "
@@ -162,8 +151,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 else f"`{tdl_obj.seconds} sec`"
             )
             text = f"**⏱️ | {interaction.author.name}**! Try again in {time_as_string}!"
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title="⏱️ Command on cooldown", color=0xFF0000, description=text
             )
 
@@ -178,15 +166,13 @@ class BotCommandTree(discord.app_commands.CommandTree):
                     ]
                 )
             if len(error.missing_permissions) == 1:
-                embed = Embed(
-                    bot=interaction.client,
+                embed = discord.Embed(
                     title=f"{Emotes.warning} Hey, you can't do that!",
                     color=0xFF0000,
                     description=f"Sorry, you need the `{perms}` permission to execute this command.",
                 )
             else:
-                embed = Embed(
-                    bot=interaction.client,
+                embed = discord.Embed(
                     title=f"{Emotes.warning} Hey, you can't do that!",
                     color=0xFF0000,
                     description=f"Sorry, you need the `{perms}` permissions to execute this command.",
@@ -197,8 +183,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             return
 
         else:
-            embed = Embed(
-                bot=interaction.client,
+            embed = discord.Embed(
                 title=f"{Emotes.warning} An unknown error occurred!",
                 color=0xFF0000,
                 description=f"{error}",

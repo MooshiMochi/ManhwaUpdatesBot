@@ -12,7 +12,6 @@ import discord
 
 from .modals import SearchModal
 from .selects import ChapterSelect
-from src.overwrites import Embed
 
 
 class CustomButtonCallbacks:
@@ -32,8 +31,7 @@ class CustomButtonCallbacks:
         await self.view.update(interaction)
         # await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
         msg = await interaction.followup.send(  # noqa
-            embed=Embed(
-                bot=interaction.client,
+            embed=discord.Embed(
                 title="Are you sure?",
                 description="Are you sure you want to delete this bookmark?",
                 color=discord.Color.red()
@@ -46,8 +44,7 @@ class CustomButtonCallbacks:
         if _conf_view.value is None:
             _conf_view.stop()
             return await msg.edit(
-                embed=Embed(
-                    bot=interaction.client,
+                embed=discord.Embed(
                     title="Bookmark Deletion Cancelled",
                     description="Bookmark deletion cancelled.",
                     color=discord.Color.red()
@@ -56,8 +53,7 @@ class CustomButtonCallbacks:
         elif _conf_view.value is False:
             _conf_view.stop()
             return await msg.edit(
-                embed=Embed(
-                    bot=interaction.client,
+                embed=discord.Embed(
                     title="Bookmark Deletion Cancelled",
                     description="Bookmark deletion cancelled.",
                     color=discord.Color.red()
@@ -72,7 +68,7 @@ class CustomButtonCallbacks:
         await self.view.update(interaction)
 
         await msg.edit(
-            content=f"Bookmark [{bookmark.manga.human_name}]({bookmark.manga.url}) deleted successfully.",
+            content=f"Bookmark [{bookmark.manga.title}]({bookmark.manga.url}) deleted successfully.",
             embed=bookmark_embed,
             view=None
         )
