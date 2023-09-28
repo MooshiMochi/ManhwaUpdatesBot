@@ -486,10 +486,18 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             raise e
 
     def check_ownership(self, raw_url: str) -> bool:
-        return self.json_tree.rx.search(raw_url) is not None
+        try:
+            return self.json_tree.rx.search(raw_url) is not None
+        except AttributeError as e:
+            self.bot.logger.error(raw_url)
+            raise e
 
     async def get_id(self, raw_url: str) -> str:
-        url_id = self.json_tree.rx.search(raw_url).groupdict().get("id")
+        try:
+            url_id = self.json_tree.rx.search(raw_url).groupdict().get("id")
+        except AttributeError as e:
+            self.bot.logger.error(raw_url)
+            raise e
         if url_id is None or self.json_tree.properties.dynamic_url is True:
             key = await self._get_url_name(raw_url)
             return hashlib.sha256(key.encode()).hexdigest()

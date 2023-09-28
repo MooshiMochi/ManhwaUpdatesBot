@@ -372,6 +372,8 @@ def create_embeds(fmt_line: str, arguments: list[dict], per_page: Optional[int] 
     """
     if not arguments:
         return None
+    if per_page is not None and per_page < 1:
+        raise ValueError("per_page parameter must be greater than 0.")
 
     embeds = []
     max_desc_length = 4096

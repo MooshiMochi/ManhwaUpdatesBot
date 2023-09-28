@@ -31,7 +31,10 @@ class _Comick(AbstractScanlator):
                 icon_url=self.icon_url,
                 base_url=self.base_url,
                 requires_update_embed=False,
-                can_render_cover=True
+                can_render_cover=True,
+                format_urls=SimpleNamespace(
+                    manga=self.fmt_url.removesuffix("?lang=en"),
+                )
             )
         )
 
@@ -133,7 +136,10 @@ class _MangaDex(AbstractScanlator):
                 icon_url=self.icon_url,
                 base_url=self.base_url,
                 requires_update_embed=False,
-                can_render_cover=True
+                can_render_cover=True,
+                format_urls=SimpleNamespace(
+                    manga=self.fmt_url,
+                )
             )
         )
 

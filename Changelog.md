@@ -4,8 +4,11 @@
 
 ## // September 28th 2023
 
+- Added support for [MangaSiamese](https://mangasiamese.com).
 - Added the `UnsupportedScanlatorURLFormatError` and `MangaNotSubscribedError` errors.
 - Added ability to specify extra `params` in the `._get_text` function.
+- Updated the `/supported_websites` command to use paginator if more than 10 websites are supporetd.
+    - Made it automatically create the embeds as well.
 
 ### Bug Fixes:
 

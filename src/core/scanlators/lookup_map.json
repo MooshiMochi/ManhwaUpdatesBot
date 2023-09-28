@@ -725,14 +725,14 @@
     "nightscans": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?nightscans\\.org/series/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?nightscans\\.net/series/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://nightscans.org",
-        "icon_url": "https://nightscans.org/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png",
+        "base_url": "https://nightscans.net",
+        "icon_url": "https://nightscans.net/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png",
         "format_urls": {
-          "manga": "https://nightscans.org/series/{url_name}/"
+          "manga": "https://nightscans.net/series/{url_name}/"
         },
-        "latest_updates_url": "https://nightscans.org/",
+        "latest_updates_url": "https://nightscans.net/",
         "dynamicURL": false
       },
       "selectors": {
@@ -1103,6 +1103,74 @@
           "encoding": "url"
         },
         "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "mangasiamese": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?mangasiamese\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://mangasiamese.com",
+        "icon_url": "https://mangasiamese.com/wp-content/uploads/2023/08/cropped-Untitled-design.png",
+        "format_urls": {
+          "ajax": "https://mangasiamese.com/manga/{url_name}/ajax/chapters",
+          "manga": "https://mangasiamese.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://mangasiamese.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1",
+          "div.series-title > h1",
+          ".breadcrumb > li:nth-child(3) > a:nth-child(1)"
+        ],
+        "synopsis": "div.post-content > div.manga-excerpt > p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a",
+          "url": "div.post-title > h3.h5 > a",
+          "cover": "img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://mangasiamese.com",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
         "request_method": "GET"
       }
     }

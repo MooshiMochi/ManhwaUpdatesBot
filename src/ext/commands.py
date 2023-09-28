@@ -630,126 +630,11 @@ class CommandsCog(commands.Cog):
         em = discord.Embed(title="Supported Websites", color=discord.Color.green())
         supp_webs = [
             (
-                scanlators.get("mangadex"),
-                "MangaDex",
-                "https://mangadex.org/",
-                "https://mangadex.org/title/1b2c3d/",
-            ),
-            (
-                scanlators.get("manganato"),
-                "Manganato",
-                "https://manganato.com/",
-                "https://manganato.com/manga-m123456",
-            ),
-            (
-                scanlators.get("tritinia"),
-                "TritiniaScans",
-                "https://tritinia.org",
-                "https://tritinia.org/manga/manga-title/",
-            ),
-            (
-                scanlators.get("flamescans"),
-                "FlameScans",
-                "https://flamescans.org/",
-                "https://flamescans.org/series/manga-title/",
-            ),
-            (
-                scanlators.get("asura"),
-                "Asura",
-                "https://asuracomics.gg",
-                "https://asuracomics.gg/manga/manga-title/",
-            ),
-            (
-                scanlators.get("reaperscans"),
-                "ReaperScans",
-                "https://reaperscans.com/",
-                "https://reaperscans.com/comics/12351-manga-title/",
-            ),
-            (
-                scanlators.get("comick"),
-                "Comick",
-                "https://comick.app/",
-                "https://comick.app/comic/manga-title/",
-            ),
-            (
-                scanlators.get("luminousscans"),
-                "Luminous",
-                "https://luminousscans.com/",
-                "https://luminousscans.com/series/12351-manga-title/",
-            ),
-            (
-                scanlators.get("drakescans"),
-                "DrakeScans",
-                "https://drakescans.com/",
-                "https://drakescans.com/series/manga-title/",
-            ),
-            (
-                scanlators.get("mangabaz"),
-                "Mangabaz",
-                "https://mangabaz.net/",
-                "https://mangabaz.net/mangas/manga-title/",
-            ),
-            (
-                scanlators.get("mangapill"),
-                "Mangapill",
-                "https://mangapill.com/",
-                "https://mangapill.com/manga/12351/manga-title/",
-            ),
-            (
-                scanlators.get("lscomic"),
-                "LSComic",
-                "https://lscomic.com/",
-                "https://lscomic.com/manga/manga-title/",
-            ),
-            (
-                scanlators.get("bato"),
-                "Bato.to",
-                "https://bato.to/",
-                "https://bato.to/series/12351/manga-title/",
-            ),
-            (
-                scanlators.get("toonily"),
-                "Toonily",
-                "https://toonily.com",
-                "https://toonily.net/manga/manga-title/",
-            ),
-            (
-                scanlators.get("omegascans"),
-                "OmegaScans",
-                "https://omegascans.org/",
-                "https://omegascans.org/series/manga-title/",
-            ),
-            (
-                scanlators.get("voidscans"),
-                "VoidScans",
-                "https://void-scans.com/",
-                "https://void-scans.com/manga/manga-title/",
-            ),
-            # Scanlators requiring user-agents
-            (
-                scanlators.get("anigliscans"),
-                "AnigliScans",
-                "https://anigliscans.xyz/",
-                "https://anigliscans.xyz/series/manga-title/",
-            ),
-            (
-                scanlators.get("aquamanga"),
-                "Aquamanga",
-                "https://aquamanga.com/",
-                "https://aquamanga.com/read/manga-title/",
-            ),
-            (
-                scanlators.get("nightscans"),
-                "NightScans",
-                "https://nightscans.net/",
-                "https://nightscans.net/series/manga-title/",
-            ),
-            (
-                scanlators.get("suryascans"),
-                "SuryaScans",
-                "https://suryascans.com/",
-                "https://suryascans.com/manga/manga-title/",
-            )
+                x,
+                y.title(),
+                x.json_tree.properties.base_url,
+                x.json_tree.properties.format_urls.manga
+            ) for y, x, in scanlators.items()
         ]
         supp_webs = sorted(supp_webs, key=lambda x: x[1])
         user_agents = self.bot.config.get("user-agents", {})
@@ -757,25 +642,39 @@ class CommandsCog(commands.Cog):
             "Manhwa Updates Bot currently supports the following websites:\n"
         )
 
-        for scanlator, name, url, _format in supp_webs:
+        removed = 0
+        for i, (scanlator, name, url, _format) in enumerate(supp_webs.copy()):
             # Only remove those that are SET to None in user-agents in config or not in scanlators
             if (
                     scanlator.name not in scanlators
                     or user_agents.get(scanlator.name, True) is None
             ):
-                continue
+                supp_webs.pop(i - removed)
+                removed += 1
 
-            em.description += f"• [{name}]({url})\n"
-            em.description += f"\u200b \u200b \u200b \↪ Format -> `{_format}`\n"
-
-        em.description += "\n\n__**Note:**__"
-        em.description += "\nMore websites will be added in the future. "
-        em.description += "Don't forget to leave suggestions on websites I should add."
-
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-
-        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
-        return
+        embeds = create_embeds(
+            "• [{name}]({url})\n\u200b \u200b \u200b \↪ Format -> `{_format}`\n",
+            [{"name": x[1], "url": x[2], "_format": x[3]} for x in supp_webs],
+            per_page=10
+        )
+        for embed in embeds:
+            embed.add_field(
+                name="__Note__",
+                value="More websites will be added in the future. "
+                      "Don't forget to leave suggestions on websites I should add."
+            )
+        embeds = modify_embeds(
+            embeds,
+            footer_kwargs={"text": "Manhwa Updates", "icon_url": self.bot.user.display_avatar.url},
+            title_kwargs={"title": f"Supported Websites ({len(supp_webs)})", "color": discord.Color.green()},
+            show_page_number=True
+        )
+        if len(embeds) == 1:
+            await interaction.response.send_message(embed=embeds[0], ephemeral=True)  # noqa
+            return
+        else:
+            view = PaginatorView(embeds, interaction, timeout=3 * 24 * 60 * 60)
+            await interaction.response.send_message(embed=embeds[0], view=view, ephemeral=True)  # noqa
 
     @app_commands.command(
         name="help", description="Get started with Manhwa Updates Bot."
