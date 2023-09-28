@@ -298,7 +298,7 @@ class UpdateCheckCog(commands.Cog):
                         await guild_config.notifications_channel.send(
                             (
                                 # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
-                                f"||<ID:SCANLATOR:CH_IDX>-{update.manga_id}|{update.scanlator}|{chapter.index}>||\n"
+                                f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
                                 f"{formatted_pings}**{manga_title} {chapter.name}**"
                                 f" has been released!\n{chapter.url}"
                             ),
