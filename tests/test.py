@@ -340,7 +340,7 @@ class TestCase:
 
     async def begin(self, test_method: str = "all") -> str:
         if self.test_subject is None or self.test_subject.name not in scanlators:
-            print(f"Scanlator {self.test_subject} is disabled! No tests will be run.")
+            print(f"⚠️ Scanlator {self.test_subject} is disabled! No tests will be run.")
             return "N/A"
         else:
             return await self.test.begin(test_method)

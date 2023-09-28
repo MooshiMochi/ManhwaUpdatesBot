@@ -698,10 +698,10 @@ class Database:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
                 is_current: bool = (current or "").strip() != ""
                 if scanlator is not None and is_current is True:
-                    query = f"{_base} AND scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
+                    query = f"{_base} AND series.scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
                     params = (user_id, scanlator, current)
                 elif scanlator is not None and is_current is False:
-                    query = f"{_base} AND scanlator = $2 LIMIT 25;"
+                    query = f"{_base} AND series.scanlator = $2 LIMIT 25;"
                     params = (user_id, scanlator)
                 elif is_current is True:
                     query = f"{_base} ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
