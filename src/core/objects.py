@@ -173,10 +173,13 @@ class PartialManga:
     def __str__(self):
         return f"[{self.title}]({self._url})"
 
-    def __eq__(self, other: PartialManga):
-        if isinstance(other, (PartialManga, Manga)):
-            return self._url == other.url and self._title == other._title or self._id == other.id
-        return False
+    def __eq__(self, other: Manga):
+        return isinstance(other, (Manga, PartialManga)) and (
+                self.url == other.url and
+                self.title == other.title or
+                self.id == other.id and
+                self.scanlator == other.scanlator
+        )
 
     @property
     def id(self):
@@ -384,8 +387,7 @@ class Manga:
         return f"[{self.title}]({self.url})"
 
     def __eq__(self, other: Manga):
-        return (
-                isinstance(other, (Manga, PartialManga)) and
+        return isinstance(other, (Manga, PartialManga)) and (
                 self.url == other.url and
                 self.title == other.title or
                 self.id == other.id and

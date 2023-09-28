@@ -479,7 +479,11 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=_id)
 
     async def _get_url_name(self, raw_url: str) -> str:
-        return self.json_tree.rx.search(raw_url).groupdict().get("url_name")
+        try:
+            return self.json_tree.rx.search(raw_url).groupdict().get("url_name")
+        except AttributeError as e:
+            self.bot.logger.error(raw_url)
+            raise e
 
     def check_ownership(self, raw_url: str) -> bool:
         return self.json_tree.rx.search(raw_url) is not None
