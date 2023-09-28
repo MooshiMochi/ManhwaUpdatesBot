@@ -390,7 +390,7 @@ class TestCases(dict):
     def __init__(self):
         self.test_setup = SetupTest()
 
-        with open("./test_map.json", "r", encoding="utf-8") as f:
+        with open(os.path.join(root_path, "tests/test_map.json"), "r", encoding="utf-8") as f:
             test_map = json.load(f)
         self.testCases: dict[str, TestCase] = {}
         for scanlator_name, test_data in test_map.items():
@@ -514,7 +514,7 @@ if __name__ == "__main__":
     setup_logging(level=logging.INFO)
 
     # delete the database file in the ./tests file before proceeding with the tests
-    db_filepath: str = "./database.db"
+    db_filepath: str = os.path.join(root_path, "tests/database.db")
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
 
