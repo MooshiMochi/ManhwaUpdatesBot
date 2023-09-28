@@ -64,7 +64,10 @@ class CustomButtonCallbacks:
         # noinspection PyProtectedMember
         bookmark_embed = self.view._get_display_embed()
         await bookmark.delete(self.view.bot)
-        self.view.bookmarks = [x for x in self.view.bookmarks if x.manga.id != bookmark.manga.id]
+        self.view.bookmarks = [
+            x for x in self.view.bookmarks
+            if x.manga.id != bookmark.manga.id and x.manga.scanlator != bookmark.manga.scanlator
+        ]
         await self.view.update(interaction)
 
         await msg.edit(

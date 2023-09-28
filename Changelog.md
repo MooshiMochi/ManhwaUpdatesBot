@@ -2,7 +2,18 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
-## // September 26th 2023
+## // September 28th 2023
+
+- Added the `UnsupportedScanlatorURLFormatError` and `MangaNotSubscribedError` errors.
+- Added ability to specify extra `params` in the `._get_text` function.
+
+### Bug Fixes:
+
+- Changed the way mangas are identified in the database.
+    - Instead of using just the id, it now uses the scanlator as well as a composite key.
+- Updated void-scans `can_render_cover` and `requires_update_embed` parameters.
+
+## // September 27th 2023
 
 - Re-wrote the scanlator system for the bot.
     - It now uses JSON file to add websites to the bot.

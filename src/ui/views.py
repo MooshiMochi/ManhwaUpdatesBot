@@ -593,7 +593,7 @@ class SubscribeView(View):
         # but it is what it is.
         await self.bot.db.add_series(manga)
 
-        if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga.id):
+        if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga.id, manga.scanlator):
             if not interaction.user.guild_permissions.manage_roles:
                 return await interaction.followup.send(
                     embed=discord.Embed(
@@ -617,7 +617,9 @@ class SubscribeView(View):
                     return
 
                 ping_role: discord.Role | None = None
-                ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id)
+                ping_role_id = await self.bot.db.get_guild_manga_role_id(
+                    interaction.guild_id, manga.id, manga.scanlator
+                )
 
                 if ping_role_id is None:
                     if guild_config.auto_create_role:  # should create and not specified
@@ -629,8 +631,8 @@ class SubscribeView(View):
                         else:
                             ping_role = await interaction.guild.create_role(name=role_name, mentionable=True)
                             await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
-                await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, ping_role)
-                await self.bot.db.subscribe_user(interaction.user.id, interaction.guild_id, manga.id)
+                await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, manga.scanlator, ping_role)
+                await self.bot.db.subscribe_user(interaction.user.id, interaction.guild_id, manga.id, manga.scanlator)
                 await interaction.response.followup.send(  # noqa
                     embed=discord.Embed(
                         title="Subscribed to Series",
@@ -645,7 +647,7 @@ class SubscribeView(View):
         )
         if current_user_subs:
             for loop_manga in current_user_subs:
-                if loop_manga.id == manga.id:
+                if loop_manga.id == manga.id and loop_manga.scanlator == manga.scanlator:
                     em = discord.Embed(
                         title="Already Subscribed", color=discord.Color.red()
                     )
@@ -654,7 +656,7 @@ class SubscribeView(View):
                     return await interaction.followup.send(embed=em, ephemeral=True)
 
         await self.bot.db.subscribe_user(
-            interaction.user.id, interaction.guild_id, manga.id
+            interaction.user.id, interaction.guild_id, manga.id, manga.scanlator
         )
 
         embed = discord.Embed(
@@ -717,7 +719,7 @@ class SubscribeView(View):
         user_bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
         if user_bookmarks:
             for bookmark in user_bookmarks:
-                if bookmark.manga.id == manga_id:
+                if bookmark.manga.id == manga_id and bookmark.manga.scanlator == scanlator.name:
                     return await interaction.followup.send(embed=discord.Embed(
                         title="Already Bookmarked",
                         description="You have already bookmarked this series.",
@@ -821,13 +823,13 @@ class BookmarkChapterView(View):
     )
     async def mark_read(self, interaction: discord.Interaction, btn: Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
-        manga_id, chapter_index = self._extract_keys(interaction, btn)
+        manga_id, scanlator_name, chapter_index = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
-            interaction.user.id, manga_id
+            interaction.user.id, manga_id, scanlator_name
         )
         if bookmark is None:
-            manga: Manga = await self.bot.db.get_series(manga_id)
+            manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
             bookmark = Bookmark(
                 interaction.user.id,
                 manga,
@@ -866,10 +868,10 @@ class BookmarkChapterView(View):
     async def mark_unread(self, interaction: discord.Interaction, btn: Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
         # await self.bot.db.mark_chapter_unread(self.chapter)
-        manga_id, chapter_index = self._extract_keys(interaction, btn)
+        manga_id, scanlator_name, chapter_index = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
-            interaction.user.id, manga_id
+            interaction.user.id, manga_id, scanlator_name
         )
         if bookmark is None:
             return await interaction.followup.send(
@@ -888,9 +890,9 @@ class BookmarkChapterView(View):
                 await self.bot.db.upsert_bookmark(bookmark)
             else:
                 await self.bot.db.delete_bookmark(
-                    interaction.user.id, bookmark.manga.id
+                    interaction.user.id, bookmark.manga.id, bookmark.manga.scanlator
                 )
-            del_bookmark_view = DeleteBookmarkView(self.bot, interaction, manga_id)
+            del_bookmark_view = DeleteBookmarkView(self.bot, interaction, manga_id, scanlator_name)
             del_bookmark_view.message = await interaction.followup.send(
                 embed=discord.Embed(
                     title="Marked Unread",
@@ -919,10 +921,10 @@ class BookmarkChapterView(View):
     )
     async def last_read(self, interaction: discord.Interaction, btn: Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
-        manga_id, _ = self._extract_keys(interaction, btn)
+        manga_id, scanlator_name, _ = self._extract_keys(interaction, btn)
 
         bookmark: Bookmark = await self.bot.db.get_user_bookmark(
-            interaction.user.id, manga_id
+            interaction.user.id, manga_id, scanlator_name
         )
         if bookmark is None:
             return await interaction.followup.send(
@@ -953,13 +955,11 @@ class BookmarkChapterView(View):
     @staticmethod
     def _extract_keys(
             interaction: discord.Interaction, _: Button, /,
-    ) -> tuple[str, int]:
-        key_message = interaction.message.content.split("||")[1]
-        manga_id, chapter_index = key_message.split(" | ")
-        manga_id = manga_id.strip().lstrip("<Manga ID: ")
-        chapter_index = chapter_index.strip().lstrip("Chapter Index: ").rstrip(">")
-
-        return manga_id, int(chapter_index)
+    ) -> tuple[str, str, int]:
+        key_message: str = interaction.message.content.split("||")[1]
+        # f"||<ID:SCANLATOR:CH_IDX>-{update.manga_id}|{update.scanlator}|{chapter.index}>||\n"
+        manga_id, scanlator, chapter_index = key_message.split("|")
+        return manga_id.strip(), scanlator.strip(), int(chapter_index.strip())
 
     async def on_error(
             self,
@@ -983,9 +983,10 @@ class BookmarkChapterView(View):
 
 
 class DeleteBookmarkView(BaseView):
-    def __init__(self, bot: MangaClient, interaction: discord.Interaction, manga_id: str):
+    def __init__(self, bot: MangaClient, interaction: discord.Interaction, manga_id: str, scanlator: str):
         super().__init__(bot, interaction=interaction)
         self.manga_id: str = manga_id
+        self.scanlator_name: str = scanlator
 
     @discord.ui.button(label="Delete 'hidden bookmark'", style=discord.ButtonStyle.red)
     async def delete_last_read(self, interaction: discord.Interaction, btn: Button):
@@ -1016,7 +1017,7 @@ class DeleteBookmarkView(BaseView):
             return
 
         await self.message.edit(view=None)
-        await self.bot.db.delete_bookmark(interaction.user.id, self.manga_id)
+        await self.bot.db.delete_bookmark(interaction.user.id, self.manga_id, self.scanlator_name)
         await confirm_view.message.edit(
             embed=discord.Embed(
                 title="Deleted",

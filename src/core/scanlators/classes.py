@@ -280,7 +280,7 @@ class AbstractScanlator(ABC):
         manga_id = await self.get_id(raw_url)
 
         # load from database if exists.
-        manga_obj = await self.bot.db.get_series(manga_id)
+        manga_obj = await self.bot.db.get_series(manga_id, self.name)
         if manga_obj is not None:
             return manga_obj
 
@@ -360,7 +360,7 @@ class AbstractScanlator(ABC):
             status: str = await self.get_status(manga.url)
             cover_url: str = await self.get_cover(manga.url)
             if all_chapters is None:
-                return ChapterUpdate(manga.id, [], cover_url, status)
+                return ChapterUpdate(manga.id, [], manga.scanlator, cover_url, status)
             if manga.last_chapter:
                 new_chapters: list[Chapter] = [
                     chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
@@ -368,7 +368,7 @@ class AbstractScanlator(ABC):
             else:
                 new_chapters: list[Chapter] = all_chapters
             return ChapterUpdate(
-                manga.id, new_chapters, cover_url, status,
+                manga.id, new_chapters, manga.scanlator, cover_url, status,
                 [
                     {"embed": self.create_chapter_embed(manga, chapter)}
                     for chapter in new_chapters
@@ -449,16 +449,18 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return extra_kwargs
 
     async def _get_text(self, url: str, method: Literal["GET", "POST"] = "GET", **params) -> str:
-
+        provided_headers = params.pop("headers", None)
+        if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
+        headers = ((self.create_headers() or {}) | provided_headers) or None
         if self.json_tree.request_method == "http":
             async with self.bot.session.request(
-                    method, url, headers=self.create_headers(), **self.get_extra_req_kwargs(), **params
+                    method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             ) as resp:
                 resp.raise_for_status()
                 return await resp.text()
         else:
             resp = await self.bot.curl_session.request(
-                method, url, headers=self.create_headers(), **self.get_extra_req_kwargs(), **params
+                method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             )
             resp.raise_for_status()
             return resp.text

@@ -22,15 +22,17 @@ class ChapterUpdate:
             self,
             manga_id: str,
             new_chapters: list[Chapter],
+            scanlator: str,
             new_cover_url: Optional[str] = None,
             status: str = "Ongoing",
-            extra_kwargs: list[dict[str, Any]] = None
+            extra_kwargs: list[dict[str, Any]] = None,
     ):
         self.manga_id = manga_id
         self.new_chapters = new_chapters
         self.new_cover_url = new_cover_url
         self.status = status
         self.extra_kwargs = extra_kwargs or []
+        self.scanlator = scanlator
 
     def __repr__(self):
         return f"ChapterUpdate({len(self.new_chapters)} new chapters, status={self.status})"
@@ -382,11 +384,13 @@ class Manga:
         return f"[{self.title}]({self.url})"
 
     def __eq__(self, other: Manga):
-        if isinstance(other, Manga):
-            return self.url == other.url and self.title == other.title or self.id == other.id
-        elif isinstance(other, PartialManga):
-            return self.url == other.url and self.title == other.title or self.id == other.id
-        return False
+        return (
+                isinstance(other, (Manga, PartialManga)) and
+                self.url == other.url and
+                self.title == other.title or
+                self.id == other.id and
+                self.scanlator == other.scanlator
+        )
 
 
 class Bookmark:
@@ -419,8 +423,9 @@ class Bookmark:
         # 3 = guild_id
         # 4 = last_updated_ts
         # 5 = user_created
+        # 6 = scanlator
         last_read_chapter: Chapter = data[1].available_chapters[data[2]]
-        parsed_data = list(data)
+        parsed_data = list(data)[:-1]  # No need to include scanlator. It's stored in the manga object
         parsed_data[2] = last_read_chapter
         return cls(*parsed_data)
 
@@ -438,11 +443,12 @@ class Bookmark:
             self.guild_id,
             self.last_updated_ts,
             self.user_created,
+            self.manga.scanlator
         )
 
     async def delete(self, bot: MangaClient) -> bool:
         """Delete the bookmark from the database."""
-        return await bot.db.delete_bookmark(self.user_id, self.manga.id)
+        return await bot.db.delete_bookmark(self.user_id, self.manga.id, self.manga.scanlator)
 
     async def update_last_read_chapter(self, bot: MangaClient, chapter: Chapter) -> bool:
         """Update the last read chapter of the bookmark."""

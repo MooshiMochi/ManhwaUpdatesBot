@@ -144,10 +144,13 @@ class ChapterSelect(Select):
             # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
             user_subscribed = True
-            is_tracked: bool = await bot.db.is_manga_tracked(interaction.guild_id, self.bookmark.manga.id)
-            if not await bot.db.is_user_subscribed(interaction.user.id, self.bookmark.manga.id) and is_tracked:
+            is_tracked: bool = await bot.db.is_manga_tracked(
+                interaction.guild_id, self.bookmark.manga.id, self.bookmark.manga.scanlator
+            )
+            if not await bot.db.is_user_subscribed(
+                    interaction.user.id, self.bookmark.manga.id, self.bookmark.manga.scanlator) and is_tracked:
                 await bot.db.subscribe_user(
-                    interaction.user.id, self.bookmark.guild_id, self.bookmark.manga.id
+                    interaction.user.id, self.bookmark.guild_id, self.bookmark.manga.id, self.bookmark.manga.scanlator
                 )
             elif not is_tracked:
                 should_track = True

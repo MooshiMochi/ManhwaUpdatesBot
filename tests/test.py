@@ -11,7 +11,7 @@ import sys
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
-from typing import Coroutine, Dict, Optional
+from typing import Coroutine, Dict, Literal, Optional
 
 from src.core.apis import ComickAppAPI, MangaDexAPI
 from src.core.cache import CachedClientSession, CachedCurlCffiSession
@@ -885,22 +885,20 @@ async def paused_test():
         print("Testing finished!")
 
 
-async def test_single_method():
+async def test_single_method(scanlator: str, test_method: Literal[
+    "fmt_manga_url",
+    "get_manga_id",
+    "is_completed",
+    "title",
+    "first_chapter_url",
+    "cover_image",
+    "check_updates",
+    "scanlator_name",
+    "show_synopsis",
+    "show_front_page_results"
+]):
     async with TestCases() as testCases:
-        # Available methods:
-        # fmt_manga_url
-        # get_manga_id
-        # is_completed
-        # title
-        # curr_chapter_url
-        # first_chapter_url
-        # cover_image
-        # check_updates
-        # scanlator_name
-        # show_synopsis
-        # show_front_page_results
-        test_method = "show_front_page_results"
-        await run_single_test(testCases["lscomic"], test_method=test_method)
+        await run_single_test(testCases[scanlator], test_method=test_method)
 
 
 async def test_single_scanlator(scanlator: str):
@@ -928,6 +926,5 @@ if __name__ == "__main__":
         asyncio.run(main())
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(test_single_method())
-        # asyncio.run(test_single_scanlator("toonily"))
-        # asyncio.run(test_single_scanlator("omegascans"))
+        # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
+        # asyncio.run(test_single_scanlator("reaperscans"))

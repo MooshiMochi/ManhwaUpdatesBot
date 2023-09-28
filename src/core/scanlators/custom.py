@@ -31,8 +31,6 @@ class _ReaperScans(BasicScanlator):
             tuple[list[Chapter] | None, int] - the list of chapters and max number of chapters there are
         """
         req_url = manga_url.removesuffix("/")[:max(manga_url.find("?"), len(manga_url))]
-        if page is not None and page > 1:  # by default, no param = page 1, so we only consider page 2+
-            req_url += f"?page={page}"
         text = await self._get_text(req_url, "GET")
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)

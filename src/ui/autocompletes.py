@@ -109,7 +109,7 @@ async def manga(
         return []
 
     name_val_pairs = [
-        (f"({m.scanlator}) " + m.title, m.id) for m in mangas
+        (f"({m.scanlator}) " + m.title, f"{m.id}|{m.scanlator}") for m in mangas
     ]
     return [
                discord.app_commands.Choice(name=x[0][:97] + ("..." if len(x[0]) > 100 else ''), value=x[1])
@@ -128,7 +128,7 @@ async def user_bookmarks(
     if not bookmarks:
         return []
     name_val_pairs = [
-        (f"({b[2]}) " + b[1], b[0]) for b in bookmarks
+        (f"({b[2]}) " + b[1], f"{b[0]}|{b[2]}") for b in bookmarks
     ]
     return [
                discord.app_commands.Choice(name=x[0][:97] + ("..." if len(x[0]) > 100 else ''), value=x[1])
@@ -150,7 +150,7 @@ async def user_subbed_manga(
     if not subs: return []  # noqa
 
     name_val_pairs = [
-        (f"({m.scanlator}) " + m.title, m.id) for m in subs
+        (f"({m.scanlator}) " + m.title, f"{m.id}|{m.scanlator}") for m in subs
     ]
     return [
                discord.app_commands.Choice(name=(x[0][:97] + "...") if len(x[0]) > 100 else x[0], value=x[1])
@@ -162,10 +162,14 @@ async def user_subbed_manga(
 async def chapters(
         interaction: discord.Interaction, argument: str
 ) -> list[discord.app_commands.Choice]:
-    series_id = interaction.namespace["manga"]
+    series_id: str = interaction.namespace["manga"]
     if series_id is None:
         return []
-    _chapters = await interaction.client.db.get_series_chapters(series_id, argument)
+    try:
+        series_id, scanlator_name = series_id.split("|")
+    except ValueError:  # some weirdo is not using the autocomplete for the manga parameter. 💀
+        return []
+    _chapters = await interaction.client.db.get_series_chapters(series_id, scanlator_name, argument)
     if not _chapters:
         return []
 
@@ -203,7 +207,7 @@ async def tracked_manga(interaction: discord.Interaction, argument: str) -> list
         return []
 
     name_val_pairs = [
-        (f"({m.scanlator}) " + m.title, m.id) for m in guild_tracked_manga
+        (f"({m.scanlator}) " + m.title, f"{m.id}|{m.scanlator}") for m in guild_tracked_manga
     ]
     return [
                discord.app_commands.Choice(name=(x[0][:97] + "...") if len(x[0]) > 100 else x[0], value=x[1])

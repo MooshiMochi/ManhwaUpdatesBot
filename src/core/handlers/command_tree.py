@@ -88,6 +88,20 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
+        elif isinstance(error, MangaNotSubscribedError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Not subscribed!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, UnsupportedScanlatorURLFormatError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Incorrect URL format!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
         elif isinstance(error, CustomError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Error!",

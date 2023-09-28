@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
 
-from src.core.scanlators.classes import AbstractScanlator
 from src.static import RegExpressions
 
 if TYPE_CHECKING:
@@ -18,9 +17,10 @@ from src.ui import BookmarkView
 from src.enums import BookmarkViewType
 
 from src.core.scanlators import scanlators
-from src.core.errors import MangaNotFoundError, BookmarkNotFoundError, ChapterNotFoundError
+from src.core.errors import CustomError, MangaNotFoundError, BookmarkNotFoundError, ChapterNotFoundError, \
+    UnsupportedScanlatorURLFormatError
 
-from src.utils import get_manga_scanlator_class, create_bookmark_embed, respond_if_limit_reached
+from src.utils import get_manga_scanlator_class, create_bookmark_embed
 from src.ui import autocompletes
 
 
@@ -40,51 +40,38 @@ class BookmarkCog(commands.Cog):
     async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
-        scanner: AbstractScanlator = get_manga_scanlator_class(scanlators, manga_url_or_id)
-        manga_url = manga_url_or_id
-
         if RegExpressions.url.search(manga_url_or_id):
-            if not scanner:
-                em = discord.Embed(title="Invalid URL", color=discord.Color.red())
-                em.description = (
-                    "The URL you provided does not follow any of the known url formats.\n"
-                    "See `/supported_websites` for a list of supported websites and their url formats."
-                )
-                em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-                return await interaction.followup.send(embed=em, ephemeral=True)
-
-            manga_id = await scanner.get_id(manga_url_or_id)
+            manga_url = manga_url_or_id
+            scanlator = get_manga_scanlator_class(scanlators, url=manga_url)
+            if scanlator is None:
+                raise UnsupportedScanlatorURLFormatError(manga_url)
+            manga = await scanlator.make_manga_object(manga_url)
         else:
-            manga_id = manga_url_or_id
-            manga_obj = await self.bot.db.get_series(manga_id)
-            if not manga_obj:
+            try:
+                manga_id, scanlator_name = manga_url_or_id.split("|")
+                scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
+                if not scanlator:
+                    raise UnsupportedScanlatorURLFormatError(manga_id)
+            except ValueError:
                 raise MangaNotFoundError(manga_url_or_id)
-            scanner = get_manga_scanlator_class(scanlators, key=manga_obj.scanlator)
-            manga_url = manga_obj.url
+            manga = await self.bot.db.get_series(manga_id, scanlator_name)
 
-        existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id)
-
+        existing_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga.id, manga.scanlator)
         if existing_bookmark:
             bookmark = existing_bookmark
         else:
-
-            bookmark = await respond_if_limit_reached(
-                scanner.make_bookmark_object(
-                    manga_url, interaction.user.id, interaction.guild.id
-                ),
-                interaction
-            )
-            if bookmark == "LIMIT_REACHED":
-                return
-            elif not bookmark:
+            # no need to worry about extra requests as we have a caching system in place
+            bookmark = await scanlator.make_bookmark_object(manga.url, interaction.user.id, interaction.guild.id)
+            if not bookmark:  # not possible since we are using the manga object to create this
                 raise MangaNotFoundError(manga_url_or_id)
-            try:
+            if bookmark.manga.available_chapters and len(bookmark.manga.available_chapters) > 0:
                 bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
-            except IndexError:
+            else:
                 return await interaction.followup.send(
                     embed=discord.Embed(
                         title="No chapters available",
-                        description="This manga has no chapters available to read.\nConsider using `/subscribe` to "
+                        description="This manga has no chapters available to read.\n"
+                                    "Consider tracking and subscribing to the manhwa to "
                                     "get notified when new chapters are available.",
                     ), ephemeral=True
                 )
@@ -92,7 +79,7 @@ class BookmarkCog(commands.Cog):
         bookmark.user_created = True
         bookmark.last_updated_ts = datetime.now().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
-        em = create_bookmark_embed(self.bot, bookmark, scanner.json_tree.properties.icon_url)
+        em = create_bookmark_embed(self.bot, bookmark, scanlator.json_tree.properties.icon_url)
         await interaction.followup.send(
             f"Successfully bookmarked {bookmark.manga.title}", embed=em, ephemeral=True
         )
@@ -119,9 +106,22 @@ class BookmarkCog(commands.Cog):
         view = BookmarkView(self.bot, interaction, bookmarks, BookmarkViewType.VISUAL)
 
         if series_id:
-            bookmark_index = next((i for i, x in enumerate(view.bookmarks) if x.manga.id == series_id), None)
+            try:
+                manga_id, scanlator_name = series_id.split("|")
+                scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
+                if not scanlator:
+                    raise BookmarkNotFoundError(manga_id)
+            except ValueError:
+                raise BookmarkNotFoundError(series_id)
+
+            bookmark_index = next(
+                (
+                    i for i, x in enumerate(view.bookmarks)
+                    if x.manga.id == manga_id and x.manga.scanlator == scanlator_name
+                ), None
+            )
             if bookmark_index is None:
-                hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
+                hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id, scanlator_name)
                 if hidden_bookmark:
                     em = create_bookmark_embed(
                         self.bot, hidden_bookmark, hidden_bookmark.scanner.json_tree.properties.icon_url
@@ -130,7 +130,7 @@ class BookmarkCog(commands.Cog):
                     view.stop()
                     return
 
-                raise BookmarkNotFoundError()
+                raise BookmarkNotFoundError(manga_id)
             view.visual_item_index = bookmark_index
 
         # noinspection PyProtectedMember
@@ -147,9 +147,17 @@ class BookmarkCog(commands.Cog):
     @app_commands.autocomplete(chapter_index=autocompletes.chapters)
     async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-        bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, series_id)
+        try:
+            manga_id, scanlator_name = series_id.split("|")
+            scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
+            if not scanlator:
+                raise BookmarkNotFoundError(manga_id)
+        except ValueError:
+            raise BookmarkNotFoundError(series_id)
+
+        bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id, scanlator_name)
         if not bookmark:
-            raise BookmarkNotFoundError()
+            raise BookmarkNotFoundError(manga_id)
 
         try:
             chapter_index = int(chapter_index)
@@ -169,9 +177,15 @@ class BookmarkCog(commands.Cog):
         if bookmark.last_read_chapter == bookmark.manga.available_chapters[-1] and not bookmark.manga.completed:
             # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
-            is_tracked: bool = await self.bot.db.is_manga_tracked(interaction.guild_id, bookmark.manga.id)
-            if not await self.bot.db.is_user_subscribed(interaction.user.id, bookmark.manga.id) and is_tracked:
-                await self.bot.db.subscribe_user(interaction.user.id, bookmark.guild_id, bookmark.manga.id)
+            is_tracked: bool = await self.bot.db.is_manga_tracked(
+                interaction.guild_id, bookmark.manga.id, bookmark.manga.scanlator
+            )
+            if not await self.bot.db.is_user_subscribed(
+                    interaction.user.id, bookmark.manga.id, bookmark.manga.scanlator
+            ) and is_tracked:
+                await self.bot.db.subscribe_user(
+                    interaction.user.id, bookmark.guild_id, bookmark.manga.id, bookmark.manga.scanlator
+                )
                 user_subscribed = True
             elif not is_tracked:
                 should_track = True
@@ -197,9 +211,20 @@ class BookmarkCog(commands.Cog):
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     async def bookmark_delete(self, interaction: discord.Interaction, series_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-        deleted: bool = await self.bot.db.delete_bookmark(interaction.user.id, series_id)
+        if RegExpressions.url.search(series_id):
+            raise CustomError("This command does not accept URLs as input.\n"
+                              "Please use the provided autocomplete options.")
+        try:
+            manga_id, scanlator_name = series_id.split("|")
+            scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
+            if not scanlator:
+                raise BookmarkNotFoundError(manga_id)
+        except ValueError:
+            raise BookmarkNotFoundError(series_id)
+
+        deleted: bool = await self.bot.db.delete_bookmark(interaction.user.id, manga_id, scanlator_name)
         if not deleted:
-            raise BookmarkNotFoundError()
+            raise BookmarkNotFoundError(manga_id)
         return await interaction.followup.send("Successfully deleted bookmark", ephemeral=True)
 
 

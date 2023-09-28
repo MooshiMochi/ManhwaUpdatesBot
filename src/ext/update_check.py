@@ -230,6 +230,7 @@ class UpdateCheckCog(commands.Cog):
                     ChapterUpdate(
                         manga.id,
                         new_chapters,
+                        manga.scanlator,
                         partial_manga.cover_url,
                         manga.status,
                     )
@@ -260,11 +261,11 @@ class UpdateCheckCog(commands.Cog):
         for update in chapter_updates:
             if not update.new_chapters:
                 continue
-            guild_ids = await self.bot.db.get_manga_guild_ids(update.manga_id)
+            guild_ids = await self.bot.db.get_manga_guild_ids(update.manga_id, update.scanlator)
             if not guild_ids:
                 continue
             for guild_id in guild_ids:
-                ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_id, update.manga_id)
+                ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_id, update.manga_id, update.scanlator)
                 guilds_to_updates[guild_id].append((update, ping_role_id))
         # {g_id: [upd1, upd2, upd3, ...], ...}
 
@@ -286,7 +287,7 @@ class UpdateCheckCog(commands.Cog):
                 pings = list({ping_role, guild_config.default_ping_role})  # remove duplicates
                 pings = [x.mention for x in pings if x]  # apparently role.mentionable doesn't mean you can't mention it
                 formatted_pings = "".join(pings)
-                manga_title = await self.bot.db.get_series_title(update.manga_id)
+                manga_title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
                 for i, chapter in enumerate(update.new_chapters):
                     if guild_config.show_update_buttons:
                         view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
@@ -296,7 +297,8 @@ class UpdateCheckCog(commands.Cog):
                     try:
                         await guild_config.notifications_channel.send(
                             (
-                                f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
+                                # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
+                                f"||<ID:SCANLATOR:CH_IDX>-{update.manga_id}|{update.scanlator}|{chapter.index}>||\n"
                                 f"{formatted_pings}**{manga_title} {chapter.name}**"
                                 f" has been released!\n{chapter.url}"
                             ),
@@ -327,7 +329,7 @@ class UpdateCheckCog(commands.Cog):
         """
         total_new_chapters = 0
         for update in chapter_updates:
-            manga = await self.bot.db.get_series(update.manga_id)
+            manga = await self.bot.db.get_series(update.manga_id, update.scanlator)
             if not manga:
                 continue
             for chapter in update.new_chapters:
@@ -414,7 +416,7 @@ class UpdateCheckCog(commands.Cog):
                         f"{manga.status} -> {update_check_result.status}"
                     )
                     manga.update(status=update_check_result.status)
-                guild_ids = await self.bot.db.get_manga_guild_ids(manga.id)
+                guild_ids = await self.bot.db.get_manga_guild_ids(manga.id, manga.scanlator)
                 guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
                 await self.bot.db.update_series(manga)
 
@@ -427,7 +429,9 @@ class UpdateCheckCog(commands.Cog):
                         )
                         continue
 
-                    ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_config.guild.id, manga.id)
+                    ping_role_id = await self.bot.db.get_guild_manga_role_id(
+                        guild_config.guild.id, manga.id, manga.scanlator
+                    )
 
                     if ping_role_id:
                         ping_role = guild_config.guild.get_role(ping_role_id)
@@ -437,11 +441,14 @@ class UpdateCheckCog(commands.Cog):
                     pings = [x.mention for x in pings if
                              x]  # apparently role.mentionable doesn't mean you can't mention it
                     formatted_pings = "".join(pings)
-
+                    scanlator_hyperlink = (
+                        f"[{manga.scanlator}]"
+                        f"({scanlators[manga.scanlator].json_tree.properties.base_url})")
                     await guild_config.notifications_channel.send(
-                        f"||<Manga ID: {manga.id}>||\n{formatted_pings}",
+                        formatted_pings,
                         embed=discord.Embed(
-                            title=f"{manga.title} has been marked as {'completed' if manga.completed else 'ongoing'}!",
+                            title=(f"({scanlator_hyperlink}) {manga} has been marked as "
+                                   f"{'completed' if manga.completed else 'ongoing'}!"),
                             color=discord.Color.green()
                         )
                     )

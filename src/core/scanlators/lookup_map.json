@@ -11,7 +11,9 @@
           "manga": "https://void-scans.com/manga/{url_name}/"
         },
         "latest_updates_url": "https://void-scans.com/",
-        "dynamicURL": false
+        "dynamicURL": false,
+        "requires_update_embed": true,
+        "can_render_cover": false
       },
       "selectors": {
         "title": [

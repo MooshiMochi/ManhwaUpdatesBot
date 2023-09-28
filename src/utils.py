@@ -404,58 +404,47 @@ def modify_embeds(
         thumbnail_image_url: str | list[str] = None,
         image_url: str | list[str] = None,
         show_page_number: bool = False,
-        # append_mode: bool = False,  # TODO: Implement this ig?
+        append_mode: bool = False,
 ) -> list[discord.Embed]:
-    """
-    Summary:
-        Modifies a list of embeds.
-
-    Parameters:
-        embeds: The embeds to modify.
-        title_kwargs: The title kwargs to use.
-        author_kwargs: The author kwargs to use.
-        footer_kwargs: The footer kwargs to use.
-        thumbnail_image_url: The thumbnail image URL to use.
-        image_url: The image URL to use.
-        show_page_number: Whether to show the page number.
-        # append_mode: Whether to append to the value if it exists or overwrite the current value.
-
-    Returns:
-        list[discord.Embed]: The modified embeds.
-
-    Examples:
-        >>> modify_embeds(
-                embeds,
-                title_kwargs={"name": "MangaDex"},
-                author_kwargs={"name": "John Doe", "scanlator_icon_url": "https://example.com/icon.png"},
-                footer_kwargs={"text": "MangaDex"},
-                thumbnail_image_url="https://example.com/thumbnail.png",
-                image_url="https://example.com/image.png",
-                show_page_number=True,
-                append_mode=True,
-            )
-        [<discord.embeds.Embed object at 0x000001F5B1B5B4C0>, ...]
-    """
-
     for i, em in enumerate(embeds):
         if title_kwargs:
-            em.title = title_kwargs.get("title")
-            em.colour = title_kwargs.get("color")
-            em.url = title_kwargs.get("url")
-        if author_kwargs:
-            em.set_author(**author_kwargs)
-        if footer_kwargs:
-            em.set_footer(**footer_kwargs)
-        if show_page_number:
-            if em.footer.text:
-                em.set_footer(text=f"{em.footer.text} | Page {i + 1}/{len(embeds)}")
+            title = title_kwargs.get("title", "")
+            color = title_kwargs.get("color", None)
+            url = title_kwargs.get("url", None)
+
+            if append_mode and em.title:
+                em.title += f" {title}"
             else:
-                em.set_footer(text=f"Page {i + 1}/{len(embeds)}")
+                em.title = title
+
+            em.colour = color if color else em.colour
+            em.url = url if url else em.url
+
+        if author_kwargs:
+            if append_mode and em.author:
+                for key, value in author_kwargs.items():
+                    if hasattr(em.author, key):
+                        setattr(em.author, key, f"{getattr(em.author, key)} {value}")
+            else:
+                em.set_author(**author_kwargs)
+
+        if footer_kwargs:
+            if append_mode and em.footer.text:
+                footer_text = f"{em.footer.text} {footer_kwargs.get('text', '')}"
+            else:
+                footer_text = footer_kwargs.get('text', '')
+
+            if show_page_number:
+                footer_text = f"{footer_text} | Page {i + 1}/{len(embeds)}"
+
+            em.set_footer(text=footer_text, icon_url=footer_kwargs.get('icon_url', None))
+
         if thumbnail_image_url:
             if isinstance(thumbnail_image_url, list):
                 em.set_thumbnail(url=thumbnail_image_url[i])
             else:
                 em.set_thumbnail(url=thumbnail_image_url)
+
         if image_url:
             if isinstance(image_url, list):
                 em.set_image(url=image_url[i])

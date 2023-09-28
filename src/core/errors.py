@@ -8,6 +8,23 @@ if TYPE_CHECKING:
 
 from discord.app_commands.errors import CommandInvokeError
 
+__all__ = (
+    "GuildNotConfiguredError",
+    "MangaNotFoundError",
+    "MangaNotTrackedError",
+    "MangaNotSubscribedError",
+    "UnsupportedScanlatorURLFormatError",
+    "URLAccessFailed",
+    "BookmarkNotFoundError",
+    "ChapterNotFoundError",
+    "MangaCompletedOrDropped",
+    "DatabaseError",
+    "RateLimitExceeded",
+    "WebhookNotFoundError",
+    "MissingUserAgentError",
+    "CustomError"
+)
+
 
 class BaseError(CommandInvokeError):
     """Base class for all errors in the library."""
@@ -45,6 +62,28 @@ class MangaNotTrackedError(BaseError):
         The manga you entered is not tracked.
         ```diff\n- {self.manga_url}```
         Use `/track new` to track the manga.
+        """
+
+
+class MangaNotSubscribedError(BaseError):
+    """Raised when a manga is not subscribed."""
+
+    def __init__(self, manga_url: str):
+        self.manga_url = manga_url
+        self.error_msg = f"""
+        You are not subscribed to the manga you entered below.
+        ```diff\n- {self.manga_url}```
+        Use `/subscribe new` to subscribe to the manga.
+        """
+
+
+class UnsupportedScanlatorURLFormatError(BaseError):
+    def __init__(self, url: str) -> None:
+        self.url = url
+        self.error_msg = f"""
+        The URL you provided does not follow any of the known url formats.
+        See `/supported_websites` for a list of supported websites and their url formats.
+        ```diff\n- {self.url}```
         """
 
 
