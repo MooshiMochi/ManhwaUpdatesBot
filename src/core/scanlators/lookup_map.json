@@ -541,7 +541,7 @@
         "format_urls": {
           "manga": "https://luminousscans.com/series/{id}-{url_name}/"
         },
-        "latest_updates_url": "https://luminousscans.com/",
+        "latest_updates_url": "https://luminousscans.com",
         "dynamicURL": true
       },
       "selectors": {
