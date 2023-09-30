@@ -846,7 +846,7 @@ Ensure the bot has these permissions for smooth operation.
             for scanlator in scanlators.values():
                 if hasattr(scanlator, "search"):
                     search_result = await _try_request(scanlator.search(query=query, as_em=True), False)
-                    results.extend(search_result or [])
+                    results.append(search_result or [])
             results = [x for x in results if x is not None]
             if not results:
                 return await interaction.followup.send(

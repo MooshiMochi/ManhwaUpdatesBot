@@ -650,7 +650,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 url = manga_tag.get("href")
             else:
                 url = manga_tag.select_one(self.json_tree.selectors.search.url).get("href")
-            if not url.startswith(self.json_tree.properties.base_url):
+            if not url.startswith("https://") and not url.startswith("http://"):
                 url = self.json_tree.properties.base_url + url
             name = manga_tag.select_one(  # noqa: Invalid scope warning
                 self.json_tree.selectors.search.title

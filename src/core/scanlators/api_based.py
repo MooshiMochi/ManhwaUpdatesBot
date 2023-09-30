@@ -110,7 +110,8 @@ class _Comick(AbstractScanlator):
                 continue
             url_name = item_dict["slug"]
             url = await self.format_manga_url(url_name=url_name)
-            cover = (item_dict["md_covers"] or [{"b2key": None}])[0]["b2key"]
+            cover_filename = (item_dict["md_covers"] or [{"b2key": None}])[0]["b2key"]
+            cover = f"https://meo.comick.pictures/{cover_filename}"
             p_manga = PartialManga(_id, title, url, self.name, cover_url=cover)
             found_manga.append(p_manga)
         if as_em:

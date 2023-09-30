@@ -68,6 +68,8 @@ async def main():
             "discord.client",
             "discord.http",
             "discord.webhook.async_",
+            "discord.state",
+            "filelock",
         ]
     )
 
