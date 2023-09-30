@@ -417,14 +417,14 @@
     "asura": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?asuracomics\\.gg/manga/(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?asuratoon\\.com/manga/(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:/.*)?$",
       "properties": {
-        "base_url": "https://asuracomics.gg",
-        "icon_url": "https://asuracomics.gg/wp-content/uploads/2023/07/cropped-cropped-Group_1-1.png",
+        "base_url": "https://asuratoon.com",
+        "icon_url": "https://asuratoon.com/wp-content/uploads/2023/07/cropped-cropped-Group_1-1.png",
         "format_urls": {
-          "manga": "https://asuracomics.gg/manga/{id}-{url_name}/"
+          "manga": "https://asuratoon.com/manga/{id}-{url_name}/"
         },
-        "latest_updates_url": "https://asuracomics.gg/",
+        "latest_updates_url": "https://asuratoon.com",
         "dynamicURL": true,
         "requires_update_embed": true,
         "can_render_cover": true
@@ -464,7 +464,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://asuracomics.gg",
+        "url": "https://asuratoon.com",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -732,7 +732,7 @@
         "format_urls": {
           "manga": "https://nightscans.net/series/{url_name}/"
         },
-        "latest_updates_url": "https://nightscans.net/",
+        "latest_updates_url": "https://nightscans.net",
         "dynamicURL": false
       },
       "selectors": {
