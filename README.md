@@ -10,7 +10,7 @@ This is a bot that will periodically check for updates on the manga that you hav
 is a new chapter available.
 
 More websites will be added in the future as I find them. If you want a website to be added, please reach out to me
-in the [support server](https://discord.gg/5mqkKVQDYJ).\
+in the [support server](https://discord.gg/TYkw8VBZkr).\
 Additionally, websites that are heavily protected by Cloudflare will not be added (I will list the ones I tried to
 add that fit these criteria at the bottom of this file).
 
