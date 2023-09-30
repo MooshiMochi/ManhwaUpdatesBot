@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import TYPE_CHECKING
 
 import aiofiles
+from aiohttp import ClientResponseError
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
@@ -55,16 +56,8 @@ class BotCommandTree(discord.app_commands.CommandTree):
             *args,
             **kwargs,
     ) -> None:
-        # self.client._logger.error(
-        #     f"{tb.format_exc()}\n{interaction}\n{error}\n{args}\n{kwargs}",
-        # )
-        # self.client._logger.error(
-        #     f"{tb.format_exc()}\n{error}",
-        # )
 
         ignore_args = (app_commands.CheckFailure, app_commands.CommandNotFound)
-
-        # self.client.logger.error(f"New error of type: {type(error)}")
         send_kwargs = {}
 
         if isinstance(error, app_commands.errors.MissingRole):
@@ -79,6 +72,14 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 title=f"{Emotes.warning} Manga not found!",
                 color=0xFF0000,
                 description=error.error_msg,
+            )
+
+        elif isinstance(error, ClientResponseError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Error while contacting website!",
+                color=0xFF0000,
+                description=f"Received: `Status: {error.status} > Message: {error.message}`\n"
+                            f"Visited URL: {error.request_info.url}\n\n**Please try again later!**",
             )
 
         elif isinstance(error, MangaNotTrackedError):

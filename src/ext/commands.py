@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Coroutine, Optional, TYPE_CHECKING
 
 from src.static import Constants, RegExpressions
 from src.ui import autocompletes
@@ -789,6 +789,18 @@ Ensure the bot has these permissions for smooth operation.
             ),
             color=discord.Color.red(),
         )
+
+        async def _try_request(coro: Coroutine, raise_error: bool = False) -> Any:
+            try:
+                return await coro
+            except Exception as _err:
+                self.bot.logger.error(f"[{scanlator.name.title()}] Error when searching: {query}!")
+                await self.bot.log_to_discord(error=_err)
+                if raise_error:
+                    raise CustomError(
+                        "An unknown error has occured.\n"
+                        "The developer has been notified and will fix as soon as he can!")
+
         if RegExpressions.url.search(
                 query
         ):  # if the query is a URL, try to get the manga from the URL
@@ -798,7 +810,7 @@ Ensure the bot has these permissions for smooth operation.
                     f"Could not find a manga on `{query}`.", ephemeral=True
                 )
             if hasattr(scanlator, "search"):
-                embeds: list[discord.Embed] = await scanlator.search(query=query, as_em=True)
+                embeds: list[discord.Embed] = await _try_request(scanlator.search(query=query, as_em=True), True)
                 em = (embeds or [None])[0]
                 if em is None:
                     return await interaction.followup.send(
@@ -818,7 +830,7 @@ Ensure the bot has these permissions for smooth operation.
                     ephemeral=True,
                 )
             if hasattr(scanlator, "search"):
-                embeds = await scanlator.search(query=query, as_em=True)
+                embeds = await _try_request(scanlator.search(query=query, as_em=True), True)
                 if not embeds:
                     return await interaction.followup.send(
                         embed=no_results_em, ephemeral=True
@@ -830,10 +842,12 @@ Ensure the bot has these permissions for smooth operation.
                     embed=cannot_search_em, ephemeral=True
                 )
         else:
-            results = [x for x in [
-                await scanlator.search(query=query, as_em=True) for scanlator in scanlators.values() if
-                hasattr(scanlator, "search")
-            ] if x is not None]
+            results = []
+            for scanlator in scanlators.values():
+                if hasattr(scanlator, "search"):
+                    search_result = await _try_request(scanlator.search(query=query, as_em=True), False)
+                    results.extend(search_result or [])
+            results = [x for x in results if x is not None]
             if not results:
                 return await interaction.followup.send(
                     embed=no_results_em, ephemeral=True

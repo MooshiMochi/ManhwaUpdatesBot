@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import traceback
 from typing import Optional, Union
 
 import aiohttp
@@ -138,12 +139,14 @@ class MangaClient(commands.Bot):
         self.curl_session.close() if self.curl_session else None
         await super().close()
 
-    async def log_to_discord(self, content: Union[str, None] = None, **kwargs) -> None:
+    async def log_to_discord(
+            self, content: Union[str, None] = None, *, error: Optional[Exception] = None, **kwargs
+    ) -> None:
         """Log a message to a discord log channel."""
         if not self.is_ready():
             await self.wait_until_ready()
 
-        if not content and not kwargs:
+        if not content and not kwargs and error is None:
             return
 
         channel = self.get_channel(self.log_channel_id)
@@ -151,6 +154,13 @@ class MangaClient(commands.Bot):
         if not channel:
             return
         try:
+            if error:
+                error_str = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+                if not content:
+                    content = error_str
+                else:
+                    content += "\n\n------\n\n" + error_str
+
             if content and len(content) > 2000:
                 # try to send it as a file
                 buffer = io.BytesIO(content.encode("utf-8"))
