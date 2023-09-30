@@ -737,11 +737,16 @@ class DynamicURLScanlator(BasicScanlator):
                     if (rx_result := self.json_tree.rx.search(url)) is not None:
                         chapter_id_found = True
                         self.chapter_id = rx_result.groupdict().get("id")  # allowed to be None
+                        if not self.chapter_id:
+                            chapter_id_found = False
+                            continue
                         break
             if manga_id_found is False:
                 if (rx_result := self.json_tree.rx.search(manga_url)) is not None:
                     manga_id_found = True
                     self.manga_id = rx_result.groupdict().get("id")  # allowed to be None
+                    if not self.manga_id:
+                        manga_id_found = False
             if (manga_id_found and chapter_id_found) is True:
                 break
 

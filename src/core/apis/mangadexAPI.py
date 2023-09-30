@@ -140,5 +140,4 @@ class MangaDexAPI:
         result = await self.__request("GET", endpoint)
         fileName = result["data"]["attributes"]["fileName"]
         cover_url = f"https://uploads.mangadex.org/covers/{manga_id}/{fileName}"
-        print(cover_url)
         return cover_url

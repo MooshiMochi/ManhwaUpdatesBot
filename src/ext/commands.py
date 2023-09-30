@@ -320,7 +320,6 @@ class CommandsCog(commands.Cog):
             raise MangaNotTrackedError(manga_id)
 
         if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga_id, scanlator_name):
-            print(manga_id, scanlator_name)
             raise MangaNotTrackedError(manga_id)
 
         manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
