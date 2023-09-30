@@ -1,3 +1,4 @@
+import json
 import re
 from urllib.parse import quote_plus as url_encode
 
@@ -5,7 +6,7 @@ import discord
 from bs4 import BeautifulSoup, Tag
 
 from src.core.objects import Chapter, PartialManga
-from .classes import BasicScanlator, NoStatusBasicScanlator, scanlators
+from .classes import BasicScanlator, DynamicURLScanlator, NoStatusBasicScanlator, scanlators
 
 __all__ = (
     "scanlators",
@@ -147,12 +148,82 @@ class _OmegaScans(NoStatusBasicScanlator):
         return found_manga
 
 
+class _RealmScans(DynamicURLScanlator):
+    def __init__(self, name: str, **kwargs):
+        super().__init__(name, **kwargs)
+
+    async def get_synopsis(self, raw_url: str) -> str:
+        text = await self._get_text(await self.format_manga_url(raw_url))
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+        js_text = soup.select_one(self.json_tree.selectors.synopsis).get_text(strip=True, separator="\n")
+        text = re.search(
+            "var description = \"(?P<synopsis>.+)\";", js_text).groupdict().get("synopsis", "No synopsis found")
+        return text.replace(r"\r", "").replace(r"\n", "\n")
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        search_url = self.json_tree.search.url
+        if self.json_tree.search.query_parsing.encoding == "url":
+            query = url_encode(query)
+        elif self.json_tree.search.query_parsing.encoding is None:
+            for pattern_val_dict in self.json_tree.search.query_parsing.regex:
+                pattern = re.compile(pattern_val_dict["pattern"])
+                sub_value = pattern_val_dict["sub_value"]
+                query = pattern.sub(sub_value, query)
+        # if encoding is == "raw" then we do nothing
+        extra_params: dict = self.json_tree.search.extra_params
+        if self.json_tree.search.as_type == "path":
+            params = "?" + "&".join([f"{k}={v}" for k, v in extra_params.items() if v is not None])
+            null_params = {k: v for k, v in extra_params.items() if v is None}
+            if null_params:
+                params += "&".join([f"{k}" for k, v in null_params.items()])
+            query += params
+            request_kwargs = {
+                "url": search_url + query, "method": self.json_tree.search.request_method
+            }
+        else:  # as param
+            params = extra_params
+            data = {self.json_tree.search.search_param_name: query}
+            request_kwargs = {
+                "url": search_url, "params": params, "method": self.json_tree.search.request_method, "data": data
+            }
+
+        if self.json_tree.request_method == "http":
+            # noinspection PyProtectedMember
+            resp = await self.bot.session._request(**request_kwargs)
+            resp.raise_for_status()
+            json_resp = await resp.text()
+        else:  # req method is "curl"
+            resp = await self.bot.curl_session.request(**request_kwargs)
+            resp.raise_for_status()
+            json_resp = resp.text
+        json_resp = json.loads(json_resp)
+
+        found_manga: list[PartialManga] = []
+
+        for item_dict in json_resp:
+            title = item_dict["title"]
+            url_name = re.sub("[^a-zA-Z0-9-]+", "-", title).lower()
+            url = self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=self.manga_id)
+            cover_filename = item_dict["image_url"]
+            cover = f"https://realmscans.to/assets/images/{cover_filename}"
+            _id = await self.get_id(url)
+
+            p_manga = PartialManga(_id, title, url, self.name, cover_url=cover)
+            found_manga.append(p_manga)
+        if as_em:
+            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
+        return found_manga
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
     omegascans: str = "omegascans"
+    realmscans: str = "realmscans"
 
 
 keys = CustomKeys()
 
 scanlators[keys.reaperscans] = _ReaperScans(keys.reaperscans, **scanlators[keys.reaperscans])  # noqa: This is a dict
 scanlators[keys.omegascans] = _OmegaScans(keys.omegascans, **scanlators[keys.omegascans])  # noqa: This is a dict
+scanlators[keys.realmscans] = _RealmScans(keys.realmscans, **scanlators[keys.realmscans])  # noqa: This is a dict

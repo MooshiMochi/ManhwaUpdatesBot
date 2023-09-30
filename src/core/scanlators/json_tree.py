@@ -23,6 +23,10 @@ class _Properties:
         self.no_status: bool = properties_dict.get("no_status", False)
         self.requires_update_embed = properties_dict.get("requires_update_embed", False),
         self.can_render_cover = properties_dict.get("can_render_cover", True)
+        self.missing_id_connector_char = properties_dict.get("missing_id_connector_char", "-")
+        self.chapter_regex = properties_dict.get("chapter_regex", None)
+        if self.chapter_regex is not None:
+            self.chapter_regex = re.compile(self.chapter_regex)
 
 
 class _CustomHeaders:

@@ -96,34 +96,61 @@
                     false
                   ],
                   "default": true
+                },
+                "chapter_regex": {
+                  "type": "string"
+                },
+                "missing_id_connector_char": {
+                  "type": "string",
+                  "maxLength": 1,
+                  "default": "-"
                 }
               },
-              "if": {
-                "properties": {
-                  "requires_update_embed": {
-                    "const": null
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "dynamicURL": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "chapter_regex",
+                      "missing_id_connector_char"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "requires_update_embed": {
+                        "const": null
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "base_url",
+                      "icon_url",
+                      "format_urls",
+                      "latest_updates_url",
+                      "dynamicURL"
+                    ]
+                  },
+                  "else": {
+                    "required": [
+                      "base_url",
+                      "icon_url",
+                      "format_urls",
+                      "latest_updates_url",
+                      "dynamicURL",
+                      "can_render_cover"
+                    ]
                   }
                 }
-              },
-              "then": {
-                "required": [
-                  "base_url",
-                  "icon_url",
-                  "format_urls",
-                  "latest_updates_url",
-                  "dynamicURL"
-                ]
-              },
-              "else": {
-                "required": [
-                  "base_url",
-                  "icon_url",
-                  "format_urls",
-                  "latest_updates_url",
-                  "dynamicURL",
-                  "can_render_cover"
-                ]
-              },
+              ],
               "additionalProperties": false
             },
             "selectors": {
@@ -606,34 +633,61 @@
                     false
                   ],
                   "default": true
+                },
+                "chapter_regex": {
+                  "type": "string"
+                },
+                "missing_id_connector_char": {
+                  "type": "string",
+                  "maxLength": 1,
+                  "default": "-"
                 }
               },
-              "if": {
-                "properties": {
-                  "requires_update_embed": {
-                    "const": null
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "dynamicURL": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "chapter_regex",
+                      "missing_id_connector_char"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "requires_update_embed": {
+                        "const": null
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "base_url",
+                      "icon_url",
+                      "format_urls",
+                      "latest_updates_url",
+                      "dynamicURL"
+                    ]
+                  },
+                  "else": {
+                    "required": [
+                      "base_url",
+                      "icon_url",
+                      "format_urls",
+                      "latest_updates_url",
+                      "dynamicURL",
+                      "can_render_cover"
+                    ]
                   }
                 }
-              },
-              "then": {
-                "required": [
-                  "base_url",
-                  "icon_url",
-                  "format_urls",
-                  "latest_updates_url",
-                  "dynamicURL"
-                ]
-              },
-              "else": {
-                "required": [
-                  "base_url",
-                  "icon_url",
-                  "format_urls",
-                  "latest_updates_url",
-                  "dynamicURL",
-                  "can_render_cover"
-                ]
-              },
+              ],
               "additionalProperties": false
             },
             "selectors": {

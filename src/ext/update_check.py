@@ -312,8 +312,10 @@ class UpdateCheckCog(commands.Cog):
                         )
             next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
             await guild_config.notifications_channel.send(
-                embed=discord.Embed(
-                    description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>"),
+                embed=(
+                    discord.Embed(
+                        description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
+                ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
             )
 
     async def update_database_entries(self, chapter_updates: list[ChapterUpdate]) -> None:

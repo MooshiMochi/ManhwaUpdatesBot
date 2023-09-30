@@ -773,7 +773,7 @@ Ensure the bot has these permissions for smooth operation.
             query: str,
             scanlator_website: Optional[str] = None,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)  # noqa
+        await interaction.response.defer(ephemeral=True)  # noqa
         cannot_search_em = discord.Embed(
             title="Error",
             description=(
@@ -855,7 +855,7 @@ Ensure the bot has these permissions for smooth operation.
             else:
                 results = [x[0] for x in results if x]  # grab the first result of each
                 view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)  # noqa
-                await interaction.followup.send(embed=results[0], view=view, ephemeral=False)
+                await interaction.followup.send(embed=results[0], view=view, ephemeral=True)
                 return
 
     @app_commands.command(name="translate", description="Translate any text from one language to another")

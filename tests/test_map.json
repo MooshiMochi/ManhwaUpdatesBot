@@ -76,39 +76,39 @@
     }
   },
   "flamescans": {
-    "user_input_url": "https://flamescans.org/series/1695895322-the-villainess-is-a-marionette/",
+    "user_input_url": "https://flamescans.org/series/1696068121-the-villainess-is-a-marionette/",
     "expected_results": {
       "scanlator_name": "flamescans",
-      "manga_url": "https://flamescans.org/series/1695938521-the-villainess-is-a-marionette/",
+      "manga_url": "https://flamescans.org/series/1696068121-the-villainess-is-a-marionette/",
       "completed": true,
       "title": "The Villainess is a Marionette",
-      "manga_id": "https://flamescans.org/series/1695895322-the-villainess-is-a-marionette",
-      "curr_chapter_url": "https://flamescans.org/1695938462-the-villainess-is-a-marionette-chapter-69/",
-      "first_chapter_url": "https://flamescans.org/1695938462-the-villainess-is-a-marionette-chapter-0/",
+      "manga_id": "https://flamescans.org/series/1696068121-the-villainess-is-a-marionette",
+      "curr_chapter_url": "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-69/",
+      "first_chapter_url": "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-0/",
       "cover_image": "https://flamescans.org/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
       "last_3_chapter_urls": [
-        "https://flamescans.org/1695938462-the-villainess-is-a-marionette-chapter-67/",
-        "https://flamescans.org/1695938462-the-villainess-is-a-marionette-chapter-68/",
-        "https://flamescans.org/1695938462-the-villainess-is-a-marionette-chapter-69/"
+        "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-67/",
+        "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-68/",
+        "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-69/"
       ],
       "use_default_id_function": true
     }
   },
   "asura": {
-    "user_input_url": "https://asuracomics.gg/manga/4102803034-i-regressed-as-the-duke/",
+    "user_input_url": "https://asuratoon.com/manga/3787011421-i-regressed-as-the-duke/",
     "expected_results": {
       "scanlator_name": "asura",
-      "manga_url": "https://asuracomics.gg/manga/4102803034-i-regressed-as-the-duke/",
+      "manga_url": "https://asuratoon.com/manga/3787011421-i-regressed-as-the-duke/",
       "completed": true,
       "title": "I Regressed As The Duke",
-      "manga_id": "https://asuracomics.gg/manga/4102803034-i-regressed-as-the-duke",
-      "curr_chapter_url": "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-64-notice/",
-      "first_chapter_url": "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-1/",
-      "cover_image": "https://asuracomics.gg/wp-content/uploads/2022/04/unknown_1-1.png",
+      "manga_id": "https://asuratoon.com/manga/3787011421-i-regressed-as-the-duke",
+      "curr_chapter_url": "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-64-notice/",
+      "first_chapter_url": "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-1/",
+      "cover_image": "https://asuratoon.com/wp-content/uploads/2022/04/unknown_1-1.png",
       "last_3_chapter_urls": [
-        "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-62/",
-        "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-63/",
-        "https://asuracomics.gg/5649036567-i-regressed-as-the-duke-chapter-64-notice/"
+        "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-62/",
+        "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-63/",
+        "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-64-notice/"
       ],
       "use_default_id_function": true
     }
@@ -415,6 +415,25 @@
         "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-172/",
         "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-173-5/"
       ]
+    }
+  },
+  "realmscans": {
+    "user_input_url": "https://realmscans.to/m050523/series/death-god",
+    "expected_results": {
+      "scanlator_name": "realmscans",
+      "manga_url": "https://realmscans.to/m050523/series/death-god",
+      "completed": true,
+      "title": "Death God",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://realmscans.to/m050523/death-god-chapter-46",
+      "first_chapter_url": "https://realmscans.to/m050523/death-god-chapter-0",
+      "cover_image": "https://realmscans.to/assets/images/43__death_god-23-06-2023_11_44_09_PM1.webp",
+      "last_3_chapter_urls": [
+        "https://realmscans.to/m050523/death-god-chapter-44",
+        "https://realmscans.to/m050523/death-god-chapter-45",
+        "https://realmscans.to/m050523/death-god-chapter-46"
+      ],
+      "manga_id": "default_id_function"
     }
   }
 }

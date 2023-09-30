@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from src.core import MangaClient, MissingUserAgentError
 
 from src.core.objects import Bookmark, Chapter, ChapterUpdate, Manga, PartialManga
-from src.static import Constants, RegExpressions
+from src.static import Constants
 from abc import ABC, abstractmethod
 
 import json
@@ -734,11 +734,12 @@ class DynamicURLScanlator(BasicScanlator):
             manga_id_found = chapter_id_found = False
             if chapter_id_found is False:
                 for url in chapter_urls:
-                    if (rx_result := RegExpressions.url_id.search(url)) is not None:
+                    if (rx_result := self.json_tree.rx.search(url)) is not None:
                         chapter_id_found = True
                         self.chapter_id = rx_result.groupdict().get("id")  # allowed to be None
+                        break
             if manga_id_found is False:
-                if (rx_result := RegExpressions.url_id.search(manga_url)) is not None:
+                if (rx_result := self.json_tree.rx.search(manga_url)) is not None:
                     manga_id_found = True
                     self.manga_id = rx_result.groupdict().get("id")  # allowed to be None
             if (manga_id_found and chapter_id_found) is True:
@@ -776,25 +777,23 @@ class DynamicURLScanlator(BasicScanlator):
                 chapter.url = chapter.url.replace(self.id_placeholder, self.chapter_id)
         return mangas
 
-    def _insert_id_placeholder(self, url: str) -> str:
+    async def _insert_id_placeholder(self, url: str) -> str:
         """Used to add the placeholder to URLs that should have an ID but don't.
         For example, https://luminousscans.com/manga/nano-machine should be
         https://luminousscans.com/manga/{id}-nano-machine
         """
-        repl_str: str = f"/{self.id_placeholder}-"
-        if repl_str in url:  # already exists in the URL: do nothing
+        if self.id_placeholder in url:  # already exists in the URL: do nothing
             return url
-        elif RegExpressions.url_id.search(url):  # Has a dynamic ID. Need to replace with placeholder
-            _url_id_regex: re.Pattern = RegExpressions.url_id
-            return _url_id_regex.sub(repl_str, url)
-        url_pattern = re.compile(  # No ID in the URL. Need to add the placeholder
-            re.escape(self.json_tree.properties.base_url) +
-            r"/((mangas?|series|read)/)?(?P<url_name>.+)"
-        )
-        url_name = url_pattern.search(url).groupdict().get("url_name")
-        start_index = max(url.find(url_name), 0)
-        fixed_url = url[:start_index] + self.id_placeholder + "-" + url[start_index:]
-        return fixed_url
+        chapter_rx = self.json_tree.properties.chapter_regex
+        if chapter_rx is not None and (res := chapter_rx.search(url)) is not None:
+            groups = res.groupdict()
+            return (
+                    groups["before_id"] + self.id_placeholder + self.json_tree.properties.missing_id_connector_char
+                    + groups["after_id"]
+            )
+        else:
+            url_name = await self._get_url_name(url)
+            return await self.format_manga_url(url_name=url_name, _id=self.id_placeholder)
 
     # noinspection PyProtectedMember
     async def unload_manga(self, mangas: list[Manga]) -> list[Manga]:
@@ -802,10 +801,10 @@ class DynamicURLScanlator(BasicScanlator):
 
         for actual_manga in mangas:
             manga = actual_manga.copy()  # don't want to mutate the actual loaded manga
-            manga._url = self._insert_id_placeholder(manga.url)
-            manga._last_chapter.url = self._insert_id_placeholder(manga.last_chapter.url)
+            manga._url = await self._insert_id_placeholder(manga.url)
+            manga._last_chapter.url = await self._insert_id_placeholder(manga.last_chapter.url)
             for chapter in manga._available_chapters:
-                chapter.url = self._insert_id_placeholder(chapter.url)
+                chapter.url = await self._insert_id_placeholder(chapter.url)
             unloaded_manga.append(manga)
         return unloaded_manga
 
