@@ -1212,7 +1212,7 @@
         },
         "status": "dt.text-neutral-500:-soup-contains(\"Release Status\") + dd",
         "front_page": {
-          "container": "div.space-y-4:nth-child(4) > div.grid > div.relative.flex",
+          "container": "div.grid > div.space-x-2",
           "chapters": {
             "container": "div.min-w-0 > div > div > a",
             "name": "_container_",
