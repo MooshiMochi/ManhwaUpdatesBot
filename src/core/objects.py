@@ -414,7 +414,7 @@ class Bookmark:
         else:
             self.last_updated_ts: float = datetime.now().timestamp()
 
-        self.user_created: bool = user_created
+        self.user_created: bool = bool(user_created)
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Bookmark":
@@ -444,7 +444,7 @@ class Bookmark:
             self.last_read_chapter.index,
             self.guild_id,
             self.last_updated_ts,
-            self.user_created,
+            1 if self.user_created else 0,
             self.manga.scanlator
         )
 
