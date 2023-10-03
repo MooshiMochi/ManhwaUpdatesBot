@@ -789,14 +789,14 @@
     "suryascans": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?suryascans\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?suryareader\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://suryascans.com",
-        "icon_url": "https://suryascans.com/wp-content/uploads/2022/09/cropped-surya-logo1x.png",
+        "base_url": "https://suryareader.com",
+        "icon_url": "https://suryareader.com/wp-content/uploads/2022/09/cropped-surya-logo1x.png",
         "format_urls": {
-          "manga": "https://suryascans.com/manga/{url_name}/"
+          "manga": "https://suryareader.com/manga/{url_name}/"
         },
-        "latest_updates_url": "https://suryascans.com/",
+        "latest_updates_url": "https://suryareader.com/",
         "dynamicURL": false
       },
       "selectors": {
@@ -834,7 +834,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://suryascans.com",
+        "url": "https://suryareader.com",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"

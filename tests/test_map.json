@@ -361,19 +361,19 @@
     }
   },
   "suryascans": {
-    "user_input_url": "https://suryascans.com/manga/modern-dude-in-the-murim/",
+    "user_input_url": "https://suryareader.com/manga/modern-dude-in-the-murim/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://suryascans.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
-      "curr_chapter_url": "https://suryascans.com/modern-dude-in-the-murim-chapter-22/",
-      "first_chapter_url": "https://suryascans.com/modern-dude-in-the-murim-chapter-1/",
+      "cover_image": "https://suryareader.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
+      "curr_chapter_url": "https://suryareader.com/modern-dude-in-the-murim-chapter-22/",
+      "first_chapter_url": "https://suryareader.com/modern-dude-in-the-murim-chapter-1/",
       "last_3_chapter_urls": [
-        "https://suryascans.com/modern-dude-in-the-murim-chapter-20/",
-        "https://suryascans.com/modern-dude-in-the-murim-chapter-21/",
-        "https://suryascans.com/modern-dude-in-the-murim-chapter-22/"
+        "https://suryareader.com/modern-dude-in-the-murim-chapter-20/",
+        "https://suryareader.com/modern-dude-in-the-murim-chapter-21/",
+        "https://suryareader.com/modern-dude-in-the-murim-chapter-22/"
       ],
-      "manga_id": "https://suryascans.com/manga/modern-dude-in-the-murim",
-      "manga_url": "https://suryascans.com/manga/modern-dude-in-the-murim",
+      "manga_id": "https://suryareader.com/manga/modern-dude-in-the-murim",
+      "manga_url": "https://suryareader.com/manga/modern-dude-in-the-murim",
       "scanlator_name": "suryascans",
       "title": "Modern Dude in the Murim",
       "use_default_id_function": true

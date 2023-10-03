@@ -2,7 +2,7 @@
 <project version="4">
   <component name="Black">
     <option name="pathToExecutable" value="C:\Users\rchir\AppData\Local\Programs\Python\Python311\Scripts\black.exe" />
-    <option name="sdkUUID" value="5d400562-a862-4eb3-9745-ea7c7a7e3b77" />
+    <option name="sdkName" value="Python 3.11 (ManhwaUpdatesBot)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.11 (ManhwaUpdatesBot)" project-jdk-type="Python SDK" />
   <component name="PythonCompatibilityInspectionAdvertiser">
