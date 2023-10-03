@@ -294,12 +294,14 @@ class UpdateCheckCog(commands.Cog):
                     else:
                         view = None
                     extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
+                    spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
+                    if guild_config.show_update_buttons is False:
+                        spoiler_text = ""
                     try:
                         await guild_config.notifications_channel.send(
                             (
                                 # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
-                                f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
-                                f"{formatted_pings}**{manga_title} {chapter.name}**"
+                                f"{spoiler_text}{formatted_pings}** {manga_title} {chapter.name}**"
                                 f" has been released!\n{chapter.url}"
                             ),
                             allowed_mentions=discord.AllowedMentions(roles=True),

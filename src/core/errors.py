@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -20,7 +19,6 @@ __all__ = (
     "MangaCompletedOrDropped",
     "DatabaseError",
     "RateLimitExceeded",
-    "WebhookNotFoundError",
     "MissingUserAgentError",
     "CustomError"
 )
@@ -38,7 +36,7 @@ class GuildNotConfiguredError(BaseError):
         self.guild_id = guild_id
         self.error_msg = f"""
         The guild with ID `{self.guild_id}` is not configured.
-        Consider using `/config guild` to configure the guild.
+        Please use `/settings` to set up the server.
         """
 
 
@@ -155,20 +153,6 @@ class RateLimitExceeded(Exception):
         self.limiter = limiter
         self.period_remaining = period_remaining
         self.message: str = message
-
-
-class WebhookNotFoundError(BaseError):
-    """Raised when the webhook is not found."""
-
-    def __init__(self, webhook_url: str):
-        self.webhook_id = re.search(
-            r"https://discord\.com/api/webhooks/(?P<ID>\d+)/(:?.+)?",
-            webhook_url
-        ).groupdict().get("ID", "Not Found")
-        self.error_msg = f"""
-        The webhook with ID `{self.webhook_id}` is not found.
-        Consider using `/config subscribe setup` to create a new one.
-        """
 
 
 class MissingUserAgentError(BaseError):
