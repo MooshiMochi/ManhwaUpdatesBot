@@ -446,19 +446,17 @@ class UpdateCheckCog(commands.Cog):
                              x]  # apparently role.mentionable doesn't mean you can't mention it
                     formatted_pings = "".join(pings)
                     scanlator_hyperlink = (
-                        f"[{manga.scanlator}]"
-                        f"({scanlators[manga.scanlator].json_tree.properties.base_url})")
+                        f"[{manga.scanlator.title()}]({scanlators[manga.scanlator].json_tree.properties.base_url})"
+                    )
                     await guild_config.notifications_channel.send(
                         formatted_pings,
                         embed=discord.Embed(
-                            title=(f"({scanlator_hyperlink}) {manga} has been marked as "
-                                   f"{'completed' if manga.completed else 'ongoing'}!"),
+                            title=(f"The status of {manga} from {scanlator_hyperlink} has been updated to"
+                                   f"**'{manga.status.lower()}'**"),
                             color=discord.Color.green()
                         )
                     )
-                    self.logger.info(f"[{manga.scanlator}] {manga.title} has been marked "
-                                     f"as {'completed' if manga.completed else 'ongoing'}!"
-                                     )
+                    self.logger.info(f"[{manga.scanlator}] {manga.title} has been marked as {manga.status}!")
             except Exception as e:
                 self.bot.logger.debug(f"[{mangas[0].scanlator}] Checking for status updates was interrupted!")
                 traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
