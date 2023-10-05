@@ -64,6 +64,7 @@ class _ReaperScans(BasicScanlator):
         return found_chapters, max_chapters
 
     async def get_all_chapters(self, raw_url: str, page: int | None = None) -> list[Chapter] | None:
+        #  FixMe: There's some bug that causes a chapter update to be sent 6 times?
         if page is not None and page == 0:
             return (await self.get_chapters_on_page(raw_url, page=page))[0]
 
