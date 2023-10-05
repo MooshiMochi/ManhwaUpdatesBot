@@ -571,18 +571,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         for selector in selectors:
             cover_tag = soup.select_one(selector)
             if cover_tag:
-                cover_url = str(self.extract_cover_link_from_tag(cover_tag))
+                cover_url = self.extract_cover_link_from_tag(cover_tag)
                 # this is mainly bc of asura
-                start_idx = max(0, cover_url.rfind("https://"))
-                parsed_url = cover_url[start_idx:]
-                if parsed_url.count("https://") > 1:
-                    self.bot.logger.error(f"[{self.name}] Failed to parse url: {cover_url}")
-                    await self.bot.log_to_discord(
-                        f"[{self.name}] Failed to parse image URL!\n"
-                        f"Original: {cover_url}\n"
-                        f"Parsed: {parsed_url}"
-                    )
-                return parsed_url
+                start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
+                return cover_url[start_idx:]
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
         text = await self._get_text(self.json_tree.properties.latest_updates_url)
@@ -603,6 +595,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
 
             cover_url = self.extract_cover_link_from_tag(
                 manga_tag.select_one(self.json_tree.selectors.front_page.cover))
+            start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
+            cover_url = cover_url[start_idx:]
             chapter_tags: list[Tag] = manga_tag.select(self.json_tree.selectors.front_page.chapters["container"])
             chapters: list[Chapter] = []
 
