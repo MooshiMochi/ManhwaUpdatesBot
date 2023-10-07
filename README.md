@@ -1,6 +1,6 @@
 # ManhwaUpdatesBot
 
-### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands)
+### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412585675840&scope=bot%20applications.commands)
 
 ### Consider supporting me through [Ko-fi](https://ko-fi.com/mooshi69) or [Patreon](https://patreon.com/mooshi69).
 
