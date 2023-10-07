@@ -483,9 +483,9 @@ class GuildSettings:
         else:
             self.notifications_channel: Optional[discord.TextChannel] = None
             self.default_ping_role: Optional[discord.Role] = None
-        self.auto_create_role: bool = auto_create_role
-        self.dev_notifications_ping: bool = dev_notifications_ping
-        self.show_update_buttons: bool = show_update_buttons
+        self.auto_create_role: bool = bool(auto_create_role)
+        self.dev_notifications_ping: bool = bool(dev_notifications_ping)
+        self.show_update_buttons: bool = bool(show_update_buttons)
         self._args = args
         self._kwargs = kwargs
 
@@ -505,9 +505,9 @@ class GuildSettings:
             self.guild.id,
             self.notifications_channel.id,
             self.default_ping_role.id if self.default_ping_role else None,
-            self.auto_create_role,
-            self.dev_notifications_ping,
-            self.show_update_buttons,
+            1 if self.auto_create_role else 0,
+            1 if self.dev_notifications_ping else 0,
+            1 if self.show_update_buttons else 0,
         )
 
 

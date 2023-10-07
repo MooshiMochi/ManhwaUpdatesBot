@@ -295,7 +295,7 @@ class UpdateCheckCog(commands.Cog):
                         view = None
                     extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
                     spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
-                    if guild_config.show_update_buttons is False:
+                    if bool(guild_config.show_update_buttons) is False:
                         spoiler_text = ""
                     try:
                         await guild_config.notifications_channel.send(
