@@ -525,4 +525,4 @@ if __name__ == "__main__":
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        asyncio.run(test_single_scanlator("suryascans"))
+        asyncio.run(test_single_scanlator("realmscans"))

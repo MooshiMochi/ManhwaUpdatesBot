@@ -153,6 +153,16 @@ class _RealmScans(DynamicURLScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 
+    def extract_cover_link_from_tag(self, tag) -> str | None:
+        for attr in ["data-src", "src", "href", "content", "data-lazy-src"]:
+            result = tag.get(attr)
+            if result is not None:
+                if result.startswith("/cdn-cgi"):
+                    return self.json_tree.properties.base_url + "/assets/images/" + result.split("/")[-1]
+                elif not result.startswith("https://"):
+                    continue
+                return result
+
     async def get_synopsis(self, raw_url: str) -> str:
         text = await self._get_text(await self.format_manga_url(raw_url))
         soup = BeautifulSoup(text, "html.parser")
