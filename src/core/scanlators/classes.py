@@ -597,6 +597,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 manga_tag.select_one(self.json_tree.selectors.front_page.cover))
             start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
             cover_url = cover_url[start_idx:]
+
             chapter_tags: list[Tag] = manga_tag.select(self.json_tree.selectors.front_page.chapters["container"])
             chapters: list[Chapter] = []
 

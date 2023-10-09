@@ -87,6 +87,9 @@ This bot currently only supports the following websites:
 - https://void-scans.com
 - https://manhuaga.com
 - https://mangasiamese.com
+- https://arcanescans.com
+- https://readmangabat.com
+- https://lynxscans.com
 
 # Developers Section
 

@@ -1179,6 +1179,147 @@
         },
         "request_method": "GET"
       }
+    },
+    "arcanescans": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?arcanescans\\.com/(?:manga/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://arcanescans.com",
+        "icon_url": "https://arcanescans.com/wp-content/uploads/2023/09/cropped-ideogram__3_-removebg-preview.png",
+        "format_urls": {
+          "manga": "https://arcanescans.com/manga/{url_name}/",
+          "ajax": "https://arcanescans.com/manga/{url_name}/ajax/chapters"
+        },
+        "latest_updates_url": "https://arcanescans.com",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1",
+          ".breadcrumb > li:nth-child(4) > a:nth-child(1)"
+        ],
+        "synopsis": "div.description-summary > div > p",
+        "cover": [
+          "[property=og\\:image]"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "li.wp-manga-chapter a:not(.c-new-tag)",
+          "url": "li.wp-manga-chapter a:not(.c-new-tag)"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a",
+          "url": "div.post-title > h3.h5 > a",
+          "cover": "img"
+        },
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        },
+        "unwanted_tags": []
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://arcanescans.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga",
+          "op": "",
+          "author": "",
+          "artist": "",
+          "release": "",
+          "adult": ""
+        },
+        "request_method": "GET"
+      }
+    },
+    "mangabat": {
+      "chapter_ajax": null,
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?(?:readmangabat|h\\.mangabat)\\.com/read-(?P<id>[a-zA-Z0-9]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://readmangabat.com",
+        "icon_url": "https://readmangabat.com/favicon.png",
+        "format_urls": {
+          "manga": "https://readmangabat.com/read-{id}/"
+        },
+        "latest_updates_url": "https://readmangabat.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.story-info-right > h1"
+        ],
+        "synopsis": "div.panel-story-info-description",
+        "cover": [
+          "[property=og\\:image]",
+          "div.story-info-left > span.info-image > img"
+        ],
+        "chapters": {
+          "container": "li.a-h",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "td.table-label:-soup-contains(\"Status\") + td.table-value",
+        "front_page": {
+          "container": "div.content-homepage-item",
+          "chapters": {
+            "container": "p",
+            "name": "a.text-nowrap",
+            "url": "a.text-nowrap"
+          },
+          "title": "h3.item-title > a",
+          "url": "h3.item-title > a",
+          "cover": "a > img.img-loading"
+        },
+        "unwanted_tags": [
+          "div.panel-story-info-description > h3"
+        ],
+        "search": {
+          "container": "div.search-story-item",
+          "chapters": {
+            "container": "a.item-chapter",
+            "name": "_container_",
+            "url": "_container_"
+          },
+          "title": "a.item-title",
+          "url": "a.item-title",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "url": "https://readmangabat.com/https://m.mangabat.com/search/manga/",
+        "as_type": "path",
+        "query_parsing": {
+          "encoding": null,
+          "regex": [
+            {
+              "pattern": "\\W",
+              "sub_value": "_"
+            }
+          ]
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
     }
   },
   "custom": {
@@ -1365,6 +1506,63 @@
         },
         "extra_params": {},
         "request_method": "POST"
+      }
+    },
+    "lynxscans": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?lynxscans\\.com/(?:comics/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://lynxscans.com",
+        "icon_url": "https://lynxscans.com/wp-content/uploads/2023/07/My-project-5.png",
+        "format_urls": {
+          "manga": "https://lynxscans.com/comics/{url_name}/"
+        },
+        "latest_updates_url": "https://lynxscans.com",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "h1.entry-title"
+        ],
+        "synopsis": "div.entry-content > p",
+        "cover": [
+          "div.thumb > img"
+        ],
+        "chapters": {
+          "container": "div.eph-num",
+          "name": "a > span.chapternum",
+          "url": "a"
+        },
+        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "front_page": {
+          "container": "div.bixbox:not(.hothome):first-child > div.listupd div.bsx",
+          "chapters": {
+            "container": "a:not(.r)",
+            "name": "div.epxs",
+            "url": "_container_"
+          },
+          "title": "div.tt",
+          "url": "a:not(.r)",
+          "cover": "a > div > img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.bsx",
+          "title": "div.tt",
+          "url": "a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "url": "https://lynxscans.com/",
+        "search_param_name": "s",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
       }
     }
   }

@@ -435,5 +435,62 @@
       ],
       "manga_id": "default_id_function"
     }
+  },
+  "arcanescans": {
+    "user_input_url": "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/",
+    "expected_results": {
+      "scanlator_name": "arcanescans",
+      "manga_url": "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/",
+      "completed": false,
+      "title": "A Transmigrated Warden’s Battle for Redemption",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-31/",
+      "first_chapter_url": "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-1/",
+      "cover_image": "https://arcanescans.com/wp-content/uploads/2023/07/18dca81535155c7cec2041bce066ee7fa278d.webp",
+      "last_3_chapter_urls": [
+        "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-29/",
+        "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-30/",
+        "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-31/"
+      ]
+    }
+  },
+  "lynxscans": {
+    "user_input_url": "https://lynxscans.com/comics/the-story-of-a-low-rank-soldier-becoming-a-monarch/",
+    "expected_results": {
+      "scanlator_name": "lynxscans",
+      "manga_url": "https://lynxscans.com/comics/the-story-of-a-low-rank-soldier-becoming-a-monarch/",
+      "completed": false,
+      "title": "The Story of a Low-Rank Soldier Becoming a Monarch",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-123/",
+      "first_chapter_url": "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-1/",
+      "cover_image": "https://lynxscans.com/wp-content/uploads/2023/07/LRKM-cover-2-1.png",
+      "last_3_chapter_urls": [
+        "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-121/",
+        "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-122/",
+        "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-123/"
+      ]
+    }
+  },
+  "mangabat": {
+    "user_input_url": "https://readmangabat.com/read-ye359223",
+    "expected_results": {
+      "scanlator_name": "mangabat",
+      "manga_url": "https://readmangabat.com/read-ye359223",
+      "completed": false,
+      "title": "Tensei Shitara Slime Datta Ken",
+      "manga_id": "ye359223",
+      "use_default_id_function": false,
+      "curr_chapter_url": "https://readmangabat.com/read-ye359223-chap-111",
+      "first_chapter_url": "https://readmangabat.com/read-ye359223-chap-1",
+      "cover_image": "https://avt.mkklcdnv6temp.com/19/y/2-1583466482.jpg",
+      "last_3_chapter_urls": [
+        "https://readmangabat.com/read-ye359223-chap-109",
+        "https://readmangabat.com/read-ye359223-chap-110",
+        "https://readmangabat.com/read-ye359223-chap-111"
+      ]
+    }
   }
 }
