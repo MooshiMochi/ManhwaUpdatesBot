@@ -12,6 +12,8 @@ __all__ = (
     "scanlators",
 )
 
+from ...utils import raise_and_report_for_status
+
 
 class _ReaperScans(BasicScanlator):
     def __init__(self, name, **kwargs):
@@ -125,11 +127,11 @@ class _OmegaScans(NoStatusBasicScanlator):
         if self.json_tree.request_method == "http":
             # noinspection PyProtectedMember
             resp = await self.bot.session._request(**request_kwargs)
-            resp.raise_for_status()
+            await raise_and_report_for_status(self.bot, resp)
             json_resp = await resp.json()
         else:  # req method is "curl"
             resp = await self.bot.curl_session.request(**request_kwargs)
-            resp.raise_for_status()
+            await raise_and_report_for_status(self.bot, resp)
             json_resp = resp.json()
 
         # here we have the resp object
@@ -202,11 +204,11 @@ class _RealmScans(DynamicURLScanlator):
         if self.json_tree.request_method == "http":
             # noinspection PyProtectedMember
             resp = await self.bot.session._request(**request_kwargs)
-            resp.raise_for_status()
+            await raise_and_report_for_status(self.bot, resp)
             json_resp = await resp.text()
         else:  # req method is "curl"
             resp = await self.bot.curl_session.request(**request_kwargs)
-            resp.raise_for_status()
+            await raise_and_report_for_status(self.bot, resp)
             json_resp = resp.text
         json_resp = json.loads(json_resp)
 

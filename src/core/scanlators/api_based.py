@@ -7,6 +7,7 @@ import discord
 from src.core.objects import Chapter, PartialManga
 from .classes import AbstractScanlator, scanlators
 from ...static import RegExpressions
+from ...utils import raise_and_report_for_status
 
 __all__ = (
     "scanlators",
@@ -73,7 +74,7 @@ class _Comick(AbstractScanlator):
 
     async def get_id(self, raw_url: str) -> str | None:
         async with self.bot.session.get(raw_url) as resp:
-            resp.raise_for_status()
+            await raise_and_report_for_status(self.bot, resp)
             manga_id = re.search(r"\"hid\":\"([^\"]+)\"", await resp.text()).group(1)
             return manga_id
 

@@ -10,6 +10,7 @@ from typing import Any, Coroutine, List, Optional, TYPE_CHECKING
 
 import aiohttp
 import bs4
+import curl_cffi.requests
 import discord
 
 if TYPE_CHECKING:
@@ -856,3 +857,21 @@ def create_dynamic_grouped_embeds(
         embeds.append(embed)
 
     return embeds
+
+
+async def raise_and_report_for_status(
+        bot: MangaClient, response_object: aiohttp.ClientResponse | curl_cffi.requests.Response
+) -> None:
+    try:
+        response_object.raise_for_status()
+    except Exception as e:
+        if hasattr(response_object, "status") or isinstance(response_object, aiohttp.ClientResponse):
+            response_object: aiohttp.ClientResponse
+            request_url = response_object.request_info.url
+            status_code = response_object.status
+        else:
+            response_object: curl_cffi.requests.Response
+            request_url = response_object.request.url
+            status_code = response_object.status_code
+        await bot.log_to_discord(f"Error when fetching URL: {request_url}: Status: {status_code}")
+        raise e

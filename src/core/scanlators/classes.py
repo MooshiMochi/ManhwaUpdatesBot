@@ -13,7 +13,7 @@ import discord
 from bs4 import BeautifulSoup, Tag
 from discord.utils import MISSING
 
-from src.utils import time_string_to_seconds
+from src.utils import raise_and_report_for_status, time_string_to_seconds
 
 if TYPE_CHECKING:
     from src.core import MangaClient, MissingUserAgentError
@@ -456,13 +456,13 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             async with self.bot.session.request(
                     method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             ) as resp:
-                resp.raise_for_status()
+                await raise_and_report_for_status(self.bot, resp)
                 return await resp.text()
         else:
             resp = await self.bot.curl_session.request(
                 method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             )
-            resp.raise_for_status()
+            await raise_and_report_for_status(self.bot, resp)
             return resp.text
 
     async def format_manga_url(
