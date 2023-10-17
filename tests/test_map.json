@@ -492,5 +492,119 @@
         "https://readmangabat.com/read-ye359223-chap-111"
       ]
     }
+  },
+  "lhtranslation": {
+    "user_input_url": "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/",
+    "expected_results": {
+      "scanlator_name": "lhtranslation",
+      "manga_url": "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/",
+      "completed": true,
+      "title": "Isekai desu ga Mamono Saibai shiteimasu.",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-35/",
+      "first_chapter_url": "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-1/",
+      "cover_image": "https://lhtranslation.net/wp-content/uploads/2021/09/Isekai-desu-ga-Mamono-Saibai-shiteimasu.jpg",
+      "last_3_chapter_urls": [
+        "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-33/",
+        "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-34/",
+        "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-35/"
+      ]
+    }
+  },
+  "astrascans": {
+    "user_input_url": "https://astrascans.com/10000/empress-hunt/",
+    "expected_results": {
+      "scanlator_name": "astrascans",
+      "manga_url": "https://astrascans.com/10000/empress-hunt/",
+      "completed": true,
+      "title": "Empress Hunt",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://astrascans.com/empress-hunt-chapter-45/",
+      "first_chapter_url": "https://astrascans.com/empress-hunt-chapter-1/",
+      "cover_image": "https://i3.wp.com/astrascans.com/wp-content/uploads/2023/09/Empress-Hunt.png",
+      "last_3_chapter_urls": [
+        "https://astrascans.com/empress-hunt-chapter-43/",
+        "https://astrascans.com/empress-hunt-chapter-44/",
+        "https://astrascans.com/empress-hunt-chapter-45/"
+      ]
+    }
+  },
+  "ravenscans": {
+    "user_input_url": "https://ravenscans.com/manga/the-demons-begging-me-to-let-them-go/",
+    "expected_results": {
+      "scanlator_name": "ravenscans",
+      "manga_url": "https://ravenscans.com/manga/the-demons-begging-me-to-let-them-go/",
+      "completed": true,
+      "title": "The demons begging me to let them go",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-36/",
+      "first_chapter_url": "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-1/",
+      "cover_image": "https://i1.wp.com/ravenscans.com/wp-content/uploads/2022/12/2-124.jpg",
+      "last_3_chapter_urls": [
+        "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-34/",
+        "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-35/",
+        "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-36/"
+      ]
+    }
+  },
+  "resetscans": {
+    "user_input_url": "https://reset-scans.com/manga/oopart/",
+    "expected_results": {
+      "scanlator_name": "resetscans",
+      "manga_url": "https://reset-scans.com/manga/oopart/",
+      "completed": true,
+      "title": "OOPARTS",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://reset-scans.com/manga/oopart/chapter-97/",
+      "first_chapter_url": "https://reset-scans.com/manga/oopart/chapter-01/",
+      "cover_image": "https://reset-scans.com/wp-content/uploads/2022/11/OOPARTS.webp",
+      "last_3_chapter_urls": [
+        "https://reset-scans.com/manga/oopart/chapter-95/",
+        "https://reset-scans.com/manga/oopart/chapter-96/",
+        "https://reset-scans.com/manga/oopart/chapter-97/"
+      ]
+    }
+  },
+  "kaiscans": {
+    "user_input_url": "https://kaiscans.com/series/dungeon-odyssey/",
+    "expected_results": {
+      "scanlator_name": "kaiscans",
+      "manga_url": "https://kaiscans.com/series/dungeon-odyssey/",
+      "completed": false,
+      "title": "Dungeon Odyssey",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://kaiscans.com/dungeon-odyssey-chapter-64/",
+      "first_chapter_url": "https://kaiscans.com/dungeon-odyssey-61/",
+      "cover_image": "https://kaiscans.com/wp-content/uploads/2023/09/34cf7271-a9a7-4574-a509-66074b85a87a_z.jpg",
+      "last_3_chapter_urls": [
+        "https://kaiscans.com/dungeon-odyssey-62/",
+        "https://kaiscans.com/dungeon-odyssey-63/",
+        "https://kaiscans.com/dungeon-odyssey-chapter-64/"
+      ]
+    }
+  },
+  "zeroscans": {
+    "user_input_url": "https://zeroscans.com/comics/bowblade-spirit/",
+    "expected_results": {
+      "scanlator_name": "zeroscans",
+      "manga_url": "https://zeroscans.com/comics/bowblade-spirit",
+      "completed": true,
+      "title": "Bowblade Spirit",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://zeroscans.com/comics/bowblade-spirit/4815",
+      "first_chapter_url": "https://zeroscans.com/comics/bowblade-spirit/1338",
+      "cover_image": "https://api.zeroscans.com/storage/76102/conversions/9087f1f9e26a9a99e19280c57dab060d-full.webp",
+      "last_3_chapter_urls": [
+        "https://zeroscans.com/comics/bowblade-spirit/4813",
+        "https://zeroscans.com/comics/bowblade-spirit/4814",
+        "https://zeroscans.com/comics/bowblade-spirit/4815"
+      ]
+    }
   }
 }

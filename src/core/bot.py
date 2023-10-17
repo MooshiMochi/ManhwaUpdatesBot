@@ -9,7 +9,7 @@ import discord
 from discord import Intents
 from discord.ext import commands
 
-from .apis import ComickAppAPI, MangaDexAPI
+from .apis import APIManager
 from .cache import CachedClientSession, CachedCurlCffiSession
 from .database import Database
 from .objects import GuildSettings
@@ -28,6 +28,8 @@ class MangaClient(commands.Bot):
             *args,
             **kwargs,
         )
+        self.owner_ids: set[int] = None
+        self._apis: APIManager = None
         self._config = None
         self.test_guild_ids = None
         self.db = Database(self, "database.db")
@@ -36,8 +38,6 @@ class MangaClient(commands.Bot):
         # Placeholder values. These are set in .setup_hook() below
         self._session: Union[aiohttp.ClientSession, CachedClientSession] = None
         self.curl_session: CachedCurlCffiSession = None
-        self.mangadex_api: MangaDexAPI = None
-        self.comick_api: ComickAppAPI = None
 
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
@@ -68,12 +68,7 @@ class MangaClient(commands.Bot):
             self.loop.create_task(self.sync_commands())
         self.loop.create_task(self.update_restart_message())
 
-        self.mangadex_api = MangaDexAPI(
-            CachedClientSession(proxy=self.proxy_addr, name="cache.dex", trust_env=True)
-        )
-        self.comick_api = ComickAppAPI(
-            CachedClientSession(proxy=self.proxy_addr, name="cache.comick", trust_env=True)
-        )
+        self._apis = APIManager(self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True))
 
     def _remove_unavailable_scanlators(self):
         for scanlator, user_agent in self._config["user-agents"].items():
@@ -135,7 +130,7 @@ class MangaClient(commands.Bot):
 
     async def close(self):
         await self._session.close() if self._session else None
-        await self.mangadex_api.session.close() if self.mangadex_api else None
+        await self.apis.session.close() if self.apis else None
         self.curl_session.close() if self.curl_session else None
         await super().close()
 
@@ -274,3 +269,7 @@ class MangaClient(commands.Bot):
     @property
     def config(self):
         return self._config
+
+    @property
+    def apis(self):
+        return self._apis

@@ -2,6 +2,34 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // October 17th 2023
+
+- Added `omegascansAPI` class to `/apis`.
+- Added `zeroscansAPI` class to `/apis`.
+- Added `APIManager` class to `/apis/__init__.py`
+- Added support for the following websites:
+    - [Kaiscans](https://kaiscans.com)
+    - [Arcanescans](https://arcanescans.com)
+    - [MangaBat](https://h.mangabat.com/mangabat)
+    - [LHTranslation](https://lhtranslation.net/home/)
+    - [Astrascans](https://astrascans.com)
+    - [Ravenscans](https://ravenscans.com)
+    - [Resetscans](https://reset-scans.com)
+    - [Lynxscans](https://lynxscans.com)
+    - [Zeroscans](https://zeroscans.com)
+- Deleted `bot.comick_api` and `bot.mangadex_api` properties and replaced them with `bot.apis.comick` and
+  `bot.apis.mangadex` respectively
+
+### Bug Fixes:
+
+- Fixed Omegascans not fetching all chapters properly if the series has multiple seasons.
+- Fixed the "Unsubscribe from all untracked manhwa" button in the `/subscribe view` command unsubscribing from all
+  unsubscribed manhwa in ALL servers the bot is in for the user.
+- Updated LuminousScans URL to reflect their change from .com to .gg
+- Fixed reaperscans sending multiple updates of the same chapter.
+- Fixed reaperscans not fetching all the chapters for a manhwa properly.
+- Updated the error message for when the guild is not set up yet.
+
 ## // September 28th 2023
 
 - Added support for [MangaSiamese](https://mangasiamese.com).

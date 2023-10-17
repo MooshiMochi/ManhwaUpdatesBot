@@ -14,7 +14,7 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Coroutine, Dict, Literal, Optional
 
-from src.core.apis import ComickAppAPI, MangaDexAPI
+from src.core.apis import APIManager
 from src.core.cache import CachedClientSession, CachedCurlCffiSession
 from src.core.database import Database
 from src.core.objects import Chapter, Manga
@@ -55,8 +55,9 @@ class Bot:
         })
         self.session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
         self.db = Database(self)  # noqa
-        self.mangadex_api = MangaDexAPI(self.session)
-        self.comick_api = ComickAppAPI(self.session)
+        self.apis: APIManager = APIManager(
+            self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True)  # noqa
+        )
         self._all_scanners: dict = scanlators.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
         self.load_scanlators(scanlators)
         self.user = User()
@@ -72,6 +73,7 @@ class Bot:
     async def close(self):
         # await self.cf_scraper.close()
         await self.session.close()
+        await self.apis.session.close()
         self.curl_session.close() if self.curl_session else None
 
     async def __aenter__(self):
@@ -358,6 +360,8 @@ async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None
     for scanlator_name in scanlators.keys():
         if scanlator_name not in test_cases:
             print(f"⚠️ Scanlator {scanlator_name} does not have a test case!")
+        elif scanlator_name in to_ignore:
+            print(f"⚠️ Scanlator {scanlator_name} is disabled! No tests will be run.")
     if to_ignore is None:
         to_ignore = []
     for name, test_case in test_cases.items():
@@ -433,7 +437,7 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = []
+        tests_to_ignore = ["asura", "flamescans", "luminousscans", "voidscans", "realmscans"]
         await run_tests(testCases, tests_to_ignore)
 
 
@@ -525,4 +529,4 @@ if __name__ == "__main__":
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        # asyncio.run(test_single_scanlator("mangabat"))
+        # asyncio.run(test_single_scanlator("zeroscans"))

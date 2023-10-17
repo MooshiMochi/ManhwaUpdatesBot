@@ -84,14 +84,7 @@ class CommandsCog(commands.Cog):
                         return True
                 except KeyError:
                     pass
-            em = discord.Embed(
-                title="Error",
-                description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
-                color=0xFF0000,
-            )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
-            return False
+            raise GuildNotConfiguredError(interaction.guild_id)
         return True
 
     @app_commands.command(

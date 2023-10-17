@@ -1,6 +1,10 @@
-import asyncio
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
+import asyncio
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.core.apis import APIManager
 import aiohttp
 
 from src.core.cache import CachedClientSession
@@ -9,17 +13,15 @@ from src.core.cache import CachedClientSession
 class ComickAppAPI:
     def __init__(
             self,
-            session: Optional[CachedClientSession] = None,
+            api_manager: APIManager
     ):
         self.api_url: str = "https://api.comick.app"
-        self.session = session or CachedClientSession()
+        self.manager = api_manager
         self.headers = {
             "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
         }
         self.rate_limit_remaining = None
         self.rate_limit_reset = None
-
-        # self.session.ignored_urls = self.session.ignored_urls.union({self.api_url + "/manga"})
 
     async def __request(
             self,
@@ -37,7 +39,7 @@ class ComickAppAPI:
         if self.rate_limit_remaining is not None and self.rate_limit_remaining == 0:
             await asyncio.sleep(self.rate_limit_reset)
         try:
-            async with self.session.request(
+            async with self.manager.session.request(
                     method, url, params=params, json=data, headers=headers, **kwargs
             ) as response:
                 json_data = await response.json()
@@ -53,11 +55,13 @@ class ComickAppAPI:
                 return json_data
 
         except aiohttp.ServerDisconnectedError:
-            self.session.logger.error("Server disconnected, retrying with new session...")
+            self.manager.session.logger.error("Server disconnected, retrying with new session...")
             # noinspection PyProtectedMember
-            session_proxy = self.session._proxy
-            await self.session.close()
-            self.session = CachedClientSession(proxy=session_proxy, name="cache.comick", trust_env=True)
+            session_proxy = self.manager.session._proxy
+            await self.manager.session.close()
+            self.manager._session = CachedClientSession(
+                proxy=session_proxy, name=self.manager.session._name, trust_env=True  # noqa
+            )
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
     async def get_manga(self, manga_id: str) -> Dict[str, Any]:
@@ -128,7 +132,7 @@ class ComickAppAPI:
         }
         params = {k: v for k, v in params.items() if v is not None}
         kwargs = {}
-        if isinstance(self.session, CachedClientSession):
+        if isinstance(self.manager.session, CachedClientSession):
             kwargs["cache_time"] = 0
         return await self.__request("GET", endpoint, params=params, **kwargs)
 

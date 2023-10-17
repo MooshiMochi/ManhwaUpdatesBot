@@ -18,7 +18,7 @@ from . import rate_limiter
 
 class BaseCacheSessionMixin:
     logger = None
-    _default_cache_time: int = 5
+    _default_cache_time: int = 3600
 
     def __init__(
             self,
@@ -167,18 +167,17 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
         hostname = get_url_hostname(url)
         is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
         limiter: rate_limiter.Limiter = self.getLimiter(hostname)
-
         cached_url = url.removesuffix("/")
         url_params = kwargs.get("params")
-        if not url_params:
-            url_params = {}
-        cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+        if url_params:
+            cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+
         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # await limiter.try_acquire(is_user_request=is_user_req)
             return await super()._request(method, url, *args, **kwargs)
 
         elif cached_url in self._cache and self._cache[cached_url]['expires'] > asyncio.get_event_loop().time():
-            self.logger.debug(f"Cache hit for {url}")
+            self.logger.debug(f"Cache hit for {cached_url}")
             # Use cached response
             response = self._cache[cached_url]['response']
             # response.cached = True
@@ -186,7 +185,7 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
 
         self.cookie_jar.clear()  # clear all cookies before making request
         # Cache miss, fetch and cache response
-        self.logger.debug(f"Cache miss for {url}")
+        self.logger.debug(f"Cache miss for {cached_url}")
         # await limiter.try_acquire(is_user_request=is_user_req)
         response = await super()._request(method, url, *args, **kwargs)
         response = await CachedResponse(response).apply_patch(preload_data=True)  # TODO: preload_data=False
@@ -218,27 +217,25 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
         hostname = get_url_hostname(url)
         is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
         limiter: rate_limiter.Limiter = self.getLimiter(hostname)
-
         cached_url = url.removesuffix("/")
         url_params = kwargs.get("params")
-        if not url_params:
-            url_params = {}
-        cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
-        
+        if url_params:
+            cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+
         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs
             # await limiter.try_acquire(is_user_request=is_user_req)  # TODO: Re-enable rate limiter
             return await super().request(method, url, *args, **kwargs)
 
         elif cached_url in self._cache and self._cache[cached_url]['expires'] > asyncio.get_event_loop().time():
-            self.logger.debug(f"Cache hit for {url}")
+            self.logger.debug(f"Cache hit for {cached_url}")
             # Use cached response
             response = self._cache[cached_url]['response']
             return response
 
         self.cookies.clear()  # clear all cookies
 
-        self.logger.debug(f"Cache miss for {url}")
+        self.logger.debug(f"Cache miss for {cached_url}")
         # await limiter.try_acquire(is_user_request=is_user_req)
         response = await super().request(method, url, *args, **kwargs)
 

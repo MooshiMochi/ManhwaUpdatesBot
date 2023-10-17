@@ -194,3 +194,6 @@ class RegExpressions:
     comick_url = re.compile(
         r"(?:https?://)?(?:www\.)?comick\.app/comic/(?P<url_name>[a-zA-Z0-9-]+)(?:\??/.*)?"
     )
+    zeroscans_url = re.compile(
+        r"(?:https?://)?(?:www\.)?zeroscans\.com/comics/(?P<url_name>\w[\w-]*?)(?:-chapter-[\d.-]+(-\w+)?)?/?(?:/.*)?$"
+    )

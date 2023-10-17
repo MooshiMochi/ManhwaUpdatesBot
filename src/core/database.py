@@ -1259,17 +1259,18 @@ class Database:
             int: The number of rows deleted.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            query = """
-            DELETE FROM user_subs 
-            WHERE id = $1 
-            AND (series_id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM tracked_guild_series
-            """
             if guild_id is not None:
-                query += " WHERE tracked_guild_series.guild_id = $2);"
+                query = """
+                DELETE FROM user_subs WHERE id = $1 AND guild_id = $2 AND (series_id, scanlator) NOT IN (
+                    SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
+                );
+                """
                 params = (user_id, guild_id)
             else:
-                query += ");"
+                query = """
+                DELETE FROM user_subs WHERE id = $1 AND (series_id, scanlator) NOT IN (
+                    SELECT series_id, scanlator FROM tracked_guild_series
+                );"""
                 params = (user_id,)
             cursor = await db.execute(query, params)
             await db.commit()

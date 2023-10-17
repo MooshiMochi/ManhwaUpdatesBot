@@ -148,3 +148,5 @@ local/
 config.yml.copy
 
 _test.py
+
+tests/logs/

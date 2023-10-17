@@ -210,8 +210,6 @@ class UpdateCheckCog(commands.Cog):
         solo_mangas_to_check = []
         manga_chapter_updates = []
         for manga, partial_manga in grouped:
-            manga.actual_url = partial_manga.actual_url  # this is needed for websites such as luminous or asura
-            # because of the ID in the URLs
             if not partial_manga.latest_chapters:  # websites that don't support front page scraping return []
                 solo_mangas_to_check.append(manga)
                 continue

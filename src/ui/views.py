@@ -19,7 +19,7 @@ from discord.ui import View, Button
 from discord.ext.commands import Context
 
 from src.core.objects import Bookmark, GuildSettings, Manga
-from src.core.errors import MangaCompletedOrDropped
+from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped
 
 from src.utils import (
     create_bookmark_embed,
@@ -607,9 +607,10 @@ class SubscribeView(View):
                 # check if the manga ID already has a ping role in DB
                 guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
                 if not guild_config:
+                    error = GuildNotConfiguredError(interaction.guild_id)
                     em = discord.Embed(
                         title="Error",
-                        description="This server has not been setup yet.\nUse `/config setup` to setup the bot.",
+                        description=error.error_msg,
                         color=0xFF0000,
                     )
                     em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)

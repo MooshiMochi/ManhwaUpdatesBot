@@ -17,6 +17,7 @@ import traceback as tb
 from contextlib import redirect_stdout
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from src.core.objects import TextPageSource, GuildSettings
@@ -730,6 +731,10 @@ class Restricted(commands.Cog):
             description=f"Sent the message to {successes} guilds.",
             color=discord.Color.green()
         ))
+
+    @app_commands.command(name="add_website", description="[DEV] Add a website to the bot.")
+    async def _add_website(self, interaction: discord.Interaction):
+        return await interaction.response.send_message("This command is not yet supported!", ephemeral=True)  # noqa
 
 
 async def setup(bot: MangaClient) -> None:

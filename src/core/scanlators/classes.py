@@ -581,13 +581,12 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
-        manga_tags = soup.select(self.json_tree.selectors.front_page.container)
+        manga_tags: list[Tag] = soup.select(self.json_tree.selectors.front_page.container)
 
         found_manga: list[PartialManga] = []
         for manga_tag in manga_tags:
-            manga_tag: Tag
             url = manga_tag.select_one(self.json_tree.selectors.front_page.url).get("href")
-            if not url.startswith(self.json_tree.properties.base_url):
+            if not url.startswith("https://"):
                 url = self.json_tree.properties.base_url + url
             name = manga_tag.select_one(  # noqa: Invalid scope warning
                 self.json_tree.selectors.front_page.title

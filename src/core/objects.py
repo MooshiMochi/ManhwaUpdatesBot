@@ -35,7 +35,13 @@ class ChapterUpdate:
         self.scanlator = scanlator
 
     def __repr__(self):
-        return f"ChapterUpdate({len(self.new_chapters)} new chapters, status={self.status})"
+        return (
+            f"ChapterUpdate({len(self.new_chapters)} new chapters, "
+            f"status={self.status} | {[x.url for x in self.new_chapters]})"
+        )
+
+    def __str__(self):
+        return f"ChapterUpdate(new_chapters: {len(self.new_chapters)}, status: {self.status})"
 
     @property
     def is_completed(self):

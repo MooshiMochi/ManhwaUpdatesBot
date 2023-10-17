@@ -90,6 +90,11 @@ This bot currently only supports the following websites:
 - https://arcanescans.com
 - https://readmangabat.com
 - https://lynxscans.com
+- https://kaiscans.com
+- https://lhtranslation.net
+- https://astrascans.com
+- https://ravenscans.com
+- https://reset-scans.com
 
 # Developers Section
 
