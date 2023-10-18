@@ -1,6 +1,8 @@
 # Changelog
 
-#### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
+#### Consider supporting me on [Ko-Fi](https://ko-fi.com/mooshi69)!
+
+[//]: # ([Patreon]&#40;https://patreon.com/mooshi69&#41; or )
 
 ## // October 18th 2023
 
