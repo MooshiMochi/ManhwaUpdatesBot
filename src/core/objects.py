@@ -419,7 +419,6 @@ class Bookmark:
             self.last_updated_ts: float = float(last_updated_ts)
         else:
             self.last_updated_ts: float = datetime.now().timestamp()
-
         self.user_created: bool = bool(user_created)
 
     @classmethod
@@ -431,9 +430,8 @@ class Bookmark:
         # 3 = guild_id
         # 4 = last_updated_ts
         # 5 = user_created
-        # 6 = scanlator
         last_read_chapter: Chapter = data[1].available_chapters[data[2]]
-        parsed_data = list(data)[:-1]  # No need to include scanlator. It's stored in the manga object
+        parsed_data = list(data)
         parsed_data[2] = last_read_chapter
         return cls(*parsed_data)
 
@@ -450,7 +448,7 @@ class Bookmark:
             self.last_read_chapter.index,
             self.guild_id,
             self.last_updated_ts,
-            1 if self.user_created else 0,
+            bool(self.user_created),
             self.manga.scanlator
         )
 

@@ -189,7 +189,6 @@ class BookmarkCog(commands.Cog):
                 user_subscribed = True
             elif not is_tracked:
                 should_track = True
-
         await self.bot.db.upsert_bookmark(bookmark)
         success_em = discord.Embed(
             title="Bookmark Updated",

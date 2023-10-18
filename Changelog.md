@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // October 18th 2023
+
+### Bug Fixes:
+
+- Fixed using `/bookmark update` command causing your bookmark to be hidden.
+
 ## // October 17th 2023
 
 - Added `omegascansAPI` class to `/apis`.
