@@ -730,7 +730,7 @@
     },
     "nightscans": {
       "chapter_ajax": null,
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?nightscans\\.net/series/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://nightscans.net",

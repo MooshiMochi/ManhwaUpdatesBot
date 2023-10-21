@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import aiohttp
 import curl_cffi.requests
 import discord
-from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError
 
 from src.core.errors import CustomError, URLAccessFailed
 from src.core.objects import ChapterUpdate, Manga, PartialManga
@@ -55,7 +55,7 @@ class UpdateCheckCog(commands.Cog):
         # Even though ClientConnectorError inherits from Exception, it's not getting caught.
         except (Exception, ClientConnectorError) as error:
             rv = "None"
-            if isinstance(error, ClientConnectorError):
+            if isinstance(error, (ClientConnectorError, ClientHttpProxyError)):
                 self.logger.warning(
                     f"[{scanlator.name.title()}] Faield to connect to proxy: {error}"
                 )
@@ -74,7 +74,7 @@ class UpdateCheckCog(commands.Cog):
                     self.logger.warning(f"[{scanlator.name.title()}] returned 404 for {req_url}")
                 elif error.status_code == 429:
                     self.logger.warning(f"[{scanlator.name.title()}] returned 429 for {req_url}")
-                    rv = "continue"  # Rate limiter should be able to handle this.
+                    rv = "return"  # Rate limiter should be able to handle this.
                 elif error.status_code == 403:
                     self.logger.warning(f"[{scanlator.name.title()}] returned 403 for {req_url}")
                     rv = "return"  # cancel update check as it's unlikely to succeed.

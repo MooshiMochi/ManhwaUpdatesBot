@@ -4,6 +4,12 @@
 
 [//]: # ([Patreon]&#40;https://patreon.com/mooshi69&#41; or )
 
+## // October 22nd 2023
+
+### Patch:
+
+- Updated nigthscan's 'request_method' property to 'curl.'
+
 ## // October 18th 2023
 
 ### Bug Fixes:
