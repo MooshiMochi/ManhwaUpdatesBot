@@ -4,13 +4,14 @@
 
 [//]: # ([Patreon]&#40;https://patreon.com/mooshi69&#41; or )
 
-## // October 22nd 2023
+## // October 22nd 2023 [Patch]
 
-### Patch:
+### Bug Fixes:
 
 - Updated nigthscan's 'request_method' property to 'curl.'
-- Updated Kaiscans' URL from https://kaiscans.com to https://www.kaiscans.com
+- Updated Kaiscans' URL from https://kaiscans.com to https://www.kaiscans.com.
 - Renamed mangabaz to nitromanga and updated its URL.
+- Updated the database.get_series_to_update method's query to only get series that don't have a disabled scanlator.
 
 ## // October 18th 2023
 

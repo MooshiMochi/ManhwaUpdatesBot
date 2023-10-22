@@ -580,7 +580,8 @@ class Database:
                             SELECT series_id, scanlator FROM bookmarks
                             UNION
                             SELECT series_id, scanlator FROM tracked_guild_series
-                        );
+                        )
+                        AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = 0);
                     """
             ) as cursor:
                 result = await cursor.fetchall()
