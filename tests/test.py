@@ -399,7 +399,7 @@ class TestCases(dict):
         self.testCases: dict[str, TestCase] = {}
         for scanlator_name, test_data in test_map.items():
             if scanlator_name not in scanlators:
-                print(f"Scanlator {scanlator_name} is disabled! No tests will be run.")
+                print(f"⚠️ Scanlator {scanlator_name} is disabled! No tests will be run.")
                 continue
             expected_resutls = test_data["expected_results"]
             self.testCases[scanlator_name] = TestCase(
@@ -525,8 +525,8 @@ if __name__ == "__main__":
     if os.name != "nt":
         asyncio.run(main())
     else:
-        asyncio.run(main())
+        # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
+        # asyncio.run(test_single_scanlator("nitromanga"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        # asyncio.run(test_single_scanlator("zeroscans"))
+        asyncio.run(main())

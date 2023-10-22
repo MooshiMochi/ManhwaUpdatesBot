@@ -265,21 +265,21 @@
       "use_default_id_function": true
     }
   },
-  "mangabaz": {
-    "user_input_url": "https://mangabaz.net/mangas/i-grow-stronger-by-eating/",
+  "nitromanga": {
+    "user_input_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://mangabaz.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
-      "curr_chapter_url": "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/",
-      "first_chapter_url": "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-1/",
+      "cover_image": "https://nitromanga.com/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
+      "curr_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/",
+      "first_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-1/",
       "last_3_chapter_urls": [
-        "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-98/",
-        "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-99/",
-        "https://mangabaz.net/mangas/i-grow-stronger-by-eating/chapter-100/"
+        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-98/",
+        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-99/",
+        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/"
       ],
-      "manga_id": "https://mangabaz.net/mangas/i-grow-stronger-by-eating",
-      "manga_url": "https://mangabaz.net/mangas/i-grow-stronger-by-eating/",
-      "scanlator_name": "mangabaz",
+      "manga_id": "https://nitromanga.com/mangas/i-grow-stronger-by-eating",
+      "manga_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
+      "scanlator_name": "nitromanga",
       "title": "I Grow Stronger By Eating!",
       "use_default_id_function": true
     }
@@ -570,21 +570,21 @@
     }
   },
   "kaiscans": {
-    "user_input_url": "https://kaiscans.com/series/dungeon-odyssey/",
+    "user_input_url": "https://www.kaiscans.com/series/dungeon-odyssey/",
     "expected_results": {
       "scanlator_name": "kaiscans",
-      "manga_url": "https://kaiscans.com/series/dungeon-odyssey/",
+      "manga_url": "https://www.kaiscans.com/series/dungeon-odyssey/",
       "completed": false,
       "title": "Dungeon Odyssey",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://kaiscans.com/dungeon-odyssey-chapter-64/",
-      "first_chapter_url": "https://kaiscans.com/dungeon-odyssey-61/",
-      "cover_image": "https://kaiscans.com/wp-content/uploads/2023/09/34cf7271-a9a7-4574-a509-66074b85a87a_z.jpg",
+      "curr_chapter_url": "https://www.kaiscans.com/dungeon-odyssey-chapter-64/",
+      "first_chapter_url": "https://www.kaiscans.com/dungeon-odyssey-61/",
+      "cover_image": "https://www.kaiscans.com/wp-content/uploads/2023/09/34cf7271-a9a7-4574-a509-66074b85a87a_z.jpg",
       "last_3_chapter_urls": [
-        "https://kaiscans.com/dungeon-odyssey-62/",
-        "https://kaiscans.com/dungeon-odyssey-63/",
-        "https://kaiscans.com/dungeon-odyssey-chapter-64/"
+        "https://www.kaiscans.com/dungeon-odyssey-62/",
+        "https://www.kaiscans.com/dungeon-odyssey-63/",
+        "https://www.kaiscans.com/dungeon-odyssey-chapter-64/"
       ]
     }
   },

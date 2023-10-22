@@ -660,18 +660,18 @@
         "request_method": "GET"
       }
     },
-    "mangabaz": {
+    "nitromanga": {
       "chapter_ajax": "html",
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?mangabaz\\.net/mangas/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?nitromanga\\.com/mangas/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://mangabaz.net",
-        "icon_url": "https://mangabaz.net/wp-content/uploads/2023/08/YT-Logo-1.png",
+        "base_url": "https://nitromanga.com",
+        "icon_url": "https://nitromanga.com/wp-content/uploads/2023/08/YT-Logo-1.png",
         "format_urls": {
-          "ajax": "https://mangabaz.net/mangas/{url_name}/ajax/chapters",
-          "manga": "https://mangabaz.net/mangas/{url_name}/"
+          "ajax": "https://nitromanga.com/mangas/{url_name}/ajax/chapters",
+          "manga": "https://nitromanga.com/mangas/{url_name}/"
         },
-        "latest_updates_url": "https://mangabaz.net/",
+        "latest_updates_url": "https://nitromanga.com/",
         "dynamicURL": false
       },
       "selectors": {
@@ -717,7 +717,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://mangabaz.net/",
+        "url": "https://nitromanga.com/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -1586,12 +1586,12 @@
       "request_method": "http",
       "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.com/(?:series/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://kaiscans.com",
+        "base_url": "https://www.kaiscans.com",
         "icon_url": "i3.wp.com/kaiscans.com/wp-content/uploads/2023/08/cropped-kai-gradient.png",
         "format_urls": {
-          "manga": "https://kaiscans.com/series/{url_name}/"
+          "manga": "https://www.kaiscans.com/series/{url_name}/"
         },
-        "latest_updates_url": "https://kaiscans.com",
+        "latest_updates_url": "https://www.kaiscans.com",
         "dynamicURL": false
       },
       "selectors": {
@@ -1630,7 +1630,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://kaiscans.com/",
+        "url": "https://www.kaiscans.com/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"

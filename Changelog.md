@@ -9,6 +9,8 @@
 ### Patch:
 
 - Updated nigthscan's 'request_method' property to 'curl.'
+- Updated Kaiscans' URL from https://kaiscans.com to https://www.kaiscans.com
+- Renamed mangabaz to nitromanga and updated its URL.
 
 ## // October 18th 2023
 
