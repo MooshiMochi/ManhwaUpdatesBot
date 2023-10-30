@@ -120,10 +120,16 @@ class MangaClient(commands.Bot):
 
         self._config: dict = config
 
-    def load_scanlators(self, _scanlators: dict):
+    def load_scanlators(self, _scanlators: dict) -> None:
+        # remove any disabled scanlators from the original scanaltors dict
         for scanlator in _scanlators.values():
             scanlator.bot = self
         self._all_scanners.update(_scanlators)
+
+    async def unload_disabled_scanlators(self, _scanlators: dict) -> None:
+        disabled: list[str] = await self.db.get_disabled_scanlators()
+        for disabled_scanlator in disabled:
+            _scanlators.pop(disabled_scanlator)
 
     async def on_ready(self):
         self._logger.info(f"{self.user.name}#{self.user.discriminator} is ready!")

@@ -794,7 +794,7 @@ Ensure the bot has these permissions for smooth operation.
                     self.bot.logger.error(f"[{_scanlator.name.title()}] Error when searching: {query}!")
                 else:
                     self.bot.logger.error(f"Error when searching: {query}!")
-                await self.bot.log_to_discord(error=_err)
+                await self.bot.log_to_discord(f"<@!{self.bot.owner_id}> Error when searching", error=_err)
                 if raise_error:
                     raise CustomError(
                         "An unknown error has occured.\n"

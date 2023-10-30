@@ -1,8 +1,16 @@
 # Changelog
 
-#### Consider supporting me on [Ko-Fi](https://ko-fi.com/mooshi69)!
+#### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
-[//]: # ([Patreon]&#40;https://patreon.com/mooshi69&#41; or )
+## // October 30th 2023
+
+- Added `unload_disabled_scanlators` method to the bot class in `bot.py`.
+
+## Bug Fixes:
+
+- Implemented custom methods for omegascans `get_title`, `get_synopsis` and `get_cover`.
+- Fixed the `get_chapters_list` method in `omegascansAPI.py`
+- Fixed LuminousScans selector for getting front page manhwa.
 
 ## // October 22nd 2023 [Patch]
 

@@ -565,7 +565,7 @@
         },
         "status": "div.imptdt:-soup-contains(\"Status\") > i",
         "front_page": {
-          "container": "div.postbody > div:first-child > div.listupd div.uta",
+          "container": "div.postbody > div.bixbox:has(div.releases > h2:-soup-contains('Latest Update')) > div.listupd div.uta",
           "chapters": {
             "container": "ul > li",
             "name": "a",
@@ -1395,7 +1395,7 @@
     },
     "astrascans": {
       "chapter_ajax": null,
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?astrascans\\.com/(?:(?P<id>\\d+)/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://astrascans.com",

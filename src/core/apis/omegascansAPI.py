@@ -101,7 +101,17 @@ class OmegaScansAPI:
         """
         endpoint = f"series/{url_name}"
         result = await self.__request("GET", endpoint)
-        chapters = result.get("chapters") or []
+        seasons = result.get("seasons") or {}
+        # no seasons == no chapters so return an empty list
+        if not seasons:
+            return []
+        chapters = []
+        for season in reversed(seasons):  # start from the first season to the latest one (inc order)
+            season_chapters = reversed(season.get("chapters", []))
+            if season_chapters:
+                chapters.extend(list(season_chapters))
+
+        # remove any patreon chapters from being considered by the bot
         chapters = [x for x in chapters if x.get("price", 0) == 0]
         if limit == 0:
             raise ValueError("limit must be greater than 0")
@@ -125,15 +135,10 @@ class OmegaScansAPI:
         result = await self.get_manga(url_name)
         return result.get("thumbnail")
 
+    async def get_title(self, url_name: str) -> Optional[str]:
+        result = await self.get_manga(url_name)
+        return result.get("title")
+
     async def get_status(self, url_name: str) -> Optional[str]:
-        chapters = await self.get_chapters_list(url_name)
-        if chapters:
-            last_chapter = chapters[-1]
-            release_date = datetime.fromisoformat(last_chapter["created_at"])
-            if (
-                    datetime.now().timestamp() - release_date.timestamp()
-                    > self.manager.bot.config["constants"]["time-for-manga-to-be-considered-stale"]
-            ):
-                return "Completed"
-            else:
-                return "Ongoing"
+        manga = await self.get_manga(url_name)
+        return manga["status"]

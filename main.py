@@ -87,6 +87,7 @@ async def main():
     async with client:
         await custom_initializer(client, _logger)
         await load_extensions(client, config["extensions"])
+        await client.unload_disabled_scanlators(scanlators)
         try:
             await client.start(config["token"])
         except LoginFailure as e:

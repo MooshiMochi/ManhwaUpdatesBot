@@ -6,7 +6,7 @@ import discord
 from bs4 import BeautifulSoup, Tag
 
 from src.core.objects import Chapter, PartialManga
-from .classes import BasicScanlator, DynamicURLScanlator, NoStatusBasicScanlator, scanlators
+from .classes import BasicScanlator, DynamicURLScanlator, scanlators
 
 __all__ = (
     "scanlators",
@@ -95,9 +95,21 @@ class _ReaperScans(BasicScanlator):
         return []
 
 
-class _OmegaScans(NoStatusBasicScanlator):
+class _OmegaScans(BasicScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
+
+    async def get_cover(self, raw_url: str) -> str:
+        url_name = await super()._get_url_name(raw_url)
+        return await self.bot.apis.omegascans.get_cover(url_name)
+
+    async def get_synopsis(self, raw_url: str) -> str:
+        url_name = await super()._get_url_name(raw_url)
+        return await self.bot.apis.omegascans.get_synopsis(url_name)
+
+    async def get_title(self, raw_url: str) -> str:
+        url_name = await super()._get_url_name(raw_url)
+        return await self.bot.apis.omegascans.get_title(url_name)
 
     async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
         search_results = await self.bot.apis.omegascans.search(query)

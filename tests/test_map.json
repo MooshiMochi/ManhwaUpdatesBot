@@ -209,19 +209,19 @@
     }
   },
   "luminousscans": {
-    "user_input_url": "https://luminousscans.com/series/1694588401-my-office-noonas-story/",
+    "user_input_url": "https://luminousscans.gg/series/1698649201-my-office-noonas-story/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://luminousscans.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
-      "curr_chapter_url": "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-03/",
-      "first_chapter_url": "https://luminousscans.com/1694588401-my-office-noonas-story-prologue/",
+      "cover_image": "https://luminousscans.gg/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
+      "curr_chapter_url": "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-03/",
+      "first_chapter_url": "https://luminousscans.gg/1698649201-my-office-noonas-story-prologue/",
       "last_3_chapter_urls": [
-        "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-01/",
-        "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-02/",
-        "https://luminousscans.com/1694588401-my-office-noonas-story-epilogue-chapter-03/"
+        "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-01/",
+        "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-02/",
+        "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-03/"
       ],
-      "manga_id": "https://luminousscans.com/series/1694156401-my-office-noonas-story",
-      "manga_url": "https://luminousscans.com/series/1694588401-my-office-noonas-story/",
+      "manga_id": "https://luminousscans.gg/series/1694156401-my-office-noonas-story",
+      "manga_url": "https://luminousscans.gg/series/1698649201-my-office-noonas-story/",
       "scanlator_name": "luminousscans",
       "title": "My Office Noona’s Story",
       "use_default_id_function": true
