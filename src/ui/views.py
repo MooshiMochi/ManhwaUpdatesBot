@@ -1055,13 +1055,13 @@ class SupportView(discord.ui.View):
                 style=discord.ButtonStyle.blurple,
             )
         )
-        # self.add_item(
-        #     discord.ui.Button(
-        #         label="Patreon",
-        #         url="https://www.patreon.com/mooshi69",
-        #         row=1
-        #     ),
-        # )
+        self.add_item(
+            discord.ui.Button(
+                label="Patreon",
+                url="https://www.patreon.com/mooshi69",
+                row=1
+            ),
+        )
         self.add_item(
             discord.ui.Button(
                 label="Ko-fi",
