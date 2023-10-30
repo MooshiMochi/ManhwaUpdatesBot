@@ -913,7 +913,7 @@
     },
     "lscomic": {
       "chapter_ajax": "html",
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?lscomic\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://lscomic.com",
