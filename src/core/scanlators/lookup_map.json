@@ -751,7 +751,7 @@
           "div.thumb > img"
         ],
         "chapters": {
-          "container": "div.eph-num",
+          "container": "div.eph-num:not(:has(a[onclick]))",
           "name": "a > span.chapternum",
           "url": "a"
         },
