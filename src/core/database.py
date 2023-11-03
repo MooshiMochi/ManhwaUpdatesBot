@@ -877,6 +877,9 @@ class Database:
                     ]
 
     async def update_series(self, manga: Manga) -> None:
+        # since the update_series is only called in the update check, we don't need to worry about whether the
+        # scanlator is disabled, as they are removed form the check loop if they are disabled
+        manga = (await scanlators[manga.scanlator].unload_manga([manga]))[0]
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
                 """

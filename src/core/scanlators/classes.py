@@ -786,8 +786,8 @@ class DynamicURLScanlator(BasicScanlator):
 
     async def _insert_id_placeholder(self, url: str) -> str:
         """Used to add the placeholder to URLs that should have an ID but don't.
-        For example, https://luminousscans.com/manga/nano-machine should be
-        https://luminousscans.com/manga/{id}-nano-machine
+        For example, https://luminousscans.gg/series/nano-machine should be
+        https://luminousscans.gg/series/{id}-nano-machine
         """
         if self.id_placeholder in url:  # already exists in the URL: do nothing
             return url
