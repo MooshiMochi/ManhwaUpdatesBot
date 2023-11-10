@@ -126,7 +126,7 @@ class BookmarkCog(commands.Cog):
                     em = create_bookmark_embed(
                         self.bot, hidden_bookmark, hidden_bookmark.scanner.json_tree.properties.icon_url
                     )
-                    await interaction.response.followup.send(embed=em, ephemeral=True)  # noqa
+                    await interaction.followup.send(embed=em, ephemeral=True)  # noqa
                     view.stop()
                     return
 
@@ -178,7 +178,7 @@ class BookmarkCog(commands.Cog):
             # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
             is_tracked: bool = await self.bot.db.is_manga_tracked(
-                interaction.guild_id, bookmark.manga.id, bookmark.manga.scanlator
+                bookmark.manga.id, bookmark.manga.scanlator, interaction.guild_id
             )
             if not await self.bot.db.is_user_subscribed(
                     interaction.user.id, bookmark.manga.id, bookmark.manga.scanlator

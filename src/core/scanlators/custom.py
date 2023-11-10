@@ -146,7 +146,7 @@ class _OmegaScans(BasicScanlator):
         return status
 
 
-class _RealmScans(DynamicURLScanlator):
+class _Rizzcomic(DynamicURLScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 
@@ -154,20 +154,11 @@ class _RealmScans(DynamicURLScanlator):
         for attr in ["data-src", "src", "href", "content", "data-lazy-src"]:
             result = tag.get(attr)
             if result is not None:
-                if result.startswith("/cdn-cgi"):
-                    return self.json_tree.properties.base_url + "/assets/images/" + result.split("/")[-1]
+                if result.startswith("/"):  # partial URL, we just need to append base URL to it
+                    return self.json_tree.properties.base_url + result
                 elif not result.startswith("https://"):
                     continue
                 return result
-
-    async def get_synopsis(self, raw_url: str) -> str:
-        text = await self._get_text(await self.format_manga_url(raw_url))
-        soup = BeautifulSoup(text, "html.parser")
-        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
-        js_text = soup.select_one(self.json_tree.selectors.synopsis).get_text(strip=True, separator="\n")
-        text = re.search(
-            "var description = \"(?P<synopsis>.+)\";", js_text).groupdict().get("synopsis", "No synopsis found")
-        return text.replace(r"\r", "").replace(r"\n", "\n")
 
     async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
         search_url = self.json_tree.search.url
@@ -224,63 +215,14 @@ class _RealmScans(DynamicURLScanlator):
         return found_manga
 
 
-class _LynxScans(BasicScanlator):
-    def __init__(self, name: str, **kwargs):
-        super().__init__(name, **kwargs)
-
-    async def get_fp_partial_manga(self) -> list[PartialManga]:
-        text = await self._get_text(self.json_tree.properties.latest_updates_url)
-        soup = BeautifulSoup(text, "html.parser")
-        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
-
-        manga_tags = soup.select(self.json_tree.selectors.front_page.container)
-
-        found_manga: list[PartialManga] = []
-        for manga_tag in manga_tags:
-            manga_tag: Tag
-            chapter_url = manga_tag.select_one(self.json_tree.selectors.front_page.url).get("href")
-            url = await self.format_manga_url(url_name=await self._get_url_name(chapter_url))
-            name = manga_tag.select_one(  # noqa: Invalid scope warning
-                self.json_tree.selectors.front_page.title
-            ).get_text(strip=True)
-
-            cover_url = self.extract_cover_link_from_tag(
-                manga_tag.select_one(self.json_tree.selectors.front_page.cover))
-            start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
-            cover_url = cover_url[start_idx:]
-
-            chapter_tags: list[Tag] = manga_tag.select(self.json_tree.selectors.front_page.chapters["container"])
-            chapters: list[Chapter] = []
-
-            for i, ch_tag in enumerate(reversed(chapter_tags)):
-                if self.json_tree.selectors.front_page.chapters["name"] == "_container_":
-                    ch_name = ch_tag.get_text(strip=True)
-                else:
-                    ch_name = ch_tag.select_one(self.json_tree.selectors.front_page.chapters["name"]).get_text(
-                        strip=True
-                    )
-                if self.json_tree.selectors.front_page.chapters["url"] == "_container_":
-                    ch_url = ch_tag.get("href")
-                else:
-                    ch_url = ch_tag.select_one(self.json_tree.selectors.front_page.chapters["url"]).get("href")
-                if not ch_url.startswith(self.json_tree.properties.base_url):
-                    ch_url = self.json_tree.properties.base_url + url
-                chapters.append(Chapter(ch_url, ch_name, i))
-            manga_id = await self.get_id(url)
-            found_manga.append(PartialManga(manga_id, name, url, self.name, cover_url, chapters, actual_url=url))
-        return found_manga
-
-
 class CustomKeys:
     reaperscans: str = "reaperscans"
     omegascans: str = "omegascans"
-    realmscans: str = "realmscans"
-    lynxscans: str = "lynxscans"
+    rizzcomic: str = "rizzcomic"
 
 
 keys = CustomKeys()
 
 scanlators[keys.reaperscans] = _ReaperScans(keys.reaperscans, **scanlators[keys.reaperscans])  # noqa: This is a dict
 scanlators[keys.omegascans] = _OmegaScans(keys.omegascans, **scanlators[keys.omegascans])  # noqa: This is a dict
-scanlators[keys.realmscans] = _RealmScans(keys.realmscans, **scanlators[keys.realmscans])  # noqa: This is a dict
-scanlators[keys.lynxscans] = _LynxScans(keys.lynxscans, **scanlators[keys.lynxscans])  # noqa: This is a dict
+scanlators[keys.rizzcomic] = _Rizzcomic(keys.rizzcomic, **scanlators[keys.rizzcomic])  # noqa: This is a dict

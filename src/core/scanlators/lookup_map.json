@@ -356,20 +356,18 @@
         "request_method": "GET"
       }
     },
-    "flamescans": {
+    "flamecomics": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?flamescans\\.org/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?flamecomics\\.com/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://flamescans.org",
-        "icon_url": "https://flamescans.org/wp-content/uploads/2021/03/cropped-fds-1.png",
+        "base_url": "https://flamecomics.com",
+        "icon_url": "https://flamecomics.com/wp-content/uploads/2021/03/cropped-fds-1.png",
         "format_urls": {
-          "manga": "https://flamescans.org/series/{id}-{url_name}/"
+          "manga": "https://flamecomics.com/series/{url_name}/"
         },
-        "latest_updates_url": "https://flamescans.org/",
-        "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?flamescans\\.org/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
-        "missing_id_connector_char": "-"
+        "latest_updates_url": "https://flamecomics.com/",
+        "dynamicURL": false
       },
       "selectors": {
         "title": [
@@ -377,8 +375,8 @@
         ],
         "synopsis": "div.wd-full > div.entry-content[itemprop=description] > p:first-child",
         "cover": [
-          "[property=og\\:image]",
-          "div.thumb-half > div.thumb > img"
+          "div.thumb-half > div.thumb > img",
+          "[property=og\\:image]"
         ],
         "chapters": {
           "container": "li[data-num]",
@@ -1754,36 +1752,36 @@
         }
       },
       "search": {
-        "url": "https://api.omegascans.org/series/search",
-        "search_param_name": "term",
+        "url": "https://api.omegascans.org/query",
+        "search_param_name": "query_string",
         "as_type": "param",
         "query_parsing": {
-          "encoding": "raw"
+          "encoding": "url"
         },
         "extra_params": {},
-        "request_method": "POST"
+        "request_method": "GET"
       }
     },
-    "realmscans": {
+    "rizzcomic": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?realmscans\\.to/(?P<id>\\w+)/(?:series/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?rizzcomic\\.com/(?:series|chapter)/(?:(?P<id>\\w+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://realmscans.to",
-        "icon_url": "https://realmscans.to/assets/images/realm-scans-fav.ico",
+        "base_url": "https://rizzcomic.com",
+        "icon_url": "https://rizzcomic.com/assets/images/realm-scans-fav.ico",
         "format_urls": {
-          "manga": "https://realmscans.to/{id}/series/{url_name}"
+          "manga": "https://rizzcomic.com/series/{id}-{url_name}"
         },
-        "latest_updates_url": "https://realmscans.to",
+        "latest_updates_url": "https://rizzcomic.com",
         "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?realmscans\\.to/)(?:(?P<id>\\w+)/)?(?P<after_id>([\\w-]+)?/?$)",
-        "missing_id_connector_char": "/"
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?rizzcomic\\.com/chapter/)(?:(?P<id>\\w+)-)?(?P<after_id>([\\w-]+)?/?$)",
+        "missing_id_connector_char": "-"
       },
       "selectors": {
         "title": [
           "h1.entry-title"
         ],
-        "synopsis": "div.entry-content[itemprop=description] > script",
+        "synopsis": "div.description-container > p",
         "cover": [
           "div.thumb > img"
         ],
@@ -1816,7 +1814,7 @@
         }
       },
       "search": {
-        "url": "https://realmscans.to/Index/live_search",
+        "url": "https://rizzcomic.com/Index/live_search",
         "search_param_name": "search_value",
         "as_type": "param",
         "query_parsing": {
@@ -1824,63 +1822,6 @@
         },
         "extra_params": {},
         "request_method": "POST"
-      }
-    },
-    "lynxscans": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?lynxscans\\.com/(?:comics/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://lynxscans.com",
-        "icon_url": "https://lynxscans.com/wp-content/uploads/2023/07/My-project-5.png",
-        "format_urls": {
-          "manga": "https://lynxscans.com/comics/{url_name}/"
-        },
-        "latest_updates_url": "https://lynxscans.com",
-        "dynamicURL": false
-      },
-      "selectors": {
-        "title": [
-          "h1.entry-title"
-        ],
-        "synopsis": "div.entry-content > p",
-        "cover": [
-          "div.thumb > img"
-        ],
-        "chapters": {
-          "container": "div.eph-num",
-          "name": "a > span.chapternum",
-          "url": "a"
-        },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
-        "front_page": {
-          "container": "div.bixbox:not(.hothome):first-child > div.listupd div.bsx",
-          "chapters": {
-            "container": "a:not(.r)",
-            "name": "div.epxs",
-            "url": "_container_"
-          },
-          "title": "div.tt",
-          "url": "a:not(.r)",
-          "cover": "a > div > img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "url": "https://lynxscans.com/",
-        "search_param_name": "s",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
       }
     }
   }

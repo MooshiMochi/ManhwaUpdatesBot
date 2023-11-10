@@ -129,7 +129,7 @@ class MangaClient(commands.Bot):
     async def unload_disabled_scanlators(self, _scanlators: dict) -> None:
         disabled: list[str] = await self.db.get_disabled_scanlators()
         for disabled_scanlator in disabled:
-            _scanlators.pop(disabled_scanlator)
+            _scanlators.pop(disabled_scanlator, None)
 
     async def on_ready(self):
         self._logger.info(f"{self.user.name}#{self.user.discriminator} is ready!")

@@ -4,7 +4,7 @@ import asyncio
 from typing import Any, Coroutine, Optional, TYPE_CHECKING
 
 from src.core.scanlators.classes import AbstractScanlator
-from src.static import Constants, RegExpressions
+from src.static import Constants, Emotes, RegExpressions
 from src.ui import autocompletes
 
 if TYPE_CHECKING:
@@ -138,25 +138,38 @@ class CommandsCog(commands.Cog):
             scanlator = get_manga_scanlator_class(scanlators, manga_url)
             if scanlator is None or self.bot.config["user-agents"].get(scanlator.name, "N/A") is None:
                 raise UnsupportedScanlatorURLFormatError(manga_url)
-
+            # get the manga id
+            manga_id = await scanlator.get_id(manga_url)
+            is_tracked: bool = await self.bot.db.is_manga_tracked(manga_id, scanlator.name)
             manga: Manga | None = await respond_if_limit_reached(
-                scanlator.make_manga_object(manga_url), interaction
+                scanlator.make_manga_object(manga_url, load_from_db=is_tracked), interaction
             )
-            if not manga:
-                raise MangaNotFoundError(manga_url)
-            elif manga == "LIMIT_REACHED":
+            if manga == "LIMIT_REACHED":
                 return  # Return because we already responded with the respond_if_limit_reached func above
 
         else:
             try:
                 manga_id, scanlator_name = manga_url.split("|")
+                scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
+                if not scanlator:
+                    raise UnsupportedScanlatorURLFormatError(manga_url)
             except ValueError:
                 raise UnsupportedScanlatorURLFormatError(manga_url)
-            manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
-            if not manga:
-                raise MangaNotFoundError(manga_id)
 
-        if manga.completed:
+            is_tracked: bool = await self.bot.db.is_manga_tracked(manga_id, scanlator_name)
+            if not is_tracked:
+                manga: Manga = await respond_if_limit_reached(
+                    scanlator.make_manga_object(manga_url, load_from_db=False), interaction
+                )
+                if manga == "LIMIT_REACHED":
+                    return
+            else:
+                manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
+
+        if not manga:
+            raise MangaNotFoundError(manga_url)
+
+        elif manga.completed:
             raise MangaCompletedOrDropped(manga.url)
 
         guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
@@ -242,7 +255,7 @@ class CommandsCog(commands.Cog):
         if not manga:
             raise MangaNotFoundError(manga_id)
 
-        if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga.id, manga.scanlator):
+        if not await self.bot.db.is_manga_tracked(manga.id, manga.scanlator, interaction.guild_id):
             raise MangaNotTrackedError(manga_id)
 
         if role is not None:
@@ -314,7 +327,7 @@ class CommandsCog(commands.Cog):
         except ValueError:
             raise MangaNotTrackedError(manga_id)
 
-        if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga_id, scanlator_name):
+        if not await self.bot.db.is_manga_tracked(manga_id, scanlator_name, interaction.guild_id):
             raise MangaNotTrackedError(manga_id)
 
         manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
@@ -426,7 +439,7 @@ class CommandsCog(commands.Cog):
             except ValueError:
                 raise MangaNotFoundError(manga_id)
 
-        is_tracked = await self.bot.db.is_manga_tracked(interaction.guild_id, manga_id, scanlator.name)
+        is_tracked = await self.bot.db.is_manga_tracked(manga_id, scanlator.name, interaction.guild_id)
         manga = await self.bot.db.get_series(manga_id, scanlator.name)
         if not manga:
             raise MangaNotFoundError(manga_id)
@@ -767,7 +780,17 @@ Ensure the bot has these permissions for smooth operation.
             query: str,
             scanlator_website: Optional[str] = None,
     ) -> None:
-        await interaction.response.defer(ephemeral=True)  # noqa
+        await interaction.response.send_message(  # noqa
+            embed=(
+                discord.Embed(
+                    title="Processing your request, please wait!",
+                    description=f"{Emotes.loading} Searching for **{query}** on {scanlator_website or 'all known websites'}...",
+                    color=discord.Color.green(),
+                )
+                .set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
+            ),
+            ephemeral=True,
+        )
         cannot_search_em = discord.Embed(
             title="Error",
             description=(
@@ -805,43 +828,45 @@ Ensure the bot has these permissions for smooth operation.
         ):  # if the query is a URL, try to get the manga from the URL
             scanlator = get_manga_scanlator_class(scanlators, url=query)
             if scanlator is None:
-                return await interaction.followup.send(
-                    f"Could not find a manga on `{query}`.", ephemeral=True
-                )
+                await interaction.edit_original_response(embed=no_results_em)
+                return
             if hasattr(scanlator, "search"):
                 embeds: list[discord.Embed] = await _try_request(
                     scanlator.search(query=query, as_em=True), scanlator, True
                 )
                 em = (embeds or [None])[0]
                 if em is None:
-                    return await interaction.followup.send(
-                        embed=no_results_em, ephemeral=True
-                    )
+                    await interaction.edit_original_response(embed=no_results_em)
+                    return
                 view = SubscribeView(self.bot, items=[em])
-                return await interaction.followup.send(embed=em, ephemeral=True, view=view)
+                await interaction.edit_original_response(embed=em, view=view)
+                return
             else:
-                return await interaction.followup.send(
-                    embed=cannot_search_em, ephemeral=True
-                )
+                await interaction.edit_original_response(embed=cannot_search_em)
+                return
         elif scanlator_website:
             scanlator = scanlators.get(scanlator_website.lower())
             if not scanlator:
-                return await interaction.followup.send(
-                    f"Could not find a scanlator with the name `{scanlator_website}`.",
-                    ephemeral=True,
+                await interaction.edit_original_response(
+                    embed=discord.Embed(
+                        title="Error",
+                        description=f"Could not find a scanlator with the name `{scanlator_website}`.",
+                    )
+                    .set_footer(
+                        text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url
+                    )
                 )
+                return
             if hasattr(scanlator, "search"):
                 embeds = await _try_request(scanlator.search(query=query, as_em=True), scanlator, True)
                 if not embeds:
-                    return await interaction.followup.send(
-                        embed=no_results_em, ephemeral=True
-                    )
+                    await interaction.edit_original_response(embed=no_results_em)
+                    return
                 view = SubscribeView(self.bot, items=embeds, author_id=interaction.user.id)  # noqa
                 await interaction.followup.send(embed=embeds[0], ephemeral=True, view=view)
             else:
-                return await interaction.followup.send(
-                    embed=cannot_search_em, ephemeral=True
-                )
+                await interaction.edit_original_response(embed=cannot_search_em)
+                return
         else:
             results = await asyncio.gather(*[
                 _try_request(scanlator.search(query=query, as_em=True), scanlator, False)
@@ -850,13 +875,12 @@ Ensure the bot has these permissions for smooth operation.
             ])
             results = [x for x in results if x is not None]
             if not results:
-                return await interaction.followup.send(
-                    embed=no_results_em, ephemeral=True
-                )
+                await interaction.edit_original_response(embed=no_results_em)
+                return
             else:
                 results = [x[0] for x in results if x]  # grab the first result of each
                 view = SubscribeView(self.bot, items=results, author_id=interaction.user.id)  # noqa
-                await interaction.followup.send(embed=results[0], view=view, ephemeral=True)
+                await interaction.edit_original_response(embed=results[0], view=view)
                 return
 
     @app_commands.command(name="translate", description="Translate any text from one language to another")

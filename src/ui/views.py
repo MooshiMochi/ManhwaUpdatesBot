@@ -19,7 +19,7 @@ from discord.ui import View, Button
 from discord.ext.commands import Context
 
 from src.core.objects import Bookmark, GuildSettings, Manga
-from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped
+from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped, MangaNotFoundError
 
 from src.utils import (
     create_bookmark_embed,
@@ -100,7 +100,7 @@ class BookmarkView(BaseView):
             bookmarks: list[Bookmark],
             view_type: BookmarkViewType = BookmarkViewType.VISUAL,
     ):
-        super().__init__(bot, interaction, timeout=60 * 60 * 1)  # 1 hour timeout
+        super().__init__(bot, interaction, timeout=60 * 60 * 12)  # 12 hour timeout
         self.bot: MangaClient = bot
         self.message: discord.Message | None = None
 
@@ -576,9 +576,11 @@ class SubscribeView(View):
         scanlator: AbstractScanlator = get_manga_scanlator_class(scanlators, manga_home_url)
 
         manga_url: str = manga_home_url
+        manga_id = await scanlator.get_id(manga_url)
+        is_tracked: bool = await self.bot.db.is_manga_tracked(manga_id, scanlator.name)
 
         manga: Manga | None = await respond_if_limit_reached(
-            scanlator.make_manga_object(manga_url),
+            scanlator.make_manga_object(manga_url, load_from_db=is_tracked),
             interaction
         )
         if manga == "LIMIT_REACHED":
@@ -592,8 +594,9 @@ class SubscribeView(View):
         # Even though if it's saved in DB, it will get fetched from DB so that doesn't really make sense,
         # but it is what it is.
         await self.bot.db.add_series(manga)
+        started_tracking = False
 
-        if not await self.bot.db.is_manga_tracked(interaction.guild_id, manga.id, manga.scanlator):
+        if not await self.bot.db.is_manga_tracked(manga.id, manga.scanlator, interaction.guild_id):
             if not interaction.user.guild_permissions.manage_roles:
                 return await interaction.followup.send(
                     embed=discord.Embed(
@@ -621,7 +624,6 @@ class SubscribeView(View):
                 ping_role_id = await self.bot.db.get_guild_manga_role_id(
                     interaction.guild_id, manga.id, manga.scanlator
                 )
-
                 if ping_role_id is None:
                     if guild_config.auto_create_role:  # should create and not specified
                         role_name = manga.title[:97] + "..." if len(manga.title) > 100 else manga.title
@@ -632,16 +634,9 @@ class SubscribeView(View):
                         else:
                             ping_role = await interaction.guild.create_role(name=role_name, mentionable=True)
                             await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
+                # the command below tracks the manhwa
                 await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, manga.scanlator, ping_role)
-                await self.bot.db.subscribe_user(interaction.user.id, interaction.guild_id, manga.id, manga.scanlator)
-                await interaction.response.followup.send(  # noqa
-                    embed=discord.Embed(
-                        title="Subscribed to Series",
-                        color=discord.Color.green(),
-                        description=f"Successfully tracked and subscribed to **{manga}!**",
-                    )
-                )
-                return
+                started_tracking = True
 
         current_user_subs: list[Manga] = await self.bot.db.get_user_guild_subs(
             interaction.guild_id, interaction.user.id
@@ -663,7 +658,8 @@ class SubscribeView(View):
         embed = discord.Embed(
             title="Subscribed to Series",
             color=discord.Color.green(),
-            description=f"Successfully subscribed to **[{manga.title}]({manga.url})!**",
+            description=f"Successfully{' tracked and' if started_tracking else ''} "
+                        f"subscribed to **[{manga.title}]({manga.url})!**",
         )
         embed.set_image(url=manga.cover_url)
         embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
@@ -837,6 +833,8 @@ class BookmarkChapterView(View):
                 None,  # temp value, will be updated below # noqa
                 interaction.guild_id,
             )
+            if not manga:
+                raise MangaNotFoundError(manga_id)
 
         if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
             return await interaction.followup.send(

@@ -2,6 +2,7 @@ import re
 
 
 class Emotes:
+    loading = "<a:loading:1172323932834107454>"
     warning = "⚠️"
     success = "✅"
     error = "❌"

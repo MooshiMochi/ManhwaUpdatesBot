@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Iterable, List, TYPE_CHECKING
+from typing import Any, Iterable, List, Optional, TYPE_CHECKING
 
 import aiosqlite
 import discord
@@ -62,7 +62,7 @@ class Database:
                     FOREIGN KEY (series_id) REFERENCES series (id),
                     FOREIGN KEY (scanlator) REFERENCES series (scanlator),
                     FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                    UNIQUE (id, series_id, scanlator) ON CONFLICT IGNORE
+                    UNIQUE (id, series_id, scanlator, guild_id) ON CONFLICT IGNORE
                 )
                 """
             )
@@ -299,7 +299,7 @@ class Database:
                 """
                 INSERT INTO user_subs (id, series_id, guild_id, scanlator) 
                 VALUES ($1, $2, $3, $4) 
-                ON CONFLICT(id, series_id, scanlator) DO NOTHING;
+                ON CONFLICT (id, series_id, guild_id, scanlator) DO NOTHING;
                 """,
                 (user_id, series_id, guild_id, scanlator),
             )
@@ -628,6 +628,7 @@ class Database:
                 bookmark_params, manga_params = result[:-9], tuple(result[-9:])
 
                 manga = Manga.from_tuple(manga_params)
+                manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
                 # replace series_id with a manga object
                 bookmark_params[1] = manga
                 return Bookmark.from_tuple(tuple(bookmark_params))
@@ -1037,7 +1038,7 @@ class Database:
         await self.execute(
             """
             INSERT INTO tracked_guild_series (guild_id, series_id, role_id, scanlator) VALUES ($1, $2, $3, $4)
-            ON CONFLICT(guild_id, series_id, scanlator) DO UPDATE SET role_id = $3;
+            ON CONFLICT (guild_id, series_id, scanlator) DO UPDATE SET role_id = $3;
             """,
             guild_id, manga_id, ping_role_id, scanlator
         )
@@ -1111,26 +1112,31 @@ class Database:
                     ]
                 return []
 
-    async def is_manga_tracked(self, guild_id: int, manga_id: str, scanlator: str) -> bool:
+    async def is_manga_tracked(self, manga_id: str, scanlator: str, guild_id: Optional[int] = None) -> bool:
         """
         Summary:
             Checks if a manga is tracked in the guild.
 
         Args:
-            guild_id: int - The guild's ID
             manga_id: str - The manga's ID
             scanlator: str - The name of the manga's scanlator
+            guild_id: Optional[int] - The guild's ID
 
         Returns:
-            bool: Whether the manga is tracked in the guild.
+            bool: Whether the manga is tracked in the guild if the guild_id is provided or globally.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
+            if guild_id is not None:
+                query = """
                 SELECT * FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3;
-                """,
-                (guild_id, manga_id, scanlator),
-            )
+                """
+                params = (guild_id, manga_id, scanlator)
+            else:
+                query = """
+                SELECT * FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
+                """
+                params = (manga_id, scanlator)
+            cursor = await db.execute(query, params)
             result = await cursor.fetchone()
             return result is not None
 
@@ -1191,24 +1197,27 @@ class Database:
             A list of Manga class objects that are subscribed to by the user but not tracked in the guild.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            _base = (
-                "SELECT s.* FROM series AS s "
-                "INNER JOIN user_subs AS us ON s.id = us.series_id AND s.scanlator = us.scanlator "
-                "LEFT JOIN tracked_guild_series AS tgs ON s.id = tgs.series_id AND s.scanlator = tgs.scanlator "
-            )
+            global_query = """
+            SELECT * FROM series WHERE (id, scanlator) IN (
+                SELECT series_id, scanlator FROM user_subs WHERE id = $1
+            ) AND (id, scanlator) NOT IN (
+                SELECT series_id, scanlator FROM tracked_guild_series
+            );
+            """
+            guild_specific_query = """
+            SELECT * FROM series WHERE (id, scanlator) IN (
+                SELECT series_id, scanlator FROM user_subs WHERE id = $1 AND guild_id = $2
+            ) AND (id, scanlator) NOT IN (
+                SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
+            );
+            """
             if guild_id is not None:
-                query = f"""
-                    {_base}
-                    WHERE us.id = $1 AND us.guild_id = $2 AND 
-                    (tgs.series_id IS NULL AND tgs.scanlator IS NULL OR tgs.guild_id != $2);
-                """
+                query = guild_specific_query
                 params = (user_id, guild_id,)
             else:
-                query = f"""
-                    {_base}
-                    WHERE us.id = $1 AND (tgs.series_id IS NULL AND tgs.scanlator IS NULL);
-                """
+                query = global_query
                 params = (user_id,)
+
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
                 if result:

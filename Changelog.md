@@ -2,6 +2,24 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // November 10th 2023
+
+- Added `Rizzcomic` to the list of supported websites in the README.md file.
+- The bot now says, 'Processing your request' when using the `/search` command.
+
+## Bug Fixes:
+
+- Fixed bug where the following scenario applies (it will not happen anymore):
+    - A manhwa is saved in the database, but not tracked.
+    - User starts tracking the manhwa, but `x` new chapters released in the time it wasn't tracked.
+    - The next update will send all `x` chapters instead of just the latest one.
+    - This issue has been fixed!
+- Fixed the new released update buttons didn't add the ID to the url for scanlators with dynamic IDs.
+- Fixed search endpoint for Omegascans.
+- Fixed the `Track and Subscribe` button from the search response showing an error.
+- Renamed and moved over all stuff from flamescans.org to flamecomics.com.
+- Renamed and moved over all stuff from realmscans.to to rizzcomic.com.
+
 ## // October 30th 2023
 
 - Added `unload_disabled_scanlators` method to the bot class in `bot.py`.

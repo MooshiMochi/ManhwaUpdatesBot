@@ -145,7 +145,7 @@ class ChapterSelect(Select):
             # if not, subscribe user
             user_subscribed = True
             is_tracked: bool = await bot.db.is_manga_tracked(
-                interaction.guild_id, self.bookmark.manga.id, self.bookmark.manga.scanlator
+                self.bookmark.manga.id, self.bookmark.manga.scanlator, interaction.guild_id
             )
             if not await bot.db.is_user_subscribed(
                     interaction.user.id, self.bookmark.manga.id, self.bookmark.manga.scanlator) and is_tracked:

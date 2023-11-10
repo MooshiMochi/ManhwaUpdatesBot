@@ -121,15 +121,16 @@ class OmegaScansAPI:
             return list(chapters)[:limit]
 
     async def search(self, title: str, limit: Optional[int] = None) -> Dict[str, Any]:
-        endpoint = "series/search"
-        params = {"term": title}
+        endpoint = "query"
+        params = {"query_string": title}
         kwargs = {}
         if isinstance(self.manager.session, CachedClientSession):
             kwargs["cache_time"] = 0
-        results = await self.__request("POST", endpoint, params=params, **kwargs)
+        response = await self.__request("GET", endpoint, params=params, **kwargs)
+        data = response.get("data", [])
         if limit is not None:
-            results = list(results)[:limit]
-        return results
+            data = list(data)[:limit]
+        return data
 
     async def get_cover(self, url_name: str) -> Optional[str]:
         result = await self.get_manga(url_name)

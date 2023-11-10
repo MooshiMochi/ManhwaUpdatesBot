@@ -276,13 +276,14 @@ class AbstractScanlator(ABC):
         """
         return mangas
 
-    async def make_manga_object(self, raw_url: str) -> Manga | None:
+    async def make_manga_object(self, raw_url: str, load_from_db: bool = True) -> Manga | None:
         manga_id = await self.get_id(raw_url)
 
         # load from database if exists.
-        manga_obj = await self.bot.db.get_series(manga_id, self.name)
-        if manga_obj is not None:
-            return manga_obj
+        if load_from_db is True:
+            manga_obj = await self.bot.db.get_series(manga_id, self.name)
+            if manga_obj is not None:
+                return manga_obj
 
         # load from website
         all_chapters = await self.get_all_chapters(raw_url)
@@ -593,7 +594,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             ).get_text(strip=True)
 
             cover_url = self.extract_cover_link_from_tag(
-                manga_tag.select_one(self.json_tree.selectors.front_page.cover))
+                manga_tag.select_one(self.json_tree.selectors.front_page.cover)
+            )
             start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
             cover_url = cover_url[start_idx:]
 

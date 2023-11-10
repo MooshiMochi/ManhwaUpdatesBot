@@ -75,21 +75,21 @@
       "use_default_id_function": false
     }
   },
-  "flamescans": {
-    "user_input_url": "https://flamescans.org/series/1696068121-the-villainess-is-a-marionette/",
+  "flamecomics": {
+    "user_input_url": "https://flamecomics.com/series/the-villainess-is-a-marionette/",
     "expected_results": {
-      "scanlator_name": "flamescans",
-      "manga_url": "https://flamescans.org/series/1696068121-the-villainess-is-a-marionette/",
+      "scanlator_name": "flamecomics",
+      "manga_url": "https://flamecomics.com/series/the-villainess-is-a-marionette/",
       "completed": true,
       "title": "The Villainess is a Marionette",
-      "manga_id": "https://flamescans.org/series/1696068121-the-villainess-is-a-marionette",
-      "curr_chapter_url": "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-69/",
-      "first_chapter_url": "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-0/",
-      "cover_image": "https://flamescans.org/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
+      "manga_id": "https://flamecomics.com/series/the-villainess-is-a-marionette",
+      "curr_chapter_url": "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/",
+      "first_chapter_url": "https://flamecomics.com/the-villainess-is-a-marionette-chapter-0/",
+      "cover_image": "https://flamecomics.com/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
       "last_3_chapter_urls": [
-        "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-67/",
-        "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-68/",
-        "https://flamescans.org/1696068062-the-villainess-is-a-marionette-chapter-69/"
+        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-67/",
+        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-68/",
+        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/"
       ],
       "use_default_id_function": true
     }
@@ -417,21 +417,21 @@
       ]
     }
   },
-  "realmscans": {
-    "user_input_url": "https://realmscans.to/m050523/series/death-god",
+  "rizzcomic": {
+    "user_input_url": "https://rizzcomic.com/series/r3513102-death-god",
     "expected_results": {
-      "scanlator_name": "realmscans",
-      "manga_url": "https://realmscans.to/m050523/series/death-god",
+      "scanlator_name": "rizzcomic",
+      "manga_url": "https://rizzcomic.com/series/r3513102-death-god",
       "completed": true,
       "title": "Death God",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://realmscans.to/m050523/death-god-chapter-46",
-      "first_chapter_url": "https://realmscans.to/m050523/death-god-chapter-0",
-      "cover_image": "https://realmscans.to/assets/images/43__death_god-23-06-2023_11_44_09_PM1.webp",
+      "curr_chapter_url": "https://rizzcomic.com/chapter/r3513102-death-god-chapter-46",
+      "first_chapter_url": "https://rizzcomic.com/chapter/r3513102-death-god-chapter-0",
+      "cover_image": "https://rizzcomic.com/assets/images/43__death_god-23-06-2023_11_44_09_PM1.webp",
       "last_3_chapter_urls": [
-        "https://realmscans.to/m050523/death-god-chapter-44",
-        "https://realmscans.to/m050523/death-god-chapter-45",
-        "https://realmscans.to/m050523/death-god-chapter-46"
+        "https://rizzcomic.com/chapter/r3513102-death-god-chapter-44",
+        "https://rizzcomic.com/chapter/r3513102-death-god-chapter-45",
+        "https://rizzcomic.com/chapter/r3513102-death-god-chapter-46"
       ],
       "manga_id": "default_id_function"
     }
@@ -452,25 +452,6 @@
         "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-29/",
         "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-30/",
         "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-31/"
-      ]
-    }
-  },
-  "lynxscans": {
-    "user_input_url": "https://lynxscans.com/comics/the-story-of-a-low-rank-soldier-becoming-a-monarch/",
-    "expected_results": {
-      "scanlator_name": "lynxscans",
-      "manga_url": "https://lynxscans.com/comics/the-story-of-a-low-rank-soldier-becoming-a-monarch/",
-      "completed": false,
-      "title": "The Story of a Low-Rank Soldier Becoming a Monarch",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-123/",
-      "first_chapter_url": "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-1/",
-      "cover_image": "https://lynxscans.com/wp-content/uploads/2023/07/LRKM-cover-2-1.png",
-      "last_3_chapter_urls": [
-        "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-121/",
-        "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-122/",
-        "https://lynxscans.com/the-story-of-a-low-rank-soldier-becoming-a-monarch-chapter-123/"
       ]
     }
   },

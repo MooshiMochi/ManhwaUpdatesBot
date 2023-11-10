@@ -70,7 +70,7 @@ This bot currently only supports the following websites:
 - https://manganato.com (alternatively known as https://chapmanganato.com)
 - https://tritinia.org
 - https://mangadex.org
-- https://flamescans.org
+- https://flamecomics.com
 - https://asurascans.com
 - https://reaperscans.com
 - https://anigliscans.com (requires explicit permission from the website owner)
@@ -89,12 +89,12 @@ This bot currently only supports the following websites:
 - https://mangasiamese.com
 - https://arcanescans.com
 - https://readmangabat.com
-- https://lynxscans.com
 - https://kaiscans.com
 - https://lhtranslation.net
 - https://astrascans.com
 - https://ravenscans.com
 - https://reset-scans.com
+- https://rizzcomic.com
 
 # Developers Section
 
