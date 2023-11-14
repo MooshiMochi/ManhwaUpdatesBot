@@ -2,7 +2,10 @@
 
 ### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412585675840&scope=bot%20applications.commands)
 
-### Consider supporting me through [Ko-fi](https://ko-fi.com/mooshi69) or [Patreon](https://patreon.com/mooshi69).
+### Consider supporting me through [Ko-fi](https://ko-fi.com/mooshi69) or [Patreon](https://patreon.com/mooshi69) below.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y4OO6N0)
+[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://www.patreon.com/bePatron?u=64281496)
 
 ## About:
 
@@ -80,7 +83,6 @@ This bot currently only supports the following websites:
 - https://nitroscans.com
 - https://mangapill.com
 - https://en.leviatanscans.com
-- https://aquamanga.com (requires explicit permission from the website owner)
 - https://omegascans.org
 - https://nightscans.org (requires explicit permission from the website owner)
 - https://suryascans.com
@@ -131,7 +133,6 @@ How to set up the bot:
 
 For developers: The following websites will not work unless a custom user-agent allowed by the owner is used:
 
-- https://aquamanga.com
 - https://anigliscans.com
 - https://toonily.com
 
