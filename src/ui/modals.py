@@ -53,19 +53,26 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
                 key=lambda x: _levenshtein_distance(x.manga.title.lower(), self.query.value.lower())
             )
         self.view.visual_item_index = self.bookmarks.index(bookmark)
+        self.view.folder = bookmark.folder
         self.view.change_view_type(BookmarkViewType.VISUAL)
+        self.view.clear_components()
         self.view.load_components()
+
+        self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
+        self.view._handle_index_change()  # noqa
+
         await self.view.update(interaction)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         # Make sure we know what the error actually is
         self.logger.error(traceback.print_exception(type(error), error, error.__traceback__))
+        user_message = "Oops! Something went wrong.\nPlease notify the developer about the time and date of this error."
         if interaction.response.is_done():  # noqa
             await interaction.followup.send(
-                'Oops! Something went wrong.', ephemeral=True
+                user_message, ephemeral=True
             )
         else:
-            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)  # noqa
+            await interaction.response.send_message(user_message, ephemeral=True)  # noqa
 
 
 class InputModal(BaseModal, title="Language to translate to"):

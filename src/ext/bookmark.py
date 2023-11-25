@@ -14,7 +14,7 @@ from discord.ext import commands
 from datetime import datetime
 
 from src.ui import BookmarkView
-from src.enums import BookmarkViewType
+from src.enums import BookmarkFolderType, BookmarkViewType
 
 from src.core.scanlators import scanlators
 from src.core.errors import CustomError, MangaNotFoundError, BookmarkNotFoundError, ChapterNotFoundError, \
@@ -76,7 +76,7 @@ class BookmarkCog(commands.Cog):
                     ), ephemeral=True
                 )
 
-        bookmark.user_created = True
+        bookmark.folder = BookmarkFolderType.Reading
         bookmark.last_updated_ts = datetime.now().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanlator.json_tree.properties.icon_url)
@@ -88,8 +88,14 @@ class BookmarkCog(commands.Cog):
     @bookmark_group.command(name="view", description="View your bookmark(s)")
     @app_commands.rename(series_id="manga")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to view")
+    @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
-    async def bookmark_view(self, interaction: discord.Interaction, series_id: Optional[str] = None):
+    async def bookmark_view(
+            self,
+            interaction: discord.Interaction,
+            series_id: Optional[str] = None,
+            folder: Optional[BookmarkFolderType] = None
+    ):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
 
@@ -103,7 +109,9 @@ class BookmarkCog(commands.Cog):
         # remove unsupported websites
         bookmarks = [bookmark for bookmark in bookmarks if bookmark.manga.scanlator in scanlators]
 
-        view = BookmarkView(self.bot, interaction, bookmarks, BookmarkViewType.VISUAL)
+        view = BookmarkView(
+            self.bot, interaction, bookmarks, BookmarkViewType.VISUAL, folder=folder or BookmarkFolderType.All
+        )
 
         if series_id:
             try:
@@ -121,16 +129,16 @@ class BookmarkCog(commands.Cog):
                 ), None
             )
             if bookmark_index is None:
-                hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id, scanlator_name)
-                if hidden_bookmark:
-                    em = create_bookmark_embed(
-                        self.bot, hidden_bookmark, hidden_bookmark.scanner.json_tree.properties.icon_url
-                    )
-                    await interaction.followup.send(embed=em, ephemeral=True)  # noqa
-                    view.stop()
-                    return
-
+                # hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id, scanlator_name)
+                # if hidden_bookmark:
+                #     em = create_bookmark_embed(
+                #         self.bot, hidden_bookmark, hidden_bookmark.scanner.json_tree.properties.icon_url
+                #     )
+                #     await interaction.followup.send(embed=em, ephemeral=True)  # noqa
+                #     view.stop()
+                #     return
                 raise BookmarkNotFoundError(manga_id)
+
             view.visual_item_index = bookmark_index
 
         # noinspection PyProtectedMember

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
+from ..enums import BookmarkFolderType
 from ..static import Constants
 
 if TYPE_CHECKING:
@@ -409,7 +410,7 @@ class Bookmark:
             last_read_chapter: Chapter,
             guild_id: int,
             last_updated_ts: float = None,
-            user_created: bool = False,
+            folder: BookmarkFolderType = BookmarkFolderType.Reading,
     ):
         self.user_id: int = user_id
         self.manga: Manga = manga
@@ -419,7 +420,7 @@ class Bookmark:
             self.last_updated_ts: float = float(last_updated_ts)
         else:
             self.last_updated_ts: float = datetime.now().timestamp()
-        self.user_created: bool = bool(user_created)
+        self.folder = folder
 
     @classmethod
     def from_tuple(cls, data: tuple) -> "Bookmark":
@@ -429,10 +430,11 @@ class Bookmark:
         # 2 = last_read_chapter_index
         # 3 = guild_id
         # 4 = last_updated_ts
-        # 5 = user_created
+        # 5 = folder
         last_read_chapter: Chapter = data[1].available_chapters[data[2]]
         parsed_data = list(data)
         parsed_data[2] = last_read_chapter
+        parsed_data[5] = BookmarkFolderType(data[5])
         return cls(*parsed_data)
 
     @classmethod
@@ -448,8 +450,8 @@ class Bookmark:
             self.last_read_chapter.index,
             self.guild_id,
             self.last_updated_ts,
-            bool(self.user_created),
-            self.manga.scanlator
+            self.manga.scanlator,
+            self.folder.value,
         )
 
     async def delete(self, bot: MangaClient) -> bool:
@@ -523,11 +525,12 @@ class CachedResponse:
     Note: the .apply_patch() method must be called before using the response object.
 
     Example:
-    >>> async with aiohttp.ClientSession() as session:
-    >>>     async with session.get("https://example.com") as response:
-    >>>         cached_response = await CachedResponse(response).apply_patch()  # noqa
-    >>>         await cached_response.json()  # noqa
-    """
+    >>> async def func():
+    >>>     async with aiohttp.ClientSession() as session:
+    >>>         async with session.get("https://example.com") as response:
+    >>>             cached_response = await CachedResponse(response).apply_patch()
+    >>>             await cached_response.json()
+    """  # noqa
 
     def __init__(self, response: aiohttp.ClientResponse):
         self._response = response

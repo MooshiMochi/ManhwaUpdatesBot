@@ -215,10 +215,313 @@ class _Rizzcomic(DynamicURLScanlator):
         return found_manga
 
 
+class _NovelMic(BasicScanlator):
+    def __init__(self, name: str, **kwargs):
+        super().__init__(name, **kwargs)
+
+    async def get_id(self, raw_url: str) -> str:
+        text = await super()._get_text(raw_url, "GET")
+        soup = BeautifulSoup(text, "html.parser")
+        id_ = soup.select_one("input.rating-post-id").get("value")
+        return id_
+
+    async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
+        id_ = await self.get_id(raw_url)
+        chapters_req_url = self.json_tree.properties.format_urls.ajax
+        chapters_html = await self._get_text(
+            chapters_req_url, "POST", data={"action": "manga_get_chapters", "manga": id_}
+        )
+        return self._extract_chapters_from_html(chapters_html)
+
+
+class _Mangapark(BasicScanlator):
+    def __init__(self, name: str, **kwargs):
+        super().__init__(name, **kwargs)
+        self.apo_url = self.json_tree.properties.base_url + "/apo/"
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        data = {
+            "query": """
+                query get_content_browse_search($select: ComicSearchSelect) {
+                    get_content_browse_search(
+                        select: $select
+                    ) {
+                        reqPage reqSize reqSort reqWord
+                        paging { total pages page size skip }
+                        items {
+                            id
+                            data {
+                                id
+                                dbStatus
+                                isNormal
+                                isHidden
+                                isDeleted
+                                dateCreate datePublic dateModify
+                                dateUpload dateUpdate
+                                name
+                                slug
+                                altNames
+                                authors
+                                artists
+                                genres
+                                originalLanguage
+                                originalStatus
+                                originalInfo
+                                originalPubFrom
+                                originalPubTill
+                                readDirection
+                                summary {
+                                    code
+                                }
+                                extraInfo {
+                                    code
+                                }
+                                urlPath
+                                urlCover600
+                                urlCover300
+                                urlCoverOri
+                                disqusId
+                            }
+                            max_chapterNode {
+                                id
+                                data {
+                                    id
+                                    sourceId
+                                    dbStatus
+                                    isNormal
+                                    isHidden
+                                    isDeleted
+                                    isFinal
+                                    dateCreate
+                                    datePublic
+                                    dateModify
+                                    lang
+                                    volume
+                                    serial
+                                    dname
+                                    title
+                                    urlPath
+                                    srcTitle srcColor
+                                    count_images
+                                }
+                            }
+                            sser_followed
+                            sser_lastReadChap {
+                                date
+                                chapterNode {
+                                    id
+                                    data {
+                                        id
+                                        sourceId
+                                        dbStatus
+                                        isNormal
+                                        isHidden
+                                        isDeleted
+                                        isFinal
+                                        dateCreate
+                                        datePublic
+                                        dateModify
+                                        lang
+                                        volume
+                                        serial
+                                        dname
+                                        title
+                                        urlPath
+                                        srcTitle srcColor
+                                        count_images
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            """,
+            "variables": {
+                "select": {
+                    "word": "he'l",
+                    "sort": None,
+                    "page": 1,
+                    "incGenres": [],
+                    "excGenres": [],
+                    "origLang": None,
+                    "oficStatus": None,
+                    "chapCount": None
+                }
+            },
+            "operationName": "get_content_browse_search"
+        }
+        data["variables"]["select"]["word"] = query
+        async with self.bot.session.post(self.apo_url, json=data) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+        if not data:
+            return []
+
+        found_manga: list[PartialManga] = []
+        for result_dict in data["data"]["get_content_browse_search"]["items"]:
+            title = result_dict["data"]["name"]
+            url = self.json_tree.properties.base_url + result_dict["data"]["urlPath"]
+            cover = result_dict["data"]["urlCoverOri"]
+            _id = result_dict["data"]["id"]
+
+            p_manga = PartialManga(_id, title, url, self.name, cover_url=cover)
+            found_manga.append(p_manga)
+
+        if as_em:
+            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
+        return found_manga
+
+    async def get_fp_partial_manga(self) -> list[PartialManga]:
+        data = {
+            "query": "query get_content_browse_latest($select: ComicLatestSelect) {\n  get_content_browse_latest("
+                     "select: $select) {\n    reqLimit\n    reqStart\n    newStart\n    items {\n      comic {\n      "
+                     "  id\n        data {\n          id\n          dbStatus\n          isNormal\n          "
+                     "isHidden\n          isDeleted\n          dateCreate\n          datePublic\n          "
+                     "dateModify\n          dateUpload\n          dateUpdate\n          name\n          slug\n        "
+                     "  altNames\n          authors\n          artists\n          genres\n          "
+                     "originalLanguage\n          originalStatus\n          originalInfo\n          originalPubFrom\n "
+                     "         originalPubTill\n          readDirection\n          summary {\n            code\n      "
+                     "    }\n          extraInfo {\n            code\n          }\n          urlPath\n          "
+                     "urlCover600\n          urlCover300\n          urlCoverOri\n          disqusId\n          "
+                     "stat_is_hot\n          stat_is_new\n          stat_count_follow\n          stat_count_review\n  "
+                     "        stat_count_post_child\n          stat_count_post_reply\n          stat_count_mylists\n  "
+                     "        stat_count_vote\n          stat_count_note\n          stat_count_emotions {\n           "
+                     " field\n            count\n          }\n          stat_count_statuss {\n            field\n     "
+                     "       count\n          }\n          stat_count_scores {\n            field\n            "
+                     "count\n          }\n          stat_count_views {\n            field\n            count\n        "
+                     "  }\n          stat_score_avg\n          stat_score_bay\n          stat_score_val\n          "
+                     "chart_count_chapters_all\n          chart_count_chapters_bot\n          "
+                     "chart_count_chapters_usr\n          chart_count_serials_all\n          "
+                     "chart_count_serials_bot\n          chart_count_serials_usr\n          chart_count_langs_all\n   "
+                     "       chart_count_langs_bot\n          chart_count_langs_usr\n          chart_max_chapterId\n  "
+                     "        chart_max_serial_val\n          chart_count_sources_all\n          "
+                     "chart_count_sources_bot\n          chart_count_sources_usr\n          "
+                     "chart_count_lang_to_chapters {\n            field\n            count\n          }\n          "
+                     "chart_count_lang_to_serials {\n            field\n            count\n          }\n          "
+                     "userId\n          userNode {\n            id\n            data {\n              id\n            "
+                     "  name\n              uniq\n              avatarUrl\n              urlPath\n              "
+                     "verified\n              deleted\n              banned\n              dateCreate\n              "
+                     "dateOnline\n              stat_count_chapters_normal\n              "
+                     "stat_count_chapters_others\n              is_adm\n              is_mod\n              is_vip\n  "
+                     "            is_upr\n            }\n          }\n        }\n        sser_followed\n        "
+                     "sser_lastReadChap {\n          date\n          chapterNode {\n            id\n            data "
+                     "{\n              id\n              sourceId\n              dbStatus\n              isNormal\n   "
+                     "           isHidden\n              isDeleted\n              isFinal\n              dateCreate\n "
+                     "             datePublic\n              dateModify\n              lang\n              volume\n   "
+                     "           serial\n              dname\n              title\n              urlPath\n            "
+                     "  srcTitle\n              srcColor\n              count_images\n              "
+                     "stat_count_post_child\n              stat_count_post_reply\n              "
+                     "stat_count_views_login\n              stat_count_views_guest\n              userId\n            "
+                     "  userNode {\n                id\n                data {\n                  id\n                "
+                     "  name\n                  uniq\n                  avatarUrl\n                  urlPath\n        "
+                     "          verified\n                  deleted\n                  banned\n                  "
+                     "dateCreate\n                  dateOnline\n                  stat_count_chapters_normal\n        "
+                     "          stat_count_chapters_others\n                  is_adm\n                  is_mod\n      "
+                     "            is_vip\n                  is_upr\n                }\n              }\n              "
+                     "disqusId\n            }\n          }\n        }\n      }\n      chapters {\n        id\n        "
+                     "data {\n          id\n          sourceId\n          dbStatus\n          isNormal\n          "
+                     "isHidden\n          isDeleted\n          isFinal\n          dateCreate\n          datePublic\n  "
+                     "        dateModify\n          lang\n          volume\n          serial\n          dname\n       "
+                     "   title\n          urlPath\n          srcTitle\n          srcColor\n          count_images\n   "
+                     "       stat_count_post_child\n          stat_count_post_reply\n          "
+                     "stat_count_views_login\n          stat_count_views_guest\n          userId\n          userNode "
+                     "{\n            id\n            data {\n              id\n              name\n              "
+                     "uniq\n              avatarUrl\n              urlPath\n              verified\n              "
+                     "deleted\n              banned\n              dateCreate\n              dateOnline\n             "
+                     " stat_count_chapters_normal\n              stat_count_chapters_others\n              is_adm\n   "
+                     "           is_mod\n              is_vip\n              is_upr\n            }\n          }\n     "
+                     "     disqusId\n        }\n      }\n    }\n  }\n}",
+            "variables": {
+                "select": {
+                    "incGenres": [],
+                    "excGenres": [],
+                    "incTLangs": [],
+                    "where": "latest",
+                    "limit": 80,
+                }
+            },
+            "operationName": "get_content_browse_latest"
+        }
+
+        async with self.bot.session.post(self.apo_url, json=data) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+        if not data:
+            return []
+        found_manga: list[PartialManga] = []
+        for result_dict in data["data"]["get_content_browse_latest"]["items"]:
+            title = result_dict["comic"]["data"]["name"]
+            url = self.json_tree.properties.base_url + result_dict["comic"]["data"]["urlPath"]
+            cover = result_dict["comic"]["data"]["urlCoverOri"]
+            _id = result_dict["comic"]["data"]["id"]
+            chapters: list[Chapter] = []
+            for chapter in reversed(result_dict["chapters"]):
+                chapter_url = self.json_tree.properties.base_url + chapter["data"]["urlPath"]
+                chapter_name = chapter["data"]["dname"]
+                chapters.append(Chapter(chapter_url, chapter_name, chapter["data"]["serial"] - 1))
+            p_manga = PartialManga(_id, title, url, self.name, cover_url=cover, latest_chapters=chapters)
+            found_manga.append(p_manga)
+
+        return found_manga
+
+    async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
+        data = {
+            "query": """query get_content_comicChapterRangeList($select: Content_ComicChapterRangeList_Select) {
+                            get_content_comicChapterRangeList(select: $select) {
+                                reqRange{x y}
+                                missing
+                                pager {x y}
+                                items{
+                                    serial
+                                    chapterNodes {
+                                        id
+                                        data {
+                                            isNormal
+                                            isHidden
+                                            lang
+                                            volume
+                                            serial
+                                            dname
+                                            urlPath
+                                                }
+                                            }
+                                        }
+                                    }
+                                }""",
+            "variables": {
+                "select": {
+                    "comicId": 378353,
+                    "range": None,
+                    "isAsc": False
+                }
+            },
+            "operationName": "get_content_comicChapterRangeList"
+        }
+        _id = await self.get_id(raw_url)
+        data["variables"]["select"]["comicId"] = int(_id)
+
+        async with self.bot.session.post(self.apo_url, json=data) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+        if not data:
+            return []
+        chapter_nodes = data["data"]["get_content_comicChapterRangeList"]["items"]
+        found_chapters: list[Chapter] = []
+        for nodes in reversed(chapter_nodes):
+            node = nodes["chapterNodes"][0]
+            chapter = node["data"]
+            chapter_url = self.json_tree.properties.base_url + chapter["urlPath"]
+            chapter_name = chapter["dname"]
+            found_chapters.append(Chapter(chapter_url, chapter_name, chapter["serial"] - 1))
+        return found_chapters
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
     omegascans: str = "omegascans"
     rizzcomic: str = "rizzcomic"
+    novelmic: str = "novelmic"
+    mangapark: str = "mangapark"
 
 
 keys = CustomKeys()
@@ -226,3 +529,5 @@ keys = CustomKeys()
 scanlators[keys.reaperscans] = _ReaperScans(keys.reaperscans, **scanlators[keys.reaperscans])  # noqa: This is a dict
 scanlators[keys.omegascans] = _OmegaScans(keys.omegascans, **scanlators[keys.omegascans])  # noqa: This is a dict
 scanlators[keys.rizzcomic] = _Rizzcomic(keys.rizzcomic, **scanlators[keys.rizzcomic])  # noqa: This is a dict
+scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic])  # noqa: This is a dict
+scanlators[keys.mangapark] = _Mangapark(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict

@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // November 25th 2023
+
+- Removed support for aquamanga.com. The website no longer exists.
+- Added folders for the bookmarks.
+- Added support for https://mangapark.net
+
 ## // November 10th 2023
 
 - Added `Rizzcomic` to the list of supported websites in the README.md file.

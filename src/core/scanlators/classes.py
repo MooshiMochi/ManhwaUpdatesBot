@@ -13,6 +13,7 @@ import discord
 from bs4 import BeautifulSoup, Tag
 from discord.utils import MISSING
 
+from src.enums import BookmarkFolderType
 from src.utils import raise_and_report_for_status, time_string_to_seconds
 
 if TYPE_CHECKING:
@@ -305,7 +306,7 @@ class AbstractScanlator(ABC):
             raw_url: str,
             user_id: int,
             guild_id: int,
-            user_created: bool = False,
+            folder: BookmarkFolderType = BookmarkFolderType.Hidden,
     ) -> Bookmark | None:
         """
         Creates a Bookmark object from the scanlator's website.
@@ -314,7 +315,7 @@ class AbstractScanlator(ABC):
             raw_url: str - The URL of the manga's home page.
             user_id: int - The ID of the user.
             guild_id: int - The ID of the guild.
-            user_created: bool - Whether the user created the bookmark or not.
+            folder: BookmarkFolderType - The folder in which to place this bookmark.
 
         Returns:
             Bookmark/None - The Bookmark object if the manga is found, otherwise `None`.
@@ -334,7 +335,7 @@ class AbstractScanlator(ABC):
             last_read_chapter,  # last_read_chapter
             guild_id,
             datetime.now().timestamp(),
-            user_created,
+            folder
         )
 
     async def check_updates(
@@ -519,6 +520,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         req_url = await self.format_manga_url(raw_url, use_ajax_url=True)
         method = "POST" if self.json_tree.uses_ajax else "GET"
         text = await self._get_text(req_url, method=method)  # noqa
+        return self._extract_chapters_from_html(text)
+
+    def _extract_chapters_from_html(self, text: str) -> list[Chapter]:
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -581,7 +585,6 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         text = await self._get_text(self.json_tree.properties.latest_updates_url)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
-
         manga_tags: list[Tag] = soup.select(self.json_tree.selectors.front_page.container)
 
         found_manga: list[PartialManga] = []
@@ -654,7 +657,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 url = manga_tag.get("href")
             else:
                 url = manga_tag.select_one(self.json_tree.selectors.search.url).get("href")
-            if not url.startswith("https://") and not url.startswith("http://"):
+            if not (url.startswith("https://") or url.startswith("http://")):  # noqa
                 url = self.json_tree.properties.base_url + url
             name = manga_tag.select_one(  # noqa: Invalid scope warning
                 self.json_tree.selectors.search.title

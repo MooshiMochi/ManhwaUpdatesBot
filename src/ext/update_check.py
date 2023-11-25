@@ -57,7 +57,7 @@ class UpdateCheckCog(commands.Cog):
             rv = "None"
             if isinstance(error, (ClientConnectorError, ClientHttpProxyError)):
                 self.logger.warning(
-                    f"[{scanlator.name.title()}] Faield to connect to proxy: {error}"
+                    f"[{scanlator.name.title()}] Failed to connect to proxy: {error}"
                 )
                 rv = "continue"
 

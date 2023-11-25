@@ -27,10 +27,10 @@ from src.utils import (
     group_items_by,
     get_manga_scanlator_class
 )
-from src.enums import BookmarkSortType, BookmarkViewType
+from src.enums import BookmarkFolderType, BookmarkSortType, BookmarkViewType
 
 from .buttons import CustomButtonCallbacks
-from .selects import SortTypeSelect, ViewTypeSelect
+from .selects import BookmarkFolderSelect, SortTypeSelect, ViewTypeSelect
 
 from datetime import datetime
 
@@ -99,6 +99,7 @@ class BookmarkView(BaseView):
             interaction: discord.Interaction,
             bookmarks: list[Bookmark],
             view_type: BookmarkViewType = BookmarkViewType.VISUAL,
+            folder: BookmarkFolderType = BookmarkFolderType.All
     ):
         super().__init__(bot, interaction, timeout=60 * 60 * 12)  # 12 hour timeout
         self.bot: MangaClient = bot
@@ -106,8 +107,10 @@ class BookmarkView(BaseView):
 
         self.view_type: BookmarkViewType = view_type
         self.sort_type: BookmarkSortType = BookmarkSortType.LAST_UPDATED_TIMESTAMP
+        self.folder: BookmarkFolderType = folder
 
         self.bookmarks: list[Bookmark] = bookmarks
+        self.viewable_bookmarks = self.get_bookmarks_from_folder()
         # the method below will sort the bookmarks by the sort_type
         self.text_view_embeds: list[discord.Embed] = self._bookmarks_to_text_embeds()
 
@@ -116,6 +119,9 @@ class BookmarkView(BaseView):
 
         self._btn_callbacks = CustomButtonCallbacks(self.bot, self)
         self.load_components()
+
+    def get_bookmarks_from_folder(self) -> list[Bookmark]:
+        return [x for x in self.bookmarks if x.folder == self.folder or self.folder == BookmarkFolderType.All]
 
     def _load_visual_components_preset(self) -> BookmarkView:
         self.clear_components()
@@ -146,6 +152,9 @@ class BookmarkView(BaseView):
         self.add_item(
             Button(style=ButtonStyle.grey, label="\u200b", disabled=True, row=3)
         )
+        self.add_item(
+            BookmarkFolderSelect(row=4, folders=set(x.folder for x in self.bookmarks), current_folder=self.folder)
+        )
         return self
 
     def _load_text_components_preset(self) -> BookmarkView:
@@ -166,6 +175,9 @@ class BookmarkView(BaseView):
         search_btn.callback = partial(self._btn_callbacks.search_button_callback)
         self.add_item(search_btn)
         _add_blank_buttons()
+        self.add_item(
+            BookmarkFolderSelect(row=4, folders=set(x.folder for x in self.bookmarks), current_folder=self.folder)
+        )
         return self
 
     def load_components(self) -> BookmarkView:
@@ -176,48 +188,30 @@ class BookmarkView(BaseView):
         return self
 
     def _bookmarks_to_text_embeds(self) -> list[discord.Embed]:
-        self.bookmarks = sort_bookmarks(self.bookmarks, self.sort_type)
-        grouped = group_items_by(self.bookmarks, ["manga.scanlator"])
-        embeds: list[discord.Embed] = []
+        self.viewable_bookmarks = sort_bookmarks(self.viewable_bookmarks, self.sort_type)
 
-        def _make_embed() -> discord.Embed:
-            return discord.Embed(
-                title=f"Bookmarks ({len(self.bookmarks)})",
-                color=discord.Color.blurple(),
-                description="",
-            )
+        embeds: list[discord.Embed] = create_dynamic_grouped_embeds(
+            [
+                {
+                    "title": v.manga.title,
+                    "url": v.manga.url,
+                    "chpt": v.last_read_chapter,
+                    "scanlator": v.manga.scanlator.title(),
+                    "folder": v.folder.value[0].upper()
+                }
+                for v in self.viewable_bookmarks
+            ],
+            "**{index}.** `{folder}` [{title}]({url}) - {chpt}",
+            group_key="scanlator",
+            indexed=True
+        )
+        embeds = modify_embeds(
+            embeds,
+            title_kwargs={"title": f"Bookmarks ({len(self.viewable_bookmarks)})"},
+            show_page_number=True
+        )
 
-        em = _make_embed()
-        line_index = 0
-        for bookmark_group in grouped:
-            scanlator_title_added = False
-
-            for bookmark in bookmark_group:
-                line_index += 1
-                to_add = (
-                    f"**{line_index}.** "
-                    f"[{bookmark.manga.title}]({bookmark.manga.url}) - {bookmark.last_read_chapter}\n"
-                )
-                if not scanlator_title_added:
-                    if len(em.description) + len(bookmark.manga.scanlator) + 6 > 4096:
-                        embeds.append(em)
-                        em = _make_embed()
-                        em.description += f"**\n{bookmark.manga.scanlator.title()}**\n"
-                        scanlator_title_added = True
-                    else:
-                        em.description += f"**\n{bookmark.manga.scanlator.title()}**\n"
-                        scanlator_title_added = True
-
-                if len(em.description) + len(to_add) > 4096:
-                    embeds.append(em)
-                    em = _make_embed()
-
-                em.description += to_add
-
-                if line_index == len(self.bookmarks):
-                    embeds.append(em)
-
-        self.items = embeds
+        self.text_view_embeds = embeds
         return embeds
 
     def toggle_nav_buttons(self, on: bool = True):
@@ -242,6 +236,11 @@ class BookmarkView(BaseView):
     async def update(self, interaction: discord.Interaction, view: BookmarkView | None = None):
         if view is None:
             view = self
+
+        # update the view components to reflect any changes
+        view.clear_components()
+        view.load_components()
+
         if interaction.response.is_done():  # noqa
             response_function = interaction.edit_original_response
         else:
@@ -305,10 +304,10 @@ class BookmarkView(BaseView):
         else:
             idx = self.visual_item_index
             scanlator = get_manga_scanlator_class(
-                scanlators, key=self.bookmarks[idx].manga.scanlator
+                scanlators, key=self.viewable_bookmarks[idx].manga.scanlator
             )
             return create_bookmark_embed(
-                self.bot, self.bookmarks[idx], scanlator.json_tree.properties.icon_url
+                self.bot, self.viewable_bookmarks[idx], scanlator.json_tree.properties.icon_url
             )
 
     def _handle_index_change(self):
@@ -317,10 +316,10 @@ class BookmarkView(BaseView):
         elif self.text_page_index < 0:
             self.text_page_index = len(self.text_view_embeds) - 1
 
-        if self.visual_item_index > len(self.bookmarks) - 1:
+        if self.visual_item_index > len(self.viewable_bookmarks) - 1:
             self.visual_item_index = 0
         elif self.visual_item_index < 0:
-            self.visual_item_index = len(self.bookmarks) - 1
+            self.visual_item_index = len(self.viewable_bookmarks) - 1
 
     def _increment_index(self, increment: int | float):
         if self.view_type == BookmarkViewType.TEXT:
@@ -724,7 +723,7 @@ class SubscribeView(View):
                     ), ephemeral=True)
         # make bookmark obj
         bookmark_obj = await scanlator.make_bookmark_object(
-            manga_url, interaction.user.id, interaction.guild_id, user_created=True
+            manga_url, interaction.user.id, interaction.guild_id
         )
         await self.bot.db.upsert_bookmark(bookmark_obj)
 

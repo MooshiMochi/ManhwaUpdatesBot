@@ -73,7 +73,7 @@ class Database:
                 # last_read_chapter_index: the last chapter the user read
                 # guild_id: the discord guild the user bookmarked the manga from
                 # last_updated_ts: the timestamp of the last time the bookmark was updated by the user
-                # user_created: whether the bookmark was created by the user or by the bot
+                # fold: the folder in which the bookmark is in
                 """
                 CREATE TABLE IF NOT EXISTS bookmarks (
                     user_id INTEGER NOT NULL,
@@ -81,8 +81,8 @@ class Database:
                     last_read_chapter_index INTEGER DEFAULT NULL,
                     guild_id INTEGER NOT NULL,
                     last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    user_created BOOLEAN NOT NULL DEFAULT false,
                     scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                    folder VARCHAR(10) DEFAULT 'reading',
                     
                     FOREIGN KEY (series_id) REFERENCES series (id),
                     FOREIGN KEY (scanlator) REFERENCES series (scanlator),
@@ -280,12 +280,12 @@ class Database:
                     last_read_chapter_index,
                     guild_id,
                     last_updated_ts,
-                    user_created,
-                    scanlator
+                    scanlator,
+                    folder
                     ) 
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT(user_id, series_id, scanlator) DO 
-                UPDATE SET last_read_chapter_index=$3, last_updated_ts=$5, user_created=$6;
+                UPDATE SET last_read_chapter_index=$3, last_updated_ts=$5, folder=$7;
                 """,
                 (bookmark.to_tuple()),
             )
@@ -345,9 +345,9 @@ class Database:
             result = await db.execute(
                 """
                 INSERT INTO bookmarks (
-                    user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, user_created, scanlator
+                    user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, scanlator, folder
                     ) 
-                VALUES ($1, $2, $3, $4, $5, false, $6) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7) 
                 ON CONFLICT(user_id, series_id, scanlator) 
                 DO UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
                 """,
@@ -367,7 +367,7 @@ class Database:
                     auto_create_role, dev_notifications_ping, show_update_buttons
                 )
                 VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT(guild_id) 
+                ON CONFLICT(guild_id)
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
                     auto_create_role = $4, dev_notifications_ping = $5, show_update_buttons = $6
@@ -604,7 +604,7 @@ class Database:
                     b.last_read_chapter_index,
                     b.guild_id,
                     b.last_updated_ts,
-                    b.user_created,
+                    b.folder,
                     
                     s.id,
                     s.title,
@@ -628,6 +628,10 @@ class Database:
                 bookmark_params, manga_params = result[:-9], tuple(result[-9:])
 
                 manga = Manga.from_tuple(manga_params)
+                if manga.scanlator not in scanlators:
+                    raise CustomError(
+                        f"[{manga.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                    )
                 manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
                 # replace series_id with a manga object
                 bookmark_params[1] = manga
@@ -654,7 +658,7 @@ class Database:
                     b.last_read_chapter_index,
                     b.guild_id,
                     b.last_updated_ts,
-                    b.user_created,
+                    b.folder,
                     
                     s.id,
                     s.title,
@@ -668,12 +672,11 @@ class Database:
                                 
                 FROM bookmarks AS b
                 INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
-                WHERE b.user_id = $1 AND b.user_created = 1;
+                WHERE b.user_id = $1;
                 """,
                 (user_id,),
             )
-            # INNER JOIN user_subs
-            # ON b.user_id = u.id AND b.series_id = u.series_id
+
             result = await cursor.fetchall()
             if result:
                 # change all the series_id to manga objects
@@ -681,6 +684,10 @@ class Database:
                 for result_tup in list(result):
                     manga_params = result_tup[-9:]
                     manga = Manga.from_tuple(manga_params)
+                    if manga.scanlator not in scanlators:
+                        continue
+                    manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
+
                     bookmark_params = result_tup[:-9]
                     bookmark_params = list(bookmark_params)
                     bookmark_params[1] = manga
@@ -694,7 +701,7 @@ class Database:
             _base = (
                 "SELECT series.id, series.title, series.scanlator FROM series "
                 "JOIN bookmarks ON series.id = bookmarks.series_id AND series.scanlator = bookmarks.scanlator "
-                "WHERE bookmarks.user_id = $1 AND bookmarks.user_created = 1"
+                "WHERE bookmarks.user_id = $1 AND bookmarks.folder != 'hidden'"
             )
             if autocomplete is True:
                 await db.create_function("levenshtein", 2, _levenshtein_distance)
@@ -880,6 +887,10 @@ class Database:
     async def update_series(self, manga: Manga) -> None:
         # since the update_series is only called in the update check, we don't need to worry about whether the
         # scanlator is disabled, as they are removed form the check loop if they are disabled
+        if manga.scanlator not in scanlators:
+            raise CustomError(
+                f"[{manga.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+            )
         manga = (await scanlators[manga.scanlator].unload_manga([manga]))[0]
         async with aiosqlite.connect(self.db_name) as db:
             result = await db.execute(
@@ -912,6 +923,18 @@ class Database:
                     WHERE user_id = $3 AND series_id = $4 AND scanlator = $5;
                 """,
                 (last_read_chapter_index, datetime.now().timestamp(), user_id, series_id, scanlator),
+            )
+            await db.commit()
+
+    async def update_bookmark_folder(self, bookmark: Bookmark) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute(
+                """
+                UPDATE bookmarks
+                SET folder = $1
+                WHERE user_id = $2 AND series_id = $3 AND scanlator = $4;
+                """,
+                (bookmark.folder.value, bookmark.user_id, bookmark.manga.id, bookmark.manga.scanlator)
             )
             await db.commit()
 

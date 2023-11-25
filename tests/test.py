@@ -437,7 +437,7 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = ["asura", "luminousscans", "voidscans", "aquamanga", "astrascans"]
+        tests_to_ignore = ["asura", "luminousscans", "voidscans", "astrascans"]
         await run_tests(testCases, tests_to_ignore)
 
 
@@ -526,7 +526,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        asyncio.run(test_single_scanlator("toonily"))
+        asyncio.run(test_single_scanlator("mangapark"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

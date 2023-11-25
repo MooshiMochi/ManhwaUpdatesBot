@@ -9,7 +9,7 @@ import discord
 
 from src.core.objects import Chapter, Bookmark
 from discord.ui import Select
-from src.enums import BookmarkSortType, BookmarkViewType
+from src.enums import BookmarkFolderType, BookmarkSortType, BookmarkViewType
 from src.core.errors import ChapterNotFoundError
 
 
@@ -83,7 +83,7 @@ class ViewTypeSelect(Select):
 
 
 class ChapterSelect(Select):
-    def __init__(self, bookmark: Bookmark, row: int = 4):
+    def __init__(self, bookmark: Bookmark, row: int = 3):
 
         chapter_options = self.create_chapter_options(bookmark.last_read_chapter, bookmark.manga.available_chapters)
         options = [
@@ -180,3 +180,95 @@ class ChapterSelect(Select):
                 await interaction.followup.send(embed=success_em, ephemeral=True)
             else:
                 await interaction.response.send_message(embed=success_em, ephemeral=True)  # noqa
+
+
+class BookmarkFolderSelect(Select):
+    def __init__(
+            self,
+            row: int = 3,
+            folders: list[BookmarkFolderType] | set[BookmarkFolderType] = None,
+            current_folder: BookmarkFolderType = BookmarkFolderType.Reading
+    ):
+        if not folders:
+            folders = [x for x in BookmarkFolderType]
+        if BookmarkFolderType.All not in folders:
+            folders = folders | {BookmarkFolderType.All}
+
+        options = [
+            discord.SelectOption(
+                label=folder.value.title(), value=folder.value, default=True if current_folder == folder else False
+            )
+            for folder in folders
+        ]
+
+        super().__init__(
+            placeholder=f"Current folder: {current_folder.value.title()}",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="bookmark_folder_select",
+            row=row
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        new_folder = BookmarkFolderType(self.values[0])
+        changed: bool = self.view.folder != new_folder
+
+        if not changed:
+            await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
+            return
+        else:
+            self.view.folder = new_folder
+            self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
+            if self.view.view_type == BookmarkViewType.TEXT:
+                self.view._bookmarks_to_text_embeds()  # noqa
+            await self.view.update(interaction)
+
+
+class MoveToFolderSelect(Select):
+    def __init__(self, bookmark: Bookmark, row: int = 4):
+
+        self.bookmark: Bookmark = bookmark
+        options: list[discord.SelectOption] = [
+            discord.SelectOption(
+                label=folder.value.title(),
+                value=folder.value
+            ) for folder in BookmarkFolderType if folder != self.bookmark.folder and folder != BookmarkFolderType.All
+        ]
+
+        super().__init__(
+            placeholder=f"Move to a folder ...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="bookmark_move_folder_select",
+            row=row
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        new_folder = self.values[0]
+        if new_folder == self.bookmark.folder.value:  # This is not possible, but doesn't hurt to handle it in case
+            return await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
+        else:
+            self.bookmark.folder = BookmarkFolderType(new_folder)
+        await self.view.bot.db.update_bookmark_folder(self.bookmark)
+
+        # check if there are any bookmarks left in the current folder.
+        folder_bookmarks_remaining = [x for x in self.view.bookmarks if x.folder == self.view.folder]
+        if folder_bookmarks_remaining:
+            self.view.folder = BookmarkFolderType.All
+
+        self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
+        self.view._handle_index_change()  # noqa
+        self.view.toggle_nav_buttons(True)
+        await self.view.update(interaction)
+
+        success_em = discord.Embed(
+            title="Bookmark Updated",
+            description=f"Bookmark has been moved to the {self.bookmark.folder.value.title()} folder.",
+            color=discord.Color.green(),
+        )
+        if interaction.response.is_done():  # noqa
+            await interaction.followup.send(embed=success_em, ephemeral=True)
+        else:
+            await interaction.response.send_message(embed=success_em, ephemeral=True)  # noqa

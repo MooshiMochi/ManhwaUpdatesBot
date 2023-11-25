@@ -113,25 +113,6 @@
       "use_default_id_function": true
     }
   },
-  "aquamanga": {
-    "user_input_url": "https://aquamanga.com/read/court-swordswoman-in-another-world/",
-    "expected_results": {
-      "scanlator_name": "aquamanga",
-      "manga_url": "https://aquamanga.com/read/court-swordswoman-in-another-world/",
-      "completed": true,
-      "title": "Court Swordswoman in Another World",
-      "manga_id": "https://aquamanga.com/read/court-swordswoman-in-another-world",
-      "curr_chapter_url": "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/",
-      "first_chapter_url": "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-1/",
-      "cover_image": "https://aquamanga.com/wp-content/uploads/2021/03/court-swordswoman-in-another-world.jpg",
-      "last_3_chapter_urls": [
-        "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-13/",
-        "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-14/",
-        "https://aquamanga.com/read/court-swordswoman-in-another-world/chapter-15/"
-      ],
-      "use_default_id_function": true
-    }
-  },
   "reaperscans": {
     "user_input_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic",
     "expected_results": {
@@ -209,19 +190,19 @@
     }
   },
   "luminousscans": {
-    "user_input_url": "https://luminousscans.gg/series/1698649201-my-office-noonas-story/",
+    "user_input_url": "https://luminousscans.net/series/1698649201-my-office-noonas-story/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://luminousscans.gg/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
-      "curr_chapter_url": "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-03/",
-      "first_chapter_url": "https://luminousscans.gg/1698649201-my-office-noonas-story-prologue/",
+      "cover_image": "https://luminousscans.net/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
+      "curr_chapter_url": "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-03/",
+      "first_chapter_url": "https://luminousscans.net/1698649201-my-office-noonas-story-prologue/",
       "last_3_chapter_urls": [
-        "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-01/",
-        "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-02/",
-        "https://luminousscans.gg/1698649201-my-office-noonas-story-epilogue-chapter-03/"
+        "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-01/",
+        "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-02/",
+        "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-03/"
       ],
-      "manga_id": "https://luminousscans.gg/series/1694156401-my-office-noonas-story",
-      "manga_url": "https://luminousscans.gg/series/1698649201-my-office-noonas-story/",
+      "manga_id": "https://luminousscans.net/series/1694156401-my-office-noonas-story",
+      "manga_url": "https://luminousscans.net/series/1698649201-my-office-noonas-story/",
       "scanlator_name": "luminousscans",
       "title": "My Office Noona’s Story",
       "use_default_id_function": true
@@ -585,6 +566,44 @@
         "https://zeroscans.com/comics/bowblade-spirit/4813",
         "https://zeroscans.com/comics/bowblade-spirit/4814",
         "https://zeroscans.com/comics/bowblade-spirit/4815"
+      ]
+    }
+  },
+  "novelmic": {
+    "user_input_url": "https://novelmic.com/comic/falling-for-my-former-wife/",
+    "expected_results": {
+      "scanlator_name": "novelmic",
+      "manga_url": "https://novelmic.com/comic/falling-for-my-former-wife/",
+      "completed": true,
+      "title": "Falling For My Former Wife",
+      "manga_id": "4435",
+      "use_default_id_function": false,
+      "curr_chapter_url": "https://novelmic.com/comic/falling-for-my-former-wife/chapter-106/",
+      "first_chapter_url": "https://novelmic.com/comic/falling-for-my-former-wife/chapter-1/",
+      "cover_image": "https://novelmic.com/wp-content/uploads/2023/06/Falling-For-My-Former-Wife.jpg",
+      "last_3_chapter_urls": [
+        "https://novelmic.com/comic/falling-for-my-former-wife/chapter-104/",
+        "https://novelmic.com/comic/falling-for-my-former-wife/chapter-105/",
+        "https://novelmic.com/comic/falling-for-my-former-wife/chapter-106/"
+      ]
+    }
+  },
+  "mangapark": {
+    "user_input_url": "https://mangapark.net/title/120626-machida-kun-no-sekai",
+    "expected_results": {
+      "scanlator_name": "mangapark",
+      "manga_url": "https://mangapark.net/title/120626-machida-kun-no-sekai",
+      "completed": true,
+      "title": "Machida-kun no Sekai",
+      "manga_id": "120626",
+      "use_default_id_function": false,
+      "curr_chapter_url": "https://mangapark.net/title/120626-machida-kun-no-sekai/1554480-en-vol.7-ch.27",
+      "first_chapter_url": "https://mangapark.net/title/120626-machida-kun-no-sekai/1554453-en-vol.1-ch.1",
+      "cover_image": "https://xfs-s111.mpcdn.org/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
+      "last_3_chapter_urls": [
+        "https://mangapark.net/title/120626-machida-kun-no-sekai/1554478-en-vol.7-ch.25",
+        "https://mangapark.net/title/120626-machida-kun-no-sekai/1554479-en-vol.7-ch.26",
+        "https://mangapark.net/title/120626-machida-kun-no-sekai/1554480-en-vol.7-ch.27"
       ]
     }
   }

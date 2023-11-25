@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 import discord
 
 from .modals import SearchModal
-from .selects import ChapterSelect
+from .selects import ChapterSelect, MoveToFolderSelect
 
 
 class CustomButtonCallbacks:
@@ -60,7 +60,7 @@ class CustomButtonCallbacks:
                 ), view=None
             )
 
-        bookmark: Bookmark = self.view.bookmarks[self.view.visual_item_index]
+        bookmark: Bookmark = self.view.viewable_bookmarks[self.view.visual_item_index]
         # noinspection PyProtectedMember
         bookmark_embed = self.view._get_display_embed()
         await bookmark.delete(self.view.bot)
@@ -68,6 +68,7 @@ class CustomButtonCallbacks:
             x for x in self.view.bookmarks
             if x.manga.id != bookmark.manga.id and x.manga.scanlator != bookmark.manga.scanlator
         ]
+        self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
         await self.view.update(interaction)
 
         await msg.edit(
@@ -77,13 +78,16 @@ class CustomButtonCallbacks:
         )
 
     async def update_button_callback(self, interaction: discord.Interaction):
-        curr_bookmark: Bookmark = self.view.bookmarks[self.view.visual_item_index]
+        curr_bookmark: Bookmark = self.view.viewable_bookmarks[self.view.visual_item_index]
 
         self.view.clear_components()
 
         self.view.toggle_nav_buttons(False)
 
         self.view.add_item(
-            ChapterSelect(curr_bookmark)
+            ChapterSelect(curr_bookmark, row=3)
+        )
+        self.view.add_item(
+            MoveToFolderSelect(curr_bookmark, row=4)
         )
         return await interaction.response.edit_message(view=self.view)  # noqa

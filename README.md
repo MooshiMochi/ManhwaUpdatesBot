@@ -80,7 +80,6 @@ This bot currently only supports the following websites:
 - https://nitroscans.com
 - https://mangapill.com
 - https://en.leviatanscans.com
-- https://aquamanga.com (requires explicit permission from the website owner)
 - https://omegascans.org
 - https://nightscans.org (requires explicit permission from the website owner)
 - https://suryascans.com
@@ -95,6 +94,7 @@ This bot currently only supports the following websites:
 - https://ravenscans.com
 - https://reset-scans.com
 - https://rizzcomic.com
+- https://mangapark.net
 
 # Developers Section
 
@@ -131,7 +131,6 @@ How to set up the bot:
 
 For developers: The following websites will not work unless a custom user-agent allowed by the owner is used:
 
-- https://aquamanga.com
 - https://anigliscans.com
 - https://toonily.com
 

@@ -38,3 +38,13 @@ class Hours(Enum):
     FIFTEEN = Minutes.SIXTY.value * 15
     TWENTY = Minutes.SIXTY.value * 20
     TWENTY_FOUR = Minutes.SIXTY.value * 24
+
+
+class BookmarkFolderType(Enum):
+    """Bookmark folder type."""
+    Reading = "reading"
+    Planned = "planned"
+    Finished = "finished"
+    Dropped = "dropped"
+    Hidden = "hidden"
+    All = "all"

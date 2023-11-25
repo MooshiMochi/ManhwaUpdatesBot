@@ -271,7 +271,6 @@ def ensure_configs(
             "password": "em03wrup0hod",  # noqa
         },
         "user-agents": {
-            "aquamanga": None,
             "anigliscans": None,
             "toonily": None,
         },
@@ -479,6 +478,8 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
 
         "**Next chapter:** "
         f"{next_chapter_text}\n"
+
+        f"**Folder Location:** {bookmark.folder.value.title()}\n"
 
         f"**Available Chapters:** Up to {available_chapters_str}"
 
@@ -797,10 +798,10 @@ def create_dynamic_grouped_embeds(
     Parameters:
         data_dicts (List[dict]): A list of dictionaries containing data to be grouped and formatted.
         fmt_line (str): The format string to use for each entry.
-            It Can contain placeholders referring to keys in the data dictionaries.
+            It can contain placeholders referring to keys in the data dictionaries.
         group_key (str): The key in the dictionaries by which the data should be grouped.
-        indexed (bool, optional): Whether to prepend an index to each entry. Defaults to True.
-        per_page (Optional[int], optional): The maximum number of entries in each embed. If None, no limit is applied.
+        indexed (bool): Whether to prepend an index to each entry. Defaults to True.
+        per_page (Optional[int]): The maximum number of entries in each embed. If None, no limit is applied.
             Defaults to None.
 
     Returns:
@@ -832,6 +833,8 @@ def create_dynamic_grouped_embeds(
     line_index = 0
 
     for group_value, data_list in grouped.items():
+        if not data_list:
+            continue
         embed.description += f"\n**{group_value}**\n"
         for data in data_list:
             line_index += 1
