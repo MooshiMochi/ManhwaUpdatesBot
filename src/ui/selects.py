@@ -258,7 +258,7 @@ class MoveToFolderSelect(Select):
 
         # check if there are any bookmarks left in the current folder.
         folder_bookmarks_remaining = [x for x in self.view.bookmarks if x.folder == self.view.folder]
-        if folder_bookmarks_remaining:
+        if not folder_bookmarks_remaining:
             self.view.folder = BookmarkFolderType.All
 
         self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
