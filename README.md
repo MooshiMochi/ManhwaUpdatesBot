@@ -2,7 +2,10 @@
 
 ### If you want to invite the bot to your server, click [here.](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412585675840&scope=bot%20applications.commands)
 
-### Consider supporting me through [Ko-fi](https://ko-fi.com/mooshi69) or [Patreon](https://patreon.com/mooshi69).
+### Consider supporting me through [Ko-fi](https://ko-fi.com/mooshi69) or [Patreon](https://patreon.com/mooshi69) below.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y4OO6N0)
+[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://www.patreon.com/bePatron?u=64281496)
 
 ## About:
 
@@ -10,14 +13,14 @@ This is a bot that will periodically check for updates on the manga that you hav
 is a new chapter available.
 
 More websites will be added in the future as I find them. If you want a website to be added, please reach out to me
-in the [support server](https://discord.gg/TYkw8VBZkr).\
+on the [support server](https://discord.gg/TYkw8VBZkr).\
 Additionally, websites that are heavily protected by Cloudflare will not be added (I will list the ones I tried to
 add that fit these criteria at the bottom of this file).
 
-If you want to leave a suggesting of a website that I should implement for this, send me a DM over on .mooshi on
+If you want to leave a suggestion of a website that I should implement for this, send me a DM over on .mooshi on
 discord!
 
-The bot can also translate messages / text to different languages using Google Translate.
+The bot can also translate messages/text to different languages using Google Translate.
 You can right-click a message > apps > Translate to translate a message or use the /translate command
 
 ## Commands:
@@ -25,7 +28,7 @@ You can right-click a message > apps > Translate to translate a message or use t
 ### General Commands:
 
 `/help` - Get started with Manga Updates Bot (this message).\
-`/search` - Search for a manga on MangaDex.\
+`/search` - Search for a manga on supported websites.\
 `/latest` - Get the latest chapter of a manga.\
 `/chapters` - Get a list of chapters of a manga.\
 `/next_update_check` - Get the time until the next update check.\
@@ -35,7 +38,7 @@ You can right-click a message > apps > Translate to translate a message or use t
 
 ###### (_Requires the `Manage Guild` permission._)
 
-`/settings` - Edit the bot's settings on the serer.
+`/settings` - Edit the bot's settings on the server.
 
 ### Tracking Commands:
 
