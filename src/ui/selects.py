@@ -196,7 +196,9 @@ class BookmarkFolderSelect(Select):
 
         options = [
             discord.SelectOption(
-                label=folder.value.title(), value=folder.value, default=True if current_folder == folder else False
+                label=f"Folder: {folder.value.title()}",
+                value=folder.value,
+                default=True if current_folder == folder else False
             )
             for folder in folders
         ]
@@ -220,6 +222,7 @@ class BookmarkFolderSelect(Select):
         else:
             self.view.folder = new_folder
             self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
+            self.view.visual_item_index = 0  # reset it to 0
             if self.view.view_type == BookmarkViewType.TEXT:
                 self.view._bookmarks_to_text_embeds()  # noqa
             await self.view.update(interaction)
