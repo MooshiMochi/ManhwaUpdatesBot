@@ -231,7 +231,7 @@
     "user_input_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://i0.wp.com/drakescans.com/wp-content/uploads/2022/02/01.jpg",
+      "cover_image": "https://drakescans.com/wp-content/uploads/2022/02/01.jpg",
       "curr_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
       "first_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-00/",
       "last_3_chapter_urls": [
@@ -342,41 +342,22 @@
     }
   },
   "suryascans": {
-    "user_input_url": "https://suryareader.com/manga/modern-dude-in-the-murim/",
+    "user_input_url": "https://suryacomics.com/manga/modern-dude-in-the-murim/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://suryareader.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
-      "curr_chapter_url": "https://suryareader.com/modern-dude-in-the-murim-chapter-22/",
-      "first_chapter_url": "https://suryareader.com/modern-dude-in-the-murim-chapter-1/",
+      "cover_image": "https://suryacomics.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
+      "curr_chapter_url": "https://suryacomics.com/modern-dude-in-the-murim-chapter-22/",
+      "first_chapter_url": "https://suryacomics.com/modern-dude-in-the-murim-chapter-1/",
       "last_3_chapter_urls": [
-        "https://suryareader.com/modern-dude-in-the-murim-chapter-20/",
-        "https://suryareader.com/modern-dude-in-the-murim-chapter-21/",
-        "https://suryareader.com/modern-dude-in-the-murim-chapter-22/"
+        "https://suryacomics.com/modern-dude-in-the-murim-chapter-20/",
+        "https://suryacomics.com/modern-dude-in-the-murim-chapter-21/",
+        "https://suryacomics.com/modern-dude-in-the-murim-chapter-22/"
       ],
-      "manga_id": "https://suryareader.com/manga/modern-dude-in-the-murim",
-      "manga_url": "https://suryareader.com/manga/modern-dude-in-the-murim",
+      "manga_id": "https://suryacomics.com/manga/modern-dude-in-the-murim",
+      "manga_url": "https://suryacomics.com/manga/modern-dude-in-the-murim",
       "scanlator_name": "suryascans",
       "title": "Modern Dude in the Murim",
       "use_default_id_function": true
-    }
-  },
-  "manhuaga": {
-    "user_input_url": "https://manhuaga.com/manga/ruling-a-planet/",
-    "expected_results": {
-      "scanlator_name": "manhuaga",
-      "manga_url": "https://manhuaga.com/manga/ruling-a-planet/",
-      "completed": false,
-      "title": "Ruling a Planet",
-      "manga_id": "https://manhuaga.com/manga/ruling-a-planet/",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://manhuaga.com/manga/ruling-a-planet/chapter-14/",
-      "first_chapter_url": "https://manhuaga.com/manga/ruling-a-planet/chapter-0/",
-      "cover_image": "https://manhuaga.com/wp-content/uploads/2022/04/jpeg.jpg",
-      "last_3_chapter_urls": [
-        "https://manhuaga.com/manga/ruling-a-planet/chapter-12/",
-        "https://manhuaga.com/manga/ruling-a-planet/chapter-13/",
-        "https://manhuaga.com/manga/ruling-a-planet/chapter-14/"
-      ]
     }
   },
   "mangasiamese": {
@@ -604,6 +585,25 @@
         "https://mangapark.net/title/120626-machida-kun-no-sekai/1554478-en-vol.7-ch.25",
         "https://mangapark.net/title/120626-machida-kun-no-sekai/1554479-en-vol.7-ch.26",
         "https://mangapark.net/title/120626-machida-kun-no-sekai/1554480-en-vol.7-ch.27"
+      ]
+    }
+  },
+  "mangakakalot": {
+    "user_input_url": "https://ww7.mangakakalot.tv/manga/manga-gd983586",
+    "expected_results": {
+      "scanlator_name": "mangakakalot",
+      "manga_url": "https://ww7.mangakakalot.tv/manga/manga-gd983586",
+      "completed": true,
+      "title": "Restless",
+      "manga_id": "gd983586",
+      "use_default_id_function": false,
+      "curr_chapter_url": "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-60",
+      "first_chapter_url": "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-1",
+      "cover_image": "https://ww7.mangakakalot.tv/mangaimage/manga-gd983586.jpg",
+      "last_3_chapter_urls": [
+        "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-58",
+        "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-59",
+        "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-60"
       ]
     }
   }

@@ -150,12 +150,12 @@ class _Rizzcomic(DynamicURLScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 
-    def extract_cover_link_from_tag(self, tag) -> str | None:
+    def extract_cover_link_from_tag(self, tag, base_url: str) -> str | None:
         for attr in ["data-src", "src", "href", "content", "data-lazy-src"]:
             result = tag.get(attr)
             if result is not None:
                 if result.startswith("/"):  # partial URL, we just need to append base URL to it
-                    return self.json_tree.properties.base_url + result
+                    return base_url + result
                 elif not result.startswith("https://"):
                     continue
                 return result

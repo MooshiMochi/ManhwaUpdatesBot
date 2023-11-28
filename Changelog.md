@@ -2,6 +2,11 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // November 28th 2023
+
+- Added support for https://ww7.mangakakalot.tv
+- Removed support for https://manhuaga.com due to the website only having 5 manhwa 💀
+
 ## // November 25th 2023
 
 - Removed support for aquamanga.com. The website no longer exists.

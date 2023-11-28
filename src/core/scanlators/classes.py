@@ -42,10 +42,14 @@ __all__ = (
 
 class _AbstractScanlatorUtilsMixin:
     @staticmethod
-    def extract_cover_link_from_tag(tag) -> str | None:
+    def extract_cover_link_from_tag(tag, base_url: str) -> str | None:
         for attr in ["data-src", "src", "href", "content", "data-lazy-src"]:
             result = tag.get(attr)
-            if result and result.startswith("https://"):
+            if result is not None:
+                if result.startswith("/"):  # partial URL, we just need to append base URL to it
+                    return base_url + result
+                elif not result.startswith("https://"):
+                    continue
                 return result
 
     @staticmethod
@@ -555,7 +559,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         status_selector = self.json_tree.selectors.status
         status = soup.select_one(status_selector)
         if status:
-            return status.get_text(strip=True)
+            status_text = status.get_text(strip=True)
+            return re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
 
     async def get_synopsis(self, raw_url: str) -> str:
         text = await self._get_text(await self.format_manga_url(raw_url))
@@ -576,7 +581,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         for selector in selectors:
             cover_tag = soup.select_one(selector)
             if cover_tag:
-                cover_url = self.extract_cover_link_from_tag(cover_tag)
+                cover_url = self.extract_cover_link_from_tag(cover_tag, self.json_tree.properties.base_url)
                 # this is mainly bc of asura
                 start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
                 return cover_url[start_idx:]
@@ -597,7 +602,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             ).get_text(strip=True)
 
             cover_url = self.extract_cover_link_from_tag(
-                manga_tag.select_one(self.json_tree.selectors.front_page.cover)
+                manga_tag.select_one(self.json_tree.selectors.front_page.cover),
+                self.json_tree.properties.base_url
             )
             start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
             cover_url = cover_url[start_idx:]
@@ -664,7 +670,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             ).get_text(strip=True)
 
             cover_url = self.extract_cover_link_from_tag(
-                manga_tag.select_one(self.json_tree.selectors.search.cover))
+                manga_tag.select_one(self.json_tree.selectors.search.cover),
+                self.json_tree.properties.base_url
+            )
             start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
             cover_url = cover_url[start_idx:]
 

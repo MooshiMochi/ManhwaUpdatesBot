@@ -713,14 +713,14 @@
     "suryascans": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?suryareader\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?suryacomics\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://suryareader.com",
-        "icon_url": "https://suryareader.com/wp-content/uploads/2022/09/cropped-surya-logo1x.png",
+        "base_url": "https://suryacomics.com",
+        "icon_url": "https://suryacomics.com/wp-content/uploads/2022/09/cropped-surya-logo1x.png",
         "format_urls": {
-          "manga": "https://suryareader.com/manga/{url_name}/"
+          "manga": "https://suryacomics.com/manga/{url_name}/"
         },
-        "latest_updates_url": "https://suryareader.com/",
+        "latest_updates_url": "https://suryacomics.com/",
         "dynamicURL": false
       },
       "selectors": {
@@ -758,80 +758,12 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://suryareader.com",
+        "url": "https://suryacomics.com",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
         },
         "extra_params": {},
-        "request_method": "GET"
-      }
-    },
-    "manhuaga": {
-      "chapter_ajax": "html",
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?manhuaga\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
-      "properties": {
-        "base_url": "https://manhuaga.com",
-        "icon_url": "https://manhuaga.com/wp-content/uploads/2017/10/cropped-PicsArt_04-22-02.57.43-1.png",
-        "format_urls": {
-          "ajax": "https://manhuaga.com/manga/{url_name}/ajax/chapters",
-          "manga": "https://manhuaga.com/manga/{url_name}/"
-        },
-        "latest_updates_url": "https://manhuaga.com/",
-        "dynamicURL": false
-      },
-      "selectors": {
-        "title": [
-          "div.post-title > h1",
-          "div.series-title > h1",
-          ".breadcrumb > li:nth-child(3) > a:nth-child(1)"
-        ],
-        "synopsis": "div.description-summary > div > p",
-        "cover": [
-          "[property=og\\:image]",
-          "div.summary_image > a > img"
-        ],
-        "chapters": {
-          "container": "li.wp-manga-chapter",
-          "name": "a",
-          "url": "a"
-        },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
-        "front_page": {
-          "container": "div.page-item-detail",
-          "chapters": {
-            "container": "div.chapter-item > span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.post-title > h3.h5 > a",
-          "url": "div.post-title > h3.h5 > a",
-          "cover": "img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.row.c-tabs-item__content",
-          "chapters": {
-            "container": "span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "h3.h4 > a",
-          "url": "h3.h4 > a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://manhuaga.com",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {
-          "post_type": "wp-manga"
-        },
         "request_method": "GET"
       }
     },
@@ -1562,6 +1494,71 @@
         "extra_params": {},
         "request_method": "GET"
       }
+    },
+    "mangakakalot": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:ww\\d\\.)?mangakakalot\\.tv/(?:manga|chapter)/manga-(?P<id>[a-zA-Z0-9]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://ww7.mangakakalot.tv",
+        "icon_url": "https://ww7.mangakakalot.tv/static/images/favicon.ico",
+        "format_urls": {
+          "manga": "https://ww7.mangakakalot.tv/manga/manga-{id}"
+        },
+        "latest_updates_url": "https://ww7.mangakakalot.tv",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "ul.manga-info-text > li > h1"
+        ],
+        "synopsis": "div#noidungm",
+        "cover": [
+          "[property=og\\:image]",
+          "div.manga-info-pic > img"
+        ],
+        "chapters": {
+          "container": "div.chapter-list > div",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "ul.manga-info-text > li:-soup-contains(\"Status\")",
+        "front_page": {
+          "container": "div.doreamon > div.itemupdate",
+          "chapters": {
+            "container": "ul > li > span",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "ul > li:first-child > h3 > a",
+          "url": "ul > li:first-child > h3 > a",
+          "cover": "img.img-loading"
+        },
+        "unwanted_tags": [
+          "div#noidungm > h2 > p",
+          "div#noidungm > h2"
+        ],
+        "search": {
+          "container": "div.story_item",
+          "chapters": {
+            "container": "em.story_chapter > a",
+            "name": "_container_",
+            "url": "_container_"
+          },
+          "title": "h3.story_name > a",
+          "url": "h3.story_name > a",
+          "cover": "img[alt]"
+        }
+      },
+      "search": {
+        "url": "https://ww7.mangakakalot.tv/search/",
+        "as_type": "path",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
     }
   },
   "custom": {
@@ -1659,15 +1656,15 @@
         },
         "status": "ul.MuiList-root > a:first-child li > div.MuiListItemText-root > p",
         "front_page": {
-          "container": "h1.font-bold[style] + div.grid.grid-cols-2 > div",
+          "container": "section > div:first-child div.rounded.p-3 > div.lg\\:gap-x-3 > div",
           "chapters": {
-            "container": "div.c-ibOvzC > a",
-            "name": "div > div.c-cSMWqC",
+            "container": "div.text-center > a",
+            "name": "div > div.chapterName",
             "url": "_container_"
           },
-          "title": "div.c-hCLgme > a > h5",
-          "url": "div.c-hCLgme > a",
-          "cover": "div.c-iZMlIN> a > img"
+          "title": "div.justify-center > a > h5",
+          "url": "div.justify-center > a",
+          "cover": "div > a > img[loading]"
         },
         "unwanted_tags": [],
         "search": {

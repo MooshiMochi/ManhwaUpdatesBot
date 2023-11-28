@@ -87,7 +87,6 @@ This bot currently only supports the following websites:
 - https://nightscans.org (requires explicit permission from the website owner)
 - https://suryascans.com
 - https://void-scans.com
-- https://manhuaga.com
 - https://mangasiamese.com
 - https://arcanescans.com
 - https://readmangabat.com
@@ -98,6 +97,7 @@ This bot currently only supports the following websites:
 - https://reset-scans.com
 - https://rizzcomic.com
 - https://mangapark.net
+- https://ww7.mangakakalot.tv
 
 # Developers Section
 

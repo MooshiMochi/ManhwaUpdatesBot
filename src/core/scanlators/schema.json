@@ -5,7 +5,7 @@
     "static": {
       "type": "object",
       "patternProperties": {
-        "^[a-z]+$": {
+        "^[a-z0-9]+$": {
           "type": "object",
           "properties": {
             "chapter_ajax": {
