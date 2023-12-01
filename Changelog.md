@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 1st 2023
+
+- Updated the default bookmarks folder from `All` to `Reading`.
+- Added support for https://cosmic-scans.com/
+- Added support for https://manga-demon.org/
+
 ## // November 28th 2023
 
 - Added support for https://ww7.mangakakalot.tv

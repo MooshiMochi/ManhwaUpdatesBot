@@ -99,7 +99,7 @@ class BookmarkView(BaseView):
             interaction: discord.Interaction,
             bookmarks: list[Bookmark],
             view_type: BookmarkViewType = BookmarkViewType.VISUAL,
-            folder: BookmarkFolderType = BookmarkFolderType.All
+            folder: BookmarkFolderType = BookmarkFolderType.Reading
     ):
         super().__init__(bot, interaction, timeout=60 * 60 * 12)  # 12 hour timeout
         self.bot: MangaClient = bot

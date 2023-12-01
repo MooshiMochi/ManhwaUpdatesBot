@@ -259,7 +259,11 @@ class MoveToFolderSelect(Select):
         # check if there are any bookmarks left in the current folder.
         folder_bookmarks_remaining = [x for x in self.view.bookmarks if x.folder == self.view.folder]
         if not folder_bookmarks_remaining:
-            self.view.folder = BookmarkFolderType.All
+            # Try to default to the reading folder if the current one is not the reading folder.
+            if self.view.folder != BookmarkFolderType.Reading:
+                self.view.folder = BookmarkFolderType.Reading
+            else:
+                self.view.folder = BookmarkFolderType.All
 
         self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
         self.view._handle_index_change()  # noqa

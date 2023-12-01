@@ -606,5 +606,43 @@
         "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-60"
       ]
     }
+  },
+  "cosmic": {
+    "user_input_url": "https://cosmic-scans.com/manga/updater/",
+    "expected_results": {
+      "scanlator_name": "cosmic",
+      "manga_url": "https://cosmic-scans.com/manga/updater/",
+      "completed": false,
+      "title": "Updater",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://cosmic-scans.com/updater-chapter-99/",
+      "first_chapter_url": "https://cosmic-scans.com/updater-chapter-93-season-2-end/",
+      "cover_image": "https://cosmic-scans.com/wp-content/uploads/2022/11/resource-1_cugan_conservative_4x_i1.00.webp",
+      "last_3_chapter_urls": [
+        "https://cosmic-scans.com/updater-chapter-97/",
+        "https://cosmic-scans.com/updater-chapter-98/",
+        "https://cosmic-scans.com/updater-chapter-99/"
+      ]
+    }
+  },
+  "manga-demon": {
+    "user_input_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince-VA44",
+    "expected_results": {
+      "scanlator_name": "manga-demon",
+      "manga_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince-VA44",
+      "completed": false,
+      "title": "Reborn as the Enemy Prince",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA44",
+      "first_chapter_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA44",
+      "cover_image": "https://readermc.org/images/thumbnails/Reborn as the Enemy Prince.webp",
+      "last_3_chapter_urls": [
+        "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA44",
+        "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA44",
+        "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA44"
+      ]
+    }
   }
 }

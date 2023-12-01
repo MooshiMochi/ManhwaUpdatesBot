@@ -1559,6 +1559,122 @@
         "extra_params": {},
         "request_method": "GET"
       }
+    },
+    "cosmic": {
+      "chapter_ajax": null,
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?cosmic-scans\\.com/(?:manga/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://cosmic-scans.com",
+        "icon_url": "https://cosmic-scans.com/wp-content/uploads/2022/06/cropped-Cosmic-2.png",
+        "format_urls": {
+          "manga": "https://cosmic-scans.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://cosmic-scans.com",
+        "dynamicURL": false,
+        "can_render_cover": true
+      },
+      "selectors": {
+        "title": [
+          "div.infox > h1.entry-title"
+        ],
+        "synopsis": "div.entry-content > p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.thumb > img"
+        ],
+        "chapters": {
+          "container": "div.eph-num",
+          "name": "a > span.chapternum",
+          "url": "a"
+        },
+        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "front_page": {
+          "container": "div.uta",
+          "chapters": {
+            "container": "div.luf > ul > li",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.luf > a.series > h4",
+          "url": "div.luf > a.series",
+          "cover": "img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.bsx",
+          "title": "div.tt",
+          "url": "a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://cosmic-scans.com",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "manga-demon": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?manga-demon\\.org/(?:manga/)?(?P<url_name>\\w[\\w-]*?)/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://manga-demon.org",
+        "icon_url": "https://manga-demon.org/img/logo.png",
+        "format_urls": {
+          "manga": "https://manga-demon.org/manga/{url_name}"
+        },
+        "latest_updates_url": "https://manga-demon.org",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "h1[itemprop=\"name\"]"
+        ],
+        "synopsis": "p.description",
+        "cover": [
+          "[property=og\\:image]",
+          "img.boxsizing"
+        ],
+        "chapters": {
+          "container": "li:has(strong)",
+          "name": "strong",
+          "url": "a"
+        },
+        "status": "span[itemprop=author]",
+        "front_page": {
+          "container": "div#content > ul.nomargpad > li",
+          "chapters": {
+            "container": "h5",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h2 > a",
+          "url": "h2 > a",
+          "cover": "img[alt]"
+        },
+        "search": {
+          "container": "a.boxsizing",
+          "title": "_container_",
+          "url": "_container_"
+        },
+        "unwanted_tags": []
+      },
+      "search": {
+        "search_param_name": "manga",
+        "url": "https://manga-demon.org/search.php",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET",
+        "extra_params": {}
+      }
     }
   },
   "custom": {

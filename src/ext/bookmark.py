@@ -110,7 +110,7 @@ class BookmarkCog(commands.Cog):
         bookmarks = [bookmark for bookmark in bookmarks if bookmark.manga.scanlator in scanlators]
 
         view = BookmarkView(
-            self.bot, interaction, bookmarks, BookmarkViewType.VISUAL, folder=folder or BookmarkFolderType.All
+            self.bot, interaction, bookmarks, BookmarkViewType.VISUAL, folder=folder or BookmarkFolderType.Reading
         )
 
         if series_id:

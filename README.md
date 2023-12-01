@@ -98,6 +98,8 @@ This bot currently only supports the following websites:
 - https://rizzcomic.com
 - https://mangapark.net
 - https://ww7.mangakakalot.tv
+- https://cosmic-scans.com
+- https://manga-demon.org
 
 # Developers Section
 

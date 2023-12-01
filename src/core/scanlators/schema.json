@@ -5,7 +5,7 @@
     "static": {
       "type": "object",
       "patternProperties": {
-        "^[a-z0-9]+$": {
+        "^[a-z0-9-]+$": {
           "type": "object",
           "properties": {
             "chapter_ajax": {
@@ -339,8 +339,7 @@
                   "required": [
                     "container",
                     "title",
-                    "url",
-                    "cover"
+                    "url"
                   ]
                 },
                 "unwanted_tags": {
@@ -876,8 +875,7 @@
                   "required": [
                     "container",
                     "title",
-                    "url",
-                    "cover"
+                    "url"
                   ]
                 },
                 "unwanted_tags": {

@@ -47,7 +47,7 @@ class _FrontPageSelectors:
         self.chapters: dict = fp_selectors_dict.get("chapters")
         self.title: str = fp_selectors_dict["title"]
         self.url: str = fp_selectors_dict["url"]
-        self.cover: str = fp_selectors_dict["cover"]
+        self.cover: str = fp_selectors_dict.get("cover")
 
 
 class _Selectors:

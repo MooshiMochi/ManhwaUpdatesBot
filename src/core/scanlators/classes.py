@@ -100,7 +100,7 @@ class AbstractScanlator(ABC):
         embeds: list[discord.Embed] = []
         for p_manga in partial_mangas:
             em = discord.Embed(title=p_manga.title, url=p_manga.url)
-            em.set_image(url=p_manga.cover_url)
+            em.set_image(url=p_manga.cover_url or Constants.no_img_available_url)
             em.set_author(
                 icon_url=self.json_tree.properties.icon_url, name=self.name, url=self.json_tree.properties.base_url
             )
@@ -669,12 +669,14 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 self.json_tree.selectors.search.title
             ).get_text(strip=True)
 
-            cover_url = self.extract_cover_link_from_tag(
-                manga_tag.select_one(self.json_tree.selectors.search.cover),
-                self.json_tree.properties.base_url
-            )
-            start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
-            cover_url = cover_url[start_idx:]
+            cover_url: str | None = None
+            if self.json_tree.selectors.search.cover is not None:
+                cover_url = self.extract_cover_link_from_tag(
+                    manga_tag.select_one(self.json_tree.selectors.search.cover),
+                    self.json_tree.properties.base_url
+                )
+                start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
+                cover_url = cover_url[start_idx:]
 
             chapters: list[Chapter] = []
             if (chapters_selector := self.json_tree.selectors.search.chapters) is not None:
