@@ -2,6 +2,15 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 4th 2023
+
+- Added the `folder` option to the `/bookmark new` and `/bookmark update` command.
+
+### Bug Fixes:
+
+- Fixed text view mode for the `/bookmarks view` command not displaying correct bookmarks.
+- Fixed `/bookmark view` command throwing error when specifying a bookmark to view.
+
 ## // December 1st 2023
 
 - Updated the default bookmarks folder from `All` to `Reading`.
@@ -41,7 +50,7 @@
 
 - Added `unload_disabled_scanlators` method to the bot class in `bot.py`.
 
-## Bug Fixes:
+### Bug Fixes:
 
 - Implemented custom methods for omegascans `get_title`, `get_synopsis` and `get_cover`.
 - Fixed the `get_chapters_list` method in `omegascansAPI.py`

@@ -79,6 +79,7 @@ class ViewTypeSelect(Select):
             return
 
         else:
+            self.view._bookmarks_to_text_embeds()  # noqa
             await self.view.update(interaction)
 
 

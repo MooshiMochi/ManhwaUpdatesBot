@@ -35,9 +35,15 @@ class BookmarkCog(commands.Cog):
 
     @bookmark_group.command(name="new", description="Bookmark a new manga")
     @app_commands.describe(manga_url_or_id="The name of the bookmarked manga you want to view")
+    @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.rename(manga_url_or_id="manga_url")
     @app_commands.autocomplete(manga_url_or_id=autocompletes.manga)
-    async def bookmark_new(self, interaction: discord.Interaction, manga_url_or_id: str):
+    async def bookmark_new(
+            self,
+            interaction: discord.Interaction,
+            manga_url_or_id: str,
+            folder: Optional[BookmarkFolderType] = BookmarkFolderType.Reading
+    ):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
         if RegExpressions.url.search(manga_url_or_id):
@@ -76,7 +82,7 @@ class BookmarkCog(commands.Cog):
                     ), ephemeral=True
                 )
 
-        bookmark.folder = BookmarkFolderType.Reading
+        bookmark.folder = folder
         bookmark.last_updated_ts = datetime.now().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
         em = create_bookmark_embed(self.bot, bookmark, scanlator.json_tree.properties.icon_url)
@@ -122,23 +128,17 @@ class BookmarkCog(commands.Cog):
             except ValueError:
                 raise BookmarkNotFoundError(series_id)
 
+            user_bookmark = [x for x in bookmarks if x.id == manga_id and x.scanlator == scanlator_name]
+            if not user_bookmark:
+                raise BookmarkNotFoundError(manga_id)
+            user_bookmark = user_bookmark[0]
+            view = BookmarkView(self.bot, interaction, bookmarks, BookmarkViewType.VISUAL, folder=user_bookmark.folder)
             bookmark_index = next(
                 (
-                    i for i, x in enumerate(view.bookmarks)
+                    i for i, x in enumerate(view.viewable_bookmarks)
                     if x.manga.id == manga_id and x.manga.scanlator == scanlator_name
                 ), None
             )
-            if bookmark_index is None:
-                # hidden_bookmark = await self.bot.db.get_user_bookmark(interaction.user.id, manga_id, scanlator_name)
-                # if hidden_bookmark:
-                #     em = create_bookmark_embed(
-                #         self.bot, hidden_bookmark, hidden_bookmark.scanner.json_tree.properties.icon_url
-                #     )
-                #     await interaction.followup.send(embed=em, ephemeral=True)  # noqa
-                #     view.stop()
-                #     return
-                raise BookmarkNotFoundError(manga_id)
-
             view.visual_item_index = bookmark_index
 
         # noinspection PyProtectedMember
@@ -151,9 +151,19 @@ class BookmarkCog(commands.Cog):
     @app_commands.rename(chapter_index="chapter")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to update")
     @app_commands.describe(chapter_index="The chapter you want to update the bookmark to")
+    @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     @app_commands.autocomplete(chapter_index=autocompletes.chapters)
-    async def bookmark_update(self, interaction: discord.Interaction, series_id: str, chapter_index: str):
+    async def bookmark_update(
+            self,
+            interaction: discord.Interaction,
+            series_id: str,
+            chapter_index: Optional[str] = None,
+            folder: Optional[BookmarkFolderType] = None
+    ):
+        if not chapter_index and not folder:
+            raise CustomError("Please specify either a chapter or a folder to update the bookmark to.")
+
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         try:
             manga_id, scanlator_name = series_id.split("|")
@@ -167,17 +177,20 @@ class BookmarkCog(commands.Cog):
         if not bookmark:
             raise BookmarkNotFoundError(manga_id)
 
-        try:
-            chapter_index = int(chapter_index)
-        except ValueError:
-            raise ChapterNotFoundError()
-        try:
-            new_chapter = bookmark.manga.available_chapters[chapter_index]
-        except (IndexError, TypeError):
-            raise ChapterNotFoundError()
+        if chapter_index is not None:
+            try:
+                chapter_index = int(chapter_index)
+            except ValueError:
+                raise ChapterNotFoundError()
+            try:
+                new_chapter = bookmark.manga.available_chapters[chapter_index]
+            except (IndexError, TypeError):
+                raise ChapterNotFoundError()
 
-        bookmark.last_read_chapter = new_chapter
-        bookmark.last_updated_ts = datetime.now().timestamp()
+            bookmark.last_read_chapter = new_chapter
+            bookmark.last_updated_ts = datetime.now().timestamp()
+        if folder is not None:
+            bookmark.folder = folder
 
         user_subscribed: bool = False
         should_track: bool = False

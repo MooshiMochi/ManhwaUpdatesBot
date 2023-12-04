@@ -464,7 +464,7 @@ class UpdateCheckCog(commands.Cog):
                 return
         self.bot.logger.debug(f"[{mangas[0].scanlator}] Finished checking for status updates!")
 
-    @tasks.loop(hours=2.0)
+    @tasks.loop(hours=1.0)
     async def check_updates_task(self):
         self.logger.info("Checking for updates...")
         try:
