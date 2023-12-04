@@ -128,7 +128,7 @@ class BookmarkCog(commands.Cog):
             except ValueError:
                 raise BookmarkNotFoundError(series_id)
 
-            user_bookmark = [x for x in bookmarks if x.id == manga_id and x.scanlator == scanlator_name]
+            user_bookmark = [x for x in bookmarks if x.manga.id == manga_id and x.manga.scanlator == scanlator_name]
             if not user_bookmark:
                 raise BookmarkNotFoundError(manga_id)
             user_bookmark = user_bookmark[0]
