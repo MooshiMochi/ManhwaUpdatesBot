@@ -906,7 +906,7 @@
     "bato": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/series/(?P<id>\\d+)/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/series/(?P<id>\\d+)(/?P<url_name>[\\w-]+)?(?:/.*)?",
       "properties": {
         "base_url": "https://bato.to",
         "icon_url": "https://bato.to/amsta/img/batoto/favicon.ico?v0",

@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 5th 2023
+
+### Bug Fixes:
+
+- Fixed Bato failing the update checks because of a URL failing the regex pattern on the website.
+
 ## // December 4th 2023
 
 - Added the `folder` option to the `/bookmark new` and `/bookmark update` command.
