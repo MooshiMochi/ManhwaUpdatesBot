@@ -447,30 +447,24 @@ async def sub_main():
 
     testCase = TestCase(
         test_setup,
-        test_data=TestInputData("https://omegascans.org/series/fucked-the-world-tree"),
+        test_data=TestInputData("https://bato.to/series/114456"),
         expected_result=ExpectedResult(
-            scanlator_name="omegascans",
-            manga_url="https://omegascans.org/series/fucked-the-world-tree",
+            scanlator_name="bato",
+            manga_url="https://bato.to/series/114456",
             completed=False,
-            title="Fucked the World Tree",
-            manga_id=default_id_func("https://omegascans.org/series/fucked-the-world-tree"),
-            curr_chapter_url=(
-                "https://omegascans.org/series/fucked-the-world-tree/chapter-14"
-            ),
-            first_chapter_url=(
-                "https://omegascans.org/series/fucked-the-world-tree/chapter-1"
-            ),
-            cover_image=(
-                "https://media.omegascans.org/file/zFSsXt/covers/adc97b9d-8fe1-49e0-95a1-494efbe32e7e.jpg"
-            ),
+            title="𝑻𝒉𝒆 𝒏𝒐𝒓𝒕𝒉𝒆𝒓𝒏 𝒅𝒖𝒌𝒆 𝒏𝒆𝒆𝒅𝒔 𝒂 𝒘𝒂𝒓𝒎 𝒉𝒖𝒈",
+            manga_id="114456",
+            curr_chapter_url='https://bato.to/chapter/2604874',
+            first_chapter_url='https://bato.to/chapter/2106083',
+            cover_image='https://xfs-s100.batcg.org/thumb/W600/ampi/b34/b3407172605fe7cb934c0a90a6fc477b2e6110c6_720_1508_200588.jpeg',
             last_3_chapter_urls=[
-                "https://omegascans.org/series/fucked-the-world-tree/chapter-12",
-                "https://omegascans.org/series/fucked-the-world-tree/chapter-13",
-                "https://omegascans.org/series/fucked-the-world-tree/chapter-14",
+                "https://bato.to/chapter/2603775",
+                "https://bato.to/chapter/2604873",
+                "https://bato.to/chapter/2604874"
             ],
         ),
         # id_first=True,
-        test_subject=scanlators.get("omegascans")
+        test_subject=scanlators.get("bato")
     )
     try:
         await run_single_test(testCase)
@@ -526,7 +520,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        # asyncio.run(test_single_scanlator("manga-demon"))
-        # asyncio.run(sub_main())
+        asyncio.run(test_single_scanlator("bato"))
+        asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

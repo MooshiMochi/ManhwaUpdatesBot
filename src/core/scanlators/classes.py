@@ -481,8 +481,12 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             url_name = await self._get_url_name(raw_url)
             _id = await self.get_id(raw_url)
         if use_ajax_url and self.json_tree.uses_ajax:
-            return self.json_tree.properties.format_urls.ajax.format(url_name=url_name, id=_id)
-        return self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=_id)
+            fmt_url = self.json_tree.properties.format_urls.ajax.format(url_name=url_name, id=_id)
+        else:
+            fmt_url = self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=_id)
+        if url_name is None:
+            fmt_url = fmt_url.removesuffix("None" if not fmt_url.endswith("None/") else "None/")
+        return fmt_url
 
     async def _get_url_name(self, raw_url: str) -> str:
         try:
