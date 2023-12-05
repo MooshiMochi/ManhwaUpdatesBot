@@ -211,7 +211,7 @@
   "lscomic": {
     "user_input_url": "https://lscomic.com/manga/8th-class-mage-returns/",
     "expected_results": {
-      "completed": false,
+      "completed": true,
       "cover_image": "https://lscomic.com/wp-content/uploads/2023/09/cover-8CMR.png",
       "curr_chapter_url": "https://lscomic.com/manga/8th-class-mage-returns/chapter-81/",
       "first_chapter_url": "https://lscomic.com/manga/8th-class-mage-returns/chapter-1/",

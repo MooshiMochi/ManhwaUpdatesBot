@@ -1962,7 +1962,7 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.mt-5 > div > b:-soup-contains(\"Original Publication\") + span[status]",
+        "status": "div[q\\:key=Yn_9] > span.mr-2:-soup-contains(\"Status\") + span:last-child",
         "front_page": {
           "container": "div.grid > div.flex.group",
           "chapters": {
