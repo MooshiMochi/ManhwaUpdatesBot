@@ -1368,15 +1368,15 @@
     "resetscans": {
       "chapter_ajax": "html",
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?reset-scans\\.com/(?:manga/)?(?P<url_name>\\w[\\w-]*?.+?)(?:/chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?reset-scans\\.us/(?:manga/)?(?P<url_name>\\w[\\w-]*?.+?)(?:/chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://reset-scans.com",
-        "icon_url": "https://reset-scans.com/wp-content/uploads/2022/10/cropped-01-1-1.png",
+        "base_url": "https://reset-scans.us",
+        "icon_url": "https://reset-scans.us/wp-content/uploads/2022/10/cropped-01-1-1.png",
         "format_urls": {
-          "manga": "https://reset-scans.com/manga/{url_name}/",
-          "ajax": "https://reset-scans.com/manga/{url_name}/ajax/chapters"
+          "manga": "https://reset-scans.us/manga/{url_name}/",
+          "ajax": "https://reset-scans.us/manga/{url_name}/ajax/chapters"
         },
-        "latest_updates_url": "https://reset-scans.com",
+        "latest_updates_url": "https://reset-scans.us",
         "dynamicURL": false
       },
       "selectors": {
@@ -1420,7 +1420,7 @@
         "unwanted_tags": []
       },
       "search": {
-        "url": "https://reset-scans.com/",
+        "url": "https://reset-scans.us/",
         "search_param_name": "s",
         "extra_params": {
           "post_type": "wp-manga",
@@ -1681,14 +1681,14 @@
     "reaperscans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?reaperscans\\.com/comics/(?P<id>[0-9]+)-(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?reapercomics\\.com/comics/(?P<id>[0-9]+)-(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://reaperscans.com",
-        "icon_url": "https://reaperscans.com/images/icons/310x310.png",
+        "base_url": "https://reapercomics.com",
+        "icon_url": "https://reapercomics.com/images/icons/310x310.png",
         "format_urls": {
-          "manga": "https://reaperscans.com/comics/{id}-{url_name}/"
+          "manga": "https://reapercomics.com/comics/{id}-{url_name}/"
         },
-        "latest_updates_url": "https://reaperscans.com/latest/comics",
+        "latest_updates_url": "https://reapercomics.com/latest/comics",
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": false
@@ -1729,7 +1729,7 @@
         }
       },
       "search": {
-        "url": "https://reaperscans.com",
+        "url": "https://reapercomics.com",
         "search_param_name": "placeholder-string",
         "extra_params": {},
         "as_type": "param",

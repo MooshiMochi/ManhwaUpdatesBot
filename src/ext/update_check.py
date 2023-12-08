@@ -4,6 +4,7 @@ import asyncio
 import logging
 import traceback as tb
 from collections import defaultdict
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -494,6 +495,14 @@ class UpdateCheckCog(commands.Cog):
             await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
         finally:
             self.logger.info("Update check finished =================")
+            next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
+            # change the bot's status to show when the next update check will be
+            await self.bot.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name=f"for updates at {datetime.fromtimestamp(next_update_ts):%H:%M}"
+                )
+            )
 
     @tasks.loop(hours=24.0)
     async def check_manhwa_status(self):

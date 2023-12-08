@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 8th 2023
+
+- Updated reaperscans and reset-scans urls.
+- Added the next update time to the bot's status.
+- Renamed the Hidden folder to Subscribed
+
 ## // December 5th 2023
 
 ### Bug Fixes:

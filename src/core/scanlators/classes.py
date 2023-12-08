@@ -310,7 +310,7 @@ class AbstractScanlator(ABC):
             raw_url: str,
             user_id: int,
             guild_id: int,
-            folder: BookmarkFolderType = BookmarkFolderType.Hidden,
+            folder: BookmarkFolderType = BookmarkFolderType.Subscribed,
     ) -> Bookmark | None:
         """
         Creates a Bookmark object from the scanlator's website.

@@ -46,5 +46,5 @@ class BookmarkFolderType(Enum):
     Planned = "planned"
     Finished = "finished"
     Dropped = "dropped"
-    Hidden = "hidden"
+    Subscribed = "subscribed"
     All = "all"

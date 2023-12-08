@@ -114,20 +114,20 @@
     }
   },
   "reaperscans": {
-    "user_input_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic",
+    "user_input_url": "https://reapercomics.com/comics/4099-the-legendary-mechanic",
     "expected_results": {
       "scanlator_name": "reaperscans",
-      "manga_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic",
+      "manga_url": "https://reapercomics.com/comics/4099-the-legendary-mechanic",
       "completed": true,
       "title": "The Legendary Mechanic",
       "manga_id": "4099",
-      "curr_chapter_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10",
-      "first_chapter_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/24239107-chapter-0",
-      "cover_image": "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg",
+      "curr_chapter_url": "https://reapercomics.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10",
+      "first_chapter_url": "https://reapercomics.com/comics/4099-the-legendary-mechanic/chapters/24239107-chapter-0",
+      "cover_image": "https://media.reapercomics.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg",
       "last_3_chapter_urls": [
-        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
-        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
-        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
+        "https://reapercomics.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
+        "https://reapercomics.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
+        "https://reapercomics.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
       ],
       "use_default_id_function": false
     }
@@ -494,21 +494,21 @@
     }
   },
   "resetscans": {
-    "user_input_url": "https://reset-scans.com/manga/oopart/",
+    "user_input_url": "https://reset-scans.us/manga/oopart/",
     "expected_results": {
       "scanlator_name": "resetscans",
-      "manga_url": "https://reset-scans.com/manga/oopart/",
+      "manga_url": "https://reset-scans.us/manga/oopart/",
       "completed": true,
       "title": "OOPARTS",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://reset-scans.com/manga/oopart/chapter-97/",
-      "first_chapter_url": "https://reset-scans.com/manga/oopart/chapter-01/",
-      "cover_image": "https://reset-scans.com/wp-content/uploads/2022/11/OOPARTS.webp",
+      "curr_chapter_url": "https://reset-scans.us/manga/oopart/chapter-97/",
+      "first_chapter_url": "https://reset-scans.us/manga/oopart/chapter-01/",
+      "cover_image": "https://reset-scans.us/wp-content/uploads/2022/11/OOPARTS.webp",
       "last_3_chapter_urls": [
-        "https://reset-scans.com/manga/oopart/chapter-95/",
-        "https://reset-scans.com/manga/oopart/chapter-96/",
-        "https://reset-scans.com/manga/oopart/chapter-97/"
+        "https://reset-scans.us/manga/oopart/chapter-95/",
+        "https://reset-scans.us/manga/oopart/chapter-96/",
+        "https://reset-scans.us/manga/oopart/chapter-97/"
       ]
     }
   },

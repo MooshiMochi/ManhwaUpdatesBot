@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataSource name="database.db">
-  <database-model serializer="dbm" dbms="SQLITE" family-id="SQLITE" format-version="4.49">
-    <root id="1">
-      <ServerVersion>3.43.0</ServerVersion>
-    </root>
+  <database-model serializer="dbm" dbms="SQLITE" family-id="SQLITE" format-version="4.51">
+    <root id="1"/>
     <collation id="2" parent="1" name="RTRIM"/>
     <collation id="3" parent="1" name="NOCASE"/>
     <collation id="4" parent="1" name="BINARY"/>
@@ -446,8 +444,7 @@
     <routine id="176" parent="1" name="fts5"/>
     <schema id="177" parent="1" name="main">
       <Current>1</Current>
-      <IntrospectionTimestamp>2023-11-17.10:11:46.105</IntrospectionTimestamp>
-      <LocalIntrospectionTimestamp>2023-11-17.10:11:46</LocalIntrospectionTimestamp>
+      <LastIntrospectionLocalTimestamp>2023-11-17.10:11:46</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="178" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
