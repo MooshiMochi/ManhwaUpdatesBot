@@ -975,9 +975,9 @@ Ensure the bot has these permissions for smooth operation.
                      value=f"```{translated}```", inline=False)
         await interaction.followup.send(embed=em, ephemeral=True)  # noqa
 
-    @app_commands.command(name="report_incorrect_chapters")
-    async def report_incorrect_chapters(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True, thinking=True)
+    # @app_commands.command(name="report_incorrect_chapters")
+    # async def report_incorrect_chapters(self, interaction: discord.Interaction):
+    #     await interaction.response.defer(ephemeral=True, thinking=True)
 
 
 async def setup(bot: MangaClient) -> None:
