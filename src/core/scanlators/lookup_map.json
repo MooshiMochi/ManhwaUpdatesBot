@@ -909,7 +909,7 @@
       "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/series/(?P<id>\\d+)(/(?P<url_name>[\\w-]+))?(?:/.*)?",
       "properties": {
         "base_url": "https://bato.to",
-        "icon_url": "https://bato.to/amsta/img/batoto/favicon.ico?v0",
+        "icon_url": "https://bato.to/public-assets/img/favicon.ico",
         "format_urls": {
           "manga": "https://bato.to/series/{id}/{url_name}/"
         },
@@ -918,7 +918,8 @@
       },
       "selectors": {
         "title": [
-          "h3.item-title > a"
+          "h3.item-title > a",
+          "h3 > a"
         ],
         "synopsis": " div[id=limit-height-body-summary] > div.limit-html",
         "cover": [
@@ -1691,7 +1692,7 @@
         "latest_updates_url": "https://reapercomics.com/latest/comics",
         "dynamicURL": false,
         "requires_update_embed": true,
-        "can_render_cover": false
+        "can_render_cover": true
       },
       "selectors": {
         "title": [

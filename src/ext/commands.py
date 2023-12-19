@@ -863,7 +863,7 @@ Ensure the bot has these permissions for smooth operation.
                     await interaction.edit_original_response(embed=no_results_em)
                     return
                 view = SubscribeView(self.bot, items=embeds, author_id=interaction.user.id)  # noqa
-                await interaction.followup.send(embed=embeds[0], ephemeral=True, view=view)
+                await interaction.edit_original_response(embed=embeds[0], view=view)
             else:
                 await interaction.edit_original_response(embed=cannot_search_em)
                 return
