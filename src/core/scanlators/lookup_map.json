@@ -906,12 +906,12 @@
     "bato": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/series/(?P<id>\\d+)(/(?P<url_name>[\\w-]+))?(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/title/(?P<id>\\d+)(-(?P<url_name>[\\w-]+))?(?:/.*)?",
       "properties": {
         "base_url": "https://bato.to",
         "icon_url": "https://bato.to/public-assets/img/favicon.ico",
         "format_urls": {
-          "manga": "https://bato.to/series/{id}/{url_name}/"
+          "manga": "https://bato.to/title/{id}-{url_name}/"
         },
         "latest_updates_url": "https://bato.to/",
         "dynamicURL": false
@@ -921,15 +921,15 @@
           "h3.item-title > a",
           "h3 > a"
         ],
-        "synopsis": " div[id=limit-height-body-summary] > div.limit-html",
+        "synopsis": "div astro-island > div > div > div.limit-html-p",
         "cover": [
           "[property=og\\:image]",
-          "div.row.detail-set > div.col-24 >img.shadow-6"
+          "div.flex > div.w-24 >img.shadow-md"
         ],
         "chapters": {
-          "container": "div.main > div > a.chapt",
-          "name": "b",
-          "url": "_container_"
+          "container": "div.group > astro-slot > div",
+          "name": "div > a.link-hover:first-child",
+          "url": "div > a.link-hover:first-child"
         },
         "status": "div.attr-item > b:-soup-contains(\"Upload status\") + span",
         "front_page": {

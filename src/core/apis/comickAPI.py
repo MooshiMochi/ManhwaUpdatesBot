@@ -15,7 +15,7 @@ class ComickAppAPI:
             self,
             api_manager: APIManager
     ):
-        self.api_url: str = "https://api.comick.app"
+        self.api_url: str = "https://api.comick.cc"
         self.manager = api_manager
         self.headers = {
             "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
