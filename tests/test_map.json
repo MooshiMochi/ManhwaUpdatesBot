@@ -19,20 +19,20 @@
     }
   },
   "manganato": {
-    "user_input_url": "https://chapmanganato.com/manga-hf985162",
+    "user_input_url": "https://chapmanganato.to/manga-hf985162",
     "expected_results": {
       "scanlator_name": "manganato",
-      "manga_url": "https://chapmanganato.com/manga-hf985162/",
+      "manga_url": "https://chapmanganato.to/manga-hf985162/",
       "completed": false,
       "title": "God Of Blackfield",
       "manga_id": "hf985162",
-      "curr_chapter_url": "https://chapmanganato.com/manga-hf985162/chapter-155",
-      "first_chapter_url": "https://chapmanganato.com/manga-hf985162/chapter-1",
+      "curr_chapter_url": "https://chapmanganato.to/manga-hf985162/chapter-155",
+      "first_chapter_url": "https://chapmanganato.to/manga-hf985162/chapter-1",
       "cover_image": "https://avt.mkklcdnv6temp.com/3/y/21-1587115897.jpg",
       "last_3_chapter_urls": [
-        "https://chapmanganato.com/manga-hf985162/chapter-153",
-        "https://chapmanganato.com/manga-hf985162/chapter-154",
-        "https://chapmanganato.com/manga-hf985162/chapter-155"
+        "https://chapmanganato.to/manga-hf985162/chapter-153",
+        "https://chapmanganato.to/manga-hf985162/chapter-154",
+        "https://chapmanganato.to/manga-hf985162/chapter-155"
       ],
       "use_default_id_function": true
     }
@@ -152,20 +152,20 @@
     }
   },
   "comick": {
-    "user_input_url": "https://comick.app/comic/00-solo-leveling",
+    "user_input_url": "https://comick.cc/comic/00-solo-leveling",
     "expected_results": {
       "scanlator_name": "comick",
-      "manga_url": "https://comick.app/comic/00-solo-leveling?lang=en",
+      "manga_url": "https://comick.cc/comic/00-solo-leveling?lang=en",
       "completed": true,
       "title": "Solo Leveling",
       "manga_id": "71gMd0vF",
-      "curr_chapter_url": "https://comick.app/comic/00-solo-leveling/DARIhC3K",
-      "first_chapter_url": "https://comick.app/comic/00-solo-leveling/P_ysNE3VbnLbwN",
+      "curr_chapter_url": "https://comick.cc/comic/00-solo-leveling/DARIhC3K",
+      "first_chapter_url": "https://comick.cc/comic/00-solo-leveling/P_ysNE3VbnLbwN",
       "cover_image": "https://meo.comick.pictures/0GRgd.jpg",
       "last_3_chapter_urls": [
-        "https://comick.app/comic/00-solo-leveling/s_ukimbV",
-        "https://comick.app/comic/00-solo-leveling/YgUzmswO",
-        "https://comick.app/comic/00-solo-leveling/DARIhC3K"
+        "https://comick.cc/comic/00-solo-leveling/s_ukimbV",
+        "https://comick.cc/comic/00-solo-leveling/YgUzmswO",
+        "https://comick.cc/comic/00-solo-leveling/DARIhC3K"
       ],
       "use_default_id_function": false
     }
@@ -285,19 +285,19 @@
     }
   },
   "bato": {
-    "user_input_url": "https://bato.to/series/95400/queen-in-the-shadows",
+    "user_input_url": "https://bato.to/title/95400-queen-in-the-shadows",
     "expected_results": {
       "completed": true,
       "cover_image": "https://xfs-s118.batcg.org/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
-      "curr_chapter_url": "https://bato.to/chapter/2031007",
-      "first_chapter_url": "https://bato.to/chapter/1803219",
+      "curr_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/2031007-ch_60",
+      "first_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/1803219-ch_1",
       "last_3_chapter_urls": [
-        "https://bato.to/chapter/2018714",
-        "https://bato.to/chapter/2029629",
-        "https://bato.to/chapter/2031007"
+        "https://bato.to/title/95400-queen-in-the-shadows/2018714-ch_58",
+        "https://bato.to/title/95400-queen-in-the-shadows/2029629-ch_59",
+        "https://bato.to/title/95400-queen-in-the-shadows/2031007-ch_60"
       ],
       "manga_id": "95400",
-      "manga_url": "https://bato.to/series/95400/queen-in-the-shadows",
+      "manga_url": "https://bato.to/title/95400-queen-in-the-shadows",
       "scanlator_name": "bato",
       "title": "Queen in the Shadows",
       "use_default_id_function": false
@@ -513,21 +513,21 @@
     }
   },
   "kaiscans": {
-    "user_input_url": "https://www.kaiscans.com/series/dungeon-odyssey/",
+    "user_input_url": "https://kaiscans.com/series/dungeon-odyssey/",
     "expected_results": {
       "scanlator_name": "kaiscans",
-      "manga_url": "https://www.kaiscans.com/series/dungeon-odyssey/",
+      "manga_url": "https://kaiscans.com/series/dungeon-odyssey/",
       "completed": false,
       "title": "Dungeon Odyssey",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://www.kaiscans.com/dungeon-odyssey-chapter-64/",
-      "first_chapter_url": "https://www.kaiscans.com/dungeon-odyssey-61/",
+      "curr_chapter_url": "https://kaiscans.com/dungeon-odyssey-chapter-64/",
+      "first_chapter_url": "https://kaiscans.com/dungeon-odyssey-61/",
       "cover_image": "https://www.kaiscans.com/wp-content/uploads/2023/09/34cf7271-a9a7-4574-a509-66074b85a87a_z.jpg",
       "last_3_chapter_urls": [
-        "https://www.kaiscans.com/dungeon-odyssey-62/",
-        "https://www.kaiscans.com/dungeon-odyssey-63/",
-        "https://www.kaiscans.com/dungeon-odyssey-chapter-64/"
+        "https://kaiscans.com/dungeon-odyssey-62/",
+        "https://kaiscans.com/dungeon-odyssey-63/",
+        "https://kaiscans.com/dungeon-odyssey-chapter-64/"
       ]
     }
   },
@@ -627,21 +627,21 @@
     }
   },
   "manga-demon": {
-    "user_input_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince-VA44",
+    "user_input_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA46",
     "expected_results": {
       "scanlator_name": "manga-demon",
-      "manga_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince-VA44",
+      "manga_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA46",
       "completed": false,
       "title": "Reborn as the Enemy Prince",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA44",
-      "first_chapter_url": "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA44",
+      "curr_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA46",
+      "first_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA46",
       "cover_image": "https://readermc.org/images/thumbnails/Reborn as the Enemy Prince.webp",
       "last_3_chapter_urls": [
-        "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA44",
-        "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA44",
-        "https://manga-demon.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA44"
+        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA46",
+        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA46",
+        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA46"
       ]
     }
   }

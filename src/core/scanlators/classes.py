@@ -669,9 +669,13 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 url = manga_tag.select_one(self.json_tree.selectors.search.url).get("href")
             if not (url.startswith("https://") or url.startswith("http://")):  # noqa
                 url = self.json_tree.properties.base_url + url
-            name = manga_tag.select_one(  # noqa: Invalid scope warning
-                self.json_tree.selectors.search.title
-            ).get_text(strip=True)
+
+            if self.json_tree.selectors.search.title == "_container_":
+                name = manga_tag.get_text(strip=True)  # noqa: Invalid scope warning
+            else:
+                name = manga_tag.select_one(  # noqa: Invalid scope warning
+                    self.json_tree.selectors.search.title
+                ).get_text(strip=True)
 
             cover_url: str | None = None
             if self.json_tree.selectors.search.cover is not None:

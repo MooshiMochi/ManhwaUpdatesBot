@@ -516,12 +516,25 @@ class _Mangapark(BasicScanlator):
         return found_chapters
 
 
+class _Bato(BasicScanlator):
+    def __init__(self, name: str, **kwargs):
+        super().__init__(name, **kwargs)
+
+    async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
+        r = await super().get_all_chapters(raw_url)
+        # reverse the index
+        for i, chap in enumerate(reversed(r)):
+            chap.index = i
+        return r[::-1]  # could sort based on index, but that will require more processing
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
     omegascans: str = "omegascans"
     rizzcomic: str = "rizzcomic"
     novelmic: str = "novelmic"
     mangapark: str = "mangapark"
+    bato: str = "bato"
 
 
 keys = CustomKeys()
@@ -531,3 +544,4 @@ scanlators[keys.omegascans] = _OmegaScans(keys.omegascans, **scanlators[keys.ome
 scanlators[keys.rizzcomic] = _Rizzcomic(keys.rizzcomic, **scanlators[keys.rizzcomic])  # noqa: This is a dict
 scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic])  # noqa: This is a dict
 scanlators[keys.mangapark] = _Mangapark(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict
+scanlators[keys.bato] = _Bato(keys.bato, **scanlators[keys.bato])  # noqa: This is a dict

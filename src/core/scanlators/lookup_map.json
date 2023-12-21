@@ -215,14 +215,14 @@
     "manganato": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?(?:chap)?manganato\\.com/manga-(?P<id>[a-zA-Z0-9]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?(?:chap)?manganato\\.to/manga-(?P<id>[a-zA-Z0-9]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://chapmanganato.com",
-        "icon_url": "https://manganato.com/favicon.png",
+        "base_url": "https://chapmanganato.to",
+        "icon_url": "https://manganato.to/favicon.png",
         "format_urls": {
-          "manga": "https://chapmanganato.com/manga-{id}/"
+          "manga": "https://chapmanganato.to/manga-{id}/"
         },
-        "latest_updates_url": "https://manganato.com/",
+        "latest_updates_url": "https://manganato.to/",
         "dynamicURL": false
       },
       "selectors": {
@@ -267,7 +267,7 @@
         }
       },
       "search": {
-        "url": "https://chapmanganato.com/search/story/",
+        "url": "https://chapmanganato.to/search/story/",
         "as_type": "path",
         "query_parsing": {
           "encoding": null,
@@ -903,72 +903,6 @@
         "request_method": "GET"
       }
     },
-    "bato": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/title/(?P<id>\\d+)(-(?P<url_name>[\\w-]+))?(?:/.*)?",
-      "properties": {
-        "base_url": "https://bato.to",
-        "icon_url": "https://bato.to/public-assets/img/favicon.ico",
-        "format_urls": {
-          "manga": "https://bato.to/title/{id}-{url_name}/"
-        },
-        "latest_updates_url": "https://bato.to/",
-        "dynamicURL": false
-      },
-      "selectors": {
-        "title": [
-          "h3.item-title > a",
-          "h3 > a"
-        ],
-        "synopsis": "div astro-island > div > div > div.limit-html-p",
-        "cover": [
-          "[property=og\\:image]",
-          "div.flex > div.w-24 >img.shadow-md"
-        ],
-        "chapters": {
-          "container": "div.group > astro-slot > div",
-          "name": "div > a.link-hover:first-child",
-          "url": "div > a.link-hover:first-child"
-        },
-        "status": "div.attr-item > b:-soup-contains(\"Upload status\") + span",
-        "front_page": {
-          "container": "div[id=series-list] > div.col.item",
-          "chapters": {
-            "container": "div.item-volch> a",
-            "name": "_container_",
-            "url": "_container_"
-          },
-          "title": "div.item-text > a",
-          "url": "a",
-          "cover": "a > img.rounded"
-        },
-        "unwanted_tags": [
-          "a.me-2"
-        ],
-        "search": {
-          "container": "div.item",
-          "chapters": {
-            "container": "div.item-volch",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "a.item-title",
-          "url": "a.item-title",
-          "cover": "img.rounded"
-        }
-      },
-      "search": {
-        "search_param_name": "word",
-        "url": "https://bato.to/search",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
     "mangasiamese": {
       "chapter_ajax": "html",
       "request_method": "http",
@@ -1443,12 +1377,12 @@
       "request_method": "http",
       "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.com/(?:series/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://www.kaiscans.com",
-        "icon_url": "i3.wp.com/kaiscans.com/wp-content/uploads/2023/08/cropped-kai-gradient.png",
+        "base_url": "https://kaiscans.com",
+        "icon_url": "https://i3.wp.com/kaiscans.com/wp-content/uploads/2023/08/cropped-kai-gradient.png",
         "format_urls": {
-          "manga": "https://www.kaiscans.com/series/{url_name}/"
+          "manga": "https://kaiscans.com/series/{url_name}/"
         },
-        "latest_updates_url": "https://www.kaiscans.com",
+        "latest_updates_url": "https://kaiscans.com",
         "dynamicURL": false
       },
       "selectors": {
@@ -1487,7 +1421,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://www.kaiscans.com/",
+        "url": "https://kaiscans.com/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -1623,15 +1557,17 @@
     "manga-demon": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?manga-demon\\.org/(?:manga/)?(?P<url_name>\\w[\\w-]*?)/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?demoncomics\\.org/(?:manga/)?(?P<url_name>\\w[\\w-]*?)/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://manga-demon.org",
-        "icon_url": "https://manga-demon.org/img/logo.png",
+        "base_url": "https://demoncomics.org",
+        "icon_url": "https://demoncomics.org/img/logo.png",
         "format_urls": {
-          "manga": "https://manga-demon.org/manga/{url_name}"
+          "manga": "https://demoncomics.org/manga/{url_name}"
         },
-        "latest_updates_url": "https://manga-demon.org",
-        "dynamicURL": false
+        "latest_updates_url": "https://demoncomics.org",
+        "dynamicURL": false,
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/[\\w-]+?)(?P<id>\\w+)(?P<after_id>/?$)",
+        "missing_id_connector_char": "-"
       },
       "selectors": {
         "title": [
@@ -1668,7 +1604,7 @@
       },
       "search": {
         "search_param_name": "manga",
-        "url": "https://manga-demon.org/search.php",
+        "url": "https://demoncomics.org/search.php",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -1991,6 +1927,72 @@
       "search": {
         "search_param_name": "word",
         "url": "https://mangapark.net/v5x-search",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "bato": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?bato\\.to/(?:title|series)/(?P<id>\\d+)(?:[-/](?P<url_name>[\\w-]+))?(?:/.*)?",
+      "properties": {
+        "base_url": "https://bato.to",
+        "icon_url": "https://bato.to/public-assets/img/favicon.ico",
+        "format_urls": {
+          "manga": "https://bato.to/title/{id}-{url_name}/"
+        },
+        "latest_updates_url": "https://bato.to/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "h3.item-title > a",
+          "h3 > a"
+        ],
+        "synopsis": "div astro-island > div > div > div.limit-html-p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.flex > div.w-24 >img.shadow-md"
+        ],
+        "chapters": {
+          "container": "div.group > astro-slot > div",
+          "name": "div > a.link-hover:first-child",
+          "url": "div > a.link-hover:first-child"
+        },
+        "status": "div.space-y-2:not(.grow):not(.hidden) > div > span.hidden:-soup-contains(\"Upload Status\") + span",
+        "front_page": {
+          "container": "div.grid.grid-cols-1 > div.pb-5",
+          "chapters": {
+            "container": "div.flex-nowrap > span > a",
+            "name": "span",
+            "url": "_container_"
+          },
+          "title": "h3 > a > span",
+          "url": "h3 > a",
+          "cover": "div.shrink-0 > a > img"
+        },
+        "unwanted_tags": [
+          "a.me-2"
+        ],
+        "search": {
+          "container": "div.grid.grid-cols-1 > div",
+          "chapters": {
+            "container": "div.flex-nowrap > span > a",
+            "name": "span",
+            "url": "_container_"
+          },
+          "title": "h3 > a > span",
+          "url": "h3 > a",
+          "cover": "div.shrink-0 > a > img"
+        }
+      },
+      "search": {
+        "search_param_name": "word",
+        "url": "https://bato.to/v3x-search",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"

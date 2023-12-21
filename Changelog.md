@@ -2,6 +2,18 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 21st 2023
+
+- Reduced the update check interval to 25 mins.
+- Updated bato.to to use the v3 version of the website.
+- Updated manga-demon.org to demoncomics.org
+- Fixed kaiscans url.
+- Updated manganato.com to manganato.to
+
+### Bug Fixes:
+
+- Updated comick's TLD to reflect their new API change.
+
 ## // December 8th 2023
 
 - Updated reaperscans and reset-scans urls.
