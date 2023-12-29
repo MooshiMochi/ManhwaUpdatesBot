@@ -1618,14 +1618,14 @@
     "reaperscans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?reapercomics\\.com/comics/(?P<id>[0-9]+)-(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?reaperscans\\.com/comics/(?P<id>[0-9]+)-(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://reapercomics.com",
-        "icon_url": "https://reapercomics.com/images/icons/310x310.png",
+        "base_url": "https://reaperscans.com",
+        "icon_url": "https://reaperscans.com/images/icons/310x310.png",
         "format_urls": {
-          "manga": "https://reapercomics.com/comics/{id}-{url_name}/"
+          "manga": "https://reaperscans.com/comics/{id}-{url_name}/"
         },
-        "latest_updates_url": "https://reapercomics.com/latest/comics",
+        "latest_updates_url": "https://reaperscans.com/latest/comics",
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": true
@@ -1666,7 +1666,7 @@
         }
       },
       "search": {
-        "url": "https://reapercomics.com",
+        "url": "https://reaperscans.com",
         "search_param_name": "placeholder-string",
         "extra_params": {},
         "as_type": "param",
@@ -1963,7 +1963,7 @@
           "name": "div > a.link-hover:first-child",
           "url": "div > a.link-hover:first-child"
         },
-        "status": "div.space-y-2:not(.grow):not(.hidden) > div > span.hidden:-soup-contains(\"Upload Status\") + span",
+        "status": "div.space-y-2:not(.grow):not(.hidden) > div > span.hidden + span",
         "front_page": {
           "container": "div.grid.grid-cols-1 > div.pb-5",
           "chapters": {

@@ -9,7 +9,7 @@ from curl_cffi.requests import Response
 
 from src.core.objects import CachedResponse
 from src.static import EMPTY
-from src.utils import get_url_hostname, is_from_stack_origin
+from src.utils import is_from_stack_origin
 from . import rate_limiter
 
 
@@ -52,6 +52,17 @@ class BaseCacheSessionMixin:
 
         # Start a background task to periodically clear the cache
         self._clear_cache_task = asyncio.create_task(self._clear_cache_periodically())
+
+    @staticmethod
+    def fmt_cached_url(url, **kwargs) -> str:
+        # hostname = get_url_hostname(url)
+        # is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
+        # limiter: rate_limiter.Limiter = self.getLimiter(hostname)
+        cached_url = url.removesuffix("/")
+        url_params = kwargs.get("params")
+        if url_params:
+            cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+        return cached_url
 
     async def _clear_cache_periodically(self) -> None:
         while True:
@@ -164,13 +175,7 @@ class CachedClientSession(aiohttp.ClientSession, BaseCacheSessionMixin):
                 if hdr not in kwargs["headers"]:
                     kwargs["headers"][hdr] = default_header_opts[hdr]
 
-        hostname = get_url_hostname(url)
-        is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
-        limiter: rate_limiter.Limiter = self.getLimiter(hostname)
-        cached_url = url.removesuffix("/")
-        url_params = kwargs.get("params")
-        if url_params:
-            cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+        cached_url = self.fmt_cached_url(url, **kwargs)
 
         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # await limiter.try_acquire(is_user_request=is_user_req)
@@ -214,13 +219,7 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
     async def request(self, method, url, cache_time: Optional[int] = None, *args, **kwargs) -> Response:
         self.logger.debug("Making request...")
 
-        hostname = get_url_hostname(url)
-        is_user_req: bool = not is_from_stack_origin(class_name="UpdateCheckCog", function_name="check_updates_task")
-        limiter: rate_limiter.Limiter = self.getLimiter(hostname)
-        cached_url = url.removesuffix("/")
-        url_params = kwargs.get("params")
-        if url_params:
-            cached_url = cached_url + "?" + "&".join([f"{k}={v}" for k, v in url_params.items()])
+        cached_url = self.fmt_cached_url(url, **kwargs)
 
         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
             # Don't cache ignored URLs

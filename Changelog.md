@@ -2,6 +2,13 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 29th 2023
+
+### Bug Fixes:
+
+- Fixed reaperscans once again. They changed their domain.
+- Fixed bug in bato for series that don't have the 'Upload Status' tag.
+
 ## // December 21st 2023
 
 - Reduced the update check interval to 25 mins.

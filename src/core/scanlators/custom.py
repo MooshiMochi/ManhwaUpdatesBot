@@ -527,6 +527,23 @@ class _Bato(BasicScanlator):
             chap.index = i
         return r[::-1]  # could sort based on index, but that will require more processing
 
+    async def get_status(self, raw_url: str) -> str:
+        if self.json_tree.properties.no_status:
+            method = "POST" if self.json_tree.uses_ajax else "GET"
+            text = await self._get_text(await self.format_manga_url(raw_url, use_ajax_url=True), method=method)  # noqa
+        else:
+            text = await self._get_text(await self.format_manga_url(raw_url))
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+
+        status_selector = self.json_tree.selectors.status
+        status_elems = soup.select(status_selector)
+        status = status_elems[-1] if status_elems else None
+        if status:
+            status_text = status.get_text(strip=True)
+            return re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
+        return "Unknown"
+
 
 class CustomKeys:
     reaperscans: str = "reaperscans"

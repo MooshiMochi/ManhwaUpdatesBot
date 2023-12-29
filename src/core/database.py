@@ -124,7 +124,7 @@ class Database:
 
             await db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS scanlators_config (
+                    CREATE TABLE IF NOT EXISTS scanlators_config (
                     scanlator TEXT PRIMARY KEY NOT NULL,
                     enabled BOOLEAN NOT NULL DEFAULT 1
                 );
