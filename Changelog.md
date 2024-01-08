@@ -2,6 +2,15 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 8th 2024
+
+- Updated the test case for Kaiscans.
+
+### Bug Fixes:
+
+- Fixed zeroscans. They are updated to a new domain (zscan.com)
+- Fixed demoncomics. Changed it to DynamicURLScanlator type.
+
 ## // December 29th 2023
 
 ### Bug Fixes:

@@ -1374,7 +1374,7 @@
     },
     "kaiscans": {
       "chapter_ajax": null,
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.com/(?:series/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://kaiscans.com",
@@ -1554,20 +1554,20 @@
         "request_method": "GET"
       }
     },
-    "manga-demon": {
+    "demoncomics": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?demoncomics\\.org/(?:manga/)?(?P<url_name>\\w[\\w-]*?)/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/(?P<url_name>[\\w\\d\\-%\\.]+?)(?:/chapter/\\d+)?-?(?P<id>[\\w\\d]{4})/?$",
       "properties": {
         "base_url": "https://demoncomics.org",
         "icon_url": "https://demoncomics.org/img/logo.png",
         "format_urls": {
-          "manga": "https://demoncomics.org/manga/{url_name}"
+          "manga": "https://demoncomics.org/manga/{url_name}-{id}"
         },
         "latest_updates_url": "https://demoncomics.org",
-        "dynamicURL": false,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/[\\w-]+?)(?P<id>\\w+)(?P<after_id>/?$)",
-        "missing_id_connector_char": "-"
+        "dynamicURL": true,
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/.+?)(?P<id>\\w+)(?P<after_id>/?$)",
+        "missing_id_connector_char": ""
       },
       "selectors": {
         "title": [

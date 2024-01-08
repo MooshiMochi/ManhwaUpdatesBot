@@ -513,40 +513,40 @@
     }
   },
   "kaiscans": {
-    "user_input_url": "https://kaiscans.com/series/dungeon-odyssey/",
+    "user_input_url": "https://kaiscans.com/series/return-of-the-mad-demon/",
     "expected_results": {
       "scanlator_name": "kaiscans",
-      "manga_url": "https://kaiscans.com/series/dungeon-odyssey/",
+      "manga_url": "https://kaiscans.com/series/return-of-the-mad-demon/",
       "completed": false,
-      "title": "Dungeon Odyssey",
+      "title": "Return of the Mad Demon",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://kaiscans.com/dungeon-odyssey-chapter-64/",
-      "first_chapter_url": "https://kaiscans.com/dungeon-odyssey-61/",
-      "cover_image": "https://www.kaiscans.com/wp-content/uploads/2023/09/34cf7271-a9a7-4574-a509-66074b85a87a_z.jpg",
+      "curr_chapter_url": "https://kaiscans.com/return-of-the-mad-demon-chapter-90/",
+      "first_chapter_url": "https://kaiscans.com/return-of-the-mad-demon-82/",
+      "cover_image": "https://kaiscans.com/wp-content/uploads/2023/08/2102434127.webp",
       "last_3_chapter_urls": [
-        "https://kaiscans.com/dungeon-odyssey-62/",
-        "https://kaiscans.com/dungeon-odyssey-63/",
-        "https://kaiscans.com/dungeon-odyssey-chapter-64/"
+        "https://kaiscans.com/return-of-the-mad-demon-chapter-88/",
+        "https://kaiscans.com/return-of-the-mad-demon-chapter-89/",
+        "https://kaiscans.com/return-of-the-mad-demon-chapter-90/"
       ]
     }
   },
   "zeroscans": {
-    "user_input_url": "https://zeroscans.com/comics/bowblade-spirit/",
+    "user_input_url": "https://zscans.com/comics/bowblade-spirit/",
     "expected_results": {
       "scanlator_name": "zeroscans",
-      "manga_url": "https://zeroscans.com/comics/bowblade-spirit",
+      "manga_url": "https://zscans.com/comics/bowblade-spirit",
       "completed": true,
       "title": "Bowblade Spirit",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://zeroscans.com/comics/bowblade-spirit/4815",
-      "first_chapter_url": "https://zeroscans.com/comics/bowblade-spirit/1338",
-      "cover_image": "https://api.zeroscans.com/storage/76102/conversions/9087f1f9e26a9a99e19280c57dab060d-full.webp",
+      "curr_chapter_url": "https://zscans.com/comics/bowblade-spirit/4815",
+      "first_chapter_url": "https://zscans.com/comics/bowblade-spirit/1338",
+      "cover_image": "https://api.zscans.com/storage/76102/conversions/9087f1f9e26a9a99e19280c57dab060d-full.webp",
       "last_3_chapter_urls": [
-        "https://zeroscans.com/comics/bowblade-spirit/4813",
-        "https://zeroscans.com/comics/bowblade-spirit/4814",
-        "https://zeroscans.com/comics/bowblade-spirit/4815"
+        "https://zscans.com/comics/bowblade-spirit/4813",
+        "https://zscans.com/comics/bowblade-spirit/4814",
+        "https://zscans.com/comics/bowblade-spirit/4815"
       ]
     }
   },
@@ -618,7 +618,7 @@
       "use_default_id_function": true,
       "curr_chapter_url": "https://cosmic-scans.com/updater-chapter-99/",
       "first_chapter_url": "https://cosmic-scans.com/updater-chapter-93-season-2-end/",
-      "cover_image": "https://cosmic-scans.com/wp-content/uploads/2022/11/resource-1_cugan_conservative_4x_i1.00.webp",
+      "cover_image": "https://cosmic-scans.com/wp-content/uploads/2022/11/resource-1_cugan_conservative_4x_i1.00-759x1024.webp",
       "last_3_chapter_urls": [
         "https://cosmic-scans.com/updater-chapter-97/",
         "https://cosmic-scans.com/updater-chapter-98/",
@@ -626,22 +626,22 @@
       ]
     }
   },
-  "manga-demon": {
-    "user_input_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA46",
+  "demoncomics": {
+    "user_input_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA48",
     "expected_results": {
-      "scanlator_name": "manga-demon",
-      "manga_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA46",
+      "scanlator_name": "demoncomics",
+      "manga_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA48",
       "completed": false,
       "title": "Reborn as the Enemy Prince",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA46",
-      "first_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA46",
+      "curr_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA48",
+      "first_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA48",
       "cover_image": "https://readermc.org/images/thumbnails/Reborn as the Enemy Prince.webp",
       "last_3_chapter_urls": [
-        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA46",
-        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA46",
-        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA46"
+        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA48",
+        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA48",
+        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA48"
       ]
     }
   }

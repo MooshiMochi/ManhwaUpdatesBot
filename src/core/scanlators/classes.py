@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import traceback
+from copy import deepcopy
 from datetime import datetime
 from io import BytesIO
 from typing import Literal, Optional, TYPE_CHECKING
@@ -830,7 +831,7 @@ class DynamicURLScanlator(BasicScanlator):
         unloaded_manga: list[Manga] = []
 
         for actual_manga in mangas:
-            manga = actual_manga.copy()  # don't want to mutate the actual loaded manga
+            manga = deepcopy(actual_manga)  # don't want to mutate the actual loaded manga
             manga._url = await self._insert_id_placeholder(manga.url)
             manga._last_chapter.url = await self._insert_id_placeholder(manga.last_chapter.url)
             for chapter in manga._available_chapters:

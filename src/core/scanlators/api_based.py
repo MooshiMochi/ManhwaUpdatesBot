@@ -232,8 +232,8 @@ class _MangaDex(AbstractScanlator):
 
 class _ZeroScans(AbstractScanlator):
     rx: re.Pattern = RegExpressions.zeroscans_url
-    icon_url = "https://zeroscans.com/favicon.ico"
-    base_url = "https://zeroscans.com"
+    icon_url = "https://zscans.com/favicon.ico"
+    base_url = "https://zscans.com"
     fmt_url = base_url + "/comics/{url_name}"
     chp_url_fmt = fmt_url + "/{chapter_id}"
 

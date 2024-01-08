@@ -22,7 +22,7 @@ class ZeroScansAPI:
             self,
             api_manager: APIManager
     ):
-        self.api_url: str = "https://zeroscans.com"
+        self.api_url: str = "https://zscans.com"
         self.manager = api_manager
         self.headers = {
             # "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
