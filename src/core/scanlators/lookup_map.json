@@ -1612,6 +1612,736 @@
         "request_method": "GET",
         "extra_params": {}
       }
+    },
+    "mangareader": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?(?:chap)?mangareader\\.to/(?:read/)?(?P<url_name>[\\w-]+)-(?P<id>[a-zA-Z0-9]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://mangareader.to",
+        "icon_url": "https://mangareader.to/favicon.ico",
+        "format_urls": {
+          "manga": "https://mangareader.to/{url_name}-{id}"
+        },
+        "latest_updates_url": "https://mangareader.to/home",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "h2.manga-name"
+        ],
+        "synopsis": "div.description-modal",
+        "cover": [
+          "div.manga-poster > img:first-child"
+        ],
+        "chapters": {
+          "container": "div.chapters-list-ul > ul:first-child > li",
+          "name": "span.name",
+          "url": "a.item-link"
+        },
+        "status": "div.item.item-title > span:-soup-contains(\"Status\") + span.name",
+        "front_page": {
+          "container": "div#latest-chap div.mls-wrap > div.item",
+          "chapters": {
+            "container": "div.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "a[title]",
+          "url": "a[title]",
+          "cover": "img[alt]"
+        },
+        "search": {
+          "container": "div.mls-wrap > div.item",
+          "title": "h3.manga-name > a",
+          "url": "h3.manga-name > a",
+          "cover": "img[alt]",
+          "chapters": {
+            "container": "div.tab-content > div:first-child div.chapter, div.manga-detail > div.fd-list > div > div.chapter",
+            "name": "a",
+            "url": "a"
+          }
+        },
+        "unwanted_tags": [
+          "i.far"
+        ]
+      },
+      "search": {
+        "search_param_name": "keyword",
+        "url": "https://mangareader.to/search",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET",
+        "extra_params": {}
+      }
+    },
+    "arvenscans": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?arvenscans\\.org/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://arvenscans.org",
+        "icon_url": "https://arvenscans.org/wp-content/uploads/2023/08/icon_website1.png",
+        "format_urls": {
+          "manga": "https://arvenscans.org/series/{url_name}/"
+        },
+        "latest_updates_url": "https://arvenscans.org",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div#titlemove > h1.entry-title"
+        ],
+        "synopsis": "div.entry-content > p",
+        "cover": [
+          "div.thumb > img"
+        ],
+        "chapters": {
+          "container": "div.eplister div.eph-num",
+          "name": "a > span.chapternum",
+          "url": "a"
+        },
+        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "front_page": {
+          "container": "div.listupd div.uta",
+          "chapters": {
+            "container": "ul > li",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.luf > a > h4",
+          "url": "div.luf > a",
+          "cover": "img.ts-post-image, picture.ts-post-image > img"
+        },
+        "unwanted_tags": [
+          "div.entry-content > h3"
+        ],
+        "search": {
+          "container": "div.bsx",
+          "title": "div.tt",
+          "url": "a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://arvenscans.org/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "manhwa-freak": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?manhwa-freak\\.com/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-ch-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://manhwa-freak.com",
+        "icon_url": "https://manhwa-freak.com/wp-content/uploads/2022/04/2.png",
+        "format_urls": {
+          "manga": "https://manhwa-freak.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://manhwa-freak.com",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "h1.title"
+        ],
+        "synopsis": "div#summary > p",
+        "cover": [
+          "div.info > img[alt]"
+        ],
+        "chapters": {
+          "container": "div.chapter-li > a",
+          "name": "div.chapter-info > p:first-child",
+          "url": "_container_"
+        },
+        "status": "div.right > div > p:-soup-contains(\"Status\") + p",
+        "front_page": {
+          "container": "div.lastest div.lastest-serie",
+          "chapters": {
+            "container": "ul.lastest-chap > a",
+            "name": "li",
+            "url": "_container_"
+          },
+          "title": "div.lastest-title > a[title]",
+          "url": "div.lastest-title > a[title]",
+          "cover": "div.img > img[alt]"
+        },
+        "unwanted_tags": [
+          "li > span > p"
+        ],
+        "search": {
+          "container": "div.lastest-serie",
+          "title": "a[title]",
+          "url": "a[title]",
+          "cover": "div.img > img[alt]"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://manhwa-freak.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "freakscans": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?freakscans\\.com/(?:manga/)?(?P<url_name>\\w[\\w-]*?)(?:-ch-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://freakscans.com",
+        "icon_url": "https://i2.wp.com/freakscans.com/wp-content/uploads/2023/12/cropped-Site-Freak-Icon-PSD.png",
+        "format_urls": {
+          "manga": "https://freakscans.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://freakscans.com",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.infox > h1.entry-title"
+        ],
+        "synopsis": "div.entry-content",
+        "cover": [
+          "div.thumb > img"
+        ],
+        "chapters": {
+          "container": "div.eph-num",
+          "name": "a > span.chapternum",
+          "url": "a"
+        },
+        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "front_page": {
+          "container": "div.uta",
+          "chapters": {
+            "container": "div.luf > ul > li",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.luf > a.series > h4",
+          "url": "div.luf > a.series",
+          "cover": "img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.bsx",
+          "title": "div.tt",
+          "url": "a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://freakscans.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "mangabuddy": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?mangabuddy\\.com/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://mangabuddy.com",
+        "icon_url": "https://mangabuddy.com/static/sites/mangabuddy/icons/apple-touch-icon.png",
+        "format_urls": {
+          "manga": "https://mangabuddy.com/{url_name}/"
+        },
+        "latest_updates_url": "https://mangabuddy.com/home",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.name > h1"
+        ],
+        "synopsis": "div.summary > p.content",
+        "cover": [
+          "div.img-cover > img"
+        ],
+        "chapters": {
+          "container": "ul.chapter-list > li",
+          "name": "a > div > strong",
+          "url": "a"
+        },
+        "status": "div.detail > div.meta > p:has(strong:-soup-contains(\"Status\")) > a > span",
+        "front_page": {
+          "container": "div.book-item",
+          "chapters": {
+            "container": "div.chap-item",
+            "name": "h4 > a",
+            "url": "h4 > a"
+          },
+          "title": "div.title > h3 > a",
+          "url": "div.title > h3 > a",
+          "cover": "div.thumb > a > img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.book-item",
+          "title": "div.title > h3 > a",
+          "url": "div.title > h3 > a",
+          "cover": "div.thumb > a > img"
+        }
+      },
+      "search": {
+        "search_param_name": "q",
+        "url": "https://mangabuddy.com/search",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "status": "all",
+          "sort": "views"
+        },
+        "request_method": "GET"
+      }
+    },
+    "topreadmanhwa": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?topreadmanhwa\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://topreadmanhwa.com",
+        "icon_url": "https://topreadmanhwa.com/wp-content/uploads/2022/06/favi.jpg",
+        "format_urls": {
+          "ajax": "https://topreadmanhwa.com/manga/{url_name}/ajax/chapters",
+          "manga": "https://topreadmanhwa.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://topreadmanhwa.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1",
+          ".breadcrumb > li:nth-child(4) > a:nth-child(1)"
+        ],
+        "synopsis": "div.description-summary > div",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a:not([target])",
+          "url": "div.post-title > h3.h5 > a:not([target])",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "div.summary__content h2, div.summary__content h3, div.summary__content h4, div.summary__content div",
+          "div.summary__content section"
+        ],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://topreadmanhwa.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "request_method": "GET"
+      }
+    },
+    "kunmanga": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?kunmanga\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://kunmanga.com",
+        "icon_url": "https://kunmanga.com/wp-content/uploads/2021/06/kun-favicon.png",
+        "format_urls": {
+          "ajax": "https://kunmanga.com/manga/{url_name}/ajax/chapters",
+          "manga": "https://kunmanga.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://kunmanga.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1",
+          ".breadcrumb > li:nth-child(4) > a:nth-child(1)"
+        ],
+        "synopsis": "div.description-summary > div",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a:not([target])",
+          "url": "div.post-title > h3.h5 > a:not([target])",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "div.summary__content h2, div.summary__content h3, div.summary__content h4, div.summary__content div",
+          "div.summary__content section"
+        ],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://kunmanga.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "request_method": "GET"
+      }
+    },
+    "mangafire": {
+      "chapter_ajax": null,
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?mangafire\\.to/(?:(?:read|manga)/)?(?P<url_name>[\\w-]+)\\.(?P<id>\\w+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://mangafire.to",
+        "icon_url": "https://mangafire.to/assets/sites/mangafire/favicon.png",
+        "format_urls": {
+          "manga": "https://mangafire.to/manga/{url_name}.{id}"
+        },
+        "latest_updates_url": "https://mangafire.to/home",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "h1[itemprop=\"name\"]"
+        ],
+        "synopsis": "div#synopsis div.modal-content",
+        "cover": [
+          "div.poster img[itemprop=image]"
+        ],
+        "chapters": {
+          "container": "ul.scroll-sm > li.item",
+          "name": "a[title] > span:first-child",
+          "url": "a[title]"
+        },
+        "status": "div.info > p:first-child",
+        "front_page": {
+          "container": "div.tab-content div.inner",
+          "chapters": {
+            "container": "ul[data-name=chap] > li",
+            "name": "a > span:first-child",
+            "url": "a"
+          },
+          "title": "div.info > a",
+          "url": "div.info > a",
+          "cover": "img[alt]"
+        },
+        "search": {
+          "container": "div.unit div.inner",
+          "title": "div.info > a",
+          "url": "div.info > a",
+          "cover": "img[alt]",
+          "chapters": {
+            "container": "ul[data-name=chap] > li",
+            "name": "a > span:first-child",
+            "url": "a"
+          }
+        },
+        "unwanted_tags": [
+          "i.far",
+          "div.modal-close",
+          "span > b"
+        ]
+      },
+      "search": {
+        "search_param_name": "keyword",
+        "url": "https://mangafire.to/filter",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET",
+        "extra_params": {}
+      }
+    },
+    "theblank": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?theblank\\.net/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://theblank.net",
+        "icon_url": "https://theblank.net/wp-content/uploads/2023/09/Logo_type_2.png",
+        "format_urls": {
+          "manga": "https://theblank.net/manga/{url_name}/",
+          "ajax": "https://theblank.net/manga/{url_name}/ajax/chapters"
+        },
+        "latest_updates_url": "https://theblank.net/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1"
+        ],
+        "synopsis": "div.manga-excerpt",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "front_page": {
+          "container": "div.page-item-detail.manga",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a",
+          "url": "div.post-title > h3.h5 > a",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "span.manga-title-badges"
+        ],
+        "search": {
+          "container": "div.c-tabs-item__content",
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          }
+        }
+      },
+      "search": {
+        "url": "https://theblank.net/",
+        "search_param_name": "s",
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET"
+      }
+    },
+    "nvmanga": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?nvmanga\\.com/webtoon/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://nvmanga.com",
+        "icon_url": "https://nvmanga.com/wp-content/uploads/2023/10/mininv.webp",
+        "format_urls": {
+          "manga": "https://nvmanga.com/webtoon/{url_name}/"
+        },
+        "latest_updates_url": "https://nvmanga.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1"
+        ],
+        "synopsis": "div.entry-content, div.summary__content.show-more",
+        "cover": [
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Translation\") + div",
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a",
+          "url": "div.post-title > h3.h5 > a",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "span.manga-title-badges"
+        ],
+        "search": {
+          "container": "div.c-tabs-item__content",
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          }
+        }
+      },
+      "custom_headers": {
+        "Cookies": [
+          {
+            "name": "wpmanga-adault",
+            "value": "1",
+            "domain": "nvmanga.com",
+            "path": "/"
+          }
+        ]
+      },
+      "search": {
+        "url": "https://nvmanga.com/",
+        "search_param_name": "s",
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": null,
+          "regex": [
+            {
+              "pattern": "\\s",
+              "sub_value": "-"
+            },
+            {
+              "pattern": "[^a-zA-Z0-9-]",
+              "sub_value": ""
+            }
+          ]
+        },
+        "request_method": "GET"
+      }
+    },
+    "newmanhua": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?newmanhua\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://newmanhua.com",
+        "icon_url": "https://newmanhua.com/wp-content/uploads/2023/12/fav.png",
+        "format_urls": {
+          "ajax": "https://newmanhua.com/manga/{url_name}/ajax/chapters",
+          "manga": "https://newmanhua.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://newmanhua.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1",
+          ".breadcrumb > li:nth-child(4) > a:nth-child(1)"
+        ],
+        "synopsis": "div.description-summary > div",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a:not([target])",
+          "url": "div.post-title > h3.h5 > a:not([target])",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "div.summary__content h2, div.summary__content h3, div.summary__content h4, div.summary__content div",
+          "div.summary__content section",
+          "div.summary__content > p:has(strong)"
+        ],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://newmanhua.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "request_method": "GET"
+      }
     }
   },
   "custom": {

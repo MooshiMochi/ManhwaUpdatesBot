@@ -644,5 +644,214 @@
         "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA48"
       ]
     }
+  },
+  "mangareader": {
+    "user_input_url": "https://mangareader.to/sorrows-of-alicia-65009",
+    "expected_results": {
+      "scanlator_name": "mangareader",
+      "manga_url": "https://mangareader.to/sorrows-of-alicia-65009",
+      "completed": true,
+      "title": "Sorrows of Alicia",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-6",
+      "first_chapter_url": "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-1",
+      "cover_image": "https://img.mreadercdn.com/_m/300x400/100/c1/4e/c14e619c6745d2005a70a44e90429fc3/c14e619c6745d2005a70a44e90429fc3.jpg",
+      "last_3_chapter_urls": [
+        "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-4",
+        "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-5",
+        "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-6"
+      ]
+    }
+  },
+  "arvenscans": {
+    "user_input_url": "https://arvenscans.org/series/would-you-like-to-sign-the-contract/",
+    "expected_results": {
+      "scanlator_name": "arvenscans",
+      "manga_url": "https://arvenscans.org/series/would-you-like-to-sign-the-contract/",
+      "completed": false,
+      "title": "Would You Like to Sign The Contract?",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-37/",
+      "first_chapter_url": "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-1/",
+      "cover_image": "https://arvenscans.org/wp-content/uploads/2023/09/Would-You-Like-to-Sign-The-Contract-1.webp",
+      "last_3_chapter_urls": [
+        "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-35/",
+        "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-36/",
+        "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-37/"
+      ]
+    }
+  },
+  "manhwa-freak": {
+    "user_input_url": "https://manhwa-freak.com/manga/i-stack-experience-through-writing-books/",
+    "expected_results": {
+      "scanlator_name": "manhwa-freak",
+      "manga_url": "https://manhwa-freak.com/manga/i-stack-experience-through-writing-books/",
+      "completed": true,
+      "title": "I Stack Experience Through Writing Books",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-fd5/",
+      "first_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-144-1d1/",
+      "cover_image": "https://manhwa-freak.com/wp-content/uploads/2022/04/large_xxlarge_zdKz1Hb.jpg",
+      "last_3_chapter_urls": [
+        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-148-de4/",
+        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-149-69c/",
+        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-fd5/"
+      ]
+    }
+  },
+  "freakscans": {
+    "user_input_url": "https://freakscans.com/manga/the-live/",
+    "expected_results": {
+      "scanlator_name": "freakscans",
+      "manga_url": "https://freakscans.com/manga/the-live/",
+      "completed": true,
+      "title": "The Live",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://freakscans.com/the-live-ch-176/",
+      "first_chapter_url": "https://freakscans.com/the-live-ch-172/",
+      "cover_image": "https://i1.wp.com/freakscans.com/wp-content/uploads/2023/12/the-live.png",
+      "last_3_chapter_urls": [
+        "https://freakscans.com/the-live-ch-174/",
+        "https://freakscans.com/the-live-ch-175/",
+        "https://freakscans.com/the-live-ch-176/"
+      ]
+    }
+  },
+  "mangabuddy": {
+    "user_input_url": "https://mangabuddy.com/kiss-me-liar",
+    "expected_results": {
+      "scanlator_name": "mangabuddy",
+      "manga_url": "https://mangabuddy.com/kiss-me-liar",
+      "completed": true,
+      "title": "Kiss me, Liar",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://mangabuddy.com/kiss-me-liar/notice-official-translation-soon",
+      "first_chapter_url": "https://mangabuddy.com/kiss-me-liar/chapter-1",
+      "cover_image": "https://thumb.youmadcdn.xyz/thumb/kiss-me-liar.png",
+      "last_3_chapter_urls": [
+        "https://mangabuddy.com/kiss-me-liar/chapter-0-4-side-4",
+        "https://mangabuddy.com/kiss-me-liar/side-4",
+        "https://mangabuddy.com/kiss-me-liar/notice-official-translation-soon"
+      ]
+    }
+  },
+  "topreadmanhwa": {
+    "user_input_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/",
+    "expected_results": {
+      "scanlator_name": "topreadmanhwa",
+      "manga_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/",
+      "completed": false,
+      "title": "A Suspicious Confession",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-44/",
+      "first_chapter_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-1/",
+      "cover_image": "https://topreadmanhwa.com/wp-content/uploads/2023/11/A-Suspicious-Confession.png",
+      "last_3_chapter_urls": [
+        "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-42/",
+        "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-43/",
+        "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-44/"
+      ]
+    }
+  },
+  "kunmanga": {
+    "user_input_url": "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/",
+    "expected_results": {
+      "scanlator_name": "kunmanga",
+      "manga_url": "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/",
+      "completed": true,
+      "title": "Bloodthirsty Man: Trapped Bride",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-142-end/",
+      "first_chapter_url": "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-1/",
+      "cover_image": "https://kunmanga.com/wp-content/uploads/2021/09/Bloodthirsty-Man-Trapped-Bride.jpg",
+      "last_3_chapter_urls": [
+        "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-141/",
+        "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-142/",
+        "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-142-end/"
+      ]
+    }
+  },
+  "mangafire": {
+    "user_input_url": "https://mangafire.to/manga/hellsing.y8x",
+    "expected_results": {
+      "scanlator_name": "mangafire",
+      "manga_url": "https://mangafire.to/manga/hellsing.y8x",
+      "completed": true,
+      "title": "HELLSING",
+      "manga_id": "y8x",
+      "use_default_id_function": false,
+      "curr_chapter_url": "https://mangafire.to/read/hellsing.y8x/en/chapter-88",
+      "first_chapter_url": "https://mangafire.to/read/hellsing.y8x/en/chapter-1",
+      "cover_image": "https://static.bunnycdn.ru/i/cache/images/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
+      "last_3_chapter_urls": [
+        "https://mangafire.to/read/hellsing.y8x/en/chapter-86",
+        "https://mangafire.to/read/hellsing.y8x/en/chapter-87",
+        "https://mangafire.to/read/hellsing.y8x/en/chapter-88"
+      ]
+    }
+  },
+  "theblank": {
+    "user_input_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/",
+    "expected_results": {
+      "scanlator_name": "theblank",
+      "manga_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/",
+      "completed": true,
+      "title": "Traditional Erotic Fairy Tales",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-4/",
+      "first_chapter_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-1/",
+      "cover_image": "https://theblank.net/wp-content/uploads/2023/09/Traditional-Erotic-Fairy-Tales.jpg",
+      "last_3_chapter_urls": [
+        "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-2/",
+        "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-3/",
+        "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-4/"
+      ]
+    }
+  },
+  "nvmanga": {
+    "user_input_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/",
+    "expected_results": {
+      "scanlator_name": "nvmanga",
+      "manga_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/",
+      "completed": true,
+      "title": "A Guide to Proper Dating",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-159/",
+      "first_chapter_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-1/",
+      "cover_image": "https://nvmanga.com/wp-content/uploads/2022/10/A-Guide-to-Proper-Dating.webp",
+      "last_3_chapter_urls": [
+        "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-157/",
+        "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-158/",
+        "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-159/"
+      ]
+    }
+  },
+  "newmanhua": {
+    "user_input_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/",
+    "expected_results": {
+      "scanlator_name": "newmanhua",
+      "manga_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/",
+      "completed": false,
+      "title": "The Great Villain Who Threatened to Kill Himself",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-12/",
+      "first_chapter_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-0/",
+      "cover_image": "https://newmanhua.com/wp-content/uploads/2023/12/the-great-villain-who-threatened-to-kill-himself.webp",
+      "last_3_chapter_urls": [
+        "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-10/",
+        "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-11/",
+        "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-12/"
+      ]
+    }
   }
 }

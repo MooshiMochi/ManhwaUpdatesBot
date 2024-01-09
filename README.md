@@ -100,6 +100,17 @@ This bot currently only supports the following websites:
 - https://ww7.mangakakalot.tv
 - https://cosmic-scans.com
 - https://manga-demon.org
+- https://mangareader.to
+- https://arvenscans.org
+- https://manhwa-freak.com
+- https://freakscans.com
+- https://mangabuddy.com
+- https://topreadmanhwa.com
+- https://kunmanga.com
+- https://mangafire.to
+- https://theblank.net
+- https://nvmanga.com
+- https://newmanhua.com
 
 # Developers Section
 

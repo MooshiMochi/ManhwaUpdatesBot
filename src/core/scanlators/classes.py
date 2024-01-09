@@ -523,7 +523,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         for selector in selectors:
             title = soup.select_one(selector)
             if title:
-                return title.get_text(strip=True)
+                if selector.endswith("]") and "=" not in selector:
+                    return title.get(selector.split("[")[-1].removesuffix("]"))
+                else:
+                    return title.get_text(strip=True)
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
         req_url = await self.format_manga_url(raw_url, use_ajax_url=True)
@@ -602,9 +605,17 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             url = manga_tag.select_one(self.json_tree.selectors.front_page.url).get("href")
             if not url.startswith("https://"):
                 url = self.json_tree.properties.base_url + url
-            name = manga_tag.select_one(  # noqa: Invalid scope warning
-                self.json_tree.selectors.front_page.title
-            ).get_text(strip=True)
+
+            _title_selector = self.json_tree.selectors.front_page.title  # noqa: Invalid scope warning
+            if _title_selector == "_container_":
+                name = manga_tag.get_text(strip=True)  # noqa: Invalid scope warning
+            else:
+                title_tag = manga_tag.select_one(_title_selector)
+                if _title_selector.endswith("]") and "=" not in _title_selector:
+                    name = title_tag.get(  # noqa: Invalid scope warning
+                        _title_selector.split("[")[-1].removesuffix("]"))
+                else:
+                    name = title_tag.get_text(strip=True)  # noqa: Invalid scope warning
 
             cover_url = self.extract_cover_link_from_tag(
                 manga_tag.select_one(self.json_tree.selectors.front_page.cover),
@@ -671,12 +682,16 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             if not (url.startswith("https://") or url.startswith("http://")):  # noqa
                 url = self.json_tree.properties.base_url + url
 
-            if self.json_tree.selectors.search.title == "_container_":
+            _title_selector = self.json_tree.selectors.search.title  # noqa: Invalid scope warning
+            if _title_selector == "_container_":
                 name = manga_tag.get_text(strip=True)  # noqa: Invalid scope warning
             else:
-                name = manga_tag.select_one(  # noqa: Invalid scope warning
-                    self.json_tree.selectors.search.title
-                ).get_text(strip=True)
+                title_tag = manga_tag.select_one(_title_selector)
+                if _title_selector.endswith("]") and "=" not in _title_selector:
+                    name = title_tag.get(  # noqa: Invalid scope warning
+                        _title_selector.split("[")[-1].removesuffix("]"))
+                else:
+                    name = title_tag.get_text(strip=True)  # noqa: Invalid scope warning
 
             cover_url: str | None = None
             if self.json_tree.selectors.search.cover is not None:

@@ -2,6 +2,23 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 9th 2024
+
+- Added support for https://mangareader.to
+- Added support for https://arvenscans.org
+- Added support for https://manhwa-freak.com
+- Added support for https://freakscans.com
+- Added support for https://mangabuddy.com
+- Added support for https://topreadmanhwa.com
+- Added support for https://kunmanga.com
+- Added support for https://mangafire.to
+- Added support for https://theblank.net
+- Added support for https://nvmanga.com
+- Added support for https://newmanhua.com
+
+- The "Next Update Check..." message will automatically delete itself after 25 minutes (when the update check runs
+  again)
+
 ## // January 8th 2024
 
 - Updated the test case for Kaiscans.

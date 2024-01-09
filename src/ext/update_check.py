@@ -316,7 +316,8 @@ class UpdateCheckCog(commands.Cog):
                 embed=(
                     discord.Embed(
                         description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
-                ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
+                ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url),
+                delete_after=25 * 60  # 25 min
             )
 
     async def update_database_entries(self, chapter_updates: list[ChapterUpdate]) -> None:
