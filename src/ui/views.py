@@ -1200,7 +1200,7 @@ class SettingsView(BaseView):
         self.selected_option: str | None = None
 
         self.child_map: dict[
-            int | str, discord.ui.Select | list[discord.ui.Button]] = {
+            int | str, discord.ui.Select | list[discord.ui.Button] | discord.ui.Item[SettingsView]] = {
             child.row: child for child in self.children
         }
         self.child_map.pop(4)
@@ -1379,6 +1379,20 @@ class SettingsView(BaseView):
                     description=f"The <@&{role_id}> role is too high for me to ping!\n"
                                 f"Please move it below my top role.",
                     colour=discord.Colour.red(),
+                ),
+                ephemeral=True
+            )
+            return
+        elif not role.is_assignable() or role.is_bot_managed() or role.is_integration():
+            embed = self._create_embed()
+            self.selected_option = None
+            self._refresh_components()
+            await interaction.response.edit_message(embed=embed, view=self)  # noqa
+            await interaction.followup.send(  # noqa
+                embed=discord.Embed(
+                    title="Role is not assignable",
+                    description=f"I cannot assign the <@&{role_id}> role to users.\n"
+                                f"Please use a different role.",
                 ),
                 ephemeral=True
             )

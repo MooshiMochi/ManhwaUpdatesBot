@@ -155,16 +155,7 @@ class CommandsCog(commands.Cog):
                     raise UnsupportedScanlatorURLFormatError(manga_url)
             except ValueError:
                 raise UnsupportedScanlatorURLFormatError(manga_url)
-
-            is_tracked: bool = await self.bot.db.is_manga_tracked(manga_id, scanlator_name)
-            if not is_tracked:
-                manga: Manga = await respond_if_limit_reached(
-                    scanlator.make_manga_object(manga_url, load_from_db=False), interaction
-                )
-                if manga == "LIMIT_REACHED":
-                    return
-            else:
-                manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
+            manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
 
         if not manga:
             raise MangaNotFoundError(manga_url)
