@@ -501,7 +501,7 @@ class UpdateCheckCog(commands.Cog):
             await self.bot.change_presence(
                 activity=discord.Activity(
                     type=discord.ActivityType.watching,
-                    name=f"for updates at {datetime.fromtimestamp(next_update_ts):%H:%M}"
+                    name=f"for updates at ▢▢:{datetime.fromtimestamp(next_update_ts):%M}"
                 )
             )
 
