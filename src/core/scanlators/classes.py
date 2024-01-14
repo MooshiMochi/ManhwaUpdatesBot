@@ -10,6 +10,7 @@ from io import BytesIO
 from typing import Literal, Optional, TYPE_CHECKING
 from urllib.parse import quote_plus as url_encode
 
+import bs4
 import discord
 from bs4 import BeautifulSoup, Tag
 from discord.utils import MISSING
@@ -59,6 +60,20 @@ class _AbstractScanlatorUtilsMixin:
             return
         for tag in soup.select(",".join(unwanted_selectors)):
             tag.extract()
+
+    @staticmethod
+    async def _get_status_tag(self: BasicScanlator, raw_url: str) -> bs4.Tag | None:
+        if self.json_tree.properties.no_status:
+            method = "POST" if self.json_tree.uses_ajax else "GET"
+            text = await self._get_text(await self.format_manga_url(raw_url, use_ajax_url=True), method=method)  # noqa
+        else:
+            text = await self._get_text(await self.format_manga_url(raw_url))
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+
+        status_selector = self.json_tree.selectors.status
+        status = soup.select_one(status_selector)
+        return status
 
 
 class AbstractScanlator(ABC):
@@ -556,18 +571,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return found_chapters
 
     async def get_status(self, raw_url: str) -> str:
-        if self.json_tree.properties.no_status:
-            method = "POST" if self.json_tree.uses_ajax else "GET"
-            text = await self._get_text(await self.format_manga_url(raw_url, use_ajax_url=True), method=method)  # noqa
-        else:
-            text = await self._get_text(await self.format_manga_url(raw_url))
-        soup = BeautifulSoup(text, "html.parser")
-        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
-
-        status_selector = self.json_tree.selectors.status
-        status = soup.select_one(status_selector)
-        if status:
-            status_text = status.get_text(strip=True)
+        status_tag = await self._get_status_tag(self, raw_url)
+        if status_tag:
+            status_text = status_tag.get_text(strip=True)
             return re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
 
     async def get_synopsis(self, raw_url: str) -> str:
@@ -732,18 +738,9 @@ class NoStatusBasicScanlator(BasicScanlator):
         super().__init__(name, **kwargs)
 
     async def get_status(self, raw_url: str) -> str:
-        if self.json_tree.properties.no_status:
-            method = "POST" if self.json_tree.uses_ajax else "GET"
-            text = await self._get_text(await self.format_manga_url(raw_url, use_ajax_url=True), method=method)  # noqa
-        else:
-            text = await self._get_text(await self.format_manga_url(raw_url))
-        soup = BeautifulSoup(text, "html.parser")
-        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
-
-        date_selector = self.json_tree.selectors.status
-        date_str = soup.select_one(date_selector)
-        if date_str:
-            latest_release_date = date_str.get_text(strip=True)
+        date_tag = await self._get_status_tag(self, raw_url)
+        if date_tag:
+            latest_release_date = date_tag.get_text(strip=True)
             timestamp = time_string_to_seconds(latest_release_date, formats=self.json_tree.properties.time_formats)
             if (
                     datetime.now().timestamp() - timestamp
@@ -799,8 +796,8 @@ class DynamicURLScanlator(BasicScanlator):
             raise ValueError("At least one of the arguments must be provided.")
         if raw_url is not None:
             url_name = await self._get_url_name(raw_url)
-            if not self.manga_id:
-                await self.get_fp_partial_manga()
+            await self.get_fp_partial_manga()
+            # if not self.manga_id:
             _id = self.manga_id
         if use_ajax_url and self.json_tree.uses_ajax:
             return self.json_tree.properties.format_urls.ajax.format(url_name=url_name, id=_id)

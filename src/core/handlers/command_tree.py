@@ -103,9 +103,23 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
+        elif isinstance(error, GuildNotConfiguredError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Guild not configured!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
         elif isinstance(error, CustomError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Error!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, DatabaseError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Database error!",
                 color=0xFF0000,
                 description=error.error_msg,
             )
@@ -134,6 +148,20 @@ class BotCommandTree(discord.app_commands.CommandTree):
         elif isinstance(error, ChapterNotFoundError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Chapter not found!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, RateLimitExceeded):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Rate limit exceeded!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, MissingUserAgentError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Missing user agent!",
                 color=0xFF0000,
                 description=error.error_msg,
             )

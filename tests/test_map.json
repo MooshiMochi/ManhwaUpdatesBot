@@ -323,19 +323,19 @@
     }
   },
   "nightscans": {
-    "user_input_url": "https://nightscans.net/series/all-attributes-in-martial-arts/",
+    "user_input_url": "https://night-scans.com/series/all-attributes-in-martial-arts/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://nightscans.net/wp-content/uploads/2023/03/AAAMAcover_result.webp",
-      "curr_chapter_url": "https://nightscans.net/all-attribute-in-martial-arts-chapter-70/",
-      "first_chapter_url": "https://nightscans.net/all-attribute-martial-arts-00/",
+      "cover_image": "https://night-scans.com/wp-content/uploads/2023/03/AAAMAcover_result.webp",
+      "curr_chapter_url": "https://night-scans.com/all-attribute-in-martial-arts-chapter-70/",
+      "first_chapter_url": "https://night-scans.com/all-attribute-martial-arts-00/",
       "last_3_chapter_urls": [
-        "https://nightscans.net/all-attribute-in-martial-arts-chapter-68/",
-        "https://nightscans.net/all-attribute-in-martial-arts-chapter-69/",
-        "https://nightscans.net/all-attribute-in-martial-arts-chapter-70/"
+        "https://night-scans.com/all-attribute-in-martial-arts-chapter-68/",
+        "https://night-scans.com/all-attribute-in-martial-arts-chapter-69/",
+        "https://night-scans.com/all-attribute-in-martial-arts-chapter-70/"
       ],
-      "manga_id": "https://nightscans.net/series/all-attributes-in-martial-arts",
-      "manga_url": "https://nightscans.net/series/all-attributes-in-martial-arts",
+      "manga_id": "https://night-scans.com/series/all-attributes-in-martial-arts",
+      "manga_url": "https://night-scans.com/series/all-attributes-in-martial-arts",
       "scanlator_name": "nightscans",
       "title": "All-Attributes in Martial Arts",
       "use_default_id_function": true

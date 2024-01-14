@@ -520,7 +520,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        # asyncio.run(test_single_scanlator("newmanhua"))
+        asyncio.run(test_single_scanlator("nightscans"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

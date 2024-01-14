@@ -2,6 +2,15 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 14th 2024
+
+- Updated nightscans.net to night-scans.com.
+- Added code to handle some other custom errors.
+
+### Bug Fixes:
+
+- Added error handling for when guild is not configured.
+
 ## // January 9th 2024
 
 - Added support for https://mangareader.to

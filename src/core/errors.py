@@ -153,6 +153,9 @@ class RateLimitExceeded(Exception):
         self.limiter = limiter
         self.period_remaining = period_remaining
         self.message: str = message
+        self.error_msg = f"""
+        {self.message}. Try again in {self.period_remaining} seconds.
+        """
 
 
 class MissingUserAgentError(BaseError):
