@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from typing import Any, Coroutine, Optional, TYPE_CHECKING
 
 from src.core.scanlators.classes import AbstractScanlator
@@ -714,6 +715,7 @@ class CommandsCog(commands.Cog):
 - `/next_update_check` - Get the time until the next update check.
 - `/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
 - `/translate` - Translate any text from one language to another.
+- `/stats` - View general bot statistics.
 
 **Permissions:**
 - The bot requires the following permissions for optimal functionality:
@@ -969,6 +971,53 @@ Ensure the bot has these permissions for smooth operation.
     # @app_commands.command(name="report_incorrect_chapters")
     # async def report_incorrect_chapters(self, interaction: discord.Interaction):
     #     await interaction.response.defer(ephemeral=True, thinking=True)
+
+    @app_commands.command(name="stats", description="Get some basic info and stats about the bot.")
+    async def stats(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)  # noqa
+
+        (bookmarks_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM bookmarks;")
+        (tracks_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM tracked_guild_series;")
+        (subs_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM user_subs;")
+        (manhwa_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM series;")
+        scanlators_count = len(self.bot._all_scanners)  # noqa
+        guilds_count = len(self.bot.guilds)
+        users_count = len(self.bot.users)
+        (update_channels_count,), = await self.bot.db.execute(
+            "SELECT DISTINCT COUNT(notifications_channel_id) FROM guild_config;"
+        )
+        uptime = datetime.now() - self.bot.start_time
+
+        uptime_str = f"Since <t:{int(self.bot.start_time.timestamp())}:f>\n"
+        if uptime.days > 0:
+            uptime_str += f"({uptime.days} day(s))"
+        elif uptime.total_seconds() > 3600:
+            uptime_str += f"({uptime.seconds // 3600} hour(s))"
+        elif uptime.total_seconds() > 60:
+            uptime_str += f"({uptime.seconds // 60} minute(s))"
+        else:
+            uptime_str += f"({uptime.seconds} second(s))"
+
+        embed = discord.Embed(
+            title="Manhwa Updates Bot Statistics",
+            description="Here are the current statistics of the bot:",
+            color=0x1abc9c  # Teal color
+        )
+
+        embed.add_field(name="🔖 Bookmarks", value=str(bookmarks_count), inline=True)
+        embed.add_field(name="📚 Users tracking Manhwa", value=str(tracks_count), inline=True)
+        embed.add_field(name="👥 Users subbed to Manhwa", value=str(subs_count), inline=True)
+        embed.add_field(name="📘 Total Manhwa", value=str(manhwa_count), inline=False)
+        embed.add_field(name="🔍 Total Supported Websites", value=str(scanlators_count), inline=True)
+        embed.add_field(name="🔊 Total Update Channels", value=str(update_channels_count), inline=True)
+        embed.add_field(name="🌐 Total Guilds", value=str(guilds_count), inline=True)
+        embed.add_field(name="👤 Total Users", value=str(users_count), inline=True)
+        embed.add_field(name="⌛ Total Uptime", value=str(uptime_str), inline=True)
+
+        embed.set_footer(text="Manhwa Updates Bot | Stats")
+        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+
+        await interaction.followup.send(embed=embed, ephemeral=True)  # noqa
 
 
 async def setup(bot: MangaClient) -> None:

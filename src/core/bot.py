@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import traceback
+from datetime import datetime
 from typing import Optional, Union
 
 import aiohttp
@@ -44,6 +45,8 @@ class MangaClient(commands.Bot):
         self.proxy_addr: Optional[str] = None
 
         self._all_scanners: dict = scanlators.copy()  # You must not mutate this dict. Mutate scanlators instead.
+
+        self._start_time: datetime = datetime.now()
 
     async def setup_hook(self):
         if self._config["proxy"]["enabled"]:
@@ -278,3 +281,7 @@ class MangaClient(commands.Bot):
     @property
     def apis(self):
         return self._apis
+
+    @property
+    def start_time(self) -> datetime:
+        return self._start_time

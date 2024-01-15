@@ -33,6 +33,7 @@ You can right-click a message > apps > Translate to translate a message or use t
 `/chapters` - Get a list of chapters of a manga.\
 `/next_update_check` - Get the time until the next update check.\
 `/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
+`/stats` - View general bot stats.
 
 ### Config Commands:
 
