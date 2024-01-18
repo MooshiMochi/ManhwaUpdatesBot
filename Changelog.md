@@ -6,10 +6,14 @@
 
 - Moved all the config loading procedures to the config_lodaer.py file.
 - Moved the json file schemas to its own folder 'schemas.'
+- Merged the Mangapark and Bato custom scanlator classes into one (_MagaparkAndBato).
+- Changed status selectors datatype in the json_schema and lookup_map to list.
 
 ### Bug Fixes:
 
 - Fixed Index Error when deleting a bookmark with the 'Delete' button.
+- Fixed Mangapark (they stopped using the /apo/ endpoint for manhwa related content).
+- Fixed Bato.to (changed the URL of their latest manhwa page).
 
 ## // January 14th 2024
 

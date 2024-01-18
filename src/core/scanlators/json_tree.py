@@ -56,7 +56,7 @@ class _Selectors:
         self.synopsis: str = selectors_dict["synopsis"]
         self.cover: list[str] = selectors_dict["cover"]
         self.chapters: dict[str, str] = selectors_dict["chapters"]
-        self.status: str = selectors_dict["status"]
+        self.status: list[str] = selectors_dict["status"]
         self.front_page: _FrontPageSelectors = _FrontPageSelectors(**selectors_dict["front_page"])
         self.search: _FrontPageSelectors = _FrontPageSelectors(**selectors_dict["search"])
         self.unwanted_tags: list[str] = selectors_dict["unwanted_tags"]

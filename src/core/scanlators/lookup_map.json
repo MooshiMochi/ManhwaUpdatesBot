@@ -29,7 +29,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -90,7 +92,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -155,7 +159,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -239,7 +245,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "td.table-label:-soup-contains(\"Status\") + td.table-value",
+        "status": [
+          "td.table-label:-soup-contains(\"Status\") + td.table-value"
+        ],
         "front_page": {
           "container": "div.content-homepage-item",
           "chapters": {
@@ -309,7 +317,9 @@
           "name": "span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt > h1:-soup-contains(\"Status\") + i",
+        "status": [
+          "div.imptdt > h1:-soup-contains(\"Status\") + i"
+        ],
         "front_page": {
           "container": "div.latest-updates > div > div.bsx",
           "chapters": {
@@ -370,7 +380,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -428,7 +440,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -487,7 +501,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.postbody > div.bixbox:has(div.releases > h2:-soup-contains('Latest Update')) > div.listupd div.uta",
           "chapters": {
@@ -547,7 +563,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -614,7 +632,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -679,7 +699,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.postbody > div.bixbox > div.listupd > div > div.bsx",
           "chapters": {
@@ -736,7 +758,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -797,7 +821,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "li.wp-manga-chapter:first-child span > i",
+        "status": [
+          "li.wp-manga-chapter:first-child span > i"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -869,7 +895,9 @@
           "name": "_container_",
           "url": "_container_"
         },
-        "status": "div > label.text-secondary:-soup-contains(\"Status\") + div",
+        "status": [
+          "div > label.text-secondary:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.grid > div",
           "chapters": {
@@ -933,7 +961,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -999,7 +1029,9 @@
           "name": "li.wp-manga-chapter a:not(.c-new-tag)",
           "url": "li.wp-manga-chapter a:not(.c-new-tag)"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -1069,7 +1101,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "td.table-label:-soup-contains(\"Status\") + td.table-value",
+        "status": [
+          "td.table-label:-soup-contains(\"Status\") + td.table-value"
+        ],
         "front_page": {
           "container": "div.content-homepage-item",
           "chapters": {
@@ -1141,7 +1175,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -1212,7 +1248,9 @@
           "name": "span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -1269,7 +1307,9 @@
           "name": "span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -1329,7 +1369,9 @@
           "name": "div > a",
           "url": "div > a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div#mangat > div:has(h3) + div.d-flex > div.col-6",
           "chapters": {
@@ -1399,7 +1441,9 @@
           "name": "span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.postbody > div.bixbox > div.listupd > div > div.bsx",
           "chapters": {
@@ -1457,7 +1501,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "ul.manga-info-text > li:-soup-contains(\"Status\")",
+        "status": [
+          "ul.manga-info-text > li:-soup-contains(\"Status\")"
+        ],
         "front_page": {
           "container": "div.doreamon > div.itemupdate",
           "chapters": {
@@ -1523,7 +1569,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -1583,7 +1631,9 @@
           "name": "strong",
           "url": "a"
         },
-        "status": "span[itemprop=author]",
+        "status": [
+          "span[itemprop=author]"
+        ],
         "front_page": {
           "container": "div#content > ul.nomargpad > li",
           "chapters": {
@@ -1639,7 +1689,9 @@
           "name": "span.name",
           "url": "a.item-link"
         },
-        "status": "div.item.item-title > span:-soup-contains(\"Status\") + span.name",
+        "status": [
+          "div.item.item-title > span:-soup-contains(\"Status\") + span.name"
+        ],
         "front_page": {
           "container": "div#latest-chap div.mls-wrap > div.item",
           "chapters": {
@@ -1703,7 +1755,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.listupd div.uta",
           "chapters": {
@@ -1762,7 +1816,9 @@
           "name": "div.chapter-info > p:first-child",
           "url": "_container_"
         },
-        "status": "div.right > div > p:-soup-contains(\"Status\") + p",
+        "status": [
+          "div.right > div > p:-soup-contains(\"Status\") + p"
+        ],
         "front_page": {
           "container": "div.lastest div.lastest-serie",
           "chapters": {
@@ -1821,7 +1877,9 @@
           "name": "a > span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -1878,7 +1936,9 @@
           "name": "a > div > strong",
           "url": "a"
         },
-        "status": "div.detail > div.meta > p:has(strong:-soup-contains(\"Status\")) > a > span",
+        "status": [
+          "div.detail > div.meta > p:has(strong:-soup-contains(\"Status\")) > a > span"
+        ],
         "front_page": {
           "container": "div.book-item",
           "chapters": {
@@ -1941,7 +2001,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -2011,7 +2073,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -2078,7 +2142,9 @@
           "name": "a[title] > span:first-child",
           "url": "a[title]"
         },
-        "status": "div.info > p:first-child",
+        "status": [
+          "div.info > p:first-child"
+        ],
         "front_page": {
           "container": "div.tab-content div.inner",
           "chapters": {
@@ -2146,7 +2212,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail.manga",
           "chapters": {
@@ -2212,7 +2280,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Translation\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Translation\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -2301,7 +2371,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -2373,7 +2445,9 @@
           "name": "div.min-w-0.flex-1 > div.truncate > div > p",
           "url": "_container_"
         },
-        "status": "dt.text-neutral-500:-soup-contains(\"Release Status\") + dd",
+        "status": [
+          "dt.text-neutral-500:-soup-contains(\"Release Status\") + dd"
+        ],
         "front_page": {
           "container": "div.grid > div.space-x-2",
           "chapters": {
@@ -2437,7 +2511,9 @@
           "name": "li > div.MuiListItemText-root > span",
           "url": "_container_"
         },
-        "status": "ul.MuiList-root > a:first-child li > div.MuiListItemText-root > p",
+        "status": [
+          "ul.MuiList-root > a:first-child li > div.MuiListItemText-root > p"
+        ],
         "front_page": {
           "container": "section > div:first-child div.rounded.p-3 > div.lg\\:gap-x-3 > div",
           "chapters": {
@@ -2496,7 +2572,9 @@
           "name": "span.chapternum",
           "url": "a"
         },
-        "status": "div.imptdt:-soup-contains(\"Status\") > i",
+        "status": [
+          "div.imptdt:-soup-contains(\"Status\") > i"
+        ],
         "front_page": {
           "container": "div.uta",
           "chapters": {
@@ -2559,7 +2637,9 @@
           "name": "a",
           "url": "a"
         },
-        "status": "div.summary-heading:-soup-contains(\"Status\") + div",
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
         "front_page": {
           "container": "div.page-item-detail",
           "chapters": {
@@ -2602,69 +2682,6 @@
         "request_method": "GET"
       }
     },
-    "mangapark": {
-      "chapter_ajax": "html",
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?mangapark\\.net/title/(?P<id>\\d+)-(?P<url_name>[\\w-]+)(?:/.*)?",
-      "properties": {
-        "base_url": "https://mangapark.net",
-        "icon_url": "https://mangapark.net/client-script/img/favicon.gif",
-        "format_urls": {
-          "manga": "https://mangapark.net/title/{id}-{url_name}/",
-          "ajax": "https://mangapark.net/apo/"
-        },
-        "latest_updates_url": "https://mangapark.net/v5x-latest",
-        "dynamicURL": false
-      },
-      "selectors": {
-        "title": [
-          "main h3 > a"
-        ],
-        "synopsis": "main div.mt-5.space-y-2 + div div.prose",
-        "cover": [
-          "img.not-prose"
-        ],
-        "chapters": {
-          "container": "div.space-y-2 > div > div.grid > div.px-1 div.space-x-1:not(.inline-flex)",
-          "name": "a",
-          "url": "a"
-        },
-        "status": "div[q\\:key=Yn_9] > span.mr-2:-soup-contains(\"Status\") + span:last-child",
-        "front_page": {
-          "container": "div.grid > div.flex.group",
-          "chapters": {
-            "container": "ul > div",
-            "name": "span.line-clamp-2 > a",
-            "url": "span.line-clamp-2 > a"
-          },
-          "title": "h3 > a",
-          "url": "h3 > a",
-          "cover": "img.rounded"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.grid > div.flex",
-          "chapters": {
-            "container": "div.text-sm > span:has(a)",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "h3 > a",
-          "url": "h3 > a",
-          "cover": "img.rounded"
-        }
-      },
-      "search": {
-        "search_param_name": "word",
-        "url": "https://mangapark.net/v5x-search",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
     "bato": {
       "chapter_ajax": null,
       "request_method": "http",
@@ -2675,7 +2692,7 @@
         "format_urls": {
           "manga": "https://bato.to/title/{id}-{url_name}/"
         },
-        "latest_updates_url": "https://bato.to/",
+        "latest_updates_url": "https://bato.to/v3x",
         "dynamicURL": false
       },
       "selectors": {
@@ -2693,7 +2710,9 @@
           "name": "div > a.link-hover:first-child",
           "url": "div > a.link-hover:first-child"
         },
-        "status": "div.space-y-2:not(.grow):not(.hidden) > div > span.hidden + span",
+        "status": [
+          "div.space-y-2:not(.grow):not(.hidden) > div > span.hidden + span"
+        ],
         "front_page": {
           "container": "div.grid.grid-cols-1 > div.pb-5",
           "chapters": {
@@ -2723,6 +2742,71 @@
       "search": {
         "search_param_name": "word",
         "url": "https://bato.to/v3x-search",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "mangapark": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?mangapark\\.net/title/(?P<id>\\d+)-(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://mangapark.net",
+        "icon_url": "https://mangapark.net/client-script/img/favicon.gif",
+        "format_urls": {
+          "manga": "https://mangapark.net/title/{id}-{url_name}/"
+        },
+        "latest_updates_url": "https://mangapark.net/latest",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "main h3 > a"
+        ],
+        "synopsis": "div.lg\\:col-span-3 div.prose > div.limit-html-p",
+        "cover": [
+          "img.not-prose"
+        ],
+        "chapters": {
+          "container": "div.group > div[q\\:key]",
+          "name": "div.space-x-1:not(.items-center) > a",
+          "url": "div.space-x-1:not(.items-center) > a"
+        },
+        "status": [
+          "div[q\\:key=Yn_9] span.mr-2 + span.font-bold.uppercase",
+          "div[q\\:key=Yn_8] span.mr-2 + span.font-bold.uppercase"
+        ],
+        "front_page": {
+          "container": "div.grid.grid-cols-1 > div.pb-3",
+          "chapters": {
+            "container": "div.flex-nowrap > span > a",
+            "name": "span",
+            "url": "_container_"
+          },
+          "title": "h3 > a > span",
+          "url": "h3 > a",
+          "cover": "div.shrink-0 a > img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.grid.grid-cols-1 > div.flex",
+          "chapters": {
+            "container": "div.justify-between > span:has(a:not([q\\:key]))",
+            "name": "a > span",
+            "url": "a"
+          },
+          "title": "h3 > a > span > span",
+          "url": "h3 > a",
+          "cover": "img.rounded"
+        }
+      },
+      "search": {
+        "search_param_name": "word",
+        "url": "https://mangapark.net/search",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"

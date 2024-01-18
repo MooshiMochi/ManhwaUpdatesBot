@@ -192,7 +192,10 @@
                   ]
                 },
                 "status": {
-                  "type": "string"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "front_page": {
                   "type": "object",
@@ -728,7 +731,10 @@
                   ]
                 },
                 "status": {
-                  "type": "string"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "front_page": {
                   "type": "object",

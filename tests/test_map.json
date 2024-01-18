@@ -288,7 +288,7 @@
     "user_input_url": "https://bato.to/title/95400-queen-in-the-shadows",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://xfs-s118.batcg.org/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
+      "cover_image": "https://xfs-s118.xfsbb.com/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
       "curr_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/2031007-ch_60",
       "first_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/1803219-ch_1",
       "last_3_chapter_urls": [
@@ -578,13 +578,13 @@
       "title": "Machida-kun no Sekai",
       "manga_id": "120626",
       "use_default_id_function": false,
-      "curr_chapter_url": "https://mangapark.net/title/120626-machida-kun-no-sekai/1554480-en-vol.7-ch.27",
-      "first_chapter_url": "https://mangapark.net/title/120626-machida-kun-no-sekai/1554453-en-vol.1-ch.1",
-      "cover_image": "https://xfs-s111.mpcdn.org/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
+      "curr_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27",
+      "first_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554453-vol-1-ch-1",
+      "cover_image": "https://xfs-s111.xfspp.com/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
       "last_3_chapter_urls": [
-        "https://mangapark.net/title/120626-machida-kun-no-sekai/1554478-en-vol.7-ch.25",
-        "https://mangapark.net/title/120626-machida-kun-no-sekai/1554479-en-vol.7-ch.26",
-        "https://mangapark.net/title/120626-machida-kun-no-sekai/1554480-en-vol.7-ch.27"
+        "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554478-vol-7-ch-25",
+        "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554479-vol-7-ch-26",
+        "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27"
       ]
     }
   },
