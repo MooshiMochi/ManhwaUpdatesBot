@@ -2,6 +2,15 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 18th 2024
+
+- Moved all the config loading procedures to the config_lodaer.py file.
+- Moved the json file schemas to its own folder 'schemas.'
+
+### Bug Fixes:
+
+- Fixed Index Error when deleting a bookmark with the 'Delete' button.
+
 ## // January 14th 2024
 
 - Updated nightscans.net to night-scans.com.

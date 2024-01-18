@@ -9,10 +9,10 @@ from discord.errors import LoginFailure
 
 from src.core import BotCommandTree, CachedClientSession, MangaClient
 from src.core.cache import CachedCurlCffiSession
+from src.core.config_loader import ensure_configs, load_config
 from src.core.scanlators import scanlators
 from src.utils import (
-    ensure_configs, ensure_environment, ensure_proxy, exit_bot, load_config, setup_logging, silence_debug_loggers,
-    test_logger
+    ensure_environment, ensure_proxy, exit_bot, setup_logging, silence_debug_loggers, test_logger
 )
 
 

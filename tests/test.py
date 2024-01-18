@@ -14,14 +14,17 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Coroutine, Dict, Literal, Optional
 
+import requests.exceptions
+
 from src.core.apis import APIManager
 from src.core.cache import CachedClientSession, CachedCurlCffiSession
+from src.core.config_loader import ensure_configs, load_config
 from src.core.database import Database
 from src.core.objects import Chapter, Manga
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
 from src.static import Constants
-from src.utils import ensure_configs, load_config, setup_logging
+from src.utils import setup_logging
 
 logger: logging.Logger = logging.getLogger("test")
 
@@ -101,9 +104,9 @@ class Bot:
             return None
 
         if (user := proxy_dict.get("username")) and ([pwd := proxy_dict.get("password")]):
-            return f"http://{user}:{pwd}@{ip}:{port}"
+            return f"http://{user}:{pwd}@{ip}:{port}"  # noqa
         else:
-            return f"http://{ip}:{port}"
+            return f"http://{ip}:{port}"  # noqa
 
 
 class SetupTest:
@@ -319,6 +322,8 @@ class Test:
                 checks_passed += 1
             except AssertionError as e:
                 print(e)
+            except requests.exceptions.HTTPError as e:
+                print(f"{error_msg}: {e.response.status_code} {e.response.reason}")
             except Exception as e:
                 print(f"❌ Unexpected error: {e} --- {error_msg}")
                 exc = tb.format_exception(type(e), e, e.__traceback__)
@@ -456,7 +461,8 @@ async def sub_main():
             manga_id="114456",
             curr_chapter_url='https://bato.to/chapter/2604874',
             first_chapter_url='https://bato.to/chapter/2106083',
-            cover_image='https://xfs-s100.batcg.org/thumb/W600/ampi/b34/b3407172605fe7cb934c0a90a6fc477b2e6110c6_720_1508_200588.jpeg',
+            cover_image='https://xfs-s100.batcg.org/thumb/W600/ampi/b34'
+                        '/b3407172605fe7cb934c0a90a6fc477b2e6110c6_720_1508_200588.jpeg',
             last_3_chapter_urls=[
                 "https://bato.to/chapter/2603775",
                 "https://bato.to/chapter/2604873",
@@ -520,7 +526,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        asyncio.run(test_single_scanlator("nightscans"))
+        asyncio.run(test_single_scanlator("voidscans"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

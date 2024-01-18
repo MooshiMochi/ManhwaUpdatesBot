@@ -1,0 +1,383 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "patternProperties": {
+    "^[a-z0-9-]+$": {
+      "type": "object",
+      "properties": {
+        "selectors": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "synopsis": {
+              "type": "string"
+            },
+            "cover": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "chapters": {
+              "type": "object",
+              "properties": {
+                "container": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "container",
+                "name",
+                "url"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "front_page": {
+              "type": "object",
+              "properties": {
+                "container": {
+                  "type": "string"
+                },
+                "chapters": {
+                  "type": "object",
+                  "properties": {
+                    "container": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "_container_"
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element.",
+                          "default": "_container_"
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^.+$",
+                          "description": "Use the special value '_container_' to reference the container element."
+                        }
+                      ],
+                      "description": "Use the special value '_container_' to reference the container element."
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "_container_"
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element.",
+                          "default": "_container_"
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^.+$",
+                          "description": "Use the special value '_container_' to reference the container element."
+                        }
+                      ],
+                      "description": "Use the special value '_container_' to reference the container element."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "container",
+                    "name",
+                    "url"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "cover": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "container",
+                "chapters",
+                "title",
+                "url",
+                "cover"
+              ]
+            },
+            "search": {
+              "type": "object",
+              "properties": {
+                "container": {
+                  "type": "string"
+                },
+                "chapters": {
+                  "type": "object",
+                  "properties": {
+                    "container": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "_container_"
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element.",
+                          "default": "_container_"
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^.+$",
+                          "description": "Use the special value '_container_' to reference the container element."
+                        }
+                      ],
+                      "description": "Use the special value '_container_' to reference the container element."
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "_container_"
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element.",
+                          "default": "_container_"
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^.+$",
+                          "description": "Use the special value '_container_' to reference the container element."
+                        }
+                      ],
+                      "description": "Use the special value '_container_' to reference the container element."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "container",
+                    "name",
+                    "url"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "cover": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "container",
+                "title",
+                "url"
+              ]
+            },
+            "unwanted_tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "synopsis",
+            "cover",
+            "chapters",
+            "status",
+            "front_page",
+            "search",
+            "unwanted_tags"
+          ]
+        },
+        "custom_headers": {
+          "type": "object",
+          "properties": {
+            "User-Agent": {
+              "type": "string"
+            },
+            "Referer": {
+              "type": "string"
+            },
+            "Cookies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the cookie."
+                  },
+                  "value": {
+                    "type": [
+                      "string",
+                      "integer",
+                      "boolean"
+                    ],
+                    "description": "The value of the cookie."
+                  },
+                  "domain": {
+                    "type": "string",
+                    "description": "The domain of the cookie."
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "The path of the cookie."
+                  }
+                },
+                "required": [
+                  "name",
+                  "value",
+                  "domain",
+                  "path"
+                ],
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalItems": true
+        },
+        "search": {
+          "type": "object",
+          "properties": {
+            "search_param_name": {
+              "type": "string",
+              "pattern": "^.+$"
+            },
+            "as_type": {
+              "type": "string",
+              "default": "param",
+              "enum": [
+                "path",
+                "param"
+              ]
+            },
+            "query_parsing": {
+              "type": "object",
+              "properties": {
+                "encoding": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "raw",
+                    "url",
+                    null
+                  ]
+                },
+                "regex": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pattern": {
+                        "type": "string"
+                      },
+                      "sub_value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pattern",
+                      "sub_value"
+                    ]
+                  },
+                  "required": [
+                    "pattern",
+                    "sub_value"
+                  ]
+                }
+              },
+              "if": {
+                "properties": {
+                  "encoding": {
+                    "const": null
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "encoding",
+                  "regex"
+                ]
+              },
+              "else": {
+                "required": [
+                  "encoding"
+                ]
+              }
+            },
+            "extra_params": {
+              "type": "object",
+              "description": "The additional required static parameters for the search",
+              "default": {}
+            },
+            "request_method": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST"
+              ],
+              "default": "GET"
+            }
+          },
+          "if": {
+            "properties": {
+              "as_type": {
+                "const": "param"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "search_param_name",
+              "as_type",
+              "query_parsing",
+              "extra_params",
+              "request_method"
+            ]
+          },
+          "else": {
+            "required": [
+              "as_type",
+              "query_parsing",
+              "extra_params",
+              "request_method"
+            ]
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "selectors",
+        "search"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

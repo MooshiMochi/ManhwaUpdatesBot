@@ -10,6 +10,10 @@
     <orderEntry type="jdk" jdkName="Python 3.11 (ManhwaUpdatesBot)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
+  <component name="PackageRequirementsSettings">
+    <option name="versionSpecifier" value="Don't specify version" />
+    <option name="removeUnused" value="true" />
+  </component>
   <component name="PyDocumentationSettings">
     <option name="format" value="GOOGLE" />
     <option name="myDocStringFormat" value="Google" />

@@ -480,12 +480,14 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             ) as resp:
                 await raise_and_report_for_status(self.bot, resp)
                 return await resp.text()
-        else:
+        elif self.json_tree.request_method == "curl":
             resp = await self.bot.curl_session.request(
                 method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             )
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
+        else:
+            raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 
     async def format_manga_url(
             self, raw_url: Optional[str] = None, url_name: Optional[str] = None, _id: Optional[str] = None,

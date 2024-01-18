@@ -67,8 +67,8 @@ class MangaClient(commands.Bot):
         })
 
         if self._config["constants"]["first_bot_startup"] or self._config["constants"]["autosync"]:
-            self.loop.create_task(self.sync_commands())
-        self.loop.create_task(self.update_restart_message())
+            self.loop.create_task(self.sync_commands())  # noqa: No need to await a task
+        self.loop.create_task(self.update_restart_message())  # noqa: No need to await a task
 
         self._apis = APIManager(self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True))
 

@@ -213,6 +213,7 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
             proxy: str = None,
             **kwargs
     ) -> None:
+        #  The proxies are passed into the "proxies" parameter when this class is initialized
         BaseCacheSessionMixin.__init__(self, ignored_urls, name=name, proxy=proxy)
         super().__init__(*args, **kwargs)
 
@@ -252,3 +253,108 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
     put = partialmethod(request, "PUT")
     patch = partialmethod(request, "PATCH")
     delete = partialmethod(request, "DELETE")
+
+# class CachedCloudscraperSession(CloudScraper, BaseCacheSessionMixin):
+#     def __init__(
+#             self,
+#             ignored_urls: Optional[Set[str]] = None,
+#             *args,
+#             name: str = None,
+#             proxy: str = None,
+#             **kwargs
+#     ) -> None:
+#         BaseCacheSessionMixin.__init__(self, ignored_urls, name=name, proxy=proxy)
+#         self._LOCALISED_CONFIG = load_config(self.logger, auto_exit=True, filepath="config.yml")
+#         new_proxy = self.refresh_proxy()
+#         if new_proxy:
+#             self.proxies = {
+#                 "http": new_proxy,
+#                 "https": new_proxy.replace("http://", "https://")  # noqa
+#             }
+#         else:
+#             self.logger.warning("Failed to get a proxy from the webshare API. Continuing without a proxy...")
+#         super().__init__(*args, **kwargs)
+#         # Run the proxy refresh task in a separate thread
+#         threading.Thread(target=self.refresh_proxy_task, name="cloudscraper_proxy_refresher", daemon=True).start()
+#
+#     def refresh_proxy(self, current_proxy: str | None = None) -> Optional[str]:
+#         """
+#         Get a proxy for this session from the webshare proxy list API
+#
+#         Returns:
+#             A proxy string in the format "http://[PROXY USER]:[PROXY PASSWORD]@[PROXY HOST]:[PROXY PORT]"
+#         """
+#
+#         webshare_API_key = self._LOCALISED_CONFIG.get("api-keys", {}).get("webshare")
+#         if not webshare_API_key:
+#             return None
+#
+#         r = requests.get(
+#             "https://proxy.webshare.io/api/v2/proxy/list/",
+#             params={"valid": True, "mode": "direct", "page": 1, "page_size": 100},  # get all proxies
+#             headers={"Authorization": webshare_API_key}
+#         )
+#         r.raise_for_status()
+#         # Check if the currently used proxy is still in the list.
+#         # If it is, continue using it
+#         # Otherwise, grab a random proxy from the list and use that one instead.
+#         result = r.json()['results']
+#         if current_proxy:
+#             for proxy in result:
+#                 if proxy['proxy_address'] in current_proxy:
+#                     return current_proxy
+#         for proxy in result:
+#             if proxy['valid']:
+#                 return f"http://{proxy['username']}:{proxy['password']}@{proxy['proxy_address']}:{proxy['port']}"
+#
+#     def refresh_proxy_task(self, every: int = 60 * 60 * 24) -> None:
+#         """
+#         Run the refresh_proxy function in a background task
+#         """
+#         while True:
+#             new_proxy = self.refresh_proxy(self.proxies.get('http'))
+#             if not new_proxy:
+#                 break  # cancel the task if we can't get a new proxy
+#             self.proxies = {
+#                 "http": new_proxy,
+#                 "https": new_proxy.replace("http://", "https://")  # noqa
+#             }
+#             time.sleep(every)
+#
+#     async def request(self, method, url, cache_time: Optional[int] = None, *args, **kwargs) -> Response:
+#         self.logger.debug("Making request...")
+#
+#         cached_url = self.fmt_cached_url(url, **kwargs)
+#
+#         if self.proxies and kwargs.get("proxies") is None:
+#             kwargs["proxies"] = self.proxies
+#
+#         if cached_url in self._ignored_urls or self._is_discord_api_url(url):
+#             return await asyncio.to_thread(super().request, method, url, *args, **kwargs)
+#
+#         elif cached_url in self._cache and self._cache[cached_url]['expires'] > asyncio.get_event_loop().time():
+#             self.logger.debug(f"Cache hit for {cached_url}")
+#             # Use cached response
+#             response = self._cache[cached_url]['response']
+#             return response
+#
+#         self.cookies.clear()
+#
+#         self.logger.debug(f"Cache miss for {cached_url}")
+#         # await limiter.try_acquire(is_user_request=is_user_req)
+#         response = await asyncio.to_thread(super().request, method, url, *args, **kwargs)
+#
+#         cache_time = cache_time if cache_time is not None else self._default_cache_time
+#         # response.cached = False
+#         self._cache[cached_url] = {
+#             'response': response,
+#             'expires': asyncio.get_event_loop().time() + cache_time
+#         }
+#         return response
+#
+#     head = partialmethod(request, "HEAD")
+#     get = partialmethod(request, "GET")
+#     post = partialmethod(request, "POST")
+#     put = partialmethod(request, "PUT")
+#     patch = partialmethod(request, "PATCH")
+#     delete = partialmethod(request, "DELETE")

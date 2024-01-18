@@ -69,6 +69,7 @@ class CustomButtonCallbacks:
             if x.manga.id != bookmark.manga.id and x.manga.scanlator != bookmark.manga.scanlator
         ]
         self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
+        self.view.visual_item_index = min(self.view.visual_item_index, len(self.view.viewable_bookmarks) - 1)
         await self.view.update(interaction)
 
         await msg.edit(

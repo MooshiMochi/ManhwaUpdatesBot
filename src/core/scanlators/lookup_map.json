@@ -1854,7 +1854,7 @@
     },
     "mangabuddy": {
       "chapter_ajax": null,
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?mangabuddy\\.com/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://mangabuddy.com",
