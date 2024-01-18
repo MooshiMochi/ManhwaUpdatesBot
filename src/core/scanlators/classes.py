@@ -546,7 +546,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 if selector.endswith("]") and "=" not in selector:
                     return title.get(selector.split("[")[-1].removesuffix("]"))
                 else:
-                    return title.get_text()
+                    return title.get_text(strip=True)
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
         req_url = await self.format_manga_url(raw_url, use_ajax_url=True)
@@ -569,9 +569,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             if not url.startswith(self.json_tree.properties.base_url):
                 url = self.json_tree.properties.base_url + url
             if chapter_selector["name"] == "_container_":
-                name = chapter.get_text()  # noqa: Invalid scope warning
+                name = chapter.get_text(strip=True)  # noqa: Invalid scope warning
             else:
-                name = chapter.select_one(chapter_selector["name"]).get_text()  # noqa: Invalid scope warning
+                name = chapter.select_one(chapter_selector["name"]).get_text(strip=True)  # noqa: Invalid scope warning
             found_chapters.append(Chapter(url, name, i))
         return found_chapters
 
