@@ -4,7 +4,8 @@
 
 BY USING THIS BOT (collectively, including all Content available through the Manhwa Updates Bot name, support server
 and source code on any the related websites), YOU SIGNIFY YOUR ASSENT TO TERMS OF USE, WHICH ARE PUBLISHED
-AT https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/master/.discord/terms.md AND WHICH ARE INCORPORATED HEREIN BY REFERENCE.
+AT https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/master/.discord/terms.md AND WHICH ARE INCORPORATED HEREIN BY
+REFERENCE.
 If you do not agree to any of these terms, then please do not use the Manhwa Updates Bot.
 
 ## Manhwa Updates Bot
