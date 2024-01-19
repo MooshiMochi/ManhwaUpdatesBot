@@ -2,6 +2,10 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 19th 2024
+
+- Added Terms of Service for Manhwa Updates Bot.
+
 ## // January 18th 2024
 
 - Moved all the config loading procedures to the config_lodaer.py file.
