@@ -5,6 +5,7 @@
 ## // January 19th 2024
 
 - Added Terms of Service for Manhwa Updates Bot.
+- Added Privacy Policy for Manhwa Updates Bot.
 
 ## // January 18th 2024
 
