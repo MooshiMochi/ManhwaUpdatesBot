@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 21st 2024
+
+- Added support for https://zinmanga.io/
+
+### Bug Fixes:
+
+- Updated suryascans domain to suryatoon
+
 ## // January 19th 2024
 
 - Added Terms of Service for Manhwa Updates Bot.

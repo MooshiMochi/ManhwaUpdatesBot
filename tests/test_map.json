@@ -341,21 +341,21 @@
       "use_default_id_function": true
     }
   },
-  "suryascans": {
-    "user_input_url": "https://suryacomics.com/manga/modern-dude-in-the-murim/",
+  "suryatoon": {
+    "user_input_url": "https://suryatoon.com/manga/modern-dude-in-the-murim/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://suryacomics.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
-      "curr_chapter_url": "https://suryacomics.com/modern-dude-in-the-murim-chapter-22/",
-      "first_chapter_url": "https://suryacomics.com/modern-dude-in-the-murim-chapter-1/",
+      "cover_image": "https://suryatoon.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
+      "curr_chapter_url": "https://suryatoon.com/modern-dude-in-the-murim-chapter-22/",
+      "first_chapter_url": "https://suryatoon.com/modern-dude-in-the-murim-chapter-1/",
       "last_3_chapter_urls": [
-        "https://suryacomics.com/modern-dude-in-the-murim-chapter-20/",
-        "https://suryacomics.com/modern-dude-in-the-murim-chapter-21/",
-        "https://suryacomics.com/modern-dude-in-the-murim-chapter-22/"
+        "https://suryatoon.com/modern-dude-in-the-murim-chapter-20/",
+        "https://suryatoon.com/modern-dude-in-the-murim-chapter-21/",
+        "https://suryatoon.com/modern-dude-in-the-murim-chapter-22/"
       ],
-      "manga_id": "https://suryacomics.com/manga/modern-dude-in-the-murim",
-      "manga_url": "https://suryacomics.com/manga/modern-dude-in-the-murim",
-      "scanlator_name": "suryascans",
+      "manga_id": "https://suryatoon.com/manga/modern-dude-in-the-murim",
+      "manga_url": "https://suryatoon.com/manga/modern-dude-in-the-murim",
+      "scanlator_name": "suryatoon",
       "title": "Modern Dude in the Murim",
       "use_default_id_function": true
     }
@@ -851,6 +851,25 @@
         "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-10/",
         "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-11/",
         "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-12/"
+      ]
+    }
+  },
+  "zinmanga": {
+    "user_input_url": "https://zinmanga.io/yaotai-mirror-30/",
+    "expected_results": {
+      "scanlator_name": "zinmanga",
+      "manga_url": "https://zinmanga.io/yaotai-mirror-30/",
+      "completed": false,
+      "title": "Yaotai Mirror",
+      "manga_id": "30",
+      "use_default_id_function": false,
+      "curr_chapter_url": "https://zinmanga.io/yaotai-mirror-30/chapter-20-1038/",
+      "first_chapter_url": "https://zinmanga.io/yaotai-mirror-30/chapter-1-1019/",
+      "cover_image": "https://img.zinmanga.io/upload/pages/2023/09/yaotai-mirror.jpg",
+      "last_3_chapter_urls": [
+        "https://zinmanga.io/yaotai-mirror-30/chapter-18-1036/",
+        "https://zinmanga.io/yaotai-mirror-30/chapter-19-1037/",
+        "https://zinmanga.io/yaotai-mirror-30/chapter-20-1038/"
       ]
     }
   }

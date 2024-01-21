@@ -259,6 +259,44 @@ class _MangaparkAndBato(BasicScanlator):
         return "Unknown"
 
 
+class _Zinmanga(BasicScanlator):
+    def __init__(self, name: str, **kwargs):
+        super().__init__(name, **kwargs)
+
+    async def get_all_chapters(self, raw_url: str, current_page: int = 1, max_page: int | None = None) -> list[Chapter]:
+        url_name = await self._get_url_name(raw_url)
+        _id = await self.get_id(raw_url)
+        is_1st_request = current_page == 1
+        if is_1st_request:
+            req_url = self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=_id)
+        else:
+            req_url = self.json_tree.properties.format_urls.ajax.format(url_name=url_name, id=_id)
+        if url_name is None:
+            req_url = req_url.removesuffix("None" if not req_url.endswith("None/") else "None/")
+
+        req_url = req_url.replace("{page}", str(current_page))
+        text = await self._get_text(req_url, method="GET")  # noqa
+
+        if not is_1st_request:
+            text = json.loads(text)["list_chap"]
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+        sel = "ul#nav_list_chapter_id_detail>li:last-child>a,ul#nav_list_chapter_id_detail>li:last-child.active>span"
+        last_page_tag = soup.select_one(sel)
+
+        chapters = self._extract_chapters_from_html(text)
+        if is_1st_request:
+            if not last_page_tag:
+                return chapters
+            else:
+                max_page = int(last_page_tag.get_text(strip=True))
+        if current_page < max_page:
+            chapters[:0] = await self.get_all_chapters(raw_url, current_page + 1, max_page)
+        for i, chap in enumerate(chapters):
+            chap.index = i
+        return chapters
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
     omegascans: str = "omegascans"
@@ -266,6 +304,7 @@ class CustomKeys:
     novelmic: str = "novelmic"
     mangapark: str = "mangapark"
     bato: str = "bato"
+    zinmanga: str = "zinmanga"
 
 
 keys = CustomKeys()
@@ -276,3 +315,4 @@ scanlators[keys.rizzcomic] = _Rizzcomic(keys.rizzcomic, **scanlators[keys.rizzco
 scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic])  # noqa: This is a dict
 scanlators[keys.mangapark] = _MangaparkAndBato(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict
 scanlators[keys.bato] = _MangaparkAndBato(keys.bato, **scanlators[keys.bato])  # noqa: This is a dict
+scanlators[keys.zinmanga] = _Zinmanga(keys.zinmanga, **scanlators[keys.zinmanga])  # noqa: This is a dict

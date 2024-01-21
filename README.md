@@ -32,7 +32,7 @@ You can right-click a message > apps > Translate to translate a message or use t
 `/latest` - Get the latest chapter of a manga.\
 `/chapters` - Get a list of chapters of a manga.\
 `/next_update_check` - Get the time until the next update check.\
-`/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
+`/supported_websites` - Get a list of websites supported by the bot and the bot status on them.\
 `/stats` - View general bot stats.
 
 ### Config Commands:
@@ -86,7 +86,7 @@ This bot currently only supports the following websites:
 - https://en.leviatanscans.com
 - https://omegascans.org
 - https://nightscans.org (requires explicit permission from the website owner)
-- https://suryascans.com
+- https://suryatoon.com
 - https://void-scans.com
 - https://mangasiamese.com
 - https://arcanescans.com
@@ -112,6 +112,7 @@ This bot currently only supports the following websites:
 - https://theblank.net
 - https://nvmanga.com
 - https://newmanhua.com
+- https://zinmanga.io
 
 # Developers Section
 

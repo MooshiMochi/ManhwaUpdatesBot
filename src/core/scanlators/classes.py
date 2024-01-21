@@ -51,6 +51,11 @@ class _AbstractScanlatorUtilsMixin:
                 if result.startswith("/"):  # partial URL, we just need to append base URL to it
                     return base_url + result
                 elif not result.startswith("https://"):
+                    end_result = result.split(".")[-1]
+                    for extension in ["jpg", "png", "jpeg", "webp", "gif", "svg", "apng"]:
+                        if end_result.startswith(extension):
+                            print(True)
+                            return "/".join([base_url.removesuffix("/"), result.removeprefix("/")])
                     continue
                 return result
 
