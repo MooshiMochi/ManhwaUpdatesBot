@@ -133,9 +133,9 @@ async def ensure_proxy(config, logger) -> None:
 
                 try:
                     if proxy_user and proxy_password:
-                        proxy_url = f"http://{proxy_user}:{proxy_password}@{proxy_ip}:{proxy_port}"
+                        proxy_url = f"http://{proxy_user}:{proxy_password}@{proxy_ip}:{proxy_port}"  # noqa
                     else:
-                        proxy_url = f"http://{proxy_ip}:{proxy_port}"
+                        proxy_url = f"http://{proxy_ip}:{proxy_port}"  # noqa
                     proxy_str = proxy_url.replace(
                         proxy_user, '[PROXY USER]').replace(proxy_password, '[PROXY PASSWORD]')
                     logger.info(f"   - Testing proxy {proxy_str}...")

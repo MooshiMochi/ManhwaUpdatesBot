@@ -114,7 +114,11 @@ def ensure_configs(
             "anigliscans": None,
             "toonily": None,
         },
-        "api-keys": {}
+        "api-keys": {},
+        "patreon": {
+            "access-token": None,
+            "campaign-id": None
+        }
     }
 
     config_edited: bool = False

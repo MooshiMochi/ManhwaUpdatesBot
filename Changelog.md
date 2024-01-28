@@ -2,6 +2,27 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 28th 2024
+
+- Moved bot to new VPS.
+
+- Added **PATREON EXCLUSIVE** feature:
+    - Allows the use of commands in DMs
+    - ALlows tracking manhwa in DMs
+- Added the `/patreon` command to view the benefits of being a Patreon.
+- Added the `patreon` table to the database.
+    - Added a `Patron` class to the [objects.py](./src/core/objects.py) file.
+- Added the TOS and Privacy Policy links to the `/help` command.
+- Added the `patreon` category to the config file.
+- Added custom checks for commands. See [checks.py](./src/core/checks.py) for the code.
+
+- Updated the [README.md](./README.md) file to look cleaner.
+- Updated the `?dev sql` command.
+
+### Bug Fixes:
+
+- Fixed the `/stats` command showing inaccurate statistics.
+
 ## // January 21st 2024
 
 - Added support for https://zinmanga.io/

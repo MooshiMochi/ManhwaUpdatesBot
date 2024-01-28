@@ -12,6 +12,7 @@ from src.static import Emotes
 if TYPE_CHECKING:
     from src.core import MangaClient
 
+from src.core.errors import PremiumFeatureOnly
 import discord
 from discord.ext import commands
 
@@ -42,6 +43,13 @@ class TxtCommandErrorHandler(commands.Cog):
                 isinstance(error, (discord.Forbidden, discord.errors.Forbidden))):
             # probably because a message got deleted, so we'll ignore it.
             return ctx.command.reset_cooldown(ctx)
+
+        elif isinstance(error, PremiumFeatureOnly):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Premium feature!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
 
         elif isinstance(error, commands.MaxConcurrencyReached):
             d = {

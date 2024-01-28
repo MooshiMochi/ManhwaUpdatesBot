@@ -20,7 +20,8 @@ __all__ = (
     "DatabaseError",
     "RateLimitExceeded",
     "MissingUserAgentError",
-    "CustomError"
+    "CustomError",
+    "PremiumFeatureOnly"
 )
 
 
@@ -165,6 +166,13 @@ class MissingUserAgentError(BaseError):
         The user agent for `{self.scanlator}` is missing.
         Please contact the website owner to obtain one.
         """
+
+
+class PremiumFeatureOnly(BaseError):
+    """Raised when a premium feature is used."""
+
+    def __init__(self, error_msg: str):
+        self.error_msg = error_msg
 
 
 class CustomError(BaseError):

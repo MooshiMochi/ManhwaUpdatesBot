@@ -11,7 +11,7 @@ from fuzzywuzzy import fuzz
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga, Bookmark, Chapter
+from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, Patron
 from src.core.scanlators import scanlators
 from io import BytesIO
 import pandas as pd
@@ -140,6 +140,18 @@ class Database:
                 );
                 """
             )
+
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS patreons (
+                    email TEXT PRIMARY KEY NOT NULL,
+                    user_id INTEGER,
+                    first_name TEXT NOT NULL,
+                    last_name TEXT NOT NULL,
+                    UNIQUE (email) ON CONFLICT REPLACE
+                )
+                """
+            )
             await db.commit()
 
     async def execute(self, query: str, *args) -> Any:
@@ -199,6 +211,40 @@ class Database:
                 else:
                     # Import table data
                     df.to_sql(table_name, conn, index=False, if_exists="append")
+
+    async def upsert_patreons(self, patrons: list[Patron]) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            for patron in patrons:
+                await db.execute(
+                    """
+                    INSERT INTO patreons (email, user_id, first_name, last_name)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT(email) DO UPDATE SET user_id = $2, first_name = $3, last_name = $4;
+                    """,
+                    patron.to_tuple(),
+                )
+            await db.commit()
+
+    async def delete_inactive_patreons(self, active_patrons: list[Patron]) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute(
+                """
+                DELETE FROM patreons WHERE email NOT IN ($1);
+                """,
+                (",".join([patron.email for patron in active_patrons]),),
+            )
+            await db.commit()
+
+    async def is_patreon(self, user_id: int) -> bool:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT * FROM patreons WHERE user_id = $1;
+                """,
+                (user_id,),
+            )
+            result = await cursor.fetchone()
+            return result is not None
 
     async def toggle_scanlator(self, scanlator: str) -> None:
         """
@@ -1031,7 +1077,8 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             cursor = await db.execute(
                 """
-                SELECT role_id FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3;
+                SELECT role_id FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3 AND
+                role_id IS NOT (SELECT default_ping_role_id FROM guild_config WHERE guild_id = $1);
                 """,
                 (guild_id, manga_id, scanlator),
             )

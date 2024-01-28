@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 from typing import Any, Coroutine, Optional, TYPE_CHECKING
 
 from src.core.scanlators.classes import AbstractScanlator
@@ -35,6 +34,7 @@ from src.utils import (
     respond_if_limit_reached,
     translate
 )
+from src.core import checks
 
 
 class CommandsCog(commands.Cog):
@@ -56,37 +56,6 @@ class CommandsCog(commands.Cog):
         self.bot.logger.info("Loaded Commands Cog...")
         self.bot.add_view(SubscribeView(self.bot))
         self.bot.add_view(SupportView())
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        commands_to_check = [
-            "subscribe",
-            "track",
-        ]
-        if (
-                str(interaction.command.qualified_name).split(" ")[0]
-                not in commands_to_check
-        ):
-            return True
-
-        if interaction.guild_id is None:
-            em = discord.Embed(
-                title="Error",
-                description="This command can only be used in a server.",
-                color=0xFF0000,
-            )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
-            return False
-
-        elif await self.bot.db.get_guild_config(interaction.guild_id) is None:
-            if interaction.command.qualified_name == "subscribe list":
-                try:
-                    if interaction.namespace["global"]:
-                        return True
-                except KeyError:
-                    pass
-            raise GuildNotConfiguredError(interaction.guild_id)
-        return True
 
     @app_commands.command(
         name="next_update_check", description="Get the time of the next update check."
@@ -126,14 +95,15 @@ class CommandsCog(commands.Cog):
         manga_url="The URL of the manga you want to track.",
         ping_role="The role to ping when a notification is sent."
     )
-    @app_commands.checks.bot_has_permissions(manage_roles=True)
-    @app_commands.checks.has_permissions(manage_roles=True)
+    @checks.bot_has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True)
+    @checks.has_premium(dm_only=True)
     @app_commands.autocomplete(manga_url=autocompletes.manga)
     async def track_new(
             self, interaction: discord.Interaction, manga_url: str, ping_role: Optional[discord.Role] = None
     ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-
+        invoked_in_dm: bool = interaction.guild_id is None
         if (_result := RegExpressions.url.search(manga_url)) is not None:
             manga_url = _result.group(0)
             scanlator = get_manga_scanlator_class(scanlators, manga_url)
@@ -147,7 +117,6 @@ class CommandsCog(commands.Cog):
             )
             if manga == "LIMIT_REACHED":
                 return  # Return because we already responded with the respond_if_limit_reached func above
-
         else:
             try:
                 manga_id, scanlator_name = manga_url.split("|")
@@ -164,59 +133,60 @@ class CommandsCog(commands.Cog):
         elif manga.completed:
             raise MangaCompletedOrDropped(manga.url)
 
-        guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
-        if guild_config is None:
-            raise GuildNotConfiguredError(interaction.guild_id)
-
         await self.bot.db.add_series(manga)  # add this series entry to the database if it isn't already
 
-        if not ping_role:
-            # check if the manga ID already has a ping role in DB
-            ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id, manga.scanlator)
-
-            if ping_role_id is None:
-                if guild_config.auto_create_role:  # should create and not specified
-                    role_name = manga.title[:97] + "..." if len(manga.title) > 100 else manga.title
-                    # try to find a role with that name already
-                    existing_role = discord.utils.get(interaction.guild.roles, name=role_name)
-                    if existing_role is not None:
-                        ping_role = existing_role
-                    else:
-                        ping_role = await interaction.guild.create_role(name=role_name, mentionable=True)
-                        await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
-
-        elif ping_role.is_bot_managed():
-            return await interaction.followup.send(
-                embed=(
-                    discord.Embed(
-                        title="Error",
-                        description=(
-                            "The role you provided is managed by a bot.\n"
-                            "Please provide a role that is not managed by a bot and try again."
-                        ),
-                        color=discord.Color.red())),
-            )
-
-        elif ping_role >= interaction.guild.me.top_role:
-            return await interaction.followup.send(
-                embed=(
-                    discord.Embed(
-                        title="Error",
-                        description=(
-                            "The role you provided is higher than my top role.\n"
-                            "Please move the role below my top role and try again."
-                        ),
-                        color=discord.Color.red())),
-            )
-
-        if ping_role:
-            await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, manga.scanlator, ping_role.id)
-            description = f"Tracking **[{manga.title}]({manga.url}) ({ping_role.mention})** is successful!"
+        if invoked_in_dm:
+            await self.bot.db.upsert_guild_sub_role(interaction.user.id, manga.id, manga.scanlator, None)
+            description = (f"Successfully tracked **{manga}**!\nPlease make sure your DMs are open to receive "
+                           f"notifications.")
         else:
-            await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, manga.scanlator, None)
-            description = f"Tracking **[{manga.title}]({manga.url})** is successful!"
-        description += f"\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
-        description += f"\n\n**Note:** You can change the role to ping with `/track update`."
+            # do the role, config and other stuff here
+            guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
+            if not guild_config:
+                raise GuildNotConfiguredError(interaction.guild_id)
+
+            if ping_role is not None:
+                invalid_role_reason: str = ""
+                if ping_role.is_bot_managed():
+                    invalid_role_reason = (
+                        "The role you provided is managed by a bot.\n"
+                        "Please provide a role that is not managed by a bot and try again."
+                    )
+                elif ping_role >= interaction.guild.me.top_role:
+                    invalid_role_reason = (
+                        "The role you provided is higher than my top role.\n"
+                        "Please move the role below my top role and try again."
+                    )
+                if invalid_role_reason != "":
+                    return await interaction.followup.send(
+                        embed=discord.Embed(title="Error", description=invalid_role_reason, color=discord.Color.red()),
+                    )
+
+            elif guild_config.auto_create_role is True:
+                if len(manga.title) + len(manga.scanlator) + 3 <= 100:  # 3: 1 space + 2 brackets
+                    role_name = f"{manga.title} ({manga.scanlator})"
+                else:
+                    role_name = manga.title[:100 - 6 - len(manga.scanlator)] + f"... ({manga.scanlator})"
+                role_exists = discord.utils.get(interaction.guild.roles, name=role_name)
+                if role_exists:
+                    ping_role = role_exists
+                else:
+                    ping_role = await interaction.guild.create_role(
+                        name=role_name, mentionable=False, reason="Created a role for a tracked manga.",
+                    )
+                    await self.bot.db.add_bot_created_role(interaction.guild_id, ping_role.id)
+
+            if ping_role is not None:
+                description = f"Tracking **[{manga.title}]({manga.url}) ({ping_role.mention})** is successful!"
+                ping_role_id = ping_role.id
+            else:
+                description = f"Tracking **[{manga.title}]({manga.url})** is successful!"
+                ping_role_id = None
+            description += f"\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
+            description += f"\n\n**Note:** You can change the role to ping with `/track update`."
+
+            await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, manga.scanlator, ping_role_id)
+
         embed = discord.Embed(
             title="Tracking Successful",
             color=discord.Color.green(),
@@ -233,12 +203,22 @@ class CommandsCog(commands.Cog):
     @app_commands.describe(manga_id="The name of the manga.", role="The new role to ping.")
     @app_commands.autocomplete(manga_id=autocompletes.tracked_manga)
     @app_commands.rename(manga_id="manga")
-    @app_commands.checks.has_permissions(manage_roles=True)
-    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True)
+    @checks.bot_has_permissions(manage_roles=True)
+    @checks.has_premium(dm_only=True)
     async def track_update(
             self, interaction: discord.Interaction, manga_id: str, role: Optional[discord.Role] = None
     ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
+        if not interaction.guild_id:  # dm channel
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Apologies for the interruption...",
+                    description="Hey! This command won't have any use in a DM channel since roles cannot be used here "
+                                "anyways!\nI took the liberty of cancelling this command 🥰.",
+                    color=discord.Color.yellow()
+                )
+            )
         try:
             manga_id, scanlator_name = manga_id.split("|")
         except ValueError:
@@ -309,8 +289,9 @@ class CommandsCog(commands.Cog):
     )
     @app_commands.autocomplete(manga_id=autocompletes.tracked_manga)
     @app_commands.rename(manga_id="manga")
-    @app_commands.checks.has_permissions(manage_roles=True)
-    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True)
+    @checks.bot_has_permissions(manage_roles=True)
+    @checks.has_premium(dm_only=True)
     async def track_remove(self, interaction: discord.Interaction, manga_id: str, delete_role: Optional[bool] = False):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
@@ -326,20 +307,19 @@ class CommandsCog(commands.Cog):
         if not manga:
             raise MangaNotFoundError(manga_id)
 
+        deleted_role_name: str | None = None
         if delete_role is True:
             role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id, manga.scanlator)
             if role_id is not None and (role := interaction.guild.get_role(role_id)):
                 await role.delete(reason="Untracked a manga.")
-
+                deleted_role_name = role.name
         await self.bot.db.delete_manga_track_instance(interaction.guild_id, manga.id, manga.scanlator)
+        description = f"Successfully stopped tracking {manga}"
+        if deleted_role_name is not None:
+            description += f" and deleted the @{deleted_role_name} role"
         await interaction.followup.send(
             embed=(
-                discord.Embed(
-                    title="Success",
-                    description=(
-                        f"Successfully stopped tracking {manga}."
-                    ),
-                    color=discord.Color.green())),
+                discord.Embed(title="Success", description=f"{description}.", color=discord.Color.green()))
         )
 
     @track.command(
@@ -348,12 +328,16 @@ class CommandsCog(commands.Cog):
     async def track_list(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
-        tracked_manga: list[Manga] = await self.bot.db.get_all_guild_tracked_manga(interaction.guild_id)
+        tracked_manga: list[Manga] = await self.bot.db.get_all_guild_tracked_manga(
+            interaction.guild_id or interaction.user.id
+        )
         tracked_manga = sorted(tracked_manga, key=lambda x: x.title)
 
         if not tracked_manga:
             em = discord.Embed(title="Nothing found", color=discord.Color.red())
             em.description = "There are no tracked manga in this server."
+            if not interaction.guild_id:
+                em.description = "You are not tracking any manga."
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             return await interaction.followup.send(embed=em, ephemeral=True)
 
@@ -410,7 +394,8 @@ class CommandsCog(commands.Cog):
     @app_commands.describe(manga_id="The name of the tracked manga you want to subscribe to.")
     @app_commands.rename(manga_id="manga")
     @app_commands.autocomplete(manga_id=autocompletes.tracked_manga)
-    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    @checks.bot_has_permissions(manage_roles=True)
+    @checks.has_premium(dm_only=True)
     async def subscribe_new(
             self, interaction: discord.Interaction, manga_id: str
     ) -> None:
@@ -492,7 +477,8 @@ class CommandsCog(commands.Cog):
     @app_commands.describe(manga_id="The name of the manga.")
     @app_commands.autocomplete(manga_id=autocompletes.user_subbed_manga)
     @app_commands.rename(manga_id="manga")
-    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    @checks.bot_has_permissions(manage_roles=True)
+    @checks.has_premium(dm_only=True)
     async def subscribe_delete(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         try:
@@ -716,6 +702,7 @@ class CommandsCog(commands.Cog):
 - `/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
 - `/translate` - Translate any text from one language to another.
 - `/stats` - View general bot statistics.
+- `/patreon` - View info about the benefits you get as a Patreon.
 
 **Permissions:**
 - The bot requires the following permissions for optimal functionality:
@@ -976,28 +963,31 @@ Ensure the bot has these permissions for smooth operation.
     async def stats(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)  # noqa
 
-        (bookmarks_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM bookmarks;")
-        (tracks_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM tracked_guild_series;")
-        (subs_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM user_subs;")
-        (manhwa_count,), = await self.bot.db.execute("SELECT DISTINCT COUNT(*) FROM series;")
+        (bookmarks_count,), = await self.bot.db.execute(
+            "SELECT COUNT(user_id || '-' || series_id || '-' || scanlator) FROM bookmarks;"
+        )
+        (tracks_count,), = await self.bot.db.execute(
+            "SELECT COUNT(DISTINCT series_id || '-' || scanlator) FROM tracked_guild_series;"
+        )
+        (subs_count,), = await self.bot.db.execute(
+            "SELECT COUNT(DISTINCT id) FROM user_subs;"
+        )
+        (manhwa_count,), = await self.bot.db.execute(
+            "SELECT COUNT(DISTINCT id || '-' || scanlator) FROM series;"
+        )
         scanlators_count = len(self.bot._all_scanners)  # noqa
         guilds_count = len(self.bot.guilds)
-        users_count = len(self.bot.users)
-        (update_channels_count,), = await self.bot.db.execute(
-            "SELECT DISTINCT COUNT(notifications_channel_id) FROM guild_config;"
+        (users_count,), = await self.bot.db.execute(
+            """
+            SELECT COUNT(user_identifier) AS unique_users FROM (
+                SELECT user_id AS user_identifier FROM bookmarks
+                UNION
+                SELECT id AS user_identifier FROM user_subs
+            );
+            """
         )
-        uptime = datetime.now() - self.bot.start_time
 
-        uptime_str = f"Since <t:{int(self.bot.start_time.timestamp())}:f>\n"
-        if uptime.days > 0:
-            uptime_str += f"({uptime.days} day(s))"
-        elif uptime.total_seconds() > 3600:
-            uptime_str += f"({uptime.seconds // 3600} hour(s))"
-        elif uptime.total_seconds() > 60:
-            uptime_str += f"({uptime.seconds // 60} minute(s))"
-        else:
-            uptime_str += f"({uptime.seconds} second(s))"
-
+        uptime_str = f"Since <t:{int(self.bot.start_time.timestamp())}:R>\n"
         embed = discord.Embed(
             title="Manhwa Updates Bot Statistics",
             description="Here are the current statistics of the bot:",
@@ -1005,12 +995,11 @@ Ensure the bot has these permissions for smooth operation.
         )
 
         embed.add_field(name="🔖 Bookmarks", value=str(bookmarks_count), inline=True)
-        embed.add_field(name="📚 Users tracking Manhwa", value=str(tracks_count), inline=True)
+        embed.add_field(name="📚 Tracked Manhwas", value=str(tracks_count), inline=True)
         embed.add_field(name="👥 Users subbed to Manhwa", value=str(subs_count), inline=True)
-        embed.add_field(name="📘 Total Manhwa", value=str(manhwa_count), inline=False)
-        embed.add_field(name="🔍 Total Supported Websites", value=str(scanlators_count), inline=True)
-        embed.add_field(name="🔊 Total Update Channels", value=str(update_channels_count), inline=True)
-        embed.add_field(name="🌐 Total Guilds", value=str(guilds_count), inline=True)
+        embed.add_field(name="📘 Total Manhwas", value=str(manhwa_count), inline=False)
+        embed.add_field(name="🔍 Supported Websites", value=str(scanlators_count), inline=True)
+        embed.add_field(name="🌐 Total Servers", value=str(guilds_count), inline=True)
         embed.add_field(name="👤 Total Users", value=str(users_count), inline=True)
         embed.add_field(name="⌛ Total Uptime", value=str(uptime_str), inline=True)
 
@@ -1018,6 +1007,66 @@ Ensure the bot has these permissions for smooth operation.
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await interaction.followup.send(embed=embed, ephemeral=True)  # noqa
+
+    @app_commands.command(name="patreon",
+                          description="Help fund the server and manage your current patreon subscription")
+    async def patreon(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(  # noqa
+            embed=discord.Embed(
+                title="Patreon", url="https://www.patreon.com/mooshi69",
+                color=discord.Color.gold(),
+                description=(
+                    "You can donate to our [Patreon](https://www.patreon.com/mooshi69) or "
+                    "[Ko-fi](https://ko-fi.com/mooshi69) to support the server and the development. "
+                    "I have been working on the Manhwa Updates bot for just over 1 year now and have "
+                    "tried my best to make your manhwa reading experience the best that it can be. "
+                    "By becoming a Patreon you can support my work and pay for the server cost.\n\n"
+                    "Manage your Patreon subscription using this command to view your patreon status and change your "
+                    "custom embed color. Subscriptions may take up to `10 minutes` to refresh. "
+                    "Also make sure your Discord account is linked with Patreon."
+                )
+            ).add_field(
+                name='"Hello World" Supporter (£3/month)',
+                value=(
+                    "• Get the `\"Hello World\" Supporter` role in the support server.\n"
+                    "• Get access to bot commands in DMs.\n"
+                    "• Help fund the server and the development."
+                ),
+                inline=False
+            ).add_field(
+                name='Bot Whisperer (£5/month)',
+                value=(
+                    "• Get the `Bot Whisperer` role in the support server.\n"
+                    "• Get access to bot commands in DMs.\n"
+                    "• Help fund the server and the development."
+                ),
+                inline=False
+            ).add_field(
+                name='The Full Stack (£10/month)',
+                value=(
+                    "• Get `The Full Stack` role in the support server.\n"
+                    "• Get access to bot commands in DMs.\n"
+                    "• Help fund the server and the development."
+                ),
+                inline=False
+            ).set_footer(
+                text="Manhwa Updates Bot",
+                icon_url=self.bot.user.display_avatar.url
+            ),
+            view=discord.ui.View().add_item(
+                discord.ui.Button(
+                    label="Patreon",
+                    style=discord.ButtonStyle.link,
+                    url="https://www.patreon.com/mooshi69"
+                )
+            ).add_item(
+                discord.ui.Button(
+                    label="Ko-fi",
+                    style=discord.ButtonStyle.link,
+                    url="https://ko-fi.com/mooshi69"
+                )
+            )
+        )
 
 
 async def setup(bot: MangaClient) -> None:

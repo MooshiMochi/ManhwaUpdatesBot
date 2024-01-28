@@ -1,3 +1,4 @@
+from . import checks
 from .bot import MangaClient
 from .cache import CachedClientSession, CachedCurlCffiSession
 from .database import Database

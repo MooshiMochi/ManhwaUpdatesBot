@@ -10,10 +10,12 @@ from typing import TYPE_CHECKING
 import aiohttp
 import curl_cffi.requests
 import discord
+import patreon
 from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError
+from patreon.jsonapi.parser import JSONAPIResource
 
 from src.core.errors import CustomError, URLAccessFailed
-from src.core.objects import ChapterUpdate, Manga, PartialManga
+from src.core.objects import ChapterUpdate, Manga, PartialManga, Patron
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
 from src.ui.views import BookmarkChapterView
@@ -36,8 +38,11 @@ class UpdateCheckCog(commands.Cog):
 
         self.check_updates_task.add_exception_type(Exception, aiohttp.ClientConnectorError)
         self.check_manhwa_status.add_exception_type(Exception, aiohttp.ClientConnectorError)
+        self.check_patreon_users.add_exception_type(Exception, aiohttp.ClientConnectorError)
+
         self.check_updates_task.start()
         self.check_manhwa_status.start()
+        self.check_patreon_users.start()
 
     async def handle_exception(self, coro: callable, scanlator: AbstractScanlator, req_url: str) -> str:
         """
@@ -256,17 +261,61 @@ class UpdateCheckCog(commands.Cog):
             None
         """
         guilds_to_updates: dict[int, list[tuple[ChapterUpdate, int]]] = defaultdict(list)
-
+        users_to_update: dict[discord.User, list[ChapterUpdate]] = defaultdict(list)
         for update in chapter_updates:
             if not update.new_chapters:
                 continue
             guild_ids = await self.bot.db.get_manga_guild_ids(update.manga_id, update.scanlator)
             if not guild_ids:
                 continue
+            # try to fetch a user based on the guild_id.
+            user_objects = list(filter(lambda x: x is not None, [self.bot.get_user(x) for x in guild_ids]))
+
             for guild_id in guild_ids:
                 ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_id, update.manga_id, update.scanlator)
                 guilds_to_updates[guild_id].append((update, ping_role_id))
+            for user_obj in user_objects:
+                users_to_update[user_obj].append(update)
+
+            # remove entries from guilds_to_update that are in the users_to_update
+            guilds_to_updates = {
+                k: v for k, v in guilds_to_updates.items() if k not in [x.id for x in user_objects]
+            }
         # {g_id: [upd1, upd2, upd3, ...], ...}
+
+        for user in users_to_update:
+            try:
+                for update in users_to_update[user]:
+                    manga_title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
+                    for i, chapter in enumerate(update.new_chapters):
+                        view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
+                        extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
+                        spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
+                        try:
+                            await user.send(
+                                (
+                                    # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
+                                    f"{spoiler_text}**{manga_title} {chapter.name}**"
+                                    f" has been released!\n{chapter.url}"
+                                ),
+                                allowed_mentions=discord.AllowedMentions(roles=True),
+                                **extra_kwargs,
+                                view=view,
+                            )
+                        except discord.HTTPException as e:
+                            self.logger.error(
+                                f"Failed to send update for {manga_title}| {chapter.name} to {user}", exc_info=e
+                            )
+                next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
+                await user.send(
+                    embed=(
+                        discord.Embed(
+                            description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
+                    ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url),
+                    delete_after=25 * 60  # 25 min
+                )
+            except discord.Forbidden:  # DMs are closed
+                self.logger.warning(f"Failed to send update to {user} because DMs are closed!")
 
         for guild_id in guilds_to_updates:
             guild_config = await self.bot.db.get_guild_config(guild_id)
@@ -275,7 +324,8 @@ class UpdateCheckCog(commands.Cog):
                 continue
             if not guild_config.notifications_channel.permissions_for(guild_config.guild.me).send_messages:
                 self.logger.warning(
-                    f"Missing permissions to send messages in {guild_config.notifications_channel}"
+                    f"Missing permissions to send messages in {guild_config.notifications_channel} "
+                    f"({guild_id} > {guild_config.notifications_channel.id})"
                 )
                 continue
             for update, ping_role_id in updates:
@@ -536,7 +586,72 @@ class UpdateCheckCog(commands.Cog):
         finally:
             self.logger.info("Status check finished =================")
 
+    @tasks.loop(minutes=10)
+    async def check_patreon_users(self) -> None:
+        """
+        Summary:
+            Checks for new patreon users and updates the database accordingly.
+
+        Returns:
+            None
+        """
+        self.logger.info("Checking for new patreon users...")
+        patreon_data = self.bot.config.get("patreon", {})
+        ACCESS_TOKEN = patreon_data.get("access-token")
+        CAMPAIGN_ID = patreon_data.get("campaign-id")
+        if not (ACCESS_TOKEN and CAMPAIGN_ID):
+            self.bot.logger.warning("No patreon access token found or campaign ID! Cancelling patreon check...")
+            self.check_patreon_users.cancel()  # no access token, cancel the task
+
+        api_client = patreon.API(ACCESS_TOKEN)
+        # Accessing the JSON data
+        active_patrons: list[Patron] = []
+        all_pledges: list[JSONAPIResource] = []
+        cursor = None
+
+        try:
+            while True:
+                pledge_response = await asyncio.to_thread(api_client.fetch_page_of_pledges,
+                                                          CAMPAIGN_ID, 2, cursor
+                                                          )
+                all_pledges += pledge_response.data()
+                cursor = api_client.extract_cursor(pledge_response)
+                if not cursor:
+                    break
+
+            # get the patreon ID of all the current users that have an active pledge
+            for pledge in all_pledges:
+                if (
+                        pledge.type() == "pledge" and
+                        pledge.relationship("patron").type() == "user" and
+                        pledge.attribute("declined_since") is None
+                ):
+                    patreon_relationship = pledge.relationship("patron")
+
+                    active_patrons.append(
+                        Patron(
+                            patreon_relationship.attribute("email"),
+                            (patreon_relationship.attribute("social_connections")["discord"] or {}).get(
+                                "user_id"),
+                            patreon_relationship.attribute("first_name"),
+                            patreon_relationship.attribute("last_name"),
+                        )
+                    )
+
+            await self.bot.db.upsert_patreons(active_patrons)
+            await self.bot.db.delete_inactive_patreons(active_patrons)
+            # save data to the database in the 'patreons' table
+
+        except Exception as e:
+            self.logger.error("⚠️ Patreon Check Stopped!\n\nError while checking for new patreon users", exc_info=e)
+            traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
+            await self.bot.log_to_discord(f"Error when checking patreon users: {traceback}")
+            return
+        finally:
+            self.logger.info("Patreon check finished =================")
+
     @check_updates_task.before_loop
+    @check_patreon_users.before_loop
     async def before_check_updates_task(self):
         await self.bot.wait_until_ready()
 

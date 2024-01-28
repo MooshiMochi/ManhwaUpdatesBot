@@ -13,15 +13,19 @@ This is a bot that will periodically check for updates on the manga that you hav
 is a new chapter available.
 
 More websites will be added in the future as I find them. If you want a website to be added, please reach out to me
-on the [support server](https://discord.gg/TYkw8VBZkr).\
+on the [**support server**](https://discord.gg/TYkw8VBZkr).\
 Additionally, websites that are heavily protected by Cloudflare will not be added (I will list the ones I tried to
 add that fit these criteria at the bottom of this file).
 
-If you want to leave a suggestion of a website that I should implement for this, send me a DM over on .mooshi on
+If you want to leave a suggestion of a website that I should implement for this, send me a DM over on `.mooshi` on
 discord!
 
 The bot can also translate messages/text to different languages using Google Translate.
-You can right-click a message > apps > Translate to translate a message or use the /translate command
+You can `right-click a message > apps > Translate` to translate a message or use the `/translate` command
+
+## Support
+
+If you have any questions, feel free to join the [Support Server](https://discord.gg/TYkw8VBZkr) and ask there.
 
 ## Commands:
 
@@ -33,7 +37,8 @@ You can right-click a message > apps > Translate to translate a message or use t
 `/chapters` - Get a list of chapters of a manga.\
 `/next_update_check` - Get the time until the next update check.\
 `/supported_websites` - Get a list of websites supported by the bot and the bot status on them.\
-`/stats` - View general bot stats.
+`/stats` - View general bot stats.\
+`/patreon` - View info about the benefits you get as a Patreon.
 
 ### Config Commands:
 
@@ -68,51 +73,7 @@ You can right-click a message > apps > Translate to translate a message or use t
 
 ## Supported Websites:
 
-This bot currently only supports the following websites:
-
-- https://toonily.com (requires explicit permission from the website owner)
-- https://manganato.com (alternatively known as https://chapmanganato.com)
-- https://tritinia.org
-- https://mangadex.org
-- https://flamecomics.com
-- https://asurascans.com
-- https://reaperscans.com
-- https://anigliscans.com (requires explicit permission from the website owner)
-- https://comick.app
-- https://luminousscans.com
-- https://drakescans.com
-- https://nitroscans.com
-- https://mangapill.com
-- https://en.leviatanscans.com
-- https://omegascans.org
-- https://nightscans.org (requires explicit permission from the website owner)
-- https://suryatoon.com
-- https://void-scans.com
-- https://mangasiamese.com
-- https://arcanescans.com
-- https://readmangabat.com
-- https://kaiscans.com
-- https://lhtranslation.net
-- https://astrascans.com
-- https://ravenscans.com
-- https://reset-scans.com
-- https://rizzcomic.com
-- https://mangapark.net
-- https://ww7.mangakakalot.tv
-- https://cosmic-scans.com
-- https://manga-demon.org
-- https://mangareader.to
-- https://arvenscans.org
-- https://manhwa-freak.com
-- https://freakscans.com
-- https://mangabuddy.com
-- https://topreadmanhwa.com
-- https://kunmanga.com
-- https://mangafire.to
-- https://theblank.net
-- https://nvmanga.com
-- https://newmanhua.com
-- https://zinmanga.io
+### You can view the supported websites [here.](./.github/supportedWebsites.md)
 
 # Developers Section
 
@@ -145,26 +106,12 @@ How to set up the bot:
    ./run.sh
    ```
 
-## Notes
-
-For developers: The following websites will not work unless a custom user-agent allowed by the owner is used:
-
-- https://anigliscans.com
-- https://toonily.com
+> **Note:**
+> It is recommended that you use a webshare rotating proxy with backbone connection method.
 
 ## Contributing:
 
    ```
    If you want to contribute to this project, feel free to fork the repository and make a pull request.
    I will review the changes and merge them if they are good.
-   ``` 
-
-### Websites heavily protected by Cloudflare (won't be considered for this project)
-
    ```
-   Nothing here yet.
-   ```
-
-## Support
-
-If you have any questions, feel free to join the [Support Server](https://discord.gg/TYkw8VBZkr) and ask there.

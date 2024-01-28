@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 
 from ..enums import BookmarkFolderType
@@ -606,3 +607,25 @@ class CachedResponse:
         for attr, value in attributes:
             setattr(self._response, attr, value)
         return self._response
+
+
+@dataclass
+class Patron:
+    email: str
+    user_id: int | None
+    first_name: str
+    last_name: str
+
+    def __post_init__(self):
+        self.user_id = int(self.user_id) if self.user_id else None
+
+    def to_tuple(self) -> tuple[str, int | None, str, str]:
+        return self.email, int(self.user_id) if self.user_id else None, self.first_name, self.last_name
+
+    @classmethod
+    def from_tuple(cls, data: tuple[str, int | None, str, str]) -> "Patron":
+        return cls(*data)
+
+    @classmethod
+    def from_tuples(cls, data: list[tuple[str, int | None, str, str]]) -> list["Patron"]:
+        return [cls.from_tuple(d) for d in data] if data else []

@@ -19,10 +19,12 @@ from src.static import Emotes
 
 from src.core.errors import *
 
+IS_PATREON = True
+
 
 class BotCommandTree(discord.app_commands.CommandTree):
     def __init__(self, client: MangaClient):
-        self.client: MangaClient = client
+        self.bot: MangaClient = client
         super().__init__(client)
 
     @staticmethod
@@ -38,15 +40,45 @@ class BotCommandTree(discord.app_commands.CommandTree):
         """
         The global check for application commands.
         """
-        if not interaction.guild:
+        commands_to_check = ["subscribe", "track"]
+        # If it's DM channel and they're not patreon -> Can't use -> alert about patreon
+
+        if not interaction.guild_id:
+            if not IS_PATREON:
+                em = discord.Embed(
+                    title="Error",
+                    description=(
+                        "This command can only be used in a server.\n"
+                        "You can unlock this feature by becoming a Patreon supporter.\nUser `/help` for patreon link."
+                    ),
+                    color=0xFF0000,
+                )
+                em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
+                await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+                return False
+            await self.bot.log_command_usage(interaction)
+            return True
+
+        if (not interaction.guild.me.guild_permissions.send_messages
+                and not interaction.guild.me.guild_permissions.embed_links):
+            self.bot.logger.error("I don't have permission to send messages or embed links.")
             return False
-        elif (
-                not interaction.guild.me.guild_permissions.send_messages
-                and not interaction.guild.me.guild_permissions.embed_links
-        ):
-            self.client.logger.error("I don't have permission to send messages or embed links.")
-            return False
-        await self.client.log_command_usage(interaction)
+
+        if (str(interaction.command.qualified_name).split(" ")[0]
+                not in commands_to_check):
+            await self.bot.log_command_usage(interaction)
+            return True
+
+        if await self.bot.db.get_guild_config(interaction.guild_id) is None:
+            if interaction.command.qualified_name == "subscribe list":
+                try:
+                    if interaction.namespace["global"]:
+                        await self.bot.log_command_usage(interaction)
+                        return True
+                except KeyError:
+                    pass
+            raise GuildNotConfiguredError(interaction.guild_id)
+        await self.bot.log_command_usage(interaction)
         return True
 
     async def on_error(
@@ -65,6 +97,13 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 title=f"{Emotes.warning} Hey, you can't do that!",
                 color=0xFF0000,
                 description=f"Sorry, you need to have the role <@&{error.missing_role}> to execute that command.",
+            )
+
+        elif isinstance(error, PremiumFeatureOnly):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Premium feature!",
+                color=0xFF0000,
+                description=error.error_msg,
             )
 
         elif isinstance(error, MangaNotFoundError):
@@ -221,8 +260,9 @@ class BotCommandTree(discord.app_commands.CommandTree):
                     description=f"Sorry, you need the `{perms}` permissions to execute this command.",
                 )
 
+
         elif isinstance(error, ignore_args):
-            self.client.logger.warning(f"Ignoring exception: {error}")
+            self.bot.logger.warning(f"Ignoring exception: {error}")
             return
 
         else:
@@ -239,7 +279,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
             file = discord.File(buffer, filename="error.py")
             send_kwargs["file"] = file
 
-            self.client.logger.error(
+            self.bot.logger.error(
                 f"{Emotes.warning} An unhandled error has occurred: {str(error)} - More details can be found in "
                 f"logs/error.log"
             )

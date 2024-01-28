@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import time
 from functools import partial
 from typing import Literal, Optional, TYPE_CHECKING
 
@@ -544,33 +545,48 @@ class Restricted(commands.Cog):
         brief="Execute SQL queries.",
     )
     async def _sql(self, ctx: commands.Context, *, query_n_args: str) -> None:
-        query_n_args = query_n_args.split(", ", 1)
-        if len(query_n_args) > 1:
-            query, args = query_n_args
+        """
+        Summary:
+            Execute an SQL query.
+
+        Args:
+            ctx: The context of the command.
+            query_n_args: str - The query to execute.
+
+        Note:
+            Use the --args flag to pass arguments to the query.
+
+        Returns:
+            The query result(s).
+        """
+        if "--args" in query_n_args:
+            query, args = query_n_args.split("--args")
+            args = [x.strip() for x in args.split(",")]
         else:
-            query = query_n_args[0]
+            query = query_n_args
             args = None
         if query.startswith("\"") and query.endswith("\""):
             query = query[1:-1]
-        args = args.split(", ") if args else []
         try:
-            result = await self.bot.db.execute(query, *args)
+            start = time.perf_counter()
+            results = await self.bot.db.execute(query, *args)
+            dt = (time.perf_counter() - start) * 1000.0
+            rows = len(results)
         except Exception as e:
             traceback = "".join(
                 tb.format_exception(type(e), e, e.__traceback__)
             )
             await ctx.send(f"```diff\n-<[ {traceback} ]>-```".strip()[-2000:])
             return
-        if result:
-            msg = f"{result}"
+        if results:
+            msg = f"```diff\nReturned {rows} rows:\n{results}\n in {dt:.2f}ms```"
             if len(msg) > 2000:
-                pages = TextPageSource(msg, code_block=True).getPages()
-                view = PaginatorView(pages, ctx)
-                view.message = await ctx.send(pages[0], view=view)
+                fp = io.BytesIO(msg.encode("utf-8"))
+                await ctx.send("Too many results...", file=discord.File(fp, "query_results.txt"))
             else:
-                await ctx.send(f"```diff\n-<[ {result} ]>-```")
+                await ctx.send(msg)
             return
-        await ctx.send("```diff\n-<[ Query executed. ]>-```")
+        await ctx.send(f"```diff\n-<[ {dt:.2f}ms: {results} ]>-```")
 
     @developer.command(
         name="toggle_scanlator",

@@ -53,6 +53,7 @@ class ConfigCog(Cog):
         description="View and Edit the server settings."
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.guild_only()
     async def _settings(self, interaction: discord.Interaction):
         guild_config: GuildSettings = await self.bot.db.get_guild_config(interaction.guild_id)
         if not guild_config:

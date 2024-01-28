@@ -12,3 +12,5 @@ openpyxl
 curl_cffi
 tldextract
 brotli
+fastapi
+patreon

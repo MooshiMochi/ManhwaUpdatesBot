@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.core import MangaClient
+    from src.core import MangaClient, GuildSettings
 
 import discord
 
@@ -169,7 +169,43 @@ class ChapterSelect(Select):
             color=discord.Color.green(),
         )
         if should_track:
-            success_em.description += "\n\n*You should consider tracking and subscribing to this manga to get updates.*"
+            if interaction.guild_id:
+                success_em.description += ("\n\n*You should consider tracking and subscribing to this manga to get "
+                                           "updates.*")
+            else:  # in DM:
+                # check if this manhwa is alr tracked in any of the mutual servers with the user
+                mutual_servers: list[discord.Guild] = [
+                    g for g in self.view.bot.guilds if g.get_member(interaction.user.id) is not None
+                ]
+                for guild in mutual_servers:
+                    guild_config: GuildSettings = await self.view.bot.db.get_guild_config(guild.id)
+                    if not guild_config:
+                        continue
+                    user_channel_perms = guild_config.notifications_channel.permissions_for(interaction.user)
+                    can_view_channel = user_channel_perms.view_channel
+
+                    if await self.view.bot.db.is_manga_tracked(
+                            self.bookmark.manga.id, self.bookmark.manga.scanlator, guild.id
+                    ) and can_view_channel:
+                        await self.view.bot.db.subscribe_user(
+                            interaction.user.id, guild.id, self.bookmark.manga.id, self.bookmark.manga.scanlator
+                        )
+                        success_em.description += (
+                            f"\n\n*This manga is being tracked in **{guild.name}**. You will receive updates in "
+                            f"{guild_config.notifications_channel.mention}*"
+                        )
+                        break
+                else:
+                    await self.view.bot.db.upsert_guild_sub_role(
+                        interaction.user.id,
+                        self.bookmark.manga.id,
+                        self.bookmark.manga.scanlator,
+                        None,
+                    )
+                    success_em.description += (
+                        "\n\n*I started tracking the manga for you!\nPlease make sure your DMs are open to receive "
+                        f"notifications.*"
+                    )
             if interaction.response.is_done():  # noqa
                 await interaction.followup.send(embed=success_em, ephemeral=True)
             else:

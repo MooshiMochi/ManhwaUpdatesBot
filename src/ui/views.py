@@ -101,7 +101,7 @@ class BookmarkView(BaseView):
             view_type: BookmarkViewType = BookmarkViewType.VISUAL,
             folder: BookmarkFolderType = BookmarkFolderType.Reading
     ):
-        super().__init__(bot, interaction, timeout=60 * 60 * 12)  # 12 hour timeout
+        super().__init__(bot, interaction, timeout=60 * 60 * 24 * 3)  # 3 days timeout
         self.bot: MangaClient = bot
         self.message: discord.Message | None = None
 
@@ -830,7 +830,7 @@ class BookmarkChapterView(View):
                 interaction.user.id,
                 manga,
                 None,  # temp value, will be updated below # noqa
-                interaction.guild_id,
+                interaction.guild_id or interaction.user.id,
             )
             if not manga:
                 raise MangaNotFoundError(manga_id)
@@ -1034,7 +1034,6 @@ class SupportView(discord.ui.View):
             discord.ui.Button(
                 label="Support Server",
                 url="https://discord.gg/TYkw8VBZkr",
-                style=discord.ButtonStyle.blurple,
             )
         )
         self.add_item(
@@ -1042,14 +1041,24 @@ class SupportView(discord.ui.View):
                 label="Invite",
                 url="https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296"
                     "&scope=bot%20applications.commands",
-                style=discord.ButtonStyle.blurple,
             )
         )
         self.add_item(
             discord.ui.Button(
                 label="GitHub",
                 url="https://github.com/MooshiMochi/ManhwaUpdatesBot",
-                style=discord.ButtonStyle.blurple,
+            )
+        )
+        self.add_item(
+            discord.ui.Button(
+                label="TOS",
+                url="https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/master/.discord/terms.md"
+            )
+        )
+        self.add_item(
+            discord.ui.Button(
+                label="Privacy",
+                url="https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/master/.discord/privacy.md"
             )
         )
         self.add_item(

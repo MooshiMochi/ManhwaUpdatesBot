@@ -33,3 +33,8 @@ user-agents:
     anigliscans: null
     toonily: null
     nightscans: null
+api-keys:
+    webshare: null
+patreon:
+    access-token: null
+    campaign-id: null

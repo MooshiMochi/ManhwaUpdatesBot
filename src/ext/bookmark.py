@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 import discord
 from discord import app_commands
 from discord.ext import commands
+from src.core import checks
 
 from datetime import datetime
 
@@ -38,6 +39,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.rename(manga_url_or_id="manga_url")
     @app_commands.autocomplete(manga_url_or_id=autocompletes.manga)
+    @checks.has_premium(dm_only=True)
     async def bookmark_new(
             self,
             interaction: discord.Interaction,
@@ -67,7 +69,9 @@ class BookmarkCog(commands.Cog):
             bookmark = existing_bookmark
         else:
             # no need to worry about extra requests as we have a caching system in place
-            bookmark = await scanlator.make_bookmark_object(manga.url, interaction.user.id, interaction.guild.id)
+            bookmark = await scanlator.make_bookmark_object(
+                manga.url, interaction.user.id, interaction.guild_id or interaction.user.id
+            )
             if not bookmark:  # not possible since we are using the manga object to create this
                 raise MangaNotFoundError(manga_url_or_id)
             if bookmark.manga.available_chapters and len(bookmark.manga.available_chapters) > 0:
@@ -96,6 +100,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.describe(series_id="The name of the bookmarked manga you want to view")
     @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
+    @checks.has_premium(dm_only=True)
     async def bookmark_view(
             self,
             interaction: discord.Interaction,
@@ -154,6 +159,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
     @app_commands.autocomplete(chapter_index=autocompletes.chapters)
+    @checks.has_premium(dm_only=True)
     async def bookmark_update(
             self,
             interaction: discord.Interaction,
@@ -199,7 +205,7 @@ class BookmarkCog(commands.Cog):
             # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
             is_tracked: bool = await self.bot.db.is_manga_tracked(
-                bookmark.manga.id, bookmark.manga.scanlator, interaction.guild_id
+                bookmark.manga.id, bookmark.manga.scanlator, interaction.guild_id or interaction.user.id
             )
             if not await self.bot.db.is_user_subscribed(
                     interaction.user.id, bookmark.manga.id, bookmark.manga.scanlator
@@ -229,6 +235,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.rename(series_id="manga")
     @app_commands.describe(series_id="The name of the bookmarked manga you want to delete")
     @app_commands.autocomplete(series_id=autocompletes.user_bookmarks)
+    @checks.has_premium(dm_only=True)
     async def bookmark_delete(self, interaction: discord.Interaction, series_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         if RegExpressions.url.search(series_id):

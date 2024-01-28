@@ -198,7 +198,7 @@ async def google_language(
 async def tracked_manga(interaction: discord.Interaction, argument: str) -> list[discord.app_commands.Choice]:
     scanlator_name, argument = get_scanlator_from_current_str(argument)
     guild_tracked_manga = await interaction.client.db.get_all_guild_tracked_manga(
-        interaction.guild_id,
+        interaction.guild_id or interaction.user.id,
         current=argument,
         autocomplete=True,
         scanlator=scanlator_name

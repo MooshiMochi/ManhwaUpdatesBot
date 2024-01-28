@@ -235,32 +235,9 @@ class MangaClient(commands.Bot):
         if not guild_config:
             return
 
-        if (
-                guild_config.notifications_channel is None
-        ):  # if we can't find the channel, we can't send updates so delete guild config entirely
+        if guild_config.notifications_channel is None:
             await self.db.delete_config(guild.id)
             return
-
-        try:
-            channel_webhooks = await guild_config.notifications_channel.webhooks()
-        except discord.Forbidden:
-            await self.db.delete_config(guild.id)
-            return
-
-        if channel_webhooks and guild_config.notifications_webhook in channel_webhooks:
-            return  # Everything is fine, we have a webhook in the channel
-        else:
-            try:
-                guild_config.notifications_webhook = await guild_config.notifications_channel.create_webhook(
-                    name="Manhwa Updates",
-                    avatar=await self.user.display_avatar.read(),
-                    reason="Manhwa Updates",
-                )
-                await self.db.upsert_config(guild_config)
-            except discord.Forbidden:
-                await self.db.delete_config(guild.id)
-            finally:
-                return
 
     @property
     def debug(self):
