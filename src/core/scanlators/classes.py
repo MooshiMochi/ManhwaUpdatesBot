@@ -54,7 +54,6 @@ class _AbstractScanlatorUtilsMixin:
                     end_result = result.split(".")[-1]
                     for extension in ["jpg", "png", "jpeg", "webp", "gif", "svg", "apng"]:
                         if end_result.startswith(extension):
-                            print(True)
                             return "/".join([base_url.removesuffix("/"), result.removeprefix("/")])
                     continue
                 return result

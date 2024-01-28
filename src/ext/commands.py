@@ -60,6 +60,7 @@ class CommandsCog(commands.Cog):
     @app_commands.command(
         name="next_update_check", description="Get the time of the next update check."
     )
+    @checks.has_premium(dm_only=True)
     async def next_update_check(self, interaction: discord.Interaction) -> None:
         # await interaction.response.defer(ephemeral=True, thinking=True)
         updates_cog: UpdateCheckCog | None = self.bot.get_cog("UpdateCheckCog")
@@ -580,6 +581,7 @@ class CommandsCog(commands.Cog):
     @app_commands.describe(manga_id="The name of the manga.")
     @app_commands.autocomplete(manga_id=autocompletes.manga)
     @app_commands.rename(manga_id="manga")
+    @checks.has_premium(dm_only=True)
     async def chapters(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         try:
@@ -611,6 +613,7 @@ class CommandsCog(commands.Cog):
     @app_commands.command(
         name="supported_websites", description="Get a list of supported websites."
     )
+    @checks.has_premium(dm_only=True)
     async def supported_websites(self, interaction: discord.Interaction) -> None:
         em = discord.Embed(title="Supported Websites", color=discord.Color.green())
         supp_webs = [
@@ -729,6 +732,7 @@ Ensure the bot has these permissions for smooth operation.
     @app_commands.rename(series_id="manhwa")
     @app_commands.describe(series_id="The name of the manhwa you want to get info for.")
     @app_commands.autocomplete(series_id=autocompletes.manga)
+    @checks.has_premium(dm_only=True)
     async def series_info(
             self,
             interaction: discord.Interaction,
@@ -754,6 +758,7 @@ Ensure the bot has these permissions for smooth operation.
     @app_commands.describe(scanlator_website="The website to search on.")
     @app_commands.rename(scanlator_website="scanlator")
     @app_commands.autocomplete(scanlator_website=autocompletes.scanlator)
+    @checks.has_premium(dm_only=True)
     async def search(
             self,
             interaction: discord.Interaction,
@@ -868,6 +873,7 @@ Ensure the bot has these permissions for smooth operation.
                            from_="The language to translate from")
     @app_commands.rename(from_="from")
     @app_commands.autocomplete(to=autocompletes.google_language, from_=autocompletes.google_language)
+    @checks.has_premium(dm_only=True)
     async def translate_slash(self, interaction: discord.Interaction, text: str, to: Optional[str],
                               from_: Optional[str] = None):
         if not from_:
@@ -960,6 +966,7 @@ Ensure the bot has these permissions for smooth operation.
     #     await interaction.response.defer(ephemeral=True, thinking=True)
 
     @app_commands.command(name="stats", description="Get some basic info and stats about the bot.")
+    @checks.has_premium(dm_only=True)
     async def stats(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)  # noqa
 
