@@ -52,13 +52,13 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
                 self.bookmarks,
                 key=lambda x: _levenshtein_distance(x.manga.title.lower(), self.query.value.lower())
             )
-        self.view.visual_item_index = self.bookmarks.index(bookmark)
         self.view.folder = bookmark.folder
         self.view.change_view_type(BookmarkViewType.VISUAL)
         self.view.clear_components()
         self.view.load_components()
 
         self.view.viewable_bookmarks = self.view.get_bookmarks_from_folder()
+        self.view.visual_item_index = self.view.viewable_bookmarks.index(bookmark)
         self.view._handle_index_change()  # noqa
 
         await self.view.update(interaction)

@@ -564,7 +564,7 @@ class Restricted(commands.Cog):
             args = [x.strip() for x in args.split(",")]
         else:
             query = query_n_args
-            args = None
+            args = []
         if query.startswith("\"") and query.endswith("\""):
             query = query[1:-1]
         try:
@@ -579,7 +579,7 @@ class Restricted(commands.Cog):
             await ctx.send(f"```diff\n-<[ {traceback} ]>-```".strip()[-2000:])
             return
         if results:
-            msg = f"```diff\nReturned {rows} rows:\n{results}\n in {dt:.2f}ms```"
+            msg = f"```py\n# Returned {rows} rows:\n{results}\n# in {dt:.2f}ms```"
             if len(msg) > 2000:
                 fp = io.BytesIO(msg.encode("utf-8"))
                 await ctx.send("Too many results...", file=discord.File(fp, "query_results.txt"))
