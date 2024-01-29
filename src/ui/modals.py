@@ -44,10 +44,10 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
         self.bookmarks: list[Bookmark] = self.view.bookmarks
 
     async def on_submit(self, interaction: discord.Interaction):
-        bookmark = next(
-            (x for x in self.bookmarks if x.manga.title.lower().startswith(self.query.value.lower())), None
-        )
-        if not bookmark:
+        possible_bookmark = [x for x in self.bookmarks if x.manga.title.lower().startswith(self.query.value.lower())]
+        if len(possible_bookmark) >= 1:
+            bookmark = possible_bookmark[0]
+        else:
             bookmark = min(
                 self.bookmarks,
                 key=lambda x: _levenshtein_distance(x.manga.title.lower(), self.query.value.lower())
