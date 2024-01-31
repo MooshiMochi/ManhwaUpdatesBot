@@ -278,9 +278,9 @@ class UpdateCheckCog(commands.Cog):
                 users_to_update[user_obj].append(update)
 
             # remove entries from guilds_to_update that are in the users_to_update
-            guilds_to_updates = {
+            guilds_to_updates = defaultdict(list, {
                 k: v for k, v in guilds_to_updates.items() if k not in [x.id for x in user_objects]
-            }
+            })
         # {g_id: [upd1, upd2, upd3, ...], ...}
 
         for user in users_to_update:
