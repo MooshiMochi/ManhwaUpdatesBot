@@ -13,7 +13,6 @@ from discord.ext import commands
 from .apis import APIManager
 from .cache import CachedClientSession, CachedCurlCffiSession
 from .database import Database
-from .objects import GuildSettings
 from .scanlators import scanlators
 
 
@@ -229,15 +228,6 @@ class MangaClient(commands.Bot):
 
     async def on_message(self, message: discord.Message, /) -> None:
         await self.process_commands(message)
-
-    async def on_guild_join(self, guild: discord.Guild) -> None:
-        guild_config: GuildSettings = await self.db.get_guild_config(guild.id)
-        if not guild_config:
-            return
-
-        if guild_config.notifications_channel is None:
-            await self.db.delete_config(guild.id)
-            return
 
     @property
     def debug(self):

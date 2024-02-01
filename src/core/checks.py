@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import discord
 from discord import app_commands
 
@@ -36,12 +38,22 @@ def has_premium(*, dm_only: bool = True):
         # Return True for now, since we don't have a patreon system yet.
         has_premium_account: bool = (
                 await interaction.client.db.is_patreon(interaction.user.id) or
-                interaction.user.id in interaction.client.owner_ids
+                interaction.user.id in interaction.client.owner_ids or
+                any(
+                    (
+                        x for x in interaction.entitlements
+                        if
+                        x.starts_at is not None and
+                        x.starts_at > datetime.now() and
+                        not x.is_expired())
+                )
         )
         if not has_premium_account:
             raise PremiumFeatureOnly(
                 "This command requires a premium subscription to the bot.\n"
-                "Check out my patreon in `/help` for more info."
+                "Check out my patreon in `/help` for more info.\n\n"
+                "**Note:** > • Make sure your Patreon account is linked to your Discord account!\n"
+                "> • It may take up to 10 minutes for the bot to recognize your subscription."
             )
         return has_premium_account
 

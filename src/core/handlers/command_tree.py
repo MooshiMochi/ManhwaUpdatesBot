@@ -106,6 +106,20 @@ class BotCommandTree(discord.app_commands.CommandTree):
                 description=error.error_msg,
             )
 
+        elif isinstance(error, AlreadySubscribedError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Already subscribed!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
+        elif isinstance(error, AlreadyUnsubscribedError):
+            embed = discord.Embed(
+                title=f"{Emotes.warning} Already unsubscribed!",
+                color=0xFF0000,
+                description=error.error_msg,
+            )
+
         elif isinstance(error, MangaNotFoundError):
             embed = discord.Embed(
                 title=f"{Emotes.warning} Manga not found!",

@@ -21,7 +21,9 @@ __all__ = (
     "RateLimitExceeded",
     "MissingUserAgentError",
     "CustomError",
-    "PremiumFeatureOnly"
+    "PremiumFeatureOnly",
+    "AlreadySubscribedError",
+    "AlreadyUnsubscribedError"
 )
 
 
@@ -173,6 +175,34 @@ class PremiumFeatureOnly(BaseError):
 
     def __init__(self, error_msg: str):
         self.error_msg = error_msg
+
+
+class AlreadySubscribedError(BaseError):
+    """Raised when a user is already subscribed to a manga."""
+
+    def __init__(self, manga_url: str | None = None, *, all: bool = False):  # noqa
+        self.manga_url = manga_url
+        self.error_msg = f"""
+        You are already subscribed to [this manga]({self.manga_url}).
+        """
+        if all:
+            self.error_msg = f"""
+            You are already subscribed to all tracked series in here.
+            """
+
+
+class AlreadyUnsubscribedError(BaseError):
+    """Raised when a user is already unsubscribed from a manga."""
+
+    def __init__(self, manga_url: str | None = None, *, all: bool = False):  # noqa
+        self.manga_url = manga_url
+        self.error_msg = f"""
+        You are already unsubscribed from [this manga]({self.manga_url}).
+        """
+        if all:
+            self.error_msg = f"""
+            You are already unsubscribed from all tracked series in here.
+            """
 
 
 class CustomError(BaseError):

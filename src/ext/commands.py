@@ -15,16 +15,10 @@ from discord import app_commands
 from discord.ext import commands
 import discord
 
-from src.core.errors import (
-    GuildNotConfiguredError,
-    MangaCompletedOrDropped,
-    MangaNotSubscribedError, MangaNotTrackedError,
-    CustomError,
-    MangaNotFoundError, UnsupportedScanlatorURLFormatError
-)
+from src.core import errors, checks
 from src.core.scanlators import scanlators
-from src.core.objects import Manga
-from src.ui.views import SubscribeListPaginatorView, SubscribeView, PaginatorView, SupportView
+from src.core.objects import Manga, SubscriptionObject
+from src.ui.views import ConfirmView, SubscribeListPaginatorView, SubscribeView, PaginatorView, SupportView
 from src.ui.modals import InputModal
 from src.utils import (
     group_items_by,
@@ -34,7 +28,6 @@ from src.utils import (
     respond_if_limit_reached,
     translate
 )
-from src.core import checks
 
 
 class CommandsCog(commands.Cog):
@@ -99,7 +92,7 @@ class CommandsCog(commands.Cog):
     @checks.bot_has_permissions(manage_roles=True)
     @checks.has_permissions(manage_roles=True)
     @checks.has_premium(dm_only=True)
-    @app_commands.autocomplete(manga_url=autocompletes.manga)
+    @app_commands.autocomplete(manga_url=autocompletes.track_new_cmd)
     async def track_new(
             self, interaction: discord.Interaction, manga_url: str, ping_role: Optional[discord.Role] = None
     ) -> None:
@@ -109,7 +102,7 @@ class CommandsCog(commands.Cog):
             manga_url = _result.group(0)
             scanlator = get_manga_scanlator_class(scanlators, manga_url)
             if scanlator is None or self.bot.config["user-agents"].get(scanlator.name, "N/A") is None:
-                raise UnsupportedScanlatorURLFormatError(manga_url)
+                raise errors.UnsupportedScanlatorURLFormatError(manga_url)
             # get the manga id
             manga_id = await scanlator.get_id(manga_url)
             is_tracked: bool = await self.bot.db.is_manga_tracked(manga_id, scanlator.name)
@@ -123,16 +116,16 @@ class CommandsCog(commands.Cog):
                 manga_id, scanlator_name = manga_url.split("|")
                 scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
                 if not scanlator:
-                    raise UnsupportedScanlatorURLFormatError(manga_url)
+                    raise errors.UnsupportedScanlatorURLFormatError(manga_url)
             except ValueError:
-                raise UnsupportedScanlatorURLFormatError(manga_url)
+                raise errors.UnsupportedScanlatorURLFormatError(manga_url)
             manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
 
         if not manga:
-            raise MangaNotFoundError(manga_url)
+            raise errors.MangaNotFoundError(manga_url)
 
         elif manga.completed:
-            raise MangaCompletedOrDropped(manga.url)
+            raise errors.MangaCompletedOrDropped(manga.url)
 
         await self.bot.db.add_series(manga)  # add this series entry to the database if it isn't already
 
@@ -144,7 +137,7 @@ class CommandsCog(commands.Cog):
             # do the role, config and other stuff here
             guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
             if not guild_config:
-                raise GuildNotConfiguredError(interaction.guild_id)
+                raise errors.GuildNotConfiguredError(interaction.guild_id)
 
             if ping_role is not None:
                 invalid_role_reason: str = ""
@@ -223,13 +216,13 @@ class CommandsCog(commands.Cog):
         try:
             manga_id, scanlator_name = manga_id.split("|")
         except ValueError:
-            raise MangaNotSubscribedError(manga_id)
+            raise errors.MangaNotSubscribedError(manga_id)
         manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
         if not manga:
-            raise MangaNotFoundError(manga_id)
+            raise errors.MangaNotFoundError(manga_id)
 
         if not await self.bot.db.is_manga_tracked(manga.id, manga.scanlator, interaction.guild_id):
-            raise MangaNotTrackedError(manga_id)
+            raise errors.MangaNotTrackedError(manga_id)
 
         if role is not None:
             if role.is_bot_managed():
@@ -299,14 +292,14 @@ class CommandsCog(commands.Cog):
         try:
             manga_id, scanlator_name = manga_id.split("|")
         except ValueError:
-            raise MangaNotTrackedError(manga_id)
+            raise errors.MangaNotTrackedError(manga_id)
 
         if not await self.bot.db.is_manga_tracked(manga_id, scanlator_name, interaction.guild_id):
-            raise MangaNotTrackedError(manga_id)
+            raise errors.MangaNotTrackedError(manga_id)
 
         manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
         if not manga:
-            raise MangaNotFoundError(manga_id)
+            raise errors.MangaNotFoundError(manga_id)
 
         deleted_role_name: str | None = None
         if delete_role is True:
@@ -394,7 +387,7 @@ class CommandsCog(commands.Cog):
     )
     @app_commands.describe(manga_id="The name of the tracked manga you want to subscribe to.")
     @app_commands.rename(manga_id="manga")
-    @app_commands.autocomplete(manga_id=autocompletes.tracked_manga)
+    @app_commands.autocomplete(manga_id=autocompletes.subscribe_new_cmd)
     @checks.bot_has_permissions(manage_roles=True)
     @checks.has_premium(dm_only=True)
     async def subscribe_new(
@@ -402,109 +395,215 @@ class CommandsCog(commands.Cog):
     ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
 
-        if RegExpressions.url.search(manga_id):
-            input_url = manga_id
-            scanlator = get_manga_scanlator_class(scanlators, url=input_url)
-            if scanlator is None:
-                raise UnsupportedScanlatorURLFormatError(input_url)
-            manga_id = await scanlator.get_id(raw_url=manga_id)
-        else:
-            try:
-                manga_id, scanlator_name = manga_id.split("|")
-                scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
-                if not scanlator:
-                    raise UnsupportedScanlatorURLFormatError(manga_id)
-            except ValueError:
-                raise MangaNotFoundError(manga_id)
-
-        is_tracked = await self.bot.db.is_manga_tracked(manga_id, scanlator.name, interaction.guild_id)
-        manga = await self.bot.db.get_series(manga_id, scanlator.name)
-        if not manga:
-            raise MangaNotFoundError(manga_id)
-        elif not is_tracked:
-            raise MangaNotTrackedError(manga_id)
-        elif manga.completed:
-            raise MangaCompletedOrDropped(manga.url)
+        is_all_sub: bool = manga_id == f"{interaction.guild_id or interaction.user.id}-all"
+        is_dm_invoked: bool = interaction.guild_id is None
 
         guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
-        if guild_config is None:
-            raise GuildNotConfiguredError(interaction.guild_id)
+        if guild_config is None and not is_dm_invoked:
+            raise errors.GuildNotConfiguredError(interaction.guild_id)
 
-        ping_role: discord.Role | None = None
-        # check if the manga ID already has a ping role in DB
-        ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id, manga.scanlator)
-
-        if ping_role_id is None:
-            if guild_config.default_ping_role is not None:
-                ping_role = guild_config.default_ping_role
-
-        elif ping_role_id is not None:
-            # try to get the role object
-            ping_role = interaction.guild.get_role(ping_role_id)
-            if ping_role is None:
-                return await interaction.followup.send(
-                    embed=(
-                        discord.Embed(
-                            title="Error",
-                            description=(
-                                "Even though the role exists in the server, the bot cannot find it?\n"
-                                "Ask a moderator to double check my permissions and try again."
-                            ),
-                            color=discord.Color.red())),
+        if is_all_sub:
+            if (not is_dm_invoked and guild_config.default_ping_role and
+                    not guild_config.default_ping_role.is_assignable()):
+                raise errors.CustomError(
+                    f"I cannot assign the {guild_config.default_ping_role.mention} role.\n"
+                    "Double check my permissions and role hierarchy and try again!"
                 )
+            unsubbed_series: list[SubscriptionObject] = await self.bot.db.get_all_user_unsubbed_tracked_series(
+                interaction.guild_id or interaction.user.id, interaction.user.id, interaction.guild
+            )
+            if is_dm_invoked and not unsubbed_series:
+                raise errors.AlreadySubscribedError(all=True)
+            bypass_prompt = False
+            if (not unsubbed_series and guild_config.default_ping_role and guild_config.default_ping_role not in
+                    interaction.user.roles and guild_config.default_ping_role.is_assignable()):
+                unsubbed_series = [
+                    SubscriptionObject(
+                        interaction.user.id, interaction.guild_id or interaction.user.id,
+                        "@mooshi/BOT", "L Argument", guild_config.default_ping_role.id
+                    )
+                ]
+                bypass_prompt = True  # bypass prompt if it's just adding the default role
+            prompt_msg = f"You are about to subscribe to an additional **{len(unsubbed_series)}** tracked series "
+            prompt_msg += "from this server.\n\n**Do you wish to continue?**"
 
-        await self.bot.db.subscribe_user(
-            interaction.user.id, interaction.guild_id, manga.id, manga.scanlator
-        )
+            view = ConfirmView(self.bot, interaction)
+            _continue: bool = await view.prompt(interaction, prompt_msg, edit_original_response=True,
+                                                ephemeral=True)
+            if not _continue and not bypass_prompt:
+                await interaction.edit_original_response(
+                    embed=discord.Embed(title="Operation cancelled!", colour=discord.Color.green()), view=None
+                )
+                return
+            successes, fails = await SubscriptionObject.sub_to_all(self.bot, unsubbed_series)
+            if bypass_prompt:
+                success_msg = f"You have been given the {guild_config.default_ping_role.mention} role!"
+            else:
+                success_msg = f"You have successfully subscribed to {successes} series!"
+            if fails:
+                success_msg += f"\n\n**Note:** I was unable to subscribe to {fails} series because I cannot assign " \
+                               f"the role(s) to you!\nDouble check my permissions and role hierarchy and try again!"
+            em = discord.Embed(title="Subscribed", color=discord.Color.green(), description=success_msg)
+            em.colour = discord.Colour.green() if not fails else discord.Colour.orange()
+            await interaction.edit_original_response(embed=em, view=None)
+            return
 
-        await interaction.user.add_roles(ping_role, reason="Subscribed to a manga.")
+        else:
+            if RegExpressions.url.search(manga_id):
+                input_url = manga_id
+                scanlator = get_manga_scanlator_class(scanlators, url=input_url)
+                if scanlator is None:
+                    raise errors.UnsupportedScanlatorURLFormatError(input_url)
+                manga_id = await scanlator.get_id(raw_url=manga_id)
+            else:
+                try:
+                    manga_id, scanlator_name = manga_id.split("|")
+                    scanlator = get_manga_scanlator_class(scanlators, key=scanlator_name)
+                    if not scanlator:
+                        raise errors.UnsupportedScanlatorURLFormatError(manga_id)
+                except ValueError:
+                    raise errors.MangaNotFoundError(manga_id)
+            is_tracked = await self.bot.db.is_manga_tracked(
+                manga_id, scanlator.name, interaction.guild_id or interaction.user.id
+            )
+            manga = await self.bot.db.get_series(manga_id, scanlator.name)
+            if not manga:
+                raise errors.MangaNotFoundError(manga_id)
+            elif not is_tracked:
+                raise errors.MangaNotTrackedError(manga_id)
+            elif manga.completed:
+                raise errors.MangaCompletedOrDropped(manga.url)
 
-        description = f"Successfully subscribed to **{manga} ({ping_role.mention})!**"
-        description += f"\n\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
+            # check if the manga ID already has a ping role in DB
+            description = f"Successfully subscribed to **{manga}"
+            if not is_dm_invoked:
+                ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id,
+                                                                         manga.scanlator)
+                ping_role = interaction.guild.get_role(ping_role_id)
+                if ping_role is not None and ping_role not in interaction.user.roles:
+                    if not ping_role.is_assignable():
+                        raise errors.CustomError(
+                            f"I cannot assign the {ping_role.mention} role.\n"
+                            "Double check my permissions and role hierarchy and try again!"
+                        )
+                    await interaction.user.add_roles(ping_role, reason="Subscribed to a manga.")
+                description += f" ({ping_role.mention})!**" if ping_role else "!**"
+                description += (f"\n\nNew updates for this manga will be sent in "
+                                f"{guild_config.notifications_channel.mention}")
+            else:
+                description += "!**\n\nYou will receive updates for this manhwa in your DMs."
 
-        embed = discord.Embed(
-            title="Subscribed to Series",
-            color=discord.Color.green(),
-            description=description,
-        )
-        embed.set_image(url=manga.cover_url)
-        embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
+            await self.bot.db.subscribe_user(
+                interaction.user.id, interaction.guild_id or interaction.user.id, manga.id, manga.scanlator
+            )
 
-        await interaction.followup.send(embed=embed, ephemeral=True)
+            embed = discord.Embed(title="Subscribed to Series", color=discord.Color.green(), description=description)
+            embed.set_image(url=manga.cover_url)
+            embed.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
     @subscribe.command(
         name="delete", description="Unsubscribe from a currently subscribed manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
-    @app_commands.autocomplete(manga_id=autocompletes.user_subbed_manga)
+    @app_commands.autocomplete(manga_id=autocompletes.subscribe_delete_command)
     @app_commands.rename(manga_id="manga")
     @checks.bot_has_permissions(manage_roles=True)
     @checks.has_premium(dm_only=True)
     async def subscribe_delete(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-        try:
-            manga_id, scanlator_name = manga_id.split("|")
-        except ValueError:
-            raise MangaNotSubscribedError(manga_id)
-        manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
-        if not manga:
-            raise MangaNotFoundError(manga_id)
 
-        ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id, manga.scanlator)
-        if ping_role_id:
+        is_all_unsub: bool = manga_id == f"{interaction.guild_id or interaction.user.id}-all"
+        is_dm_invoked: bool = interaction.guild_id is None
+        guild_config = await self.bot.db.get_guild_config(interaction.guild_id)
+
+        if guild_config is None and not is_dm_invoked:
+            raise errors.GuildNotConfiguredError(interaction.guild_id)
+
+        if is_all_unsub:
+            if (not is_dm_invoked and guild_config.default_ping_role and
+                    not guild_config.default_ping_role.is_assignable()):
+                raise errors.CustomError(
+                    f"I cannot remove the {guild_config.default_ping_role.mention} role from you.\n"
+                    "Double check my permissions and role hierarchy and try again!"
+                )
+
+            subbed_series: list[SubscriptionObject] = await self.bot.db.get_all_user_subbed_series(
+                interaction.guild_id or interaction.user.id, interaction.user.id, interaction.guild)
+            if is_dm_invoked and not subbed_series:
+                raise errors.AlreadyUnsubscribedError(all=True)
+
+            bypass_prompt = False
+
+            if not subbed_series:
+                # create fake Sub objects with the role_ids to delete
+                db_role_ids = await self.bot.db.get_guild_tracked_role_ids(interaction.guild_id or interaction.user.id)
+                roles: list[discord.Role] = list(filter(
+                    lambda x: x is not None and x in interaction.user.roles and
+                              x != guild_config.default_ping_role,
+                    [interaction.guild.get_role(role_id) for role_id in set(db_role_ids)]))
+
+                subbed_series = [
+                    SubscriptionObject(
+                        interaction.user.id, interaction.guild_id or interaction.user.id,
+                        "@mooshi/BOT", "L Argument", role
+                    ) for role in roles if role.is_assignable()
+                ]
+                bypass_prompt = True
+
+            prompt_msg = f"You are about to unsubscribe from **{len(subbed_series)}** subbed series "
+            prompt_msg += "from this server.\n\n**Do you wish to continue?**"
+
+            view = ConfirmView(self.bot, interaction)
+            _continue: bool = await view.prompt(interaction, prompt_msg, edit_original_response=True, ephemeral=True)
+            if not _continue and not bypass_prompt:
+                await interaction.edit_original_response(
+                    embed=discord.Embed(title="Operation cancelled!", colour=discord.Color.green()), view=None
+                )
+                return
+
+            successes, fails = await SubscriptionObject.unsub_from_all(self.bot, subbed_series)
+            success_msg = f"You have successfully unsubscribed from {successes} series!"
+            if bypass_prompt:
+                success_msg = f"You have been removed from {successes} roles!"
+            if fails:
+                if successes != 0:
+                    success_msg += "\n\n**Note:** "
+                else:
+                    success_msg = ""
+                success_msg += (f"I was unable to unsubscribe you from {fails} series because I cannot "
+                                f"remove the role(s) from you!\n"
+                                f"Double check my permissions and role hierarchy and try again!")
+            em = discord.Embed(title="Unsubscribed", color=discord.Color.green(), description=success_msg)
+            em.colour = discord.Colour.green() if not fails else discord.Colour.orange()
+            await interaction.edit_original_response(embed=em, view=None)
+            return
+
+        else:
+            try:
+                manga_id, scanlator_name = manga_id.split("|")
+            except ValueError:
+                raise errors.MangaNotSubscribedError(manga_id)
+            manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
+            if not manga:
+                raise errors.MangaNotFoundError(manga_id)
+
+            ping_role_id = await self.bot.db.get_guild_manga_role_id(interaction.guild_id, manga.id, manga.scanlator)
             role = interaction.guild.get_role(ping_role_id)
-            if role:
+            if role and (role in interaction.user.roles and
+                         guild_config.default_ping_role and role != guild_config.default_ping_role):
                 if role >= interaction.guild.me.top_role:
-                    raise CustomError("Target role is higher than my top role")
+                    raise errors.CustomError(f"{role.mention} is higher than my top role.\n"
+                                             f"Please move the role below my top role and try again.")
                 await interaction.user.remove_roles(role, reason="Unsubscribed from a manga.")
-        await self.bot.db.unsub_user(interaction.user.id, manga.id, manga.scanlator)
+            await self.bot.db.unsub_user(interaction.user.id, manga.id, manga.scanlator)
 
-        em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
-        em.description = f"Successfully unsubscribed from {manga}."
-        em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
+            em = discord.Embed(title="Unsubscribed", color=discord.Color.green())
+            em.description = f"Successfully unsubscribed from {manga}."
+            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
 
-        await interaction.followup.send(embed=em, ephemeral=True)
-        return
+            await interaction.followup.send(embed=em, ephemeral=True)
+            return
 
     @subscribe.command(
         name="list", description="List all the manga you're subscribed to."
@@ -579,7 +678,7 @@ class CommandsCog(commands.Cog):
         name="chapters", description="Get a list of chapters for a manga."
     )
     @app_commands.describe(manga_id="The name of the manga.")
-    @app_commands.autocomplete(manga_id=autocompletes.manga)
+    @app_commands.autocomplete(manga_id=autocompletes.chapters_cmd)
     @app_commands.rename(manga_id="manga")
     @checks.has_premium(dm_only=True)
     async def chapters(self, interaction: discord.Interaction, manga_id: str):
@@ -587,7 +686,7 @@ class CommandsCog(commands.Cog):
         try:
             manga_id, scanlator_name = manga_id.split("|")
         except ValueError:
-            raise MangaNotFoundError(manga_id)
+            raise errors.MangaNotFoundError(manga_id)
         manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
 
         embeds = create_embeds(
@@ -699,7 +798,6 @@ class CommandsCog(commands.Cog):
 **General Commands:**
 - `/help` - Get started with Manhwa Updates Bot (this message).
 - `/search` - Search for a manga on MangaDex.
-- `/latest` - Get the latest chapter of a manga.
 - `/chapters` - Get a list of chapters of a manga.
 - `/next_update_check` - Get the time until the next update check.
 - `/supported_websites` - Get a list of websites supported by the bot and the bot status on them.
@@ -731,7 +829,7 @@ Ensure the bot has these permissions for smooth operation.
     )
     @app_commands.rename(series_id="manhwa")
     @app_commands.describe(series_id="The name of the manhwa you want to get info for.")
-    @app_commands.autocomplete(series_id=autocompletes.manga)
+    @app_commands.autocomplete(series_id=autocompletes.info_cmd)
     @checks.has_premium(dm_only=True)
     async def series_info(
             self,
@@ -742,10 +840,10 @@ Ensure the bot has these permissions for smooth operation.
         try:
             series_id, scanlator_name = series_id.split("|")
         except ValueError:
-            raise MangaNotFoundError(series_id)
+            raise errors.MangaNotFoundError(series_id)
         manga = await self.bot.db.get_series(series_id, scanlator_name)
         if not manga:
-            raise MangaNotFoundError(series_id)
+            raise errors.MangaNotFoundError(series_id)
         em = manga.get_display_embed(scanlators)
         view = SubscribeView(self.bot, [em], more_info_btn=False)
         await interaction.followup.send(embed=em, view=view)
@@ -804,7 +902,7 @@ Ensure the bot has these permissions for smooth operation.
                     self.bot.logger.error(f"Error when searching: {query}!")
                 await self.bot.log_to_discord(f"<@!{self.bot.owner_id}> Error when searching", error=_err)
                 if raise_error:
-                    raise CustomError(
+                    raise errors.CustomError(
                         "An unknown error has occured.\n"
                         "The developer has been notified and will fix as soon as he can!")
 
@@ -1004,11 +1102,14 @@ Ensure the bot has these permissions for smooth operation.
         embed.add_field(name="🔖 Bookmarks", value=str(bookmarks_count), inline=True)
         embed.add_field(name="📚 Tracked Manhwas", value=str(tracks_count), inline=True)
         embed.add_field(name="👥 Users subbed to Manhwa", value=str(subs_count), inline=True)
-        embed.add_field(name="📘 Total Manhwas", value=str(manhwa_count), inline=False)
+        # embed.add_field(name="\u200b", value="\u200b", inline=False)
+        embed.add_field(name="📘 Total Manhwas", value=str(manhwa_count), inline=True)
         embed.add_field(name="🔍 Supported Websites", value=str(scanlators_count), inline=True)
         embed.add_field(name="🌐 Total Servers", value=str(guilds_count), inline=True)
+        # embed.add_field(name="\u200b", value="\u200b", inline=False)
         embed.add_field(name="👤 Total Users", value=str(users_count), inline=True)
         embed.add_field(name="⌛ Total Uptime", value=str(uptime_str), inline=True)
+        embed.add_field(name="🐣 Born", value=f"<t:{int(self.bot.user.created_at.timestamp())}:R>", inline=True)
 
         embed.set_footer(text="Manhwa Updates Bot | Stats")
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)

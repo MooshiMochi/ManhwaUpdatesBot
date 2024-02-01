@@ -477,21 +477,23 @@ class GuildSettings:
             notifications_channel_id: int,
             default_ping_role_id: int,
             auto_create_role: bool = False,
-            dev_notifications_ping: bool = True,
+            system_channel: int | None = None,
             show_update_buttons: bool = True,
             *args,
             **kwargs,
     ) -> None:
         self._bot: MangaClient = bot
         self.guild: discord.Guild = bot.get_guild(guild_id)
+        self.default_ping_role_id = default_ping_role_id
         if self.guild:
             self.notifications_channel: discord.TextChannel = self.guild.get_channel(notifications_channel_id)
             self.default_ping_role: Optional[discord.Role] = self.guild.get_role(default_ping_role_id)
+            self.system_channel: Optional[discord.TextChannel] = self.guild.get_channel(system_channel)
         else:
             self.notifications_channel: Optional[discord.TextChannel] = None
             self.default_ping_role: Optional[discord.Role] = None
+            self.system_channel: Optional[discord.TextChannel] = None
         self.auto_create_role: bool = bool(auto_create_role)
-        self.dev_notifications_ping: bool = bool(dev_notifications_ping)
         self.show_update_buttons: bool = bool(show_update_buttons)
         self._args = args
         self._kwargs = kwargs
@@ -510,10 +512,10 @@ class GuildSettings:
         """
         return (
             self.guild.id,
-            self.notifications_channel.id,
+            self.notifications_channel.id if self.notifications_channel else None,
             self.default_ping_role.id if self.default_ping_role else None,
             1 if self.auto_create_role else 0,
-            1 if self.dev_notifications_ping else 0,
+            self.system_channel.id if self.system_channel else None,
             1 if self.show_update_buttons else 0,
         )
 
@@ -629,3 +631,107 @@ class Patron:
     @classmethod
     def from_tuples(cls, data: list[tuple[str, int | None, str, str]]) -> list["Patron"]:
         return [cls.from_tuple(d) for d in data] if data else []
+
+
+@dataclass
+class SubscriptionObject:
+    user_id: int
+    guild_id: int
+    manga_id: str
+    scanlator: str
+    role: discord.Role | None
+
+    def to_tuple(self) -> tuple[int, str, int, str]:
+        return self.user_id, self.manga_id, self.guild_id, self.scanlator
+
+    @classmethod
+    async def sub_to_all(
+            cls, bot: MangaClient, sub_objects: list["SubscriptionObject"]
+    ) -> tuple[int, int] | None:
+        """
+        Summary: Subscribes the user to all tracked series in the server.
+
+        Args:
+            bot: The bot instance
+            sub_objects: The list of SubscriptionObjects
+
+        Returns:
+            tuple[int, int] - (num_success_added_roles, num_failed_add_roles)
+        """
+
+        user_id = sub_objects[0].user_id
+        guild_id = sub_objects[0].guild_id
+        is_dm_invoked = user_id == guild_id
+        if is_dm_invoked:
+            return len(sub_objects), 0
+
+        config = await bot.db.get_guild_config(guild_id)
+        user = config.guild.get_member(user_id)
+        num_target_subs = len(sub_objects)
+
+        if not config.default_ping_role:
+            roles_to_add: list[discord.Role] = list(filter(
+                lambda y: y is not None and y not in user.roles, map(lambda x: x.role, sub_objects)
+            ))
+            unassignable_roles = [x for x in roles_to_add if not x.is_assignable()]
+            num_failed_subs = len(unassignable_roles)
+
+            await user.add_roles(
+                *filter(lambda x: x not in unassignable_roles, roles_to_add),
+                reason=f"Subscribed to {num_target_subs - num_failed_subs} tracked series")
+            database_entries = list(filter(
+                lambda x: x.role is None or x.role not in unassignable_roles, sub_objects
+            ))
+            await bot.db.subscribe_user_to_tracked_series(database_entries)
+            return num_target_subs - num_failed_subs, num_failed_subs
+        else:
+            await user.add_roles(config.default_ping_role, reason="Subscribed to all trakced series.")
+            await bot.db.subscribe_user_to_tracked_series(sub_objects)
+            # await bot.db.subscribe_user_to_all_tracked_series(user_id, guild_id)
+            return num_target_subs, 0
+
+    @classmethod
+    async def unsub_from_all(cls, bot: MangaClient, sub_objects: list["SubscriptionObject"]
+                             ) -> tuple[int, int] | None:
+        """
+        Summary: Unsubscriebe the user from all subsribed series in the server.
+
+        Args:
+            bot: The bot instance
+            sub_objects: The list of SubscriptionObjects
+
+        Returns:
+            tuple[int, int] - (num_success_removed_roles, num_failed_removed_roles)
+        """
+        user_id = sub_objects[0].user_id
+        guild_id = sub_objects[0].guild_id
+        is_dm_invoked = user_id == guild_id
+        if is_dm_invoked:
+            return len(sub_objects), 0
+
+        config = await bot.db.get_guild_config(guild_id)
+        user = config.guild.get_member(user_id)
+        num_target_unsubs = len(sub_objects)
+
+        # if not config.default_ping_role:
+        roles_to_remove: list[discord.Role] = list(filter(
+            lambda y: y is not None and y in user.roles, map(lambda x: x.role, sub_objects)
+        ))
+        if config.default_ping_role and config.default_ping_role in user.roles:
+            roles_to_remove.append(config.default_ping_role)
+
+        unassignable_roles = [x for x in roles_to_remove if not x.is_assignable()]
+        num_failed_subs = len(unassignable_roles)
+
+        await user.remove_roles(
+            *filter(lambda x: x not in unassignable_roles, roles_to_remove),
+            reason=f"Unsubscribed from {num_target_unsubs - num_failed_subs} subbed series")
+        database_entries = list(filter(
+            lambda x: x.role is None or x.role not in unassignable_roles, sub_objects
+        ))
+        await bot.db.unsubscribe_user_to_tracked_series(database_entries)
+        return num_target_unsubs - num_failed_subs, num_failed_subs
+        # else:
+        #     await user.remove_roles(config.default_ping_role, reason="Unsubscribed from all subbed series.")
+        #     await bot.db.unsubscribe_user_to_tracked_series(sub_objects)
+        #     return num_target_unsubs, 0

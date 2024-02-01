@@ -799,6 +799,43 @@ class ConfirmView(BaseView):
         self.value = False
         self.stop()
 
+    async def prompt(
+            self,
+            interaction: discord.Interaction,
+            prompt_message: str | None = None,
+            prompt_title: str = "Are you sure?",
+            edit_original_response: bool = False,
+            ephemeral: bool = True
+    ):
+        """
+        Summary:
+            Prompts the user to confirm or cancel an action.
+
+        Args:
+            interaction: The interaction object.
+            prompt_message: The message to prompt the user with.
+            prompt_title: The title of the prompt embed.
+            edit_original_response: Whether to edit the original response or send a new one.
+            ephemeral: Whether to send the prompt as an ephemeral message.
+
+        Returns:
+            bool: True if the user confirmed, False if the user canceled.
+        """
+        embed = discord.Embed(
+            title=prompt_title,
+            description=prompt_message,
+            color=discord.Colour.orange()
+        )
+        if interaction.response.is_done():  # noqa
+            if edit_original_response:
+                await interaction.edit_original_response(embed=embed, view=self)
+            else:
+                await interaction.followup.send(embed=embed, ephemeral=ephemeral, view=self)
+        else:
+            await interaction.response.send_message(embed=embed, ephemeral=ephemeral, view=self)  # noqa
+        await self.wait()
+        return False if self.value is None else self.value
+
 
 class BookmarkChapterView(View):
     def __init__(self, bot: MangaClient, chapter_link: Optional[str] = None):
@@ -1226,19 +1263,19 @@ class SettingsView(BaseView):
     def _create_embed(self) -> discord.Embed:
         channel = self.guild_config.notifications_channel
         role = self.guild_config.default_ping_role
+        system_channel = self.guild_config.system_channel
         auto_create_role = self.guild_config.auto_create_role
-        dev_ping = self.guild_config.dev_notifications_ping
         show_update_buttons = self.guild_config.show_update_buttons
 
         text = f"""
-        **#️⃣ Updates Channel:** {channel.mention if channel else "Nont set."}
+        **#️⃣ Updates Channel:** {channel.mention if channel else "Not set."}
         \u200b \u200b \u200b **^** `The channel the bot will send chapter updates to.`
         **🔔 Default Ping Role:** {role.mention if role else "Not set."}
         \u200b \u200b \u200b **^** `The role that will be pinged for all updates.`
         **🔄️ Auto Create Role:** {'Yes' if auto_create_role else 'No'}
         \u200b \u200b \u200b **^** `Whether to auto create roles for new tracked manhwa.`
-        **👨‍💻 Ping for Developer Updates:** {'Yes' if dev_ping else 'No'}
-        \u200b \u200b \u200b **^** `Whether to ping for developer updates.`
+        **❗ System Alerts Channel:** {system_channel.mention if system_channel else "Not set."}
+        \u200b \u200b \u200b **^** `The channel to send critical/dev/system alerts to.`
         **🔘Show Update Buttons:** {'Yes' if show_update_buttons else 'No'}
         \u200b \u200b \u200b **^** `Whether to show buttons for chapter updates.`
         """
@@ -1254,7 +1291,7 @@ class SettingsView(BaseView):
             self.add_item(self.child_map["default"])
             for item in self.child_map["buttons"]:
                 self.add_item(item)
-        elif self.selected_option == "channel":
+        elif self.selected_option in ["channel", "system_channel"]:
             self.add_item(self.child_map["channel"])
         elif self.selected_option == "default_ping_role":
             self.add_item(self.child_map["role"])
@@ -1265,10 +1302,10 @@ class SettingsView(BaseView):
 
     @discord.ui.select(
         options=[
-            discord.SelectOption(label="Change the updates channel", value="channel", emoji="#️⃣"),
+            discord.SelectOption(label="Set the updates channel", value="channel", emoji="#️⃣"),
             discord.SelectOption(label="Set Default ping role", value="default_ping_role", emoji="🔔"),
             discord.SelectOption(label="Auto create role for new tracked manhwa", value="auto_create_role", emoji="🔄"),
-            discord.SelectOption(label="Ping for developer notifications", value="dev_ping", emoji="👨‍💻"),
+            discord.SelectOption(label="Set the system notifications channel", value="system_channel", emoji="❗"),
             discord.SelectOption(label="Show buttons for chapter updates", value="show_update_buttons", emoji="🔘"),
         ],
         max_values=1,
@@ -1295,8 +1332,6 @@ class SettingsView(BaseView):
     async def _bool_select_callback(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
         if self.selected_option == "auto_create_role":
             self.guild_config.auto_create_role = select.values[0] == "True"
-        elif self.selected_option == "dev_ping":
-            self.guild_config.dev_notifications_ping = select.values[0] == "True"
         elif self.selected_option == "show_update_buttons":
             self.guild_config.show_update_buttons = select.values[0] == "True"
         else:
@@ -1352,7 +1387,10 @@ class SettingsView(BaseView):
                 ephemeral=True
             )
             return
-        self.guild_config.notifications_channel = channel
+        if self.selected_option == "system_channel":
+            self.guild_config.system_channel = channel
+        else:
+            self.guild_config.notifications_channel = channel
         self.selected_option = None
         self._refresh_components()
         embed = self._create_embed()
@@ -1450,7 +1488,7 @@ class SettingsView(BaseView):
         view: ConfirmView | None = None
         send_kwargs = {"embed": embed, "wait": True, "ephemeral": True}
         if bot_created_roles:
-            extra = f"Would you like the bot to delete all {len(bot_created_roles)} it created?"
+            extra = f"Would you like the bot to delete all {len(bot_created_roles)} roles it created?"
             embed.description += "\n" + extra
             view = ConfirmView(self.bot, interaction)
             send_kwargs["view"] = view

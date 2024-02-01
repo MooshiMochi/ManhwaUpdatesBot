@@ -11,7 +11,7 @@ from fuzzywuzzy import fuzz
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, Patron
+from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, Patron, SubscriptionObject
 from src.core.scanlators import scanlators
 from io import BytesIO
 import pandas as pd
@@ -100,7 +100,7 @@ class Database:
                     notifications_channel_id INTEGER,
                     default_ping_role_id INTEGER DEFAULT NULL,
                     auto_create_role BOOLEAN NOT NULL DEFAULT false,
-                    dev_notifications_ping BOOLEAN NOT NULL DEFAULT true,
+                    system_channel_id INTEGER default null,
                     show_update_buttons BOOLEAN NOT NULL DEFAULT true,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
@@ -154,8 +154,21 @@ class Database:
             )
             await db.commit()
 
-    async def execute(self, query: str, *args) -> Any:
+    async def execute(self, query: str, *args, levenshtein: bool = False) -> Any:
+        """
+        Execute an SQL query and return the result.
+
+        Args:
+            query: The SQL query to execute.
+            *args: The arguments to pass to the query.
+            levenshtein: Whether to enable the levenshtein function.
+
+        Returns:
+            The result of the query.
+        """
         async with aiosqlite.connect(self.db_name) as db:
+            if levenshtein is True:
+                await db.create_function("levenshtein", 2, _levenshtein_distance)
             async with db.execute(query, args) as cursor:
                 result = await cursor.fetchall()
                 await db.commit()
@@ -245,6 +258,116 @@ class Database:
             )
             result = await cursor.fetchone()
             return result is not None
+
+    async def subscribe_user_to_tracked_series(self, sub_objects: list[SubscriptionObject]) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.executemany(
+                """
+                INSERT INTO user_subs VALUES ($1, $2, $3, $4);
+                """,
+                map(lambda x: x.to_tuple(), sub_objects)
+            )
+            await db.commit()
+
+    async def unsubscribe_user_to_tracked_series(self, sub_objects: list[SubscriptionObject]) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.executemany(
+                """
+                DELETE FROM user_subs WHERE id = $1 AND series_id = $2 AND guild_id = $3 AND scanlator = $4;
+                """,
+                map(lambda x: x.to_tuple(), sub_objects)
+            )
+            await db.commit()
+
+    async def get_all_user_unsubbed_tracked_series(
+            self, guild_id: int, user_id: int, guild: discord.Guild) -> list[SubscriptionObject] | list[Any]:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT
+                    s.id,
+                    s.scanlator,
+                    t.role_id
+                FROM series AS s
+                INNER JOIN tracked_guild_series AS t
+                ON s.id = t.series_id AND s.scanlator = t.scanlator
+                WHERE t.guild_id = $1
+                AND (s.id, s.scanlator) NOT IN (
+                    SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND id = $2
+                );
+                """,
+                (guild_id, user_id),
+            )
+            result = await cursor.fetchall()
+            if result:
+                return [SubscriptionObject(user_id, guild_id, x[0], x[1], guild.get_role(x[2])) for x in result]
+            return []
+
+    async def get_all_user_subbed_series(
+            self, guild_id: int, user_id: int, guild: discord.Guild) -> list[SubscriptionObject] | list[Any]:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT
+                    s.id,
+                    s.scanlator,
+                    t.role_id
+                FROM series AS s
+                INNER JOIN user_subs AS u
+                ON s.id = u.series_id AND s.scanlator = u.scanlator
+                LEFT JOIN tracked_guild_series AS t
+                ON s.id = t.series_id AND s.scanlator = t.scanlator AND t.guild_id = u.guild_id
+                WHERE u.guild_id = $1 AND u.id = $2;
+                """,
+                (guild_id, user_id),
+            )
+            result = await cursor.fetchall()
+            if result:
+                return [SubscriptionObject(user_id, guild_id, x[0], x[1], guild.get_role(x[2])) for x in result]
+            return []
+
+    async def delete_role_from_db(self, role_id: int) -> None:
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.executemany(
+                """
+                UPDATE tracked_guild_series SET role_id = NULL WHERE role_id = $1;
+                DELETE FROM bot_created_roles WHERE role_id = $1;
+                """,
+                role_id
+            )
+
+    async def subscribe_user_to_all_tracked_series(self, user_id: int, guild_id: int) -> int:
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT
+                    s.id,
+                    s.title,
+                    s.url,
+                    s.synopsis,
+                    s.series_cover_url,
+                    s.last_chapter,
+                    s.available_chapters,
+                    s.status,
+                    s.scanlator
+                    
+                FROM series AS s
+                INNER JOIN tracked_guild_series AS t
+                ON s.id = t.series_id AND s.scanlator = t.scanlator
+                WHERE t.guild_id = $1
+                AND (s.id, s.scanlator) NOT IN (
+                    SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1
+                );
+                """,
+                (guild_id,),
+            )
+            result = await cursor.fetchall()
+            if result:
+                mangas = Manga.from_tuples(result)
+                for manga in mangas:
+                    await self.subscribe_user(user_id, guild_id, manga.id, manga.scanlator)
+                return len(mangas)
+            return 0
 
     async def toggle_scanlator(self, scanlator: str) -> None:
         """
@@ -338,7 +461,7 @@ class Database:
             await db.commit()
             return True
 
-    async def subscribe_user(self, user_id: int, guild_id: int, series_id: int, scanlator: str) -> None:
+    async def subscribe_user(self, user_id: int, guild_id: int, series_id: str, scanlator: str) -> None:
         async with aiosqlite.connect(self.db_name) as db:
             # INSERT OR IGNORE INTO user_subs (id, series_id, guild_id) VALUES ($1, $2, $3);
             await db.execute(
@@ -410,13 +533,13 @@ class Database:
                 """
                 INSERT INTO guild_config (
                     guild_id, notifications_channel_id, default_ping_role_id, 
-                    auto_create_role, dev_notifications_ping, show_update_buttons
+                    auto_create_role, system_channel_id, show_update_buttons
                 )
                 VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT(guild_id)
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
-                    auto_create_role = $4, dev_notifications_ping = $5, show_update_buttons = $6
+                    auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
@@ -897,7 +1020,7 @@ class Database:
                     params = None
                 async with db.execute(query, params) as cursor:
                     if result := await cursor.fetchall():
-                        return Manga.from_tuples(result)  # no need to laod since it's used for autocomplete
+                        return [x for x in Manga.from_tuples(result) if not x.completed]
             else:
                 async with db.execute("SELECT * FROM series;") as cursor:
                     if result := await cursor.fetchall():

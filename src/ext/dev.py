@@ -686,10 +686,10 @@ class Restricted(commands.Cog):
         guild_configs_to_notify: list[GuildSettings] = []
         # ensure that the channel in each guild config exists
         for guild_config in guild_configs:
-            if not guild_config.notifications_channel:
+            if not guild_config.system_channel:
                 continue
-            bot_channel_perms = guild_config.notifications_channel.permissions_for(
-                guild_config.notifications_channel.guild.me
+            bot_channel_perms = guild_config.system_channel.permissions_for(
+                guild_config.system_channel.guild.me
             )
             if bot_channel_perms.send_messages and bot_channel_perms.embed_links:
                 guild_configs_to_notify.append(guild_config)
@@ -724,16 +724,8 @@ class Restricted(commands.Cog):
 
         successes = 0
         for guild_config in guild_configs_to_notify:
-            if guild_config.default_ping_role and guild_config.dev_notifications_ping:
-                role_mention = guild_config.default_ping_role.mention
-                if guild_config.default_ping_role.id == guild_config.notifications_channel.guild.id:
-                    role_mention = "@everyone"
-            else:
-                role_mention = None
-
             try:
-                await guild_config.notifications_channel.send(
-                    f"||{role_mention}||" if role_mention is not None else None,
+                await guild_config.system_channel.send(
                     embed=em,
                     allowed_mentions=discord.AllowedMentions(roles=True)
                 )

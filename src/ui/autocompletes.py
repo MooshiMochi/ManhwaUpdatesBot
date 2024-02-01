@@ -4,16 +4,21 @@ import inspect
 import logging
 import traceback as tb
 from functools import partial, wraps
-from typing import Callable
+from types import SimpleNamespace
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.core import MangaClient
 
 import discord
 from discord import app_commands
 
-from src.core.objects import Manga
 from src.core.scanlators import scanlators
 from src.static import Constants
 
 logger = logging.getLogger("autocompletes")
+
+completed_db_set = ", ".join(map(lambda x: f"'{x.lower()}'", Constants.completed_status_set))
 
 
 def try_except(func: Callable) -> Callable:
@@ -96,71 +101,38 @@ def get_scanlator_from_current_str(current: str) -> tuple[str | None, str | None
 
 
 @try_except
-async def manga(
-        interaction: discord.Interaction, current: str
-) -> list[discord.app_commands.Choice[str]]:
-    """Autocomplete for the /latest command"""
-    # noinspection PyProtectedMember
-    scanlator_name, current = get_scanlator_from_current_str(current)
-    mangas: list[Manga] = await interaction.client.db.get_all_series(
-        current, autocomplete=True, scanlator=scanlator_name
-    )
-    if not mangas:
-        return []
-
-    name_val_pairs = [
-        (f"({m.scanlator}) " + m.title, f"{m.id}|{m.scanlator}") for m in mangas
-    ]
-    return [
-               discord.app_commands.Choice(name=x[0][:97] + ("..." if len(x[0]) > 100 else ''), value=x[1])
-               for x in name_val_pairs
-           ][:25]
-
-
-@try_except
 async def user_bookmarks(
-        interaction: discord.Interaction, argument: str
-) -> list[discord.app_commands.Choice]:
-    scanlator_name, argument = get_scanlator_from_current_str(argument)
-    bookmarks: list[tuple[str, str, str]] = await interaction.client.db.get_user_bookmarks_autocomplete(
-        interaction.user.id, argument, autocomplete=True, scanlator=scanlator_name
-    )
-    if not bookmarks:
-        return []
-    name_val_pairs = [
-        (f"({b[2]}) " + b[1], f"{b[0]}|{b[2]}") for b in bookmarks
-    ]
-    return [
-               discord.app_commands.Choice(name=x[0][:97] + ("..." if len(x[0]) > 100 else ''), value=x[1])
-               for x in name_val_pairs
-           ][:25]
-
-
-@try_except
-async def user_subbed_manga(
         interaction: discord.Interaction, current: str
-) -> list[discord.app_commands.Choice[str]]:
-    """Autocomplete for the /unsubscribe command."""
-
+) -> list[discord.app_commands.Choice]:
     scanlator_name, current = get_scanlator_from_current_str(current)
+    default_query = f"""
+                    SELECT 
+                        '('||scanlator||') '||title AS name,
+                        id||'|'||scanlator AS value
+                    FROM series
+                    WHERE (id, scanlator) IN (
+                        SELECT series_id, scanlator FROM bookmarks
+                        WHERE user_id = $1
+                    )
+                    """
+    default_params = (interaction.user.id,)
+    if scanlator_name:
+        default_query += f" AND scanlator = ${len(default_params) + 1}"
+        default_params += (scanlator_name,)
+    if current:
+        default_query += f" ORDER BY levenshtein(title, ${len(default_params) + 1}) DESC"
+        default_params += (current,)
 
-    subs: list[Manga] = await interaction.client.db.get_user_guild_subs(
-        interaction.guild_id, interaction.user.id, current, autocomplete=True, scanlator=scanlator_name
-    )
-    if not subs: return []  # noqa
-
-    name_val_pairs = [
-        (f"({m.scanlator}) " + m.title, f"{m.id}|{m.scanlator}") for m in subs
-    ]
-    return [
-               discord.app_commands.Choice(name=(x[0][:97] + "...") if len(x[0]) > 100 else x[0], value=x[1])
-               for x in name_val_pairs
-           ][:25]
+    results = await interaction.client.db.execute(default_query, *default_params, levenshtein=True)
+    if not results:
+        return []
+    choices = [SimpleNamespace(name=x[0] if len(x[0]) < 100 else x[0][:97] + "...", value=x[1]) for x in results][:25]
+    return [discord.app_commands.Choice(name=x.name, value=x.value) for x in choices]
 
 
 @try_except
 async def chapters(
-        interaction: discord.Interaction, argument: str
+        interaction: discord.Interaction, current: str
 ) -> list[discord.app_commands.Choice]:
     series_id: str = interaction.namespace["manga"]
     if series_id is None:
@@ -169,10 +141,9 @@ async def chapters(
         series_id, scanlator_name = series_id.split("|")
     except ValueError:  # some weirdo is not using the autocomplete for the manga parameter. 💀
         return []
-    _chapters = await interaction.client.db.get_series_chapters(series_id, scanlator_name, argument)
+    _chapters = await interaction.client.db.get_series_chapters(series_id, scanlator_name, current)
     if not _chapters:
         return []
-
     return [
                discord.app_commands.Choice(
                    name=(chp.name[:97] + "...") if len(chp.name) > 100 else chp.name,
@@ -183,33 +154,208 @@ async def chapters(
 
 @try_except
 async def google_language(
-        _: discord.Interaction, argument: str
+        _: discord.Interaction, current: str
 ) -> list[discord.app_commands.Choice]:
     if not Constants.google_translate_langs:
         return []
     return [
                app_commands.Choice(name=lang["language"], value=lang["code"]) for lang in
                Constants.google_translate_langs if
-               argument.lower() in lang["language"].lower()
+               current.lower() in lang["language"].lower()
            ][:25]
 
 
 @try_except
-async def tracked_manga(interaction: discord.Interaction, argument: str) -> list[discord.app_commands.Choice]:
-    scanlator_name, argument = get_scanlator_from_current_str(argument)
-    guild_tracked_manga = await interaction.client.db.get_all_guild_tracked_manga(
+async def tracked_manga(interaction: discord.Interaction, current: str) -> list[discord.app_commands.Choice]:
+    scanlator_name, current = get_scanlator_from_current_str(current)
+
+    default_query = f"""
+                SELECT 
+                    '('||scanlator||') '||title AS name,
+                    id||'|'||scanlator AS value
+                FROM series
+                WHERE (id, scanlator) IN (
+                    SELECT series_id, scanlator FROM tracked_guild_series
+                    WHERE guild_id = $1
+                )
+                """
+    default_params = (
         interaction.guild_id or interaction.user.id,
-        current=argument,
-        autocomplete=True,
-        scanlator=scanlator_name
     )
-    if not guild_tracked_manga:
+
+    if scanlator_name:
+        default_query += f" AND scanlator = ${len(default_params) + 1}"
+        default_params += (scanlator_name,)
+    if current:
+        default_query += f" ORDER BY levenshtein(title, ${len(default_params) + 1}) DESC"
+        default_params += (current,)
+
+    results = await interaction.client.db.execute(default_query, *default_params, levenshtein=True)
+    if not results:
+        return []
+    choices = [SimpleNamespace(name=x[0] if len(x[0]) < 100 else x[0][:97] + "...", value=x[1]) for x in results][:25]
+    return [discord.app_commands.Choice(name=x.name, value=x.value) for x in choices]
+
+
+@try_except
+async def subscribe_new_cmd(
+        interaction: discord.Interaction, current: str | None = None) -> list[discord.app_commands.Choice]:
+    scanlator_name, current = get_scanlator_from_current_str(current)
+    bot: MangaClient = interaction.client
+    first_opt_names = ["(!) All tracked series in this server", "All tracked series in this server"]
+    default_query = f"""
+        SELECT  '('||scanlator||') '||title AS name, id||'|'||scanlator AS value FROM series
+        WHERE (id, scanlator) IN (SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $1)
+        AND (id, scanlator) NOT IN (SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND id = $2)
+        """
+    default_params = (
+        interaction.guild_id or interaction.user.id,
+        interaction.user.id
+    )
+
+    if scanlator_name:
+        default_query += f" AND scanlator = ${len(default_params) + 1}"
+        default_params += (scanlator_name,)
+    if current:
+        default_query += f" ORDER BY levenshtein(title, ${len(default_params) + 1}) DESC"
+        default_params += (current,)
+
+    results = await interaction.client.db.execute(default_query, *default_params, levenshtein=True)
+    first_option = discord.app_commands.Choice(
+        name=first_opt_names[0],
+        value=f"{interaction.guild_id or interaction.user.id}-all"
+    )
+    if not results:
+        if interaction.guild_id is None or (
+                guild_config := await bot.db.get_guild_config(interaction.guild_id)) is None:
+            return []
+        if (guild_config.default_ping_role and guild_config.default_ping_role.is_assignable() and
+                guild_config.default_ping_role not in interaction.user.roles):
+            return [first_option]
         return []
 
-    name_val_pairs = [
-        (f"({m.scanlator}) " + m.title, f"{m.id}|{m.scanlator}") for m in guild_tracked_manga
-    ]
-    return [
-               discord.app_commands.Choice(name=(x[0][:97] + "...") if len(x[0]) > 100 else x[0], value=x[1])
-               for x in name_val_pairs
-           ][:25]
+    choices = [SimpleNamespace(name=x[0] if len(x[0]) < 100 else x[0][:97] + "...", value=x[1]) for x in results][:25]
+    normal_options = [discord.app_commands.Choice(name=x.name, value=x.value) for x in choices]
+    if not current or current == "":
+        return [first_option] + normal_options[:24]
+    else:
+        for opt in first_opt_names:
+            if opt.lower().startswith(current.lower()):
+                return [first_option] + normal_options[:24]
+        return normal_options
+
+
+@try_except
+async def subscribe_delete_command(
+        interaction: discord.Interaction, current: str | None = None) -> list[discord.app_commands.Choice]:
+    """Autocomplete for the subscribe_delete command"""
+    scanlator_name, current = get_scanlator_from_current_str(current)
+    bot: MangaClient = interaction.client
+    first_opt_names = ["(!) All subbed series in this server", "All subbed series in this server"]
+    default_query = f"""
+        SELECT  '('||scanlator||') '||title AS name, id||'|'||scanlator AS value FROM series
+        WHERE (id, scanlator) IN (SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND id = $2)
+        OR (id, scanlator) IN (SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $1 AND 
+            role_id IS NOT NULL AND role_id IN ({','.join(map(lambda x: str(x.id), interaction.user.roles))})
+            )
+        """
+    default_params = (
+        interaction.guild_id or interaction.user.id,
+        interaction.user.id
+    )
+
+    if scanlator_name:
+        default_query += " AND scanlator = $2"
+        default_params += (scanlator_name,)
+
+    if current:
+        default_query += f" ORDER BY levenshtein(title, ${len(default_params) + 1}) DESC"
+        default_params += (current,)
+
+    results = await interaction.client.db.execute(default_query, *default_params, levenshtein=True)
+    first_option = discord.app_commands.Choice(
+        name=first_opt_names[0],
+        value=f"{interaction.guild_id or interaction.user.id}-all"
+    )
+    if not results:
+        if interaction.guild_id is None or (
+                guild_config := await bot.db.get_guild_config(interaction.guild_id)) is None:
+            return []
+        if guild_config.default_ping_role and guild_config.default_ping_role in interaction.user.roles:
+            return [first_option]
+        return []
+
+    choices = [SimpleNamespace(name=x[0] if len(x[0]) < 100 else x[0][:97] + "...", value=x[1]) for x in results][:25]
+    normal_options = [discord.app_commands.Choice(name=x.name, value=x.value) for x in choices]
+    if not current or current == "":
+        return [first_option] + normal_options[:24]
+    else:
+        for opt in first_opt_names:
+            if opt.lower().startswith(current.lower()):
+                return [first_option] + normal_options[:24]
+        return normal_options
+
+
+@try_except
+async def track_new_cmd(
+        interaction: discord.Interaction, current: str | None = None) -> list[discord.app_commands.Choice]:
+    """Autocomplete for the track_new command"""
+    scanlator_name, current = get_scanlator_from_current_str(current)
+
+    default_query = f"""
+        SELECT 
+            '('||scanlator||') '||title AS name,
+            id||'|'||scanlator AS value
+        FROM series
+        WHERE (id, scanlator) NOT IN (
+            SELECT series_id, scanlator FROM tracked_guild_series
+            WHERE guild_id = $1
+        ) AND lower(status) NOT IN ({completed_db_set})
+        """
+    default_params = (
+        interaction.guild_id or interaction.user.id,
+    )
+
+    if scanlator_name:
+        default_query += " AND scanlator = $2"
+        default_params += (scanlator_name,)
+
+    if current:
+        default_query += f" ORDER BY levenshtein(title, ${len(default_params) + 1}) DESC"
+        default_params += (current,)
+
+    results = await interaction.client.db.execute(default_query, *default_params, levenshtein=True)
+    if not results:
+        return []
+    choices = [SimpleNamespace(name=x[0] if len(x[0]) < 100 else x[0][:97] + "...", value=x[1]) for x in results][:25]
+    return [discord.app_commands.Choice(name=x.name, value=x.value) for x in choices]
+
+
+@try_except
+async def chapters_cmd(
+        interaction: discord.Interaction, current: str | None = None
+) -> list[discord.app_commands.Choice]:
+    scanlator_name, current = get_scanlator_from_current_str(current)
+    default_query = f"""
+                SELECT 
+                    '('||scanlator||') '||title AS name,
+                    id||'|'||scanlator AS value
+                FROM series
+                """
+    default_params = tuple()
+    if scanlator_name:
+        default_query += f"WHERE scanlator = ${len(default_params) + 1}"
+        default_params += (scanlator_name,)
+    if current:
+        default_query += f" ORDER BY levenshtein(title, ${len(default_params) + 1}) DESC"
+        default_params += (current,)
+    results = await interaction.client.db.execute(default_query, *default_params, levenshtein=True)
+    if not results:
+        return []
+    choices = [SimpleNamespace(name=x[0] if len(x[0]) < 100 else x[0][:97] + "...", value=x[1]) for x in results][:25]
+    return [discord.app_commands.Choice(name=x.name, value=x.value) for x in choices]
+
+
+# ALIASES
+info_cmd = chapters_cmd
+bookmarks_new_cmd = info_cmd

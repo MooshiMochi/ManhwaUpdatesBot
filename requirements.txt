@@ -1,5 +1,5 @@
 black
-discord[speed]
+discord
 aiohttp
 aiosqlite
 aiofiles
@@ -14,3 +14,4 @@ tldextract
 brotli
 fastapi
 patreon
+git+https://github.com/Rapptz/discord.py.git

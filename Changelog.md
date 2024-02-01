@@ -2,13 +2,37 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // January 29th 2024
+
+- Updated the discord.py dependency to the master branch to support Entitlements.
+- Updated the `/track new` command autocomplete to show only untracked and non-completed manhwa.
+- Improved the autocomplete functions for the [commands.py](./src/ext/commands.py) commands.
+    - Improved memory and processing efficiency by reducing the data being fetched from the database.
+    - Improved the speed of the autocomplete returing results.
+- Improved the auocomplete functions for the [bookmarks.py](./src/ext/bookmark.py) commands.
+- Improved the `/subscribe new` command.
+    - It will now show a new option `(!) All tracked series in this server`.
+    - Will attempt to add all series roles if the above is selected.
+    - It will no longer add the default ping role unless the above option is selected
+    - If the above option is selected, it will attempt to add any remaining roles that you don't have.
+- Removed the `Ping for dev updates` from `/settings` command.
+- Added the `System Alerts Channel` option to `/settings` command.
+  This will be the channel where you can receive dev notifications and bot warnings!
+- Added a new events extension.
+- Added a separate config for the System Alerts channel.
+    - All dev/critical/bot alerts will be sent here instead.
+- Added new errors and respective handlers for them.
+- Added new database functions for the improved `/subscribe` command.
+- Created a new SubscriptionObject class for the new `/subscribe` command.
+- Added a `(coro) prompt` method to the `ConfirmView` class.
+
 ## // January 28th 2024
 
 - Moved bot to new VPS.
 
 - Added **PATREON EXCLUSIVE** feature:
     - Allows the use of commands in DMs
-    - ALlows tracking manhwa in DMs
+    - Allows tracking manhwa in DMs
 - Added the `/patreon` command to view the benefits of being a Patreon.
 - Added the `patreon` table to the database.
     - Added a `Patron` class to the [objects.py](./src/core/objects.py) file.
@@ -22,6 +46,7 @@
 ### Bug Fixes:
 
 - Fixed the `/stats` command showing inaccurate statistics.
+- Fixed the "Search" button in the BookmarksView.
 
 ## // January 21st 2024
 

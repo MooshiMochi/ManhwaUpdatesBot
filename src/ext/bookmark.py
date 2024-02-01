@@ -38,7 +38,7 @@ class BookmarkCog(commands.Cog):
     @app_commands.describe(manga_url_or_id="The name of the bookmarked manga you want to view")
     @app_commands.describe(folder="The folder you want to view. If manga is specified, this is ignored.")
     @app_commands.rename(manga_url_or_id="manga_url")
-    @app_commands.autocomplete(manga_url_or_id=autocompletes.manga)
+    @app_commands.autocomplete(manga_url_or_id=autocompletes.bookmarks_new_cmd)
     @checks.has_premium(dm_only=True)
     async def bookmark_new(
             self,
