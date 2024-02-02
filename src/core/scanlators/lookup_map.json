@@ -228,7 +228,7 @@
         "format_urls": {
           "manga": "https://chapmanganato.to/manga-{id}/"
         },
-        "latest_updates_url": "https://manganato.to/",
+        "latest_updates_url": "https://chapmanganato.to/nato",
         "dynamicURL": false
       },
       "selectors": {
