@@ -810,7 +810,6 @@ class CommandsCog(commands.Cog):
   - Send Messages
   - Embed Links
   - Attach Files
-  - Manage Webhooks
   - Manage Roles (for tracking commands)
 
 Ensure the bot has these permissions for smooth operation.

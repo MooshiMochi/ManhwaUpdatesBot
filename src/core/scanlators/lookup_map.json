@@ -1417,14 +1417,14 @@
     "kaiscans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.com/(?:series/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.org/(?:manga/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://kaiscans.com",
-        "icon_url": "https://i3.wp.com/kaiscans.com/wp-content/uploads/2023/08/cropped-kai-gradient.png",
+        "base_url": "https://kaiscans.org",
+        "icon_url": "https://i3.wp.com/kaiscans.org/wp-content/uploads/2023/08/cropped-kai-gradient.png",
         "format_urls": {
-          "manga": "https://kaiscans.com/series/{url_name}/"
+          "manga": "https://kaiscans.org/manga/{url_name}/"
         },
-        "latest_updates_url": "https://kaiscans.com",
+        "latest_updates_url": "https://kaiscans.org",
         "dynamicURL": false
       },
       "selectors": {
@@ -1445,14 +1445,14 @@
           "div.imptdt:-soup-contains(\"Status\") > i"
         ],
         "front_page": {
-          "container": "div.postbody > div.bixbox > div.listupd > div > div.bsx",
+          "container": "div.postbody > div.bixbox > div.listupd > div.utao",
           "chapters": {
             "container": "ul > li",
-            "name": "a > span:first-child",
+            "name": "a",
             "url": "a"
           },
-          "title": "div.bigor > div > a",
-          "url": "div.bigor > div > a",
+          "title": "div.luf > a.series",
+          "url": "div.luf > a.series",
           "cover": "img.ts-post-image, picture.ts-post-image > img"
         },
         "unwanted_tags": [],
@@ -1465,7 +1465,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://kaiscans.com/",
+        "url": "https://kaiscans.org/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"

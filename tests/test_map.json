@@ -513,21 +513,21 @@
     }
   },
   "kaiscans": {
-    "user_input_url": "https://kaiscans.com/series/return-of-the-mad-demon/",
+    "user_input_url": "https://kaiscans.org/manga/return-of-the-mad-demon/",
     "expected_results": {
       "scanlator_name": "kaiscans",
-      "manga_url": "https://kaiscans.com/series/return-of-the-mad-demon/",
+      "manga_url": "https://kaiscans.org/manga/return-of-the-mad-demon/",
       "completed": false,
       "title": "Return of the Mad Demon",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://kaiscans.com/return-of-the-mad-demon-chapter-90/",
-      "first_chapter_url": "https://kaiscans.com/return-of-the-mad-demon-82/",
-      "cover_image": "https://kaiscans.com/wp-content/uploads/2023/08/2102434127.webp",
+      "curr_chapter_url": "https://kaiscans.org/return-of-the-mad-demon-chapter-90/",
+      "first_chapter_url": "https://kaiscans.org/return-of-the-mad-demon-82/",
+      "cover_image": "https://kaiscans.org/wp-content/uploads/2023/08/2102434127.webp",
       "last_3_chapter_urls": [
-        "https://kaiscans.com/return-of-the-mad-demon-chapter-88/",
-        "https://kaiscans.com/return-of-the-mad-demon-chapter-89/",
-        "https://kaiscans.com/return-of-the-mad-demon-chapter-90/"
+        "https://kaiscans.org/return-of-the-mad-demon-chapter-88/",
+        "https://kaiscans.org/return-of-the-mad-demon-chapter-89/",
+        "https://kaiscans.org/return-of-the-mad-demon-chapter-90/"
       ]
     }
   },
