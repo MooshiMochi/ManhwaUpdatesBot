@@ -2,22 +2,9 @@ from datetime import datetime
 
 import discord
 from discord import app_commands
+from discord.app_commands.checks import *  # noqa: No Import Cleanup
 
 from src.core.errors import PremiumFeatureOnly
-
-
-def bot_has_permissions(**permissions):
-    async def predicate(interaction: discord.Interaction) -> bool:
-        return not interaction.guild_id or interaction.guild.me.guild_permissions >= discord.Permissions(**permissions)
-
-    return app_commands.check(predicate)
-
-
-def has_permissions(**permissions):
-    async def predicate(interaction: discord.Interaction) -> bool:
-        return not interaction.guild_id or interaction.user.guild_permissions >= discord.Permissions(**permissions)
-
-    return app_commands.check(predicate)
 
 
 def has_premium(*, dm_only: bool = True):

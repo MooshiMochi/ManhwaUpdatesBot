@@ -16,6 +16,7 @@
 
 - Fixed autocomplete for the 'scanlator' parameter in the `/search` command when no user input is provided
 - Fixed global interaction check being executed for non-command type interactions.
+- Fixed command permission checks not raising the appropriate errors.
 
 ## // February 5th 2024
 
