@@ -80,6 +80,7 @@ If you have any questions, feel free to join the [Support Server](https://discor
 ## Requirements:
 
 - Python 3.10+
+- Docker (used for flaresolverr)
 
 ## Setup:
 

@@ -762,21 +762,8 @@ class SubscribeView(View):
     ) -> None:
         if isinstance(error, TimeoutError):
             pass
-        else:
-            traceback = "".join(
-                tb.format_exception(type(error), error, error.__traceback__)
-            )
-            em = discord.Embed(
-                title=f"🚫 An unknown error occurred!",
-                description=f"{traceback[-2000:]}",
-                color=0xFF0000,
-            )
-            interaction.client.logger.error(traceback)
-            if interaction.response.is_done():  # noqa
-                await interaction.followup.send(embed=em, ephemeral=True)
-            else:
-                await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
-
+        return await interaction.client.tree.on_error(interaction, error)
+        
 
 class ConfirmView(BaseView):
     def __init__(

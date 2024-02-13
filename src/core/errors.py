@@ -208,6 +208,7 @@ class AlreadyUnsubscribedError(BaseError):
 class CustomError(BaseError):
     """Raised when a custom error is raised."""
 
-    def __init__(self, error_msg: str, var: Any = None):
+    def __init__(self, error_msg: str, title: str = None, var: Any = None):
+        self.title = title
         self.error_msg = error_msg
         self.var = var

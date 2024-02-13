@@ -41,7 +41,8 @@ class BotCommandTree(discord.app_commands.CommandTree):
         The global check for application commands.
         """
         commands_to_check = ["subscribe", "track"]
-        # If it's DM channel and they're not patreon -> Can't use -> alert about patreon
+        if interaction.type != discord.InteractionType.application_command:
+            return True  # ignore checks for non-application commands
 
         if not interaction.guild_id:
             if not IS_PATREON:
@@ -165,7 +166,7 @@ class BotCommandTree(discord.app_commands.CommandTree):
 
         elif isinstance(error, CustomError):
             embed = discord.Embed(
-                title=f"{Emotes.warning} Error!",
+                title=f"{Emotes.warning} Error!" if error.title is None else error.title,
                 color=0xFF0000,
                 description=error.error_msg,
             )
@@ -273,7 +274,6 @@ class BotCommandTree(discord.app_commands.CommandTree):
                     color=0xFF0000,
                     description=f"Sorry, you need the `{perms}` permissions to execute this command.",
                 )
-
 
         elif isinstance(error, ignore_args):
             self.bot.logger.warning(f"Ignoring exception: {error}")

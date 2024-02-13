@@ -217,19 +217,22 @@ class BookmarkCog(commands.Cog):
             elif not is_tracked:
                 should_track = True
         await self.bot.db.upsert_bookmark(bookmark)
+        message = "Bookmark updated successfully!"
+        if folder:
+            message += f"\n\n• Moved bookmark to {folder.value}"
+        if chapter_index:
+            message += f"\n\n• Updated last read chapter to {bookmark.last_read_chapter}"
+        if user_subscribed:
+            message += f"\n\nYou have been subscribed to updates for {bookmark.manga.title}"
+        elif should_track:
+            message += "\n\n*You should consider tracking and subscribing to this manga to get updates.*"
+
         success_em = discord.Embed(
             title="Bookmark Updated",
-            description=f"Successfully updated bookmark to {bookmark.last_read_chapter}",
+            description=message,
             color=discord.Color.green(),
         )
-        if user_subscribed:
-            success_em.description += f" and subscribed you to updates for {bookmark.manga.title}"
-            await interaction.followup.send(embed=success_em, ephemeral=True)
-        elif should_track:
-            success_em.description += "\n\n*You should consider tracking and subscribing to this manga to get updates.*"
-            await interaction.followup.send(embed=success_em, ephemeral=True)
-        else:
-            await interaction.followup.send(embed=success_em, ephemeral=True)
+        await interaction.followup.send(embed=success_em, ephemeral=True)
 
     @bookmark_group.command(name="delete", description="Delete a bookmark")
     @app_commands.rename(series_id="manga")

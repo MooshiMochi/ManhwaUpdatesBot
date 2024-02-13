@@ -2,6 +2,25 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## February 13th 2024
+
+- Updated the `/bookmark update` success message to be more descriptive when providing both optional parameters.
+- Added animated emotji for the `Custom Error` error.
+- Added `title` attribute to the `CustomError` class in errors.py
+- Added new `MangaHeader` object that holds a manga ID and scanlator.
+- Updated README.md — Added `Docker` to the requirements for a future update.
+- Added animated emotes to the `Emotes` class in `static.py`
+- Made errors be sent to the command tree error handler for the `SubscribeView` view.
+
+### Bug Fixes:
+
+- Fixed autocomplete for the 'scanlator' parameter in the `/search` command when no user input is provided
+- Fixed global interaction check being executed for non-command type interactions.
+
+## // February 5th 2024
+
+- Removed https://mangasiamese.com from the bot as the website no longer works.
+
 ## // January 29th 2024
 
 - Updated the discord.py dependency to the master branch to support Entitlements.

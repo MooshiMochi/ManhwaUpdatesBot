@@ -3,9 +3,9 @@ import re
 
 class Emotes:
     loading = "<a:loading:1172323932834107454>"
-    warning = "⚠️"
-    success = "✅"
-    error = "❌"
+    warning = "<a:awarning:1205218288016302182>"
+    success = "<a:check2:859310788598956042>"
+    error = "<a:error_no:1205218470594084954>"
 
 
 class Constants:

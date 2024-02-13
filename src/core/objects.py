@@ -735,3 +735,12 @@ class SubscriptionObject:
         #     await user.remove_roles(config.default_ping_role, reason="Unsubscribed from all subbed series.")
         #     await bot.db.unsubscribe_user_to_tracked_series(sub_objects)
         #     return num_target_unsubs, 0
+
+
+@dataclass
+class MangaHeader:
+    id: str
+    scanlator: str
+
+    def __eq__(self, other: Manga | MangaHeader) -> bool:
+        return isinstance(other, MangaHeader) and self.id == other.id and self.scanlator == other.scanlator
