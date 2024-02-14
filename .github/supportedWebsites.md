@@ -47,3 +47,4 @@ This bot currently only supports the following websites:
 > **Warning:** The following websites will not work unless a custom user-agent allowed by the owner is used:
 > - https://anigliscans.com
 > - https://toonily.com
+> - https://theblank.net

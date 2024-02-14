@@ -178,6 +178,7 @@ class ScanlatorsRequiringUserAgent:
     scanlators = [
         "anigliscans",
         "toonily",
+        "theblank"
     ]
 
 
