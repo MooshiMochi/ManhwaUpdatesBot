@@ -37,6 +37,11 @@
     - Added the `webshare` parameter to the `api-keys` category.
     - Added `flaresolverr` category with a single parameter called `base_url`.
 - Added the `/logs` folder to .gitignore. Apparently that wasn't there for some reason before.
+- Added new configs to the default config setup function in utils.py
+- Updated voidscans to use the `flare` request method.
+- Updated mangafire to use the `flare` request method.
+- Updated mangabuddy to use the `flare` request method.
+- Updated freakscans to use the `flare` request method.
 
 ### Bug Fixes:
 
@@ -50,6 +55,7 @@
 - Updated kaiscans properties. They made some changes to their URLs.
 - Fixed loading autocomplete options for the `scanlator` parameter when using the `/search` command and not typing any
   input.
+- Fixed test.py failing if there are missing configs for flaresolverr and webshare.
 
 ## February 13th 2024
 

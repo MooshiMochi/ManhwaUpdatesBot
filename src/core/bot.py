@@ -70,7 +70,10 @@ class MangaClient(commands.Bot):
         self.loop.create_task(self.update_restart_message())  # noqa: No need to await a task
 
         self._apis = APIManager(self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True))
-        self._apis.flare.proxy = (await self._apis.webshare.get_proxy()).to_url_dict()
+        await self._apis.webshare.async_init()
+        if self._apis.webshare.is_available:
+            # use static proxy for flare
+            self._apis.flare.proxy = (await self._apis.webshare.get_proxy()).to_url_dict()
         await self._apis.flare.async_init()
         #  test flaresolverr. change scanlators' request_method to 'curl' that use 'flare'
         if not self._apis.flare.is_available:
@@ -146,17 +149,22 @@ class MangaClient(commands.Bot):
 
     async def close(self):
         self.logger.info("Closing bot...")
-        self.logger.info("[FlareSolverr] > Begin server session cleanup...")
-        await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
-        await self.apis.flare.destroy_all_sessions()  # destroy all active sessions
-        self.logger.info("[FlareSolverr] > Server session cleanup complete.")
+        if self.apis.flare.is_available:
+            self.logger.info("[FlareSolverr] > Begin server session cleanup...")
+            await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
+            await self.apis.flare.destroy_all_sessions()  # destroy all active sessions
+            self.logger.info("[FlareSolverr] > Server session cleanup complete.")
         self.logger.info("Closing aiohttp sessions...")
         await self._session.close() if self._session else None
         await self.apis.session.close() if self.apis else None
         self.logger.info("Aiohttp sessions closed.")
-        self.logger.info("Closing curl session...")
-        self.curl_session.close() if self.curl_session else None
-        self.logger.info("Curl session closed.")
+        if self.curl_session:
+            self.logger.info("Closing curl session...")
+            try:
+                self.curl_session.close()
+                self.logger.info("Curl session closed.")
+            except TypeError:
+                self.logger.error("Skipping... Curl session already closed.")
         self.logger.info("Finalising closing procedure! Goodbye!")
         await super().close()
 

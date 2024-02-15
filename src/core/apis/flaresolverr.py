@@ -63,7 +63,7 @@ class FlareSolverrAPI:
                         f"[FlareSolverr] Health check: ({response.status} {response.reason}) "
                         f"{(await response.json()).get('message')}")
                 return self.is_available
-        except (ClientConnectorError, ContentTypeError):
+        except (ClientConnectorError, ContentTypeError, aiohttp.InvalidURL):
             self.is_available = False
             self.manager.bot.logger.error("[FlareSolverr] Health check: Connection error. Double check the base_url "
                                           "and API Key in config.yml")
@@ -100,6 +100,8 @@ class FlareSolverrAPI:
         json_params = {"cmd": "sessions.create"}
         if proxy is not None or self.proxy is not None:
             json_params["proxy"] = proxy or self.proxy
+        elif self.manager.webshare.is_available:
+            json_params["proxy"] = await self.manager.webshare.get_proxy().to_url_dict()
 
         async with self.manager.session.post(
                 f"{self.base_url}/v1",  # noqa
@@ -177,7 +179,8 @@ class FlareSolverrAPI:
                 if 400 <= (status_code := (await response.json()).get("solution", {}).get("status", 200)) <= 499:
                     self.manager.bot.logger.error(f"[FlareSolverr] Error: {status_code}")
                     # swap out the proxy for a new one.
-                    self.proxy = await self.manager.webshare.get_proxy().to_url_dict()
+                    if self.manager.webshare.is_available:
+                        self.proxy = await self.manager.webshare.get_proxy().to_url_dict()
                 else:
                     return response
             except aiohttp.ContentTypeError:

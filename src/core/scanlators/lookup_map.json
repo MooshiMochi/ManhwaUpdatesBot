@@ -2,7 +2,7 @@
   "static": {
     "voidscans": {
       "chapter_ajax": null,
-      "request_method": "curl",
+      "request_method": "flare",
       "url_regex": "(?:https?://)?(?:www\\.)?void-scans\\.com/(?:manga/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://void-scans.com",

@@ -22,6 +22,7 @@ class APIManager:
         self.mangadex = MangaDexAPI(self)
         self.omegascans = OmegaScansAPI(self)
         self.zeroscans = ZeroScansAPI(self)
+        self.webshare = WebsShare(self, bot.config.get("api-keys", {}).get("webshare"))
         self.flare = FlareSolverrAPI(
             self,
             bot.config.get("flaresolverr", {}).get("base_url"),
@@ -31,7 +32,6 @@ class APIManager:
                 "https": self.bot.proxy_addr
             } if self.bot.proxy_addr else None
         )
-        self.webshare = WebsShare(self, bot.config.get("api-keys", {}).get("webshare"))
 
     @property
     def session(self) -> CachedClientSession:

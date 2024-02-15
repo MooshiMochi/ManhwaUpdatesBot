@@ -72,22 +72,40 @@ class Bot:
 
     async def async_init(self):
         await self.db.async_init()
-        await self.apis.flare.health_check()
+        await self.apis.webshare.async_init()
+        if self.apis.webshare.is_available:
+            self.apis.flare.proxy = (await self.apis.webshare.get_proxy()).to_url_dict()
+        await self.apis.flare.async_init()
+
         if not self.apis.flare.is_available:
             self.logger.error("FlareSolverr is not available. Using curl_cffi instead of flare.")
             for scanner in scanlators.keys():
                 if scanlators[scanner].json_tree.request_method == "flare":
                     scanlators[scanner].json_tree.request_method = "curl"
-        await self.apis.flare.get_active_sessions()  # load the session cache
-        if self.apis.flare.session_cache:
-            await self.apis.flare.destroy_all_sessions()
-        self.apis.flare.proxy = await self.apis.webshare.get_proxy().to_url_dict()
 
     async def close(self):
         # await self.cf_scraper.close()
+        self.logger.info("Closing test instance...")
+
+        self.curl_session.close() if self.curl_session else None
+        if self.apis.flare.is_available:
+            self.logger.info("[FlareSolverr] > Begin server session cleanup...")
+            await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
+            await self.apis.flare.destroy_all_sessions()  # destroy all active sessions
+            self.logger.info("[FlareSolverr] > Server session cleanup complete.")
+
+        self.logger.info("Closing aiohttp sessions...")
         await self.session.close()
         await self.apis.session.close()
-        self.curl_session.close() if self.curl_session else None
+        self.logger.info("Aiohttp sessions closed.")
+        if self.curl_session:
+            self.logger.info("Closing curl session...")
+            try:
+                self.curl_session.close()
+                self.logger.info("Curl session closed.")
+            except TypeError:
+                self.logger.warning("Skipping curl session close due to TypeError.")
+        self.logger.info("Finalising closing procedure! Goodbye!")
 
     async def __aenter__(self):
         await self.db.async_init()

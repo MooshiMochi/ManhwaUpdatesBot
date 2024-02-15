@@ -5,6 +5,8 @@ import datetime
 import time
 from typing import TYPE_CHECKING
 
+import aiohttp
+
 if TYPE_CHECKING:
     from . import APIManager
 
@@ -45,9 +47,20 @@ class WebsShare:
         self.used_proxies: set[str] = set()  # format: ["proxy_address:port"]
         self.request_count = 0
         self.start_time = time.time()
-
+        self.is_available: bool = True
         if not api_key:
-            raise Exception("Webshare API key not found.")
+            self.is_available = False
+
+    async def async_init(self):
+        self.manager.bot.logger.info("Testing WebShare wrapper...")
+        try:
+            await self.get_proxy_list(1)
+        except (aiohttp.ClientResponseError, aiohttp.ClientConnectorError, aiohttp.InvalidURL):
+            self.is_available = False
+        if not self.is_available:
+            self.manager.bot.logger.error("WebShare wrapper check failed... Double check the API key and try again!")
+            return
+        self.manager.bot.logger.info("WebShare wrapper is working...")
 
     async def _request(self, method: str, endpoint: str, **kwargs) -> dict:
         await self._rate_limit()
@@ -63,6 +76,7 @@ class WebsShare:
                 await asyncio.sleep(60)
                 kwargs["depth"] = depth + 1
                 return await self._request(method, endpoint, **kwargs)
+            resp.raise_for_status()
             return await resp.json()
 
     async def get_proxy(self) -> Proxy:
