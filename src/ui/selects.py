@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.static import Emotes
+
 if TYPE_CHECKING:
     from src.core import MangaClient, GuildSettings
 
 import discord
 
-from src.core.objects import Chapter, Bookmark
+from src.core.objects import Chapter, Bookmark, MangaHeader
 from discord.ui import Select
 from src.enums import BookmarkFolderType, BookmarkSortType, BookmarkViewType
 from src.core.errors import ChapterNotFoundError
@@ -312,6 +314,15 @@ class MoveToFolderSelect(Select):
             description=f"Bookmark has been moved to the {self.bookmark.folder.value.title()} folder.",
             color=discord.Color.green(),
         )
+        # check if the manhwa is tracked in any of the user's mutual servers with the bot
+        is_mutual_tracked = await self.view.bot.db.is_tracked_in_any_mutual_guild(
+            MangaHeader(self.bookmark.manga.id, self.bookmark.manga.scanlator), interaction.user.id)
+        if self.bookmark.folder == BookmarkFolderType.Subscribed and not is_mutual_tracked:
+            success_em.add_field(
+                name=f"{Emotes.warning} Manga not tracked",
+                value="This manga is not tracked in any mutual servers with me. You will not receive updates.\n" +
+                      "Consider tracking this manga in a mutual server to receive updates."
+            )
         if interaction.response.is_done():  # noqa
             await interaction.followup.send(embed=success_em, ephemeral=True)
         else:

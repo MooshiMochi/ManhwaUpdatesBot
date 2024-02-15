@@ -37,7 +37,8 @@ class _Comick(AbstractScanlator):
                 format_urls=SimpleNamespace(
                     manga=self.fmt_url.removesuffix("?lang=en"),
                 )
-            )
+            ),
+            request_method="http"
         )
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
@@ -143,7 +144,8 @@ class _MangaDex(AbstractScanlator):
                 format_urls=SimpleNamespace(
                     manga=self.fmt_url,
                 )
-            )
+            ),
+            request_method="http"
         )
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
@@ -252,7 +254,8 @@ class _ZeroScans(AbstractScanlator):
                 format_urls=SimpleNamespace(
                     manga=self.fmt_url,
                 )
-            )
+            ),
+            request_method="http"
         )
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:

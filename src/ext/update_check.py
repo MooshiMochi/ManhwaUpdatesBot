@@ -15,7 +15,7 @@ from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError
 from patreon.jsonapi.parser import JSONAPIResource
 
 from src.core.errors import CustomError, URLAccessFailed
-from src.core.objects import ChapterUpdate, Manga, PartialManga, Patron
+from src.core.objects import ChapterUpdate, MangaHeader, PartialManga, Patron
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
 from src.ui.views import BookmarkChapterView
@@ -116,7 +116,8 @@ class UpdateCheckCog(commands.Cog):
                 rv = "continue"
             return rv
 
-    async def check_each_manga_url(self, scanlator: AbstractScanlator, mangas: list[Manga]) -> list[ChapterUpdate]:
+    async def check_each_manga_url(
+            self, scanlator: AbstractScanlator, mangas: list[MangaHeader]) -> list[ChapterUpdate]:
         """
         Summary:
             Checks for updates by checking each manga's URL individually.
@@ -131,7 +132,8 @@ class UpdateCheckCog(commands.Cog):
         if not mangas:
             return []
         chapter_updates: list[ChapterUpdate] = []
-        for manga in mangas:
+        for manga_header in mangas:
+            manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
             new_update = await self.handle_exception(scanlator.check_updates(manga), scanlator, manga.url)
             if isinstance(new_update, str):
                 next_step = new_update
@@ -156,8 +158,8 @@ class UpdateCheckCog(commands.Cog):
         return chapter_updates
 
     async def check_with_front_page_scraping(
-            self, scanlator: AbstractScanlator, mangas: list[Manga]
-    ) -> tuple[list[ChapterUpdate], list[Manga]]:
+            self, scanlator: AbstractScanlator, mangas: list[MangaHeader]
+    ) -> tuple[list[ChapterUpdate], list[MangaHeader]]:
         """
         Summary:
             Checks for updates by scraping the front page of the scanlator's website.
@@ -169,7 +171,7 @@ class UpdateCheckCog(commands.Cog):
             scanlator: The scanlator class for the mangas.
 
         Returns:
-            tuple[list[ChapterUpdate], list[Manga]]:
+            tuple[list[ChapterUpdate], list[MangaHeader]]:
                 A tuple containing a list of ChapterUpdate objects and a list of Manga objects.
                 The ChapterUpdate objects contain the new chapters that were found, and the Manga objects
                 contain the manga that were not found in the front page scraping.
@@ -200,7 +202,8 @@ class UpdateCheckCog(commands.Cog):
         partial_mangas = [m for m in partial_mangas if m in mangas]
         if not mangas:  # nothing to update
             return [], []
-        grouped: list[list[Manga, PartialManga]] = group_items_by([*mangas, *partial_mangas], ["id"])
+
+        grouped: list[list[MangaHeader | PartialManga]] = group_items_by([*mangas, *partial_mangas], ["id"])
         # check and make sure that each list is of length 2.
         for group in grouped:
             if len(group) != 2:
@@ -210,14 +213,15 @@ class UpdateCheckCog(commands.Cog):
         grouped = [x for x in grouped if len(x) == 2]
 
         # sort the grouped manga so the Manga objects are at pos 0 and the PartialManga objects are at pos 1.
-        grouped: list[tuple[Manga, PartialManga]] = list(
-            map(lambda x: x if isinstance(x[0], Manga) else x[::-1], grouped)
+        grouped = list(
+            map(lambda x: x if isinstance(x[1], PartialManga) else x[::-1], grouped)
         )
-        solo_mangas_to_check = []
+        solo_mangas_to_check: list[MangaHeader] = []
         manga_chapter_updates = []
-        for manga, partial_manga in grouped:
+        for manga_header, partial_manga in grouped:
+            manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
             if not partial_manga.latest_chapters:  # websites that don't support front page scraping return []
-                solo_mangas_to_check.append(manga)
+                solo_mangas_to_check.append(manga_header)
                 continue
             elif manga.last_chapter.url == partial_manga.latest_chapters[-1].url:  # no updates here
                 continue
@@ -398,16 +402,16 @@ class UpdateCheckCog(commands.Cog):
             f"Inserted {total_new_chapters} chapter entries for {len(chapter_updates)} manhwa in the database"
         )
 
-    async def check_updates_by_scanlator(self, mangas: list[Manga]):
+    async def check_updates_by_scanlator(self, mangas: list[MangaHeader]):
         if not mangas:
             return  # nothing to update
         elif mangas[0].scanlator not in scanlators:
-            self.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
+            self.logger.error(f"Unknown scanlator {mangas[0].scanlator} or it is disabled!")
             return
         scanlator = scanlators.get(mangas[0].scanlator)
         self.logger.debug(f"[{scanlator.name}] Checking for updates for {mangas[0].scanlator}...")
 
-        result = await self.handle_exception(
+        result: tuple[list[ChapterUpdate], list[MangaHeader]] | str = await self.handle_exception(
             self.check_with_front_page_scraping(scanlator, mangas), scanlator, scanlator.json_tree.properties.base_url
         )
         if isinstance(result, tuple):
@@ -428,7 +432,7 @@ class UpdateCheckCog(commands.Cog):
         self.logger.debug(
             f"[{scanlator.name}] Finished checking for updates with {len(chapter_updates)} manhwa updates!")
 
-    async def check_status_update_by_scanlator(self, mangas: list[Manga]):
+    async def check_status_update_by_scanlator(self, mangas: list[MangaHeader]):
         if mangas and mangas[0].scanlator not in scanlators:
             self.bot.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
             return
@@ -441,7 +445,8 @@ class UpdateCheckCog(commands.Cog):
             self.bot.logger.debug(f"Scanlator {scanner.name} is disabled... Ignoring update check!")
             return
         current_req_url: str | None = None
-        for manga in mangas:
+        for manga_header in mangas:
+            manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
             try:
                 await asyncio.sleep(20)  # delay between each request
                 current_req_url = manga.url
@@ -473,6 +478,9 @@ class UpdateCheckCog(commands.Cog):
                 guild_ids = await self.bot.db.get_manga_guild_ids(manga.id, manga.scanlator)
                 guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
                 await self.bot.db.update_series(manga)
+                untracked_from_X_guilds: int = 0
+                if manga.completed:
+                    untracked_from_X_guilds = await self.bot.db.untrack_completed_series(manga.id, manga.scanlator)
 
                 for guild_config in guild_configs:
                     if not guild_config.notifications_channel:
@@ -498,11 +506,14 @@ class UpdateCheckCog(commands.Cog):
                     scanlator_hyperlink = (
                         f"[{manga.scanlator.title()}]({scanlators[manga.scanlator].json_tree.properties.base_url})"
                     )
+                    description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to"
+                                   f"**'{manga.status.lower()}'**")
+                    if untracked_from_X_guilds > 1:
+                        description += f" and has been untracked from {untracked_from_X_guilds} guilds."
                     await guild_config.notifications_channel.send(
                         formatted_pings,
                         embed=discord.Embed(
-                            title=(f"The status of {manga} from {scanlator_hyperlink} has been updated to"
-                                   f"**'{manga.status.lower()}'**"),
+                            title="Manhwa status has been upadted!", url=manga.url, description=description,
                             color=discord.Color.green()
                         )
                     )
@@ -520,17 +531,12 @@ class UpdateCheckCog(commands.Cog):
     async def check_updates_task(self):
         self.logger.info("Checking for updates...")
         try:
-            series_to_update: list[Manga] = await self.bot.db.get_series_to_update()
+            # change this to grab ID|scanlator only
+            series_to_update: list[MangaHeader] = await self.bot.db.get_series_to_update()
             if not series_to_update:
                 return
 
-            # filter out disabled scanlators
-            disabled_scanlators = await self.bot.db.get_disabled_scanlators()
-            series_to_update = [x for x in series_to_update if x.scanlator not in disabled_scanlators]
-            if disabled_scanlators:
-                self.logger.debug(f"Disabled scanlators: {disabled_scanlators}")
-
-            grouped_series_to_update: list[list[Manga]] = group_items_by(series_to_update, ["scanlator"])
+            grouped_series_to_update: list[list[MangaHeader]] = group_items_by(series_to_update, ["scanlator"])
             grouped_series_to_update = list(sorted(grouped_series_to_update, key=lambda x: len(x)))
             _coros = [
                 self.check_updates_by_scanlator(mangas)
@@ -560,7 +566,7 @@ class UpdateCheckCog(commands.Cog):
 
         self.logger.info("Checking for manga status...")
         try:
-            series_to_check: list[Manga] = await self.bot.db.get_series_to_update()
+            series_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update()
             if not series_to_check:
                 return
 
@@ -569,11 +575,11 @@ class UpdateCheckCog(commands.Cog):
             series_to_check = [x for x in series_to_check if x.scanlator not in disabled_scanlators]
             if disabled_scanlators:
                 self.logger.debug(f"Disabled scanlators: {disabled_scanlators}")
-            grouped_series_to_check: list[list[Manga]] = group_items_by(series_to_check, ["scanlator"])
+            grouped_series_to_check: list[list[MangaHeader]] = group_items_by(series_to_check, ["scanlator"])
             grouped_series_to_check = list(sorted(grouped_series_to_check, key=lambda x: len(x)))
             _coros = [
-                self.check_status_update_by_scanlator(mangas)
-                for mangas in grouped_series_to_check
+                self.check_status_update_by_scanlator(manga_headers)
+                for manga_headers in grouped_series_to_check
             ]
             chunked_coros = chunked(_coros, 10)  # 10 coros at a time = ~10 proxy concurrent connections
             for chunk in chunked_coros:

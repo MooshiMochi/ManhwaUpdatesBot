@@ -252,7 +252,7 @@
       "completed": false,
       "cover_image": "https://nitromanga.com/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
       "curr_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/",
-      "first_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-1/",
+      "first_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter/",
       "last_3_chapter_urls": [
         "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-98/",
         "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-99/",
@@ -358,25 +358,6 @@
       "scanlator_name": "suryatoon",
       "title": "Modern Dude in the Murim",
       "use_default_id_function": true
-    }
-  },
-  "mangasiamese": {
-    "user_input_url": "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/",
-    "expected_results": {
-      "scanlator_name": "mangasiamese",
-      "manga_url": "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/",
-      "completed": false,
-      "title": "The Legendary Moonlight Sculptor",
-      "manga_id": "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-173-5/",
-      "first_chapter_url": "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-000/",
-      "cover_image": "https://mangasiamese.com/wp-content/uploads/2023/06/telechargement-2.jpg",
-      "last_3_chapter_urls": [
-        "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-171/",
-        "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-172/",
-        "https://mangasiamese.com/manga/the-legendary-moonlight-sculptor/chapter-173-5/"
-      ]
     }
   },
   "rizzcomic": {
@@ -692,13 +673,13 @@
       "title": "I Stack Experience Through Writing Books",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-fd5/",
-      "first_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-144-1d1/",
+      "curr_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-345a6/",
+      "first_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-144-1baed/",
       "cover_image": "https://manhwa-freak.com/wp-content/uploads/2022/04/large_xxlarge_zdKz1Hb.jpg",
       "last_3_chapter_urls": [
-        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-148-de4/",
-        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-149-69c/",
-        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-fd5/"
+        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-148-e60fb/",
+        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-149-e9b21/",
+        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-345a6/"
       ]
     }
   },
@@ -855,21 +836,40 @@
     }
   },
   "zinmanga": {
-    "user_input_url": "https://zinmanga.io/yaotai-mirror-30/",
+    "user_input_url": "https://zinmanga.com/manga/duchess-what-is-identity/",
     "expected_results": {
       "scanlator_name": "zinmanga",
-      "manga_url": "https://zinmanga.io/yaotai-mirror-30/",
-      "completed": false,
-      "title": "Yaotai Mirror",
-      "manga_id": "30",
-      "use_default_id_function": false,
-      "curr_chapter_url": "https://zinmanga.io/yaotai-mirror-30/chapter-20-1038/",
-      "first_chapter_url": "https://zinmanga.io/yaotai-mirror-30/chapter-1-1019/",
-      "cover_image": "https://img.zinmanga.io/upload/pages/2023/09/yaotai-mirror.jpg",
+      "manga_url": "https://zinmanga.com/manga/duchess-what-is-identity/",
+      "completed": true,
+      "title": "Duchess, what is identity?",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://zinmanga.com/manga/duchess-what-is-identity/chapter-7-end/",
+      "first_chapter_url": "https://zinmanga.com/manga/duchess-what-is-identity/chapter-1/",
+      "cover_image": "https://zinmanga.com/wp-content/uploads/2020/12/Young-Hyun.png",
       "last_3_chapter_urls": [
-        "https://zinmanga.io/yaotai-mirror-30/chapter-18-1036/",
-        "https://zinmanga.io/yaotai-mirror-30/chapter-19-1037/",
-        "https://zinmanga.io/yaotai-mirror-30/chapter-20-1038/"
+        "https://zinmanga.com/manga/duchess-what-is-identity/chapter-5/",
+        "https://zinmanga.com/manga/duchess-what-is-identity/chapter-6/",
+        "https://zinmanga.com/manga/duchess-what-is-identity/chapter-7-end/"
+      ]
+    }
+  },
+  "epsilonscansoft": {
+    "user_input_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/",
+    "expected_results": {
+      "scanlator_name": "epsilonscansoft",
+      "manga_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/",
+      "completed": true,
+      "title": "Innocent Rouge",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/88e-episode/",
+      "first_chapter_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/1er-episode/",
+      "cover_image": "https://soft.epsilonscan.fr/wp-content/uploads/2024/02/innocent-Rouge-1-delcourt.jpg",
+      "last_3_chapter_urls": [
+        "https://soft.epsilonscan.fr/manga/innocent-rouge/86e-episode/",
+        "https://soft.epsilonscan.fr/manga/innocent-rouge/87e-episode/",
+        "https://soft.epsilonscan.fr/manga/innocent-rouge/88e-episode/"
       ]
     }
   }

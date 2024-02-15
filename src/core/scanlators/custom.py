@@ -304,7 +304,6 @@ class CustomKeys:
     novelmic: str = "novelmic"
     mangapark: str = "mangapark"
     bato: str = "bato"
-    zinmanga: str = "zinmanga"
 
 
 keys = CustomKeys()
@@ -315,4 +314,4 @@ scanlators[keys.rizzcomic] = _Rizzcomic(keys.rizzcomic, **scanlators[keys.rizzco
 scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic])  # noqa: This is a dict
 scanlators[keys.mangapark] = _MangaparkAndBato(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict
 scanlators[keys.bato] = _MangaparkAndBato(keys.bato, **scanlators[keys.bato])  # noqa: This is a dict
-scanlators[keys.zinmanga] = _Zinmanga(keys.zinmanga, **scanlators[keys.zinmanga])  # noqa: This is a dict
+# scanlators[keys.zinmanga] = _Zinmanga(keys.zinmanga, **scanlators[keys.zinmanga])  # noqa: This is a dict

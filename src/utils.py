@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from functools import partial
 from itertools import islice
-from typing import Any, Coroutine, List, Optional, TYPE_CHECKING
+from typing import Any, Coroutine, List, Literal, Optional, overload, TYPE_CHECKING, TypeVar
 
 import aiohttp
 import bs4
@@ -29,6 +29,9 @@ from discord.utils import MISSING
 from .core.errors import RateLimitExceeded
 # noinspection PyPackages
 from .enums import BookmarkSortType
+
+T = TypeVar("T")
+V = TypeVar("V")
 
 
 def exit_bot() -> None:
@@ -371,9 +374,22 @@ def sort_bookmarks(bookmarks: list[Bookmark], sort_type: BookmarkSortType) -> li
         raise ValueError(f"Invalid sort type: {sort_type.value}")
 
 
-def group_items_by(
-        items: list[Any], key_path: list[str], as_dict: bool = False
-) -> dict[str, list[Any]] | list[list[Any]]:
+@overload
+def group_items_by(items: list[T], key_path: list[str], as_dict: Literal[False]) -> list[list[T]]:
+    ...
+
+
+@overload
+def group_items_by(items: list[T], key_path: list[str], as_dict: Literal[True]) -> dict[str, list[T]]:
+    ...
+
+
+@overload
+def group_items_by(items: list[T], key_path: list[str], as_dict: bool = ...) -> list[list[T]]:
+    ...
+
+
+def group_items_by(items: list[T], key_path: list[str], as_dict: bool = False) -> list[list[T]] | dict[str, list[T]]:
     """
     Groups items by a key path.
 
@@ -733,3 +749,24 @@ async def raise_and_report_for_status(
             status_code = response_object.status_code
         await bot.log_to_discord(f"Error when fetching URL: {request_url}: Status: {status_code}")
         raise e
+
+
+def check_missing_perms(current_perms: discord.Permissions, target_perms: discord.Permissions) -> List[str]:
+    """
+    Summary:
+        Check for missing permissions in a channel.
+        Returns a list of missing permissions.
+
+    Parameters:
+        current_perms (discord.Permissions): The current permissions.
+        target_perms (discord.Permissions): The target permissions.
+
+    Returns:
+        List[str]: A list of missing permissions.
+
+    Examples:
+        >>> check_missing_perms(discord.Permissions(permissions=0), discord.Permissions(permissions=8))
+        ['send_messages']
+    """
+    missing_perms = target_perms & ~current_perms
+    return [perm for perm, value in dict(missing_perms).items() if value]

@@ -478,6 +478,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return extra_kwargs
 
     async def _get_text(self, url: str, method: Literal["GET", "POST"] = "GET", **params) -> str:
+        # one thing to note:
+        # headers are only really required to let websites that gave us special access to identify us.
+        # so, realistically, we can ignore headers in the flare request, as it's intended to be used for websites that
+        # block us.
         provided_headers = params.pop("headers", None)
         if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
         headers = ((self.create_headers() or {}) | provided_headers) or None
@@ -493,6 +497,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             )
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
+        elif self.json_tree.request_method == "flare":
+            resp = await self.bot.apis.flare.get(url, headers=headers, **params)
+            await raise_and_report_for_status(self.bot, resp)
+            return (await resp.json()).get("solution", {}).get("response")
         else:
             raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 

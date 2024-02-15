@@ -70,6 +70,15 @@ class MangaClient(commands.Bot):
         self.loop.create_task(self.update_restart_message())  # noqa: No need to await a task
 
         self._apis = APIManager(self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True))
+        self._apis.flare.proxy = (await self._apis.webshare.get_proxy()).to_url_dict()
+        await self._apis.flare.async_init()
+        #  test flaresolverr. change scanlators' request_method to 'curl' that use 'flare'
+        if not self._apis.flare.is_available:
+            for scanlator in scanlators.keys():
+                if scanlators[scanlator].json_tree.request_method == "flare":
+                    self.logger.warning(f"[{scanlator}] Changed request method to 'curl' from 'flare' due to "
+                                        f"FlareSolverr being unavailable.")
+                    scanlators[scanlator].json_tree.request_method = "curl"
 
     def _remove_unavailable_scanlators(self):
         for scanlator, user_agent in self._config["user-agents"].items():
@@ -136,9 +145,19 @@ class MangaClient(commands.Bot):
         self._logger.info(f"{self.user.name}#{self.user.discriminator} is ready!")
 
     async def close(self):
+        self.logger.info("Closing bot...")
+        self.logger.info("[FlareSolverr] > Begin server session cleanup...")
+        await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
+        await self.apis.flare.destroy_all_sessions()  # destroy all active sessions
+        self.logger.info("[FlareSolverr] > Server session cleanup complete.")
+        self.logger.info("Closing aiohttp sessions...")
         await self._session.close() if self._session else None
         await self.apis.session.close() if self.apis else None
+        self.logger.info("Aiohttp sessions closed.")
+        self.logger.info("Closing curl session...")
         self.curl_session.close() if self.curl_session else None
+        self.logger.info("Curl session closed.")
+        self.logger.info("Finalising closing procedure! Goodbye!")
         await super().close()
 
     async def log_to_discord(
@@ -195,17 +214,20 @@ class MangaClient(commands.Bot):
         cmd_name = interaction.data["name"]
         cmd_opts: list[dict] = interaction.data.get("options", [])
 
-        if len(cmd_opts) == 1:
-            cmd_opts = cmd_opts[0].get("options", [])
-            cmd_name += f" {interaction.data['options'][0]['name']}"
-            options_list = [f"{opt['name']}: {opt['value']}" for opt in cmd_opts]
-        elif len(cmd_opts) > 1:
-            options_list = [f"{opt['name']}: {opt['value']}" for opt in cmd_opts]
-        else:
-            options_list = []
+        # **Key change:** Handle both subcommands and top-level options consistently
+        options_list = []
+        if cmd_opts:
+            for opt in cmd_opts[0].get("options", []) or cmd_opts:  # Handle both cases
+                options_list.append(f"{opt['name']}: {opt['value']}")
 
         fmt_opts = f'\n{spc}'.join(options_list)
-        pretty_msg = f"```\n[ Author  ] > {user}\n[ Command ] > /{cmd_name}```"
+        _author_text = f"[ Author  ] > {user}"
+        if interaction.guild_id is not None:
+            _guild_text = f"[  Guild  ] > {interaction.guild.name} ({interaction.guild_id})"
+        else:
+            _guild_text = "[  Guild  ] > DM Channel"
+        _cmd_text = f"[ Command ] > /{cmd_name}"
+        pretty_msg = f"```\n{_author_text}\n{_guild_text}\n{_cmd_text}```"
         cmd_log_channel_id = self._config["constants"].get("command-log-channel-id")
         cmd_log = f"[Command: {user}] > /{cmd_name}"
         if fmt_opts:

@@ -9,7 +9,6 @@ from ..static import Constants
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
-import os
 from datetime import datetime
 from typing import Optional
 import aiohttp
@@ -553,35 +552,12 @@ class CachedResponse:
                 stored = self._data_dict[key]
             except Exception as e:
                 self._data_dict[key] = {"type": "error", "content": e}
-                if isinstance(e, aiohttp.ContentTypeError):
-                    self._write_maybe_403()
                 stored = self._data_dict[key]
 
         if stored["type"] == "error":
-            if isinstance(stored["content"], aiohttp.ContentTypeError):
-                self._write_maybe_403()
             raise stored["content"]
         else:
             return stored["content"]
-
-    def _write_maybe_403(self):
-        print("Received a potential 403 error when attempting to decode JSON.")
-        folder = "logs/403s"
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        filename = folder + "/" + str(len(os.listdir(folder))) + ".html"
-
-        text = self._data_dict.get("text")
-        if text is None:
-            return
-        else:
-            with open(filename, "w", encoding="utf8") as f:
-                if isinstance(text, str):
-                    f.write(text)
-                else:
-                    f.write(json.dumps(text))
-            print("Wrote 403 response to " + filename)
-        # print(self._data_dict.get("text"))  # log the text response if it's from mangadex for future debugs
 
     async def json(self):
         return await self.try_return("json")

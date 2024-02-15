@@ -14,7 +14,7 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Coroutine, Dict, Literal, Optional
 
-import requests.exceptions
+import requests  # noqa
 
 from src.core.apis import APIManager
 from src.core.cache import CachedClientSession, CachedCurlCffiSession
@@ -72,6 +72,16 @@ class Bot:
 
     async def async_init(self):
         await self.db.async_init()
+        await self.apis.flare.health_check()
+        if not self.apis.flare.is_available:
+            self.logger.error("FlareSolverr is not available. Using curl_cffi instead of flare.")
+            for scanner in scanlators.keys():
+                if scanlators[scanner].json_tree.request_method == "flare":
+                    scanlators[scanner].json_tree.request_method = "curl"
+        await self.apis.flare.get_active_sessions()  # load the session cache
+        if self.apis.flare.session_cache:
+            await self.apis.flare.destroy_all_sessions()
+        self.apis.flare.proxy = await self.apis.webshare.get_proxy().to_url_dict()
 
     async def close(self):
         # await self.cf_scraper.close()
@@ -99,7 +109,7 @@ class Bot:
             self.config["proxy"]["enabled"] = False
             return None
 
-        ip, port = proxy_dict.get("ip"), proxy_dict.get("port")
+        ip, port = proxy_dict.get("proxy_address"), proxy_dict.get("port")
         if not ip or not port:
             return None
 
@@ -181,7 +191,7 @@ class Test:
         result = await self.test_subject.format_manga_url(self.test_data.manga_url)
         result = result.removesuffix("/")
         self.fmt_url = result
-        evaluated: bool = result == self.expected_result.manga_url
+        evaluated: bool = result.removesuffix("/") == self.expected_result.manga_url
         if not evaluated:
             print(f"Expected: {self.expected_result.manga_url}")
             print(f"   ↳ Got: {result}")
@@ -442,7 +452,8 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = ["asura", "luminousscans", "voidscans", "astrascans", "rizzcomic", "reaperscans"]
+        tests_to_ignore = ["asura", "luminousscans", "rizzcomic", "reaperscans", "manhwa-freak"]
+        # "voidscans", "astrascans", "reaperscans"
         await run_tests(testCases, tests_to_ignore)
 
 
@@ -525,8 +536,8 @@ if __name__ == "__main__":
     if os.name != "nt":
         asyncio.run(main())
     else:
-        # asyncio.run(test_single_method("reaperscans", "first_chapter_url"))
-        asyncio.run(test_single_scanlator("kaiscans"))
+        # asyncio.run(test_single_method("mangabuddy", "title"))
+        # asyncio.run(test_single_scanlator("comick"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(main())
+        asyncio.run(main())

@@ -10,6 +10,8 @@ from .comickAPI import ComickAppAPI
 from .mangadexAPI import MangaDexAPI
 from .omegascansAPI import OmegaScansAPI
 from .zeroscansAPI import ZeroScansAPI
+from .flaresolverr import FlareSolverrAPI
+from .webshare import WebsShare
 
 
 class APIManager:
@@ -20,6 +22,16 @@ class APIManager:
         self.mangadex = MangaDexAPI(self)
         self.omegascans = OmegaScansAPI(self)
         self.zeroscans = ZeroScansAPI(self)
+        self.flare = FlareSolverrAPI(
+            self,
+            bot.config.get("flaresolverr", {}).get("base_url"),
+            bot.config.get("api-keys", {}).get("flaresolverr"),
+            {
+                "http": self.bot.proxy_addr,
+                "https": self.bot.proxy_addr
+            } if self.bot.proxy_addr else None
+        )
+        self.webshare = WebsShare(self, bot.config.get("api-keys", {}).get("webshare"))
 
     @property
     def session(self) -> CachedClientSession:

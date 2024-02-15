@@ -8,15 +8,19 @@ import aiosqlite
 import discord
 from fuzzywuzzy import fuzz
 
+from ..static import Constants
+
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, Patron, SubscriptionObject
+from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, SubscriptionObject
 from src.core.scanlators import scanlators
 from io import BytesIO
 import pandas as pd
 import sqlite3
 from src.core.errors import CustomError, DatabaseError
+
+completed_db_set = ",".join(map(lambda x: f"'{x.lower()}'", Constants.completed_status_set))
 
 
 def _levenshtein_distance(a: str, b: str) -> int:
@@ -24,8 +28,8 @@ def _levenshtein_distance(a: str, b: str) -> int:
 
 
 class Database:
-    def __init__(self, client: MangaClient, database_name: str = "database.db"):
-        self.client: MangaClient = client
+    def __init__(self, bot: MangaClient, database_name: str = "database.db"):
+        self.bot: MangaClient = bot
         self.db_name = database_name
 
         if not os.path.exists(self.db_name):
@@ -224,6 +228,28 @@ class Database:
                 else:
                     # Import table data
                     df.to_sql(table_name, conn, index=False, if_exists="append")
+
+    async def untrack_completed_series(self, series_id: str, scanlator: str) -> int:
+        """
+        Remove a series from the tracked series table only if it is completed.
+
+        Args:
+            series_id: The ID of the series to untrack.
+            scanlator: The scanlator of the series.
+
+        Returns:
+            The number of rows affected.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                f"""
+                    DELETE FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
+                    AND (SELECT status FROM series WHERE id = $1 AND scanlator = $2) IN ({completed_db_set});
+                    """,
+                series_id, scanlator
+            )
+            await db.commit()
+            return cursor.rowcount if cursor.rowcount > 0 else 0
 
     async def upsert_patreons(self, patrons: list[Patron]) -> None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -728,7 +754,7 @@ class Database:
                     return list(set([row[0] for row in result]))
                 return []
 
-    async def get_series_to_update(self) -> list[Manga] | None:
+    async def get_series_to_update(self) -> list[MangaHeader] | None:
         """
         Summary:
             Returns a list of Manga class objects that needs to be updated.
@@ -736,13 +762,13 @@ class Database:
                 - the manga is not completed
 
         Returns:
-            list[Manga] | None: list of Manga class objects that needs to be updated.
+            list[MangHeader] | None: list of Manga class objects that needs to be updated.
         """
         async with aiosqlite.connect(self.db_name) as db:
             # only update series that are not completed and are subscribed to by at least one user
             async with db.execute(
-                    """
-                    SELECT * FROM series WHERE
+                    f"""
+                    SELECT id, scanlator FROM series WHERE
                         (id, scanlator) IN (
                             SELECT series_id, scanlator FROM user_subs
                             UNION
@@ -750,17 +776,13 @@ class Database:
                             UNION
                             SELECT series_id, scanlator FROM tracked_guild_series
                         )
-                        AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = 0);
+                        AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = 0)
+                        AND lower(status) NOT IN ({completed_db_set});
                     """
             ) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    objects = Manga.from_tuples(result)
-                    objects = [x for x in objects if not x.completed]
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
+                    return [MangaHeader(*row) for row in result]
                 return None
 
     async def get_user_bookmark(self, user_id: int, series_id: str, scanlator: str) -> Bookmark | None:
@@ -931,7 +953,7 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
-                    return GuildSettings(self.client, *result)
+                    return GuildSettings(self.bot, *result)
 
     async def get_many_guild_config(self, guild_ids: list[int]) -> list[GuildSettings] | None:
         """
@@ -956,7 +978,7 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchall()
                 if result:
-                    return [GuildSettings(self.client, *guild) for guild in result]
+                    return [GuildSettings(self.bot, *guild) for guild in result]
 
     async def get_series(self, series_id: str, scanlator: str) -> Manga | None:
         async with aiosqlite.connect(self.db_name) as db:
@@ -1332,6 +1354,33 @@ class Database:
             cursor = await db.execute(query, params)
             result = await cursor.fetchone()
             return result is not None
+
+    async def is_tracked_in_any_mutual_guild(self, header: MangaHeader, user_id: int) -> int:
+        """
+        Checks if the series is tracked in any of the user's mutual guilds with the bot
+
+        Args:
+            header: The series header to check for
+            user_id: The user ID to check the mutual servers for
+
+        Returns:
+            The number of mutual servers the series is tracked in.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            user: discord.User = self.bot.get_user(user_id)
+            if not user:
+                return 0
+            mutual_guild_ids = [f"{x.id}" for x in user.mutual_guilds] + [user_id]
+            cursor = await self.execute(
+                """
+                SELECT COUNT(*) FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
+                AND guild_id IN ({})
+                """.format(
+                    ','.join(mutual_guild_ids)
+                ),
+                header.id, header.scanlator
+            )
+            return cursor.rowcount
 
     async def delete_guild_user_subs(self, guild_id: int) -> int:
         """

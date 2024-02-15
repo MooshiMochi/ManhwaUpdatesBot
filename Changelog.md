@@ -2,6 +2,55 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## February 15th 2024
+
+- Added Webshare API wrapper to the bot
+    - Added the [webshare.py](src/core/apis/webshare.py) class to the bot.
+- Added FlareSolverr proxy server to the bot. It is dependent on the Webshare API Wrapepr.
+    - See [flaresolverr.py](src/core/apis/flaresolverr.py) for the implementation.
+- Changed the header for comick.app to use a browser header instead.
+- Added `request_method` property to all implementations of the api_based.py scanlators
+- Added support for the `flare` request method in classes.py and in the JSONMap.
+- Removed `zinmanga` scanlator from [custom.py](src/core/scanlators/custom.py). It no longer requires custom code.
+- Changed `zinmanga.io` to `zinmanga.com`. The website was probably hacked or something.
+- Added EpsilonScans (soft version) to the bot. The first french scanlator to be added.
+- Added logging info for the close method in the bot class.
+- Updated the log_command_usage function. It will now also display the guild the command was invoked in.
+    - The function has been fixed to show the actual parameters passed as it wasn't doing so for some commands.
+- Removed the rateLimiter.py and rate_limiter.py files. They weren't used to begin with.
+- Added `save_to_cache` method in cache.py
+- database.py changes:
+    - Added methods to check if a manhwa is tracked in any mutual guilds with the user in database.py
+    - Also added function to remove a manhwa from being tracked if it has been marked as completed.
+    - Renamed `self.client` to `self.bot` in the Database class for consistency.
+    - The `get_series_to_update` method now returns a list of MangaHeader objects instead of Manga objects to save on
+      memory usage.
+- The `/settings` command will now display a message with warnings and how to fix them if it finds any potential issues.
+- Removed the `_write_maybe_403` from the CachedResponse in objects.py. It was a waste of space...
+- Added the French version of completed manhwa messages in static.py
+- Added `epsilonscansoft`, `epsilonscan` and `theblank` to scanlators requiring custom headers class in static.py.
+- Improved the update_check.py file as a whole. It will now be much more memory efficient.
+- Added function overloading for the `group_items_by` method in the utils.py file. It should now be more type safe.
+- Added `check_missing_perms` function in utils.py. It will return a list of missing permissions.
+- Updated [config.example.yml](config.yml.example):
+    - Added the `flaresolverr` parameter to the `api-keys` category.
+    - Added the `webshare` parameter to the `api-keys` category.
+    - Added `flaresolverr` category with a single parameter called `base_url`.
+- Added the `/logs` folder to .gitignore. Apparently that wasn't there for some reason before.
+
+### Bug Fixes:
+
+- Fixed incorrect message displayed when updating the bookmark's folder with the `/bookmark update` command.
+- Fixed the embed sent for when a manhwa is marked as completed displaing text as raw text.
+- Fixed the search button in the BookmarkView not working properly.
+- If a bookmark is in the user's `Subscribed` folder but isn't tracked in any of the servers the user is in, the bot
+  will now let them know when they move the bookmark to that folder.
+- The status for mangapark is now based off of the Original Publication Status instead of the Mangapark Upload Status.
+- Fixed the synopsis not being shown for some series on asura.
+- Updated kaiscans properties. They made some changes to their URLs.
+- Fixed loading autocomplete options for the `scanlator` parameter when using the `/search` command and not typing any
+  input.
+
 ## February 13th 2024
 
 - Updated the `/bookmark update` success message to be more descriptive when providing both optional parameters.

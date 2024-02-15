@@ -75,6 +75,8 @@ async def main():
 
     CachedClientSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
     CachedCurlCffiSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
+    # if flaresolverr_url := config.get("flaresolverr", {}).get("base_url"):
+    #     BaseCacheSessionMixin.ignore_url(flaresolverr_url)
 
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)

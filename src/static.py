@@ -12,10 +12,15 @@ class Constants:
     no_img_available_url = "https://st4.depositphotos.com/14953852/22772/v/600/depositphotos_227725020-stock" \
                            "-illustration-image-available-icon-flat-vector.jpg"
 
-    completed_status_set: set[str] = {
-        "completed", "complete", "cancel", "cancelled", "canceled", "finish", "finished", "dropped", "drop", "end",
-        "ended"
+    _fr_completed_status_set: set[str] = {
+        "terminé", "annuler", "annulé", "terminer", "abandonné", "abandonner", "fin",
     }
+
+    completed_status_set: set[str] = {
+        "completed", "complete", "cancel", "cancelled", "canceled", "finish",
+        "finished", "dropped", "drop", "end",
+        "ended",
+    }.union(_fr_completed_status_set)
 
     @staticmethod
     def default_headers() -> dict:
@@ -178,7 +183,9 @@ class ScanlatorsRequiringUserAgent:
     scanlators = [
         "anigliscans",
         "toonily",
-        "theblank"
+        "theblank",
+        "epsilonscansoft",
+        "epsilonscan",
     ]
 
 

@@ -82,7 +82,7 @@ class JSONTree:
     def __init__(self, **lookup_map_dict):
         self.properties: _Properties = _Properties(**lookup_map_dict["properties"])
         self.selectors: _Selectors = _Selectors(**lookup_map_dict["selectors"])
-        self.request_method: Literal["http", "curl"] = lookup_map_dict["request_method"]
+        self.request_method: Literal["http", "curl", "flare"] = lookup_map_dict["request_method"]
         self.rx: re.Pattern = re.compile(lookup_map_dict["url_regex"])
         self.search: _SearchProperties = _SearchProperties(**lookup_map_dict["search"])
         self.uses_ajax: bool = lookup_map_dict["chapter_ajax"] is not None
