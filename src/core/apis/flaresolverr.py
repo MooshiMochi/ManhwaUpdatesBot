@@ -176,7 +176,9 @@ class FlareSolverrAPI:
             response = await CachedResponse(response).apply_patch(preload_data=True)  # TODO: preload_data=False
             self.manager.session.save_to_cache(url, response, cache_time=cache_time)
             try:
-                if 400 <= (status_code := (await response.json()).get("solution", {}).get("status", 200)) <= 499:
+                status_code = response.get("solution", {}).get("status", 200)
+                # need isinstance check because status code may be 'error' or 'ok'
+                if isinstance(status_code, int) and 400 <= status_code <= 499:
                     self.manager.bot.logger.error(f"[FlareSolverr] Error: {status_code}")
                     # swap out the proxy for a new one.
                     if self.manager.webshare.is_available:
@@ -189,4 +191,6 @@ class FlareSolverrAPI:
                 await self.delete_session(session_id)
                 self.manager.bot.logger.error("[FlareSolverr] Internal server error.")
                 await self.create_new_session()
-            raise aiohttp.ClientResponseError(response.request_info, response.history) from response
+            raise aiohttp.ClientResponseError(
+                response.request_info, response.history, status=response.status, message=response.reason
+            )
