@@ -473,13 +473,13 @@
         "request_method": "GET"
       }
     },
-    "luminousscans": {
+    "lumitoon": {
       "chapter_ajax": null,
       "request_method": "http",
       "url_regex": "(?:https?://)?(?:www\\.)?lumitoon\\.com/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://lumitoon.net",
-        "icon_url": "https://luminousscans.com/wp-content/uploads/2021/12/cropped-logo.png",
+        "base_url": "https://lumitoon.com",
+        "icon_url": "https://lumitoon.com/wp-content/uploads/2021/12/cropped-logo.png",
         "format_urls": {
           "manga": "https://lumitoon.com/series/{id}-{url_name}/"
         },

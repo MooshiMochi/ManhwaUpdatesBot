@@ -42,6 +42,8 @@
 - Updated mangafire to use the `flare` request method.
 - Updated mangabuddy to use the `flare` request method.
 - Updated freakscans to use the `flare` request method.
+- Changed `luminousscas.net` to `lumitoon.com`
+- Changed `zinmanga.io` to `zinmanga.com`
 
 ### Bug Fixes:
 
