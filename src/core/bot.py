@@ -219,14 +219,16 @@ class MangaClient(commands.Bot):
 
         spc = "\u200b \u200b > "
         user = interaction.user
-        cmd_name = interaction.data["name"]
+        cmd_data = interaction.data
+        cmd_name = f"{cmd_data['name']} {' '.join([opt['name'] for opt in cmd_data.get('options', [])])}"
         cmd_opts: list[dict] = interaction.data.get("options", [])
 
         # **Key change:** Handle both subcommands and top-level options consistently
         options_list = []
         if cmd_opts:
             for opt in cmd_opts[0].get("options", []) or cmd_opts:  # Handle both cases
-                options_list.append(f"{opt['name']}: {opt['value']}")
+                if "value" in opt:
+                    options_list.append(f"{opt['name']}: {opt['value']}")
 
         fmt_opts = f'\n{spc}'.join(options_list)
         _author_text = f"[ Author  ] > {user}"
