@@ -11,7 +11,7 @@ import aiohttp
 import curl_cffi.requests
 import discord
 import patreon
-from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError
+from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError, ClientResponseError
 from patreon.jsonapi.parser import JSONAPIResource
 
 from src.core.errors import CustomError, URLAccessFailed
@@ -36,9 +36,12 @@ class UpdateCheckCog(commands.Cog):
         self.bot.logger.info("Loaded Updates Cog...")
         self.bot.add_view(BookmarkChapterView(self.bot))
 
-        self.check_updates_task.add_exception_type(Exception, aiohttp.ClientConnectorError)
-        self.check_manhwa_status.add_exception_type(Exception, aiohttp.ClientConnectorError)
-        self.check_patreon_users.add_exception_type(Exception, aiohttp.ClientConnectorError)
+        self.check_updates_task.add_exception_type(
+            Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
+        self.check_manhwa_status.add_exception_type(
+            Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
+        self.check_patreon_users.add_exception_type(
+            Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
 
         self.check_updates_task.start()
         self.check_manhwa_status.start()
@@ -71,7 +74,8 @@ class UpdateCheckCog(commands.Cog):
                 if error.code == 28:
                     self.logger.warning(f"{scanlator.name.title()} timed out while checking for updates.")
                     rv = "return"  # cancel update check as it's unlikely to succeed.
-            elif isinstance(error, URLAccessFailed):
+            elif isinstance(error, (URLAccessFailed, ClientResponseError)):
+                # ClientResponseError is raised in flaresolverr.py. We need to stop update check to that website
                 if error.status_code >= 500:
                     self.logger.error(
                         f"{scanlator.name} returned status code {error.status_code}. Update check stopped.")
