@@ -74,7 +74,9 @@ class UpdateCheckCog(commands.Cog):
                 if error.code == 28:
                     self.logger.warning(f"{scanlator.name.title()} timed out while checking for updates.")
                     rv = "return"  # cancel update check as it's unlikely to succeed.
-            elif isinstance(error, (URLAccessFailed, ClientResponseError)):
+            elif isinstance(error, ClientResponseError):
+                rv = "return"
+            elif isinstance(error, URLAccessFailed):
                 # ClientResponseError is raised in flaresolverr.py. We need to stop update check to that website
                 if error.status_code >= 500:
                     self.logger.error(
