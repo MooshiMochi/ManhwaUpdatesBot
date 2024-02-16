@@ -176,7 +176,7 @@ class FlareSolverrAPI:
             response = await CachedResponse(response).apply_patch(preload_data=True)  # TODO: preload_data=False
             self.manager.session.save_to_cache(url, response, cache_time=cache_time)
             try:
-                status_code = response.get("solution", {}).get("status", 200)
+                status_code = (await response.json()).get("solution", {}).get("status", 200)
                 # need isinstance check because status code may be 'error' or 'ok'
                 if isinstance(status_code, int) and 400 <= status_code <= 499:
                     self.manager.bot.logger.error(f"[FlareSolverr] Error: {status_code}")
