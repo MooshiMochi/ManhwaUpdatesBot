@@ -181,12 +181,11 @@ class PartialManga:
         return f"[{self.title}]({self._url})"
 
     def __eq__(self, other: Manga):
-        return isinstance(other, (Manga, PartialManga)) and (
-                self.url == other.url and
-                self.title == other.title or
-                self.id == other.id and
-                self.scanlator == other.scanlator
-        )
+        return (
+                isinstance(other, (Manga, PartialManga)) and self.url == other.url and self.title == other.title
+                or
+                isinstance(other, MangaHeader)
+        ) and self.id == other.id and self.scanlator == other.scanlator
 
     @property
     def id(self):
@@ -394,12 +393,11 @@ class Manga:
         return f"[{self.title}]({self.url})"
 
     def __eq__(self, other: Manga):
-        return isinstance(other, (Manga, PartialManga)) and (
-                self.url == other.url and
-                self.title == other.title or
-                self.id == other.id and
-                self.scanlator == other.scanlator
-        )
+        return (
+                isinstance(other, (Manga, PartialManga)) and self.url == other.url and self.title == other.title
+                or
+                isinstance(other, MangaHeader)
+        ) and self.id == other.id and self.scanlator == other.scanlator
 
 
 class Bookmark:
@@ -719,4 +717,6 @@ class MangaHeader:
     scanlator: str
 
     def __eq__(self, other: Manga | MangaHeader) -> bool:
-        return isinstance(other, MangaHeader) and self.id == other.id and self.scanlator == other.scanlator
+        return isinstance(
+            other, (MangaHeader, PartialManga, Manga)
+        ) and self.id == other.id and self.scanlator == other.scanlator

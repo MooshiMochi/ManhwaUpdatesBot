@@ -53,7 +53,7 @@ class UpdateCheckCog(commands.Cog):
 
         Parameters:
             coro: The coroutine that was called.
-            scanlator: The scanner that was used to check for updates.
+            scanlator: The scanner used to check for updates.
             req_url: The URL that was requested.
 
         Returns:
@@ -169,7 +169,7 @@ class UpdateCheckCog(commands.Cog):
         """
         Summary:
             Checks for updates by scraping the front page of the scanlator's website.
-            If the scanlator doesn't support front page scraping, it will return back all the manga that were passed in.
+            If the scanlator doesn't support front page scraping, it will return all the manga passed in.
             Otherwise, it may return a combination of Manga and ChapterUpdate objects.
 
         Args:
@@ -317,13 +317,12 @@ class UpdateCheckCog(commands.Cog):
                                 f"Failed to send update for {manga_title}| {chapter.name} to {user}", exc_info=e
                             )
                 next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
-                await user.send(
-                    embed=(
-                        discord.Embed(
-                            description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
-                    ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url),
-                    delete_after=25 * 60  # 25 min
-                )
+                next_update_em = (
+                    discord.Embed(
+                        description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
+                ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
+
+                await user.send(embed=next_update_em, delete_after=25 * 60)  # 25 min
             except discord.Forbidden:  # DMs are closed
                 self.logger.warning(f"Failed to send update to {user} because DMs are closed!")
 
@@ -539,6 +538,7 @@ class UpdateCheckCog(commands.Cog):
         try:
             # change this to grab ID|scanlator only
             series_to_update: list[MangaHeader] = await self.bot.db.get_series_to_update()
+            print(series_to_update)
             if not series_to_update:
                 return
 
@@ -624,7 +624,7 @@ class UpdateCheckCog(commands.Cog):
         try:
             while True:
                 pledge_response = await asyncio.to_thread(api_client.fetch_page_of_pledges,
-                                                          CAMPAIGN_ID, 2, cursor
+                                                          CAMPAIGN_ID, 2, cursor, None, None
                                                           )
                 all_pledges += pledge_response.data()
                 cursor = api_client.extract_cursor(pledge_response)

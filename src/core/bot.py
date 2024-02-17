@@ -233,11 +233,11 @@ class MangaClient(commands.Bot):
         fmt_opts = f'\n{spc}'.join(options_list)
         _author_text = f"[ Author  ] > {user}"
         if interaction.guild_id is not None:
-            _guild_text = f"[  Guild  ] > {interaction.guild.name} ({interaction.guild_id})"
+            _guild_text = f"[ Guild   ] > {interaction.guild.name} ({interaction.guild_id})"
         else:
-            _guild_text = "[  Guild  ] > DM Channel"
+            _guild_text = "[ Guild   ] > DM Channel"
         _cmd_text = f"[ Command ] > /{cmd_name}"
-        pretty_msg = f"```\n{_author_text}\n{_guild_text}\n{_cmd_text}```"
+        pretty_msg = f"```\n{_guild_text}\n{_author_text}\n{_cmd_text}```"
         cmd_log_channel_id = self._config["constants"].get("command-log-channel-id")
         cmd_log = f"[Command: {user}] > /{cmd_name}"
         if fmt_opts:

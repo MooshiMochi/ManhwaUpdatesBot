@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import sys
 
 from aiohttp import ClientConnectorError
 from discord import Intents
@@ -107,11 +106,14 @@ async def main():
 
 
 if __name__ == "__main__":
+    import sys
+
     try:
         if os.name == "nt" and sys.version_info >= (3, 8):
             import tracemalloc
 
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            if sys.gettrace() is None:
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             tracemalloc.start()
 
         asyncio.run(main())
