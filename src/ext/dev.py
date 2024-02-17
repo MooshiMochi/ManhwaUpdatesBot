@@ -5,6 +5,8 @@ import time
 from functools import partial
 from typing import Literal, Optional, TYPE_CHECKING
 
+from src.static import Emotes
+
 if TYPE_CHECKING:
     from src.core import MangaClient
 
@@ -686,17 +688,16 @@ class Restricted(commands.Cog):
         guild_configs_to_notify: list[GuildSettings] = []
         # ensure that the channel in each guild config exists
         for guild_config in guild_configs:
-            if not guild_config.system_channel:
+            if not guild_config.system_channel and not guild_config.notifications_channel:
                 continue
-            bot_channel_perms = guild_config.system_channel.permissions_for(
-                guild_config.system_channel.guild.me
-            )
+            target_channel = guild_config.notifications_channel or guild_config.system_channel
+            bot_channel_perms = target_channel.permissions_for(target_channel.guild.me)
             if bot_channel_perms.send_messages and bot_channel_perms.embed_links:
                 guild_configs_to_notify.append(guild_config)
 
         if not guild_configs_to_notify:
             await ctx.send(embed=discord.Embed(
-                title="⚠️ Can't sent messages!",
+                title=f"{Emotes.warning} Can't sent messages!",
                 description="There are no guilds for which the bot has perms to send messages.",
                 color=discord.Color.red()
             ))
