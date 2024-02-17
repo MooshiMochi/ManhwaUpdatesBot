@@ -690,7 +690,7 @@ class Restricted(commands.Cog):
         for guild_config in guild_configs:
             if not guild_config.system_channel and not guild_config.notifications_channel:
                 continue
-            target_channel = guild_config.notifications_channel or guild_config.system_channel
+            target_channel = guild_config.system_channel or guild_config.system_channel
             bot_channel_perms = target_channel.permissions_for(target_channel.guild.me)
             if bot_channel_perms.send_messages and bot_channel_perms.embed_links:
                 guild_configs_to_notify.append(guild_config)
@@ -725,8 +725,9 @@ class Restricted(commands.Cog):
 
         successes = 0
         for guild_config in guild_configs_to_notify:
+            target_channel = guild_config.system_channel or guild_config.notifications_channel
             try:
-                await guild_config.system_channel.send(
+                await target_channel.send(
                     embed=em,
                     allowed_mentions=discord.AllowedMentions(roles=True)
                 )
