@@ -54,7 +54,4 @@ class EventListenerCog(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot.debug and bot.test_guild_ids:
-        await bot.add_cog(EventListenerCog(bot), guilds=[discord.Object(id=x) for x in bot.test_guild_ids])
-    else:
-        await bot.add_cog(EventListenerCog(bot))
+    await bot.add_cog(EventListenerCog(bot))

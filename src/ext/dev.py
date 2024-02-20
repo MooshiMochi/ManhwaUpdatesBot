@@ -523,7 +523,7 @@ class Restricted(commands.Cog):
         await ctx.send("```diff\n-<[ Exporting database. ]>-```")
         export_func = partial(self.client.db.export, raw=raw)
         io_buffer: io.BytesIO = await self.client.loop.run_in_executor(None, export_func)
-        filename = "manga_db_raw.db" if raw else "manga_db.xlsx"
+        filename = "database.db" if raw else "manga_db.xlsx"
         await ctx.send(
             file=discord.File(io_buffer, filename=filename)
         )

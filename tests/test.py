@@ -159,7 +159,9 @@ class ExpectedResult:
             curr_chapter_url: str,
             first_chapter_url: str,
             cover_image: str,
-            last_3_chapter_urls: list[str]):
+            last_3_chapter_urls: list[str],
+            has_fp_manhwa: bool = False
+    ):
         self.scanlator_name: str = scanlator_name
         self.manga_url: str = manga_url.removesuffix("/")
         self.completed: bool = completed
@@ -169,6 +171,7 @@ class ExpectedResult:
         self.first_chapter_url: str = first_chapter_url.removesuffix("/")
         self.cover_image: str = cover_image.removesuffix("/")
         self.last_3_chapter_urls: list[str] = [x.removesuffix("/") for x in last_3_chapter_urls]
+        self.has_fp_manhwa: bool = has_fp_manhwa
 
         if len(self.last_3_chapter_urls) != 3:
             raise ValueError(f"[{scanlator_name}] Expected 3 chapter urls, got {len(self.last_3_chapter_urls)}")
@@ -293,8 +296,7 @@ class Test:
 
     async def show_front_page_results(self) -> bool:
         result = await self.test_subject.get_fp_partial_manga()
-        print(result)
-        return True
+        return not self.expected_result.has_fp_manhwa or (result is not None and len(result) > 0)
 
     def scanlator_name(self) -> bool:
         evaluated: bool = self.test_subject.name == self.expected_result.scanlator_name
@@ -314,7 +316,8 @@ class Test:
             (self.first_chapter_url, "❌ Failed to get first chapter url"),
             (self.cover_image, "❌ Failed to get cover image"),
             (self.check_updates, "❌ Failed to check for updates"),
-            (self.scanlator_name, "❌ Failed to match scanlator name to expected name")
+            (self.scanlator_name, "❌ Failed to match scanlator name to expected name"),
+            (self.show_front_page_results, "❌ Failed to get front page results"),
         ]
         if not self.id_first:
             checks_to_run[0], checks_to_run[1] = checks_to_run[1], checks_to_run[0]
@@ -369,6 +372,7 @@ class TestCase:
     test_subject: AbstractScanlator
     test: Test | None = None
     id_first: bool = False
+    has_fp_manhwa: bool = False
 
     def setup(self):
         self.test = Test(self.test_setup, self.test_data, self.expected_result, self.test_subject, self.id_first)
@@ -451,7 +455,8 @@ class TestCases(dict):
                     curr_chapter_url=expected_resutls["curr_chapter_url"],
                     first_chapter_url=expected_resutls["first_chapter_url"],
                     cover_image=expected_resutls["cover_image"],
-                    last_3_chapter_urls=expected_resutls["last_3_chapter_urls"]
+                    last_3_chapter_urls=expected_resutls["last_3_chapter_urls"],
+                    has_fp_manhwa=expected_resutls.get("has_fp_manhwa", False)
                 ),
                 test_subject=scanlators.get(scanlator_name)
             )
@@ -516,7 +521,7 @@ async def paused_test():
         print("Testing finished!")
 
 
-async def test_single_method(scanlator: str, test_method: Literal[
+async def test_single_method(test_method: Literal[
     "fmt_manga_url",
     "get_manga_id",
     "is_completed",
@@ -527,9 +532,13 @@ async def test_single_method(scanlator: str, test_method: Literal[
     "scanlator_name",
     "show_synopsis",
     "show_front_page_results"
-]):
+], scanlator: str | None = None):
     async with TestCases() as testCases:
-        await run_single_test(testCases[scanlator], test_method=test_method)
+        if scanlator is None:
+            for scanlator in scanlators:
+                await run_single_test(testCases[scanlator], test_method=test_method)
+        else:
+            await run_single_test(testCases[scanlator], test_method=test_method)
 
 
 async def test_single_scanlator(scanlator: str):
@@ -554,8 +563,8 @@ if __name__ == "__main__":
     if os.name != "nt":
         asyncio.run(main())
     else:
-        # asyncio.run(test_single_method("mangabuddy", "title"))
-        # asyncio.run(test_single_scanlator("comick"))
+        # asyncio.run(test_single_method("show_front_page_results", "mangabat"))
+        asyncio.run(test_single_scanlator("demoncomics"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

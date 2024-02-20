@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 from aiohttp import ClientConnectorError, ClientResponse, ContentTypeError
+from discord.ext import tasks
 
 from src.core.objects import CachedResponse
 
@@ -12,7 +13,8 @@ if TYPE_CHECKING:
 
 
 class FlareSolverrAPI:
-    def __init__(self, api_manager: APIManager, base_url: str, api_key: str, proxy: dict[str, str]) -> None:
+    def __init__(self, api_manager: APIManager, base_url: str, api_key: str, is_enabled: bool,
+                 proxy: dict[str, str]) -> None:
         """
         An API wrapper for the FlareSolverr proxy server.
         Note: It is recommended to run the health_check method after initializing the class to ensure the server is
@@ -28,11 +30,17 @@ class FlareSolverrAPI:
         self.base_url: str = base_url
         self.api_key: str = api_key
         self.proxy: dict[str, str] = proxy
-        self.session_cache: set[str] = set()
+        self.session_cache: list[str] = []
+        self.is_enabled: bool = is_enabled
 
         self.is_available: bool = self.base_url is not None
 
     async def async_init(self):
+        if not self.is_enabled:
+            self.manager.bot.logger.warning(
+                "[Flaresolverr] FlareSolverr is not enabled in the config.yml.. Skipping checks!")
+            self.is_available = False  # set this to false just in case.
+            return
         self.manager.bot.logger.info("Testing FlareSolverr...")
         await self.health_check()
         if not self.is_available:
@@ -84,7 +92,11 @@ class FlareSolverrAPI:
         ) as response:
             response.raise_for_status()
             active_sessions = await response.json()
-            self.session_cache = self.session_cache.union(active_sessions.get("sessions"))  # update the session cache
+            server_sessions = active_sessions.get("sessions")
+            if not server_sessions:
+                return []
+            # using dict to preserve order and remove duplicates
+            self.session_cache = list(dict().fromkeys(server_sessions).keys())  # update the session cache
             return active_sessions
 
     async def create_new_session(self, proxy: dict[str, str] | None = None) -> str:
@@ -112,7 +124,7 @@ class FlareSolverrAPI:
             response.raise_for_status()
             new_session = await response.json()
             session_id = new_session.get("session")
-            self.session_cache.add(session_id)  # update the session cache
+            self.session_cache.append(session_id)  # update the session cache
             self.manager.bot.logger.debug(f"[FlareSolverr] New session {session_id} created.")
             return session_id
 
@@ -130,7 +142,8 @@ class FlareSolverrAPI:
                 cache_time=0
         ) as response:
             await response.json()
-            self.session_cache = self.session_cache - {session_id}  # update the session cache
+            if session_id in self.session_cache:
+                self.session_cache.remove(session_id)
             self.manager.bot.logger.debug(f"[FlareSolverr] Session {session_id} deleted.")
 
     async def destroy_all_sessions(self) -> None:
@@ -194,3 +207,10 @@ class FlareSolverrAPI:
             raise aiohttp.ClientResponseError(
                 response.request_info, response.history, status=response.status, message=response.reason
             )
+
+    @tasks.loop(minutes=5)
+    async def _refresh_session_cache(self):
+        """
+        Refresh the session cache every 5 minutes.
+        """
+        await self.get_active_sessions()

@@ -1014,7 +1014,7 @@
         "format_urls": {
           "manga": "https://readmangabat.com/read-{id}/"
         },
-        "latest_updates_url": "https://readmangabat.com/",
+        "latest_updates_url": "https://readmangabat.com/mangabat",
         "dynamicURL": false
       },
       "selectors": {
@@ -1542,7 +1542,7 @@
         "format_urls": {
           "manga": "https://demoncomics.org/manga/{url_name}-{id}"
         },
-        "latest_updates_url": "https://demoncomics.org",
+        "latest_updates_url": "https://demoncomics.org/updates",
         "dynamicURL": true,
         "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/.+?)(?P<id>\\w+)(?P<after_id>/?$)",
         "missing_id_connector_char": ""

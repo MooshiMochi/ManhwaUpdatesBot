@@ -2,7 +2,15 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
-## February 15th 2024
+## // February 20th 2024
+
+- Extensions will now load to the global tree regardless of whether the bot is run in debug mode or not.
+- Fixed demoncomics
+- Fixed mangabat
+- Added option to toggle flaresolverr in config.yml.example
+- Removed print statement form update_check.py
+
+## // February 15th 2024
 
 - Added Webshare API wrapper to the bot
     - Added the [webshare.py](src/core/apis/webshare.py) class to the bot.
@@ -59,7 +67,7 @@
   input.
 - Fixed test.py failing if there are missing configs for flaresolverr and webshare.
 
-## February 13th 2024
+## // February 13th 2024
 
 - Updated the `/bookmark update` success message to be more descriptive when providing both optional parameters.
 - Added animated emotji for the `Custom Error` error.

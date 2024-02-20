@@ -15,7 +15,8 @@
         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-46/",
         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-47/",
         "https://tritinia.org/manga/momo-the-blood-taker/volume-5/ch-48/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "manganato": {
@@ -34,7 +35,8 @@
         "https://chapmanganato.to/manga-hf985162/chapter-154",
         "https://chapmanganato.to/manga-hf985162/chapter-155"
       ],
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "toonily": {
@@ -53,7 +55,8 @@
         "https://toonily.com/webtoon/lucky-guy-0002/chapter-72/",
         "https://toonily.com/webtoon/lucky-guy-0002/chapter-73/"
       ],
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "mangadex": {
@@ -72,7 +75,8 @@
         "https://mangadex.org/chapter/ee43a7c7-595a-4006-9dc0-df44b0f37b59",
         "https://mangadex.org/chapter/aef242d7-0051-431f-9f03-53442afdbead"
       ],
-      "use_default_id_function": false
+      "use_default_id_function": false,
+      "has_fp_manhwa": false
     }
   },
   "flamecomics": {
@@ -91,7 +95,8 @@
         "https://flamecomics.com/the-villainess-is-a-marionette-chapter-68/",
         "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/"
       ],
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "asura": {
@@ -110,7 +115,8 @@
         "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-63/",
         "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-64-notice/"
       ],
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "reaperscans": {
@@ -129,7 +135,8 @@
         "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
         "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
       ],
-      "use_default_id_function": false
+      "use_default_id_function": false,
+      "has_fp_manhwa": true
     }
   },
   "anigliscans": {
@@ -148,7 +155,8 @@
         "https://anigliscans.xyz/blooming-chapter-23/",
         "https://anigliscans.xyz/blooming-chapter-24/"
       ],
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "comick": {
@@ -167,7 +175,8 @@
         "https://comick.cc/comic/00-solo-leveling/YgUzmswO",
         "https://comick.cc/comic/00-solo-leveling/DARIhC3K"
       ],
-      "use_default_id_function": false
+      "use_default_id_function": false,
+      "has_fp_manhwa": false
     }
   },
   "voidscans": {
@@ -186,26 +195,28 @@
       "manga_url": "https://void-scans.com/manga/superhuman-era/",
       "scanlator_name": "voidscans",
       "title": "Superhuman Era",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
-  "luminousscans": {
-    "user_input_url": "https://luminousscans.net/series/1698649201-my-office-noonas-story/",
+  "lumitoon": {
+    "user_input_url": "https://lumitoon.com/series/12455-my-office-noonas-story/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://luminousscans.net/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
-      "curr_chapter_url": "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-03/",
-      "first_chapter_url": "https://luminousscans.net/1698649201-my-office-noonas-story-prologue/",
+      "cover_image": "https://lumitoon.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
+      "curr_chapter_url": "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-03/",
+      "first_chapter_url": "https://lumitoon.com/{id}-my-office-noonas-story-prologue/",
       "last_3_chapter_urls": [
-        "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-01/",
-        "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-02/",
-        "https://luminousscans.net/1698649201-my-office-noonas-story-epilogue-chapter-03/"
+        "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-01/",
+        "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-02/",
+        "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-03/"
       ],
-      "manga_id": "https://luminousscans.net/series/1694156401-my-office-noonas-story",
-      "manga_url": "https://luminousscans.net/series/1698649201-my-office-noonas-story/",
-      "scanlator_name": "luminousscans",
+      "manga_id": "https://lumitoon.com/series/{id}-my-office-noonas-story",
+      "manga_url": "https://lumitoon.com/series/{id}-my-office-noonas-story/",
+      "scanlator_name": "lumitoon",
       "title": "My Office Noona’s Story",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "lscomic": {
@@ -224,7 +235,8 @@
       "manga_url": "https://lscomic.com/manga/8th-class-mage-returns/",
       "scanlator_name": "lscomic",
       "title": "8th-Class Mage Returns",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "drakescans": {
@@ -243,7 +255,8 @@
       "manga_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
       "scanlator_name": "drakescans",
       "title": "Spirit Pet Creation Simulator",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "nitromanga": {
@@ -262,7 +275,8 @@
       "manga_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
       "scanlator_name": "nitromanga",
       "title": "I Grow Stronger By Eating!",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "mangapill": {
@@ -281,7 +295,8 @@
       "manga_url": "https://mangapill.com/manga/57/3d-kanojo",
       "scanlator_name": "mangapill",
       "title": "3D Kanojo",
-      "use_default_id_function": false
+      "use_default_id_function": false,
+      "has_fp_manhwa": true
     }
   },
   "bato": {
@@ -300,7 +315,8 @@
       "manga_url": "https://bato.to/title/95400-queen-in-the-shadows",
       "scanlator_name": "bato",
       "title": "Queen in the Shadows",
-      "use_default_id_function": false
+      "use_default_id_function": false,
+      "has_fp_manhwa": true
     }
   },
   "omegascans": {
@@ -319,7 +335,8 @@
       "manga_url": "https://omegascans.org/series/dorm-room-sisters",
       "scanlator_name": "omegascans",
       "title": "Dorm Room Sisters",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "nightscans": {
@@ -338,7 +355,8 @@
       "manga_url": "https://night-scans.com/series/all-attributes-in-martial-arts",
       "scanlator_name": "nightscans",
       "title": "All-Attributes in Martial Arts",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "suryatoon": {
@@ -357,7 +375,8 @@
       "manga_url": "https://suryatoon.com/manga/modern-dude-in-the-murim",
       "scanlator_name": "suryatoon",
       "title": "Modern Dude in the Murim",
-      "use_default_id_function": true
+      "use_default_id_function": true,
+      "has_fp_manhwa": true
     }
   },
   "rizzcomic": {
@@ -376,7 +395,8 @@
         "https://rizzcomic.com/chapter/r3513102-death-god-chapter-45",
         "https://rizzcomic.com/chapter/r3513102-death-god-chapter-46"
       ],
-      "manga_id": "default_id_function"
+      "manga_id": "default_id_function",
+      "has_fp_manhwa": true
     }
   },
   "arcanescans": {
@@ -395,7 +415,8 @@
         "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-29/",
         "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-30/",
         "https://arcanescans.com/manga/a-transmigrated-wardens-battle-for-redemption/chapter-31/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "mangabat": {
@@ -414,7 +435,8 @@
         "https://readmangabat.com/read-ye359223-chap-109",
         "https://readmangabat.com/read-ye359223-chap-110",
         "https://readmangabat.com/read-ye359223-chap-111"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "lhtranslation": {
@@ -433,7 +455,8 @@
         "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-33/",
         "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-34/",
         "https://lhtranslation.net/manga/isekai-desu-ga-mamono-saibai-shiteimasu/chapter-35/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "astrascans": {
@@ -452,7 +475,8 @@
         "https://astrascans.com/empress-hunt-chapter-43/",
         "https://astrascans.com/empress-hunt-chapter-44/",
         "https://astrascans.com/empress-hunt-chapter-45/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "ravenscans": {
@@ -471,7 +495,8 @@
         "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-34/",
         "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-35/",
         "https://ravenscans.com/the-demons-begging-me-to-let-them-go-chapter-36/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "resetscans": {
@@ -490,7 +515,8 @@
         "https://reset-scans.us/manga/oopart/chapter-95/",
         "https://reset-scans.us/manga/oopart/chapter-96/",
         "https://reset-scans.us/manga/oopart/chapter-97/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "kaiscans": {
@@ -509,7 +535,8 @@
         "https://kaiscans.org/return-of-the-mad-demon-chapter-88/",
         "https://kaiscans.org/return-of-the-mad-demon-chapter-89/",
         "https://kaiscans.org/return-of-the-mad-demon-chapter-90/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "zeroscans": {
@@ -528,7 +555,8 @@
         "https://zscans.com/comics/bowblade-spirit/4813",
         "https://zscans.com/comics/bowblade-spirit/4814",
         "https://zscans.com/comics/bowblade-spirit/4815"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "novelmic": {
@@ -547,7 +575,8 @@
         "https://novelmic.com/comic/falling-for-my-former-wife/chapter-104/",
         "https://novelmic.com/comic/falling-for-my-former-wife/chapter-105/",
         "https://novelmic.com/comic/falling-for-my-former-wife/chapter-106/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "mangapark": {
@@ -566,7 +595,8 @@
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554478-vol-7-ch-25",
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554479-vol-7-ch-26",
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "mangakakalot": {
@@ -585,7 +615,8 @@
         "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-58",
         "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-59",
         "https://ww7.mangakakalot.tv/chapter/manga-gd983586/chapter-60"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "cosmic": {
@@ -599,12 +630,13 @@
       "use_default_id_function": true,
       "curr_chapter_url": "https://cosmic-scans.com/updater-chapter-99/",
       "first_chapter_url": "https://cosmic-scans.com/updater-chapter-93-season-2-end/",
-      "cover_image": "https://cosmic-scans.com/wp-content/uploads/2022/11/resource-1_cugan_conservative_4x_i1.00-759x1024.webp",
+      "cover_image": "https://cosmic-scans.com/wp-content/uploads/2022/11/resource-1_cugan_conservative_4x_i1.00.webp",
       "last_3_chapter_urls": [
         "https://cosmic-scans.com/updater-chapter-97/",
         "https://cosmic-scans.com/updater-chapter-98/",
         "https://cosmic-scans.com/updater-chapter-99/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "demoncomics": {
@@ -623,7 +655,8 @@
         "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA48",
         "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA48",
         "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA48"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "mangareader": {
@@ -642,7 +675,8 @@
         "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-4",
         "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-5",
         "https://mangareader.to/read/sorrows-of-alicia-65009/en/chapter-6"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "arvenscans": {
@@ -661,7 +695,8 @@
         "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-35/",
         "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-36/",
         "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-37/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "manhwa-freak": {
@@ -680,7 +715,8 @@
         "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-148-e60fb/",
         "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-149-e9b21/",
         "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-345a6/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "freakscans": {
@@ -699,7 +735,8 @@
         "https://freakscans.com/the-live-ch-174/",
         "https://freakscans.com/the-live-ch-175/",
         "https://freakscans.com/the-live-ch-176/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "mangabuddy": {
@@ -718,7 +755,8 @@
         "https://mangabuddy.com/kiss-me-liar/chapter-0-4-side-4",
         "https://mangabuddy.com/kiss-me-liar/side-4",
         "https://mangabuddy.com/kiss-me-liar/notice-official-translation-soon"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "topreadmanhwa": {
@@ -737,7 +775,8 @@
         "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-42/",
         "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-43/",
         "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-44/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "kunmanga": {
@@ -756,7 +795,8 @@
         "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-141/",
         "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-142/",
         "https://kunmanga.com/manga/bloodthirsty-man-trapped-bride/chapter-142-end/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "mangafire": {
@@ -775,7 +815,8 @@
         "https://mangafire.to/read/hellsing.y8x/en/chapter-86",
         "https://mangafire.to/read/hellsing.y8x/en/chapter-87",
         "https://mangafire.to/read/hellsing.y8x/en/chapter-88"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "theblank": {
@@ -794,7 +835,8 @@
         "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-2/",
         "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-3/",
         "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-4/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "nvmanga": {
@@ -813,7 +855,8 @@
         "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-157/",
         "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-158/",
         "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-159/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "newmanhua": {
@@ -832,7 +875,8 @@
         "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-10/",
         "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-11/",
         "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-12/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "zinmanga": {
@@ -851,7 +895,8 @@
         "https://zinmanga.com/manga/duchess-what-is-identity/chapter-5/",
         "https://zinmanga.com/manga/duchess-what-is-identity/chapter-6/",
         "https://zinmanga.com/manga/duchess-what-is-identity/chapter-7-end/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   },
   "epsilonscansoft": {
@@ -870,7 +915,8 @@
         "https://soft.epsilonscan.fr/manga/innocent-rouge/86e-episode/",
         "https://soft.epsilonscan.fr/manga/innocent-rouge/87e-episode/",
         "https://soft.epsilonscan.fr/manga/innocent-rouge/88e-episode/"
-      ]
+      ],
+      "has_fp_manhwa": true
     }
   }
 }

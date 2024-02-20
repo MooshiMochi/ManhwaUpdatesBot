@@ -1177,7 +1177,4 @@ Ensure the bot has these permissions for smooth operation.
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot.debug and bot.test_guild_ids:
-        await bot.add_cog(CommandsCog(bot), guilds=[discord.Object(id=x) for x in bot.test_guild_ids])
-    else:
-        await bot.add_cog(CommandsCog(bot))
+    await bot.add_cog(CommandsCog(bot))

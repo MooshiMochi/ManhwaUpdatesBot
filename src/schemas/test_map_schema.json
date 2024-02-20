@@ -53,6 +53,10 @@
               },
               "minItems": 3,
               "maxItems": 3
+            },
+            "has_fp_manhwa": {
+              "type": "boolean",
+              "default": true
             }
           },
           "required": [

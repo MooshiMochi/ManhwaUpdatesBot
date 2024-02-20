@@ -27,6 +27,7 @@ class APIManager:
             self,
             bot.config.get("flaresolverr", {}).get("base_url"),
             bot.config.get("api-keys", {}).get("flaresolverr"),
+            bot.config.get("enabled", False),
             {
                 "http": self.bot.proxy_addr,
                 "https": self.bot.proxy_addr

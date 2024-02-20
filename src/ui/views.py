@@ -455,7 +455,10 @@ class PaginatorView(discord.ui.View):
 
     async def on_timeout(self) -> None:
         if self.message is not None:
-            await self.message.edit(view=None)
+            try:
+                await self.message.edit(view=None)
+            except discord.HTTPException:
+                pass  # irrelevant  
         self.stop()
 
     async def on_error(
@@ -763,7 +766,7 @@ class SubscribeView(View):
         if isinstance(error, TimeoutError):
             pass
         return await interaction.client.tree.on_error(interaction, error)
-        
+
 
 class ConfirmView(BaseView):
     def __init__(

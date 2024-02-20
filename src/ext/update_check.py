@@ -538,7 +538,6 @@ class UpdateCheckCog(commands.Cog):
         try:
             # change this to grab ID|scanlator only
             series_to_update: list[MangaHeader] = await self.bot.db.get_series_to_update()
-            print(series_to_update)
             if not series_to_update:
                 return
 
@@ -674,7 +673,4 @@ class UpdateCheckCog(commands.Cog):
 
 
 async def setup(bot: MangaClient) -> None:
-    if bot.debug and bot.test_guild_ids:
-        await bot.add_cog(UpdateCheckCog(bot), guilds=[discord.Object(id=x) for x in bot.test_guild_ids])
-    else:
-        await bot.add_cog(UpdateCheckCog(bot))
+    await bot.add_cog(UpdateCheckCog(bot))

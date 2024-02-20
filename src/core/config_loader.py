@@ -126,7 +126,8 @@ def ensure_configs(
             "campaign-id": None
         },
         "flaresolverr": {
-            "base_url": "http://localhost:1234"
+            "base_url": "http://localhost:1234",
+            "enabled": False
         }
     }
 
