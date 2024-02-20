@@ -776,7 +776,7 @@ class Database:
                             UNION
                             SELECT series_id, scanlator FROM tracked_guild_series
                         )
-                        AND scanlator IN (SELECT scanlator FROM scanlators_config WHERE enabled = true)
+                        AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = false)
                         AND lower(status) NOT IN ({completed_db_set});
                     """
             ) as cursor:
