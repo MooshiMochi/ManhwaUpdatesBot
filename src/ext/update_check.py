@@ -407,14 +407,15 @@ class UpdateCheckCog(commands.Cog):
             f"Inserted {total_new_chapters} chapter entries for {len(chapter_updates)} manhwa in the database"
         )
 
-    async def check_updates_by_scanlator(self, mangas: list[MangaHeader]):
+    async def check_updates_by_scanlator(self, mangas: list[MangaHeader], scanlator_name: str):
         if not mangas:
+            self.logger.info(f"[{scanlator_name}] No manhwa to check for updates for!")
             return  # nothing to update
-        elif mangas[0].scanlator not in scanlators:
+        if mangas[0].scanlator not in scanlators:
             self.logger.error(f"Unknown scanlator {mangas[0].scanlator} or it is disabled!")
             return
         scanlator = scanlators.get(mangas[0].scanlator)
-        self.logger.debug(f"[{scanlator.name}] Checking for updates for {mangas[0].scanlator}...")
+        self.logger.info(f"[{scanlator.name}] Checking for updates for {mangas[0].scanlator}...")
 
         result: tuple[list[ChapterUpdate], list[MangaHeader]] | str = await self.handle_exception(
             self.check_with_front_page_scraping(scanlator, mangas), scanlator, scanlator.json_tree.properties.base_url
@@ -424,17 +425,17 @@ class UpdateCheckCog(commands.Cog):
         else:  # type = str
             return
         if mangas_remaining:
-            self.logger.debug(
-                f"[{scanlator.name}] Checking individual manhwa for updates: {mangas_remaining}")
+            self.logger.info(
+                f"[{scanlator.name}] Checking individual manhwa for updates for {len(mangas_remaining)} manhwa...")
             solo_manga_updates = await self.check_each_manga_url(scanlator, mangas_remaining)
             chapter_updates.extend(solo_manga_updates)
 
         if not chapter_updates:
-            self.logger.debug(f"[{scanlator.name}] Finished checking for updates with no updates!")
+            self.logger.info(f"[{scanlator.name}] Finished checking for updates with no updates!")
             return
         await self.update_database_entries(chapter_updates)
         await self.send_notifications(chapter_updates)
-        self.logger.debug(
+        self.logger.info(
             f"[{scanlator.name}] Finished checking for updates with {len(chapter_updates)} manhwa updates!")
 
     async def check_status_update_by_scanlator(self, mangas: list[MangaHeader]):
@@ -535,6 +536,12 @@ class UpdateCheckCog(commands.Cog):
     @tasks.loop(minutes=25)
     async def check_updates_task(self):
         self.logger.info("Checking for updates...")
+        await self.bot.change_presence(
+            activity=discord.Activity(
+                type=discord.ActivityType.watching,
+                name=f"for updates NOW!"
+            )
+        )
         try:
             # change this to grab ID|scanlator only
             series_to_update: list[MangaHeader] = await self.bot.db.get_series_to_update()
@@ -544,7 +551,7 @@ class UpdateCheckCog(commands.Cog):
             grouped_series_to_update: list[list[MangaHeader]] = group_items_by(series_to_update, ["scanlator"])
             grouped_series_to_update = list(sorted(grouped_series_to_update, key=lambda x: len(x)))
             _coros = [
-                self.check_updates_by_scanlator(mangas)
+                self.check_updates_by_scanlator(mangas, mangas[0].scanlator)
                 for mangas in grouped_series_to_update
             ]
             chunked_coros = chunked(_coros, 10)
