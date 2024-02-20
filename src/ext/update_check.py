@@ -546,7 +546,6 @@ class UpdateCheckCog(commands.Cog):
             series_to_update: list[MangaHeader] = await self.bot.db.get_series_to_update()
             if not series_to_update:
                 return
-            self.logger.info("Series to update:", series_to_update)
             grouped_series_to_update: list[list[MangaHeader]] = group_items_by(series_to_update, ["scanlator"])
             grouped_series_to_update = list(sorted(grouped_series_to_update, key=lambda x: len(x)))
             _coros = [
