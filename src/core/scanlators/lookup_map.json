@@ -2429,7 +2429,9 @@
           "ajax": "https://soft.epsilonscan.fr/manga/{url_name}/ajax/chapters"
         },
         "latest_updates_url": "https://soft.epsilonscan.fr/",
-        "dynamicURL": false
+        "dynamicURL": false,
+        "requires_update_embed": true,
+        "can_render_cover": true
       },
       "selectors": {
         "title": [

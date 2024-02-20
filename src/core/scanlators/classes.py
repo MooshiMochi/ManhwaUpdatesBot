@@ -111,7 +111,11 @@ class AbstractScanlator(ABC):
         embed = discord.Embed(
             title=f"{manga.title} - {chapter.name}",
             url=chapter.url)
-        embed.set_author(name=self.name.title())
+        embed.set_author(
+            name=self.name.title(),
+            url=self.json_tree.properties.base_url,
+            icon_url=self.json_tree.properties.icon_url
+        )
         embed.description = f"Read {manga.title} online for free on {self.name.title()}!"
         if self.json_tree.properties.can_render_cover:
             embed.set_image(url=manga.cover_url if not image_url else image_url)
@@ -384,29 +388,24 @@ class AbstractScanlator(ABC):
             MangaNotFoundError - If the manga is not found in the scanlator's website.
             URLAccessFailed - If the scanlator's website is blocked by Cloudflare.
         """
-        try:
-            all_chapters = await self.get_all_chapters(manga.url)
-            status: str = await self.get_status(manga.url)
-            cover_url: str = await self.get_cover(manga.url)
-            if all_chapters is None:
-                return ChapterUpdate(manga.id, [], manga.scanlator, cover_url, status)
-            if manga.last_chapter:
-                new_chapters: list[Chapter] = [
-                    chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
-                ]
-            else:
-                new_chapters: list[Chapter] = all_chapters
-            return ChapterUpdate(
-                manga.id, new_chapters, manga.scanlator, cover_url, status,
-                [
-                    {"embed": self.create_chapter_embed(manga, chapter)}
-                    for chapter in new_chapters
-                ] if self.json_tree.properties.requires_update_embed else None
-            )
-        except Exception as e:
-            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            await self.bot.log_to_discord(tb)
-            raise e
+        all_chapters = await self.get_all_chapters(manga.url)
+        status: str = await self.get_status(manga.url)
+        cover_url: str = await self.get_cover(manga.url)
+        if all_chapters is None:
+            return ChapterUpdate(manga.id, [], manga.scanlator, cover_url, status)
+        if manga.last_chapter:
+            new_chapters: list[Chapter] = [
+                chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
+            ]
+        else:
+            new_chapters: list[Chapter] = all_chapters
+        return ChapterUpdate(
+            manga.id, new_chapters, manga.scanlator, cover_url, status,
+            [
+                {"embed": self.create_chapter_embed(manga, chapter)}
+                for chapter in new_chapters
+            ] if self.json_tree.properties.requires_update_embed else None
+        )
 
     async def report_error(
             self,
