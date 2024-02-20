@@ -62,9 +62,9 @@ class UpdateCheckCog(commands.Cog):
         try:
             return await coro
         # Even though ClientConnectorError inherits from Exception, it's not getting caught.
-        except (Exception, ClientConnectorError) as error:
+        except (Exception, ClientConnectorError, CustomError) as error:
             rv = "None"
-            if isinstance(error, (ClientConnectorError, ClientHttpProxyError)):
+            if isinstance(error, (ClientConnectorError, ClientHttpProxyError, CustomError)):
                 self.logger.warning(
                     f"[{scanlator.name.title()}] Failed to connect to proxy: {error}"
                 )
