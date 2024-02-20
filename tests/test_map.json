@@ -100,20 +100,20 @@
     }
   },
   "asura": {
-    "user_input_url": "https://asuratoon.com/manga/3787011421-i-regressed-as-the-duke/",
+    "user_input_url": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke/",
     "expected_results": {
       "scanlator_name": "asura",
-      "manga_url": "https://asuratoon.com/manga/3787011421-i-regressed-as-the-duke/",
+      "manga_url": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke/",
       "completed": true,
       "title": "I Regressed As The Duke",
-      "manga_id": "https://asuratoon.com/manga/3787011421-i-regressed-as-the-duke",
-      "curr_chapter_url": "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-64-notice/",
-      "first_chapter_url": "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-1/",
+      "manga_id": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke",
+      "curr_chapter_url": "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-64-notice/",
+      "first_chapter_url": "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-1/",
       "cover_image": "https://asuratoon.com/wp-content/uploads/2022/04/unknown_1-1.png",
       "last_3_chapter_urls": [
-        "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-62/",
-        "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-63/",
-        "https://asuratoon.com/5337927378-i-regressed-as-the-duke-chapter-64-notice/"
+        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-62/",
+        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-63/",
+        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-64-notice/"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true

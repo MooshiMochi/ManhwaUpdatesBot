@@ -556,7 +556,7 @@ class UpdateCheckCog(commands.Cog):
             ]
             chunked_coros = chunked(_coros, 10)
             for chunk in chunked_coros:
-                await asyncio.gather(*chunk)
+                await asyncio.gather(*chunk, return_exceptions=True)
                 # await asyncio.sleep(20)  # no need to delay since it requests different websites
         except Exception as e:
             self.logger.error("⚠️ Update Check Stopped!\n\nError while checking for updates", exc_info=e)
