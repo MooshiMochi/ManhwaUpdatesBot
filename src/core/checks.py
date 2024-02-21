@@ -61,6 +61,9 @@ def has_premium(*, dm_only: bool = True):
 
     Returns:
         A check function.
+
+    Raises:
+        PremiumFeatureOnly: If the user is not a patreon.
     """
 
     async def predicate(interaction: discord.Interaction) -> bool:
