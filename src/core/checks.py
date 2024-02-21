@@ -5,6 +5,7 @@ from discord import app_commands
 from discord.app_commands.checks import *  # noqa: No Import Cleanup
 
 from src.core.errors import PremiumFeatureOnly
+from src.utils import check_missing_perms
 
 
 def has_permissions(**perms):
@@ -23,7 +24,8 @@ def has_permissions(**perms):
             return True
         member: discord.Member = interaction.guild.get_member(interaction.user.id)
         if not member or member.guild_permissions < discord.Permissions(**perms):
-            raise app_commands.MissingPermissions([perm for perm, value in perms.items() if value is True])
+            missing_perms = check_missing_perms(member.guild_permissions, discord.Permissions(**perms))
+            raise app_commands.MissingPermissions(missing_perms)
         return True
 
     return app_commands.check(predicate)
@@ -43,8 +45,9 @@ def bot_has_permissions(**perms):
         # Check if the bot has the required permissions.
         if not interaction.guild_id:
             return True
-        if not interaction.guild.me.guild_permissions < discord.Permissions(**perms):
-            raise app_commands.BotMissingPermissions([perm for perm, value in perms.items() if value is True])
+        if interaction.guild.me.guild_permissions < discord.Permissions(**perms):
+            missing_perms = check_missing_perms(interaction.guild.me.guild_permissions, discord.Permissions(**perms))
+            raise app_commands.BotMissingPermissions(missing_perms)
         return True
 
     return app_commands.check(predicate)
