@@ -7,6 +7,49 @@ from discord.app_commands.checks import *  # noqa: No Import Cleanup
 from src.core.errors import PremiumFeatureOnly
 
 
+def has_permissions(**perms):
+    """
+    A check that checks if the user has the required permissions to run the command.
+    Args:
+        perms: The permissions to check for.
+
+    Returns:
+        A check function.
+    """
+
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Check if the user has the required permissions.
+        if not interaction.guild_id:
+            return True
+        member: discord.Member = interaction.guild.get_member(interaction.user.id)
+        if not member or member.guild_permissions < discord.Permissions(**perms):
+            raise app_commands.MissingPermissions([perm for perm, value in perms.items() if value is True])
+        return True
+
+    return app_commands.check(predicate)
+
+
+def bot_has_permissions(**perms):
+    """
+    A check that checks if the bot has the required permissions to run the command.
+    Args:
+        perms: The permissions to check for.
+
+    Returns:
+        A check function.
+    """
+
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Check if the bot has the required permissions.
+        if not interaction.guild_id:
+            return True
+        if not interaction.guild.me.guild_permissions < discord.Permissions(**perms):
+            raise app_commands.BotMissingPermissions([perm for perm, value in perms.items() if value is True])
+        return True
+
+    return app_commands.check(predicate)
+
+
 def has_premium(*, dm_only: bool = True):
     """
     Check if the user is a patreon.
