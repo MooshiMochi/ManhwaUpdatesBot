@@ -9,7 +9,7 @@ if [ ! -f $CONFIG_FILE_NAME ]; then
 fi
 
 # Get bot token from user input
-read -p "Enter bot token: " BOT_TOKEN
+read -r -p "Enter bot token: " BOT_TOKEN
 
 # Check if token key exists in config.yml file
 if grep -q "token" $CONFIG_FILE_NAME; then
@@ -22,4 +22,13 @@ else
   if [ -n "$BOT_TOKEN" ]; then
     echo "token: $BOT_TOKEN" > $CONFIG_FILE_NAME
   fi
+fi
+
+
+# check if the flaresolverr docker image exists
+if [ -z "$(docker images -q ghcr.io/flaresolverr/flaresolverr:latest)" ]; then
+  # pull docker image for flaresolverr
+  docker pull ghcr.io/flaresolverr/flaresolverr:latest
+  # run the docker image
+  docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
 fi

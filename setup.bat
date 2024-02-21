@@ -22,3 +22,8 @@ findstr /B "token:" %CONFIG_FILE_NAME% >nul && (
     powershell -Command "(Get-Content %CONFIG_FILE_NAME% -Raw).TrimEnd() + [Environment]::NewLine + 'token: %BOT_TOKEN%' | Set-Content %CONFIG_FILE_NAME%"
   )
 )
+
+REM check if the docker image for flaresolverr exists. If it doesn't, build it. If the image isn't started, start it.
+docker image inspect flaresolverr >nul 2>&1 || (
+  docker build -t flaresolverr .
+)
