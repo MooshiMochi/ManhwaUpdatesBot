@@ -67,10 +67,7 @@ class OmegaScansAPI:
         except aiohttp.ServerDisconnectedError:
             self.manager.session.logger.error("Server disconnected, retrying with new session...")
             # noinspection PyProtectedMember
-            session_proxy = self.manager.session._proxy
-            await self.manager.session.close()
-            self.manager._session = CachedClientSession(proxy=session_proxy, name=self.manager.session._name,  # noqa
-                                                        trust_env=True)
+            await self.manager.reset_session()
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
     async def get_manga(self, url_name: str) -> Dict[str, Any]:

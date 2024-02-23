@@ -58,11 +58,7 @@ class ComickAppAPI:
         except aiohttp.ServerDisconnectedError:
             self.manager.session.logger.error("Server disconnected, retrying with new session...")
             # noinspection PyProtectedMember
-            session_proxy = self.manager.session._proxy
-            await self.manager.session.close()
-            self.manager._session = CachedClientSession(
-                proxy=session_proxy, name=self.manager.session._name, trust_env=True  # noqa
-            )
+            await self.manager.reset_session()
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
     async def get_manga(self, manga_id: str) -> Dict[str, Any]:

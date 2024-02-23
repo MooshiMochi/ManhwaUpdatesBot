@@ -66,26 +66,32 @@ def setup_logging(
 
     # noinspection PyProtectedMember
     from discord.utils import _ColourFormatter as ColourFormatter, stream_supports_colour
+    from logging.handlers import RotatingFileHandler
 
     OUT = logging.StreamHandler(stream=sys.stdout)
     ERR = logging.StreamHandler(stream=sys.stderr)
+
+    # create a rotating file handler for logging that merges both streams in 1 file
+    MERGED = RotatingFileHandler(filename="bot.log", mode="a", maxBytes=1024 * 1024 * 10, encoding="utf-8")  # 10mb size
 
     if os.name == "nt" and 'PYCHARM_HOSTED' in os.environ:  # this patch is only required for pycharm
         # apply patch for isatty in pycharm being broken
         OUT.stream.isatty = lambda: True
         ERR.stream.isatty = lambda: True
 
-    if isinstance(OUT, logging.StreamHandler) and stream_supports_colour(OUT.stream):
-        formatter = ColourFormatter()
-    else:
-        dt_fmt = '%Y-%m-%d %H:%M:%S'
-        formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
+    dt_fmt = '%Y-%m-%d %H:%M:%S'
+    default_formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
+    MERGED.setFormatter(default_formatter)
 
-    OUT.setFormatter(formatter)
-    ERR.setFormatter(formatter)
+    if isinstance(OUT, logging.StreamHandler) and stream_supports_colour(OUT.stream):
+        default_formatter = ColourFormatter()
+
+    OUT.setFormatter(default_formatter)
+    ERR.setFormatter(default_formatter)
 
     OUT.setLevel(level)
     ERR.setLevel(logging.ERROR)
+    MERGED.setLevel(logging.DEBUG)  # feel free to change this to WARNING or INFO
 
     OUT.addFilter(_StdOutFilter())  # anything error or above goes to stderr
 
@@ -98,6 +104,7 @@ def setup_logging(
 
     root.addHandler(OUT)
     root.addHandler(ERR)
+    root.addHandler(MERGED)
 
 
 def test_logger(logger: logging.Logger) -> None:

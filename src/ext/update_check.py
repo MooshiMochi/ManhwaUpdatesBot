@@ -70,6 +70,12 @@ class UpdateCheckCog(commands.Cog):
                 )
                 rv = "continue"
 
+            elif isinstance(error, ConnectionResetError):
+                self.logger.warning(
+                    f"[{scanlator.name.title()}] Connection was reset while checking for updates."
+                )
+                rv = "continue"
+
             if isinstance(error, curl_cffi.requests.RequestsError):
                 if error.code == 28:
                     self.logger.warning(f"{scanlator.name.title()} timed out while checking for updates.")

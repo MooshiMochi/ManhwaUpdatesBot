@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import aiohttp.helpers
+
 if TYPE_CHECKING:
     from .. import CachedClientSession
     from ..bot import MangaClient
@@ -37,3 +39,10 @@ class APIManager:
     @property
     def session(self) -> CachedClientSession:
         return self._session
+
+    async def reset_session(self):
+        await self._session.close() if self._session is not None else None
+        timeout = aiohttp.ClientTimeout(total=60)
+        self._session = CachedClientSession(
+            timeout=timeout, proxy=self.session._proxy, name=self._session._name, trust_env=True  # noqa: protected mem
+        )

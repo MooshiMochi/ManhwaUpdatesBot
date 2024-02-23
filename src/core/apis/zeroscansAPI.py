@@ -10,8 +10,6 @@ if TYPE_CHECKING:
 import aiohttp
 from fuzzywuzzy import fuzz
 
-from src.core.cache import CachedClientSession
-
 
 def _levenshtein_distance(a: str, b: str) -> int:
     return fuzz.ratio(a, b)
@@ -70,11 +68,7 @@ class ZeroScansAPI:
                 return json_data
         except aiohttp.ServerDisconnectedError:
             self.manager.session.logger.error("Server disconnected, retrying with new session...")
-            # noinspection PyProtectedMember
-            session_proxy = self.manager.session._proxy
-            await self.manager.session.close()
-            self.manager._session = CachedClientSession(
-                proxy=session_proxy, name=self.manager.session._name, trust_env=True)  # noqa
+            await self.manager.reset_session()
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
     async def get_manga(self, url_name: str) -> Dict[str, Any]:

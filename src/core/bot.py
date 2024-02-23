@@ -59,7 +59,10 @@ class MangaClient(commands.Bot):
 
         self._remove_unavailable_scanlators()
 
-        self._session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
+        session_timeout = aiohttp.ClientTimeout(total=60)
+        self._session = CachedClientSession(
+            proxy=self.proxy_addr, name="cache.bot", trust_env=True, timeout=session_timeout
+        )
         self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
             "http": self.proxy_addr,
             "https": self.proxy_addr
@@ -69,7 +72,9 @@ class MangaClient(commands.Bot):
             self.loop.create_task(self.sync_commands())  # noqa: No need to await a task
         self.loop.create_task(self.update_restart_message())  # noqa: No need to await a task
 
-        self._apis = APIManager(self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True))
+        self._apis = APIManager(
+            self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True, timeout=session_timeout)
+        )
         await self._apis.webshare.async_init()
         if self._apis.webshare.is_available:
             # use static proxy for flare

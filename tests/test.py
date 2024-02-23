@@ -14,6 +14,7 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Coroutine, Dict, Literal, Optional
 
+import aiohttp
 import requests  # noqa
 
 from src.core.apis import APIManager
@@ -56,10 +57,15 @@ class Bot:
             "http": self.proxy_addr,
             "https": self.proxy_addr
         })
-        self.session = CachedClientSession(proxy=self.proxy_addr, name="cache.bot", trust_env=True)
+        session_timeout = aiohttp.ClientTimeout(total=60)
+        self.session = CachedClientSession(
+            proxy=self.proxy_addr, name="cache.bot", trust_env=True, timeout=session_timeout
+        )
         self.db = Database(self)  # noqa
         self.apis: APIManager = APIManager(
-            self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True)  # noqa
+            self, CachedClientSession(  # noqa
+                proxy=self.proxy_addr, name="cache.apis", trust_env=True, timeout=session_timeout
+            )
         )
         self._all_scanners: dict = scanlators.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
         self.load_scanlators(scanlators)
