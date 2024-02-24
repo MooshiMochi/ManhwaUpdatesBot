@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 import aiohttp.helpers
 
+from ...enums import Minutes
+
 if TYPE_CHECKING:
     from .. import CachedClientSession
     from ..bot import MangaClient
@@ -42,7 +44,7 @@ class APIManager:
 
     async def reset_session(self):
         await self._session.close() if self._session is not None else None
-        timeout = aiohttp.ClientTimeout(total=60)
+        timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)  # 5 min
         self._session = CachedClientSession(
             timeout=timeout, proxy=self.session._proxy, name=self._session._name, trust_env=True  # noqa: protected mem
         )

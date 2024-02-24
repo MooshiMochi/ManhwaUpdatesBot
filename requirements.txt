@@ -7,9 +7,9 @@ pyyaml
 beautifulsoup4
 fuzzywuzzy
 python-Levenshtein
-pandas
+pandas==2.2.1
 openpyxl
-curl_cffi
+curl_cffi>=0.6.1
 tldextract
 brotli
 fastapi

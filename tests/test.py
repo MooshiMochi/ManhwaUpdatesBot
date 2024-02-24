@@ -24,6 +24,7 @@ from src.core.database import Database
 from src.core.objects import Chapter, Manga
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
+from src.enums import Minutes
 from src.static import Constants
 from src.utils import setup_logging
 
@@ -57,7 +58,7 @@ class Bot:
             "http": self.proxy_addr,
             "https": self.proxy_addr
         })
-        session_timeout = aiohttp.ClientTimeout(total=60)
+        session_timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)  # 5 min
         self.session = CachedClientSession(
             proxy=self.proxy_addr, name="cache.bot", trust_env=True, timeout=session_timeout
         )
@@ -107,7 +108,7 @@ class Bot:
         if self.curl_session:
             self.logger.info("Closing curl session...")
             try:
-                self.curl_session.close()
+                await self.curl_session.close()
                 self.logger.info("Curl session closed.")
             except TypeError:
                 self.logger.warning("Skipping curl session close due to TypeError.")

@@ -14,6 +14,7 @@ from .apis import APIManager
 from .cache import CachedClientSession, CachedCurlCffiSession
 from .database import Database
 from .scanlators import scanlators
+from ..enums import Minutes
 
 
 class MangaClient(commands.Bot):
@@ -59,7 +60,7 @@ class MangaClient(commands.Bot):
 
         self._remove_unavailable_scanlators()
 
-        session_timeout = aiohttp.ClientTimeout(total=60)
+        session_timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)
         self._session = CachedClientSession(
             proxy=self.proxy_addr, name="cache.bot", trust_env=True, timeout=session_timeout
         )
@@ -166,7 +167,7 @@ class MangaClient(commands.Bot):
         if self.curl_session:
             self.logger.info("Closing curl session...")
             try:
-                self.curl_session.close()
+                await self.curl_session.close()
                 self.logger.info("Curl session closed.")
             except TypeError:
                 self.logger.error("Skipping... Curl session already closed.")
@@ -225,10 +226,9 @@ class MangaClient(commands.Bot):
         spc = "\u200b \u200b > "
         user = interaction.user
         cmd_data = interaction.data
-        cmd_name = f"{cmd_data['name']} {' '.join([opt['name'] for opt in cmd_data.get('options', [])])}"
-        cmd_opts: list[dict] = interaction.data.get("options", [])
+        cmd_name = f"{cmd_data['name']} {' '.join([opt['name'] for opt in cmd_data.get('options', [])])}"  # noqa
+        cmd_opts: list[dict] = interaction.data.get("options", [])  # noqa
 
-        # **Key change:** Handle both subcommands and top-level options consistently
         options_list = []
         if cmd_opts:
             for opt in cmd_opts[0].get("options", []) or cmd_opts:  # Handle both cases

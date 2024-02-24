@@ -63,9 +63,10 @@ class MangaDexAPI:
                     )
                 return json_data
         except aiohttp.ServerDisconnectedError:
-            self.manager.session.logger.error("Server disconnected, retrying with new session...")
-            # noinspection PyProtectedMember
-            await self.manager.reset_session()
+            if kwargs.get("call_depth", 0) > 3:
+                raise Exception("Server disconnected too many times, aborting request")
+            kwargs["call_depth"] = kwargs.get("call_depth", 0) + 1
+            self.manager.session.logger.error("Server disconnected, retrying request...")
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
     async def get_manga(self, manga_id: str) -> Dict[str, Any]:
