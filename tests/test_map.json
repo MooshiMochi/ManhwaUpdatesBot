@@ -699,22 +699,22 @@
       "has_fp_manhwa": true
     }
   },
-  "manhwa-freak": {
-    "user_input_url": "https://manhwa-freak.com/manga/i-stack-experience-through-writing-books/",
+  "freakcomic": {
+    "user_input_url": "https://freakcomic.com/manga/i-stack-experience-through-writing-books/",
     "expected_results": {
-      "scanlator_name": "manhwa-freak",
-      "manga_url": "https://manhwa-freak.com/manga/i-stack-experience-through-writing-books/",
+      "scanlator_name": "freakcomic",
+      "manga_url": "https://freakcomic.com/manga/i-stack-experience-through-writing-books/",
       "completed": true,
       "title": "I Stack Experience Through Writing Books",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-345a6/",
-      "first_chapter_url": "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-144-1baed/",
-      "cover_image": "https://manhwa-freak.com/wp-content/uploads/2022/04/large_xxlarge_zdKz1Hb.jpg",
+      "curr_chapter_url": "https://freakcomic.com/i-stack-experience-through-writing-books-ch-150-345a6/",
+      "first_chapter_url": "https://freakcomic.com/i-stack-experience-through-writing-books-ch-144-1baed/",
+      "cover_image": "https://freakcomic.com/wp-content/uploads/2022/04/large_xxlarge_zdKz1Hb.jpg",
       "last_3_chapter_urls": [
-        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-148-e60fb/",
-        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-149-e9b21/",
-        "https://manhwa-freak.com/i-stack-experience-through-writing-books-ch-150-345a6/"
+        "https://freakcomic.com/i-stack-experience-through-writing-books-ch-148-e60fb/",
+        "https://freakcomic.com/i-stack-experience-through-writing-books-ch-149-e9b21/",
+        "https://freakcomic.com/i-stack-experience-through-writing-books-ch-150-345a6/"
       ],
       "has_fp_manhwa": true
     }

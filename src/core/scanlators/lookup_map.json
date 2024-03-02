@@ -1720,17 +1720,17 @@
         "request_method": "GET"
       }
     },
-    "manhwa-freak": {
+    "freakcomic": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?manhwa-freak\\.com/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-ch-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?freakcomic\\.com/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-ch-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://manhwa-freak.com",
-        "icon_url": "https://manhwa-freak.com/wp-content/uploads/2022/04/2.png",
+        "base_url": "https://freakcomic.com",
+        "icon_url": "https://freakcomic.com/wp-content/uploads/2022/04/2.png",
         "format_urls": {
-          "manga": "https://manhwa-freak.com/manga/{url_name}/"
+          "manga": "https://freakcomic.com/manga/{url_name}/"
         },
-        "latest_updates_url": "https://manhwa-freak.com",
+        "latest_updates_url": "https://freakcomic.com",
         "dynamicURL": false
       },
       "selectors": {
@@ -1772,7 +1772,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://manhwa-freak.com/",
+        "url": "https://freakcomic.com/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"

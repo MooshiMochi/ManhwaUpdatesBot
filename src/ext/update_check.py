@@ -44,7 +44,7 @@ class UpdateCheckCog(commands.Cog):
             Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
 
         self.check_updates_task.start()
-        self.check_manhwa_status.start()
+        # self.check_manhwa_status.start() # TODO: Re-enable later
         self.check_patreon_users.start()
 
     async def handle_exception(self, coro: callable, scanlator: AbstractScanlator, req_url: str) -> str:

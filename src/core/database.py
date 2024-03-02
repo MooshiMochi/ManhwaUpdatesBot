@@ -449,7 +449,8 @@ class Database:
                 await db.commit()
             else:
                 raise CustomError(
-                    f"[{manga_obj.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                    f"This action cannot be completed at this time because {manga_obj.scanlator.title()} is currently "
+                    f"disabled."
                 )
 
     async def upsert_bookmark(self, bookmark: Bookmark) -> bool:
@@ -464,7 +465,8 @@ class Database:
                 )
             else:
                 raise CustomError(
-                    f"[{bookmark.manga.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                    f"This action cannot be completed at this time because {bookmark.manga.scanlator.title()} is "
+                    f"currently disabled."
                 )
 
             await db.execute(
@@ -821,7 +823,8 @@ class Database:
                 manga = Manga.from_tuple(manga_params)
                 if manga.scanlator not in scanlators:
                     raise CustomError(
-                        f"[{manga.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                        f"This action cannot be completed at this time because {manga.scanlator.title()} is currently "
+                        f"disabled."
                     )
                 manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
                 # replace series_id with a manga object
@@ -1080,7 +1083,7 @@ class Database:
         # scanlator is disabled, as they are removed form the check loop if they are disabled
         if manga.scanlator not in scanlators:
             raise CustomError(
-                f"[{manga.scanlator.title()}] is currently disabled.\nThis action cannot be completed."
+                f"This action cannot be completed at this time because {manga.scanlator.title()} is currently disabled."
             )
         manga = (await scanlators[manga.scanlator].unload_manga([manga]))[0]
         async with aiosqlite.connect(self.db_name) as db:

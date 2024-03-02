@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Iterable, Optional, TYPE_CHECKING, Union
 
+from discord.app_commands import AppCommandError
+
 from ..core.scanlators import scanlators
 from ..core.scanlators.classes import AbstractScanlator
 
@@ -61,22 +63,11 @@ class BaseView(View):
     async def on_error(
             self,
             interaction: discord.Interaction,
-            error: Exception,
+            error: discord.app_commands.AppCommandError,
             item: discord.ui.Button,
             /,
     ) -> None:
-        traceback = "".join(
-            tb.format_exception(type(error), error, error.__traceback__)
-        )
-        self.bot.logger.error(traceback)
-        if not interaction.response.is_done():  # noqa
-            await interaction.response.send_message(  # noqa
-                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
-            )
-        else:
-            await interaction.followup.send(
-                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
-            )
+        await self.bot.tree.on_error(interaction, error)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if isinstance(self.interaction_or_ctx, discord.Interaction):
@@ -989,22 +980,11 @@ class BookmarkChapterView(View):
     async def on_error(
             self,
             interaction: discord.Interaction,
-            error: Exception,
+            error: AppCommandError,
             item: discord.ui.Button,
             /,
     ) -> None:
-        traceback = "".join(
-            tb.format_exception(type(error), error, error.__traceback__)
-        )
-        self.bot.logger.error(traceback)
-        if not interaction.response.is_done():  # noqa
-            await interaction.response.send_message(  # noqa
-                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
-            )
-        else:
-            await interaction.followup.send(
-                f"An error occurred: ```py\n{traceback[-1800:]}```", ephemeral=True
-            )
+        await self.bot.tree.on_error(interaction, error)
 
 
 class DeleteBookmarkView(BaseView):
