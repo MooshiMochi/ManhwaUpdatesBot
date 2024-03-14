@@ -35,6 +35,8 @@ class FlareSolverrAPI:
 
         self.is_available: bool = self.base_url is not None
 
+        self._session_history: list[str] = []
+
     async def async_init(self):
         if not self.is_enabled:
             self.manager.bot.logger.warning(
@@ -49,7 +51,34 @@ class FlareSolverrAPI:
         await self.get_active_sessions()
         await self.destroy_all_sessions()
         await self.create_new_session()
+
+        self.sync_sessions.add_exception_type(Exception)
+        self.sync_sessions.start()
+
         self.manager.bot.logger.info("FlareSolverr is working...")
+
+    @tasks.loop(minutes=1)
+    async def sync_sessions(self) -> None:
+        # this loop will periodically check what active sessions there are on the server, and if there aren't any,
+        # it will create a new session.
+        if not self.is_available:
+            return
+
+        await self.get_active_sessions()
+        if not self.session_cache:
+            await self.create_new_session()
+
+        # we need to keep track of session history to only delete sessions created by the current process.
+        # this is because the server may have multiple clients connected to it.
+        # at most, we want to have 2 sessions running at a time.
+
+        if len(self._session_history) > 2 and len(self.session_cache) > 2:
+            process_created_sessions = [x for x in self.session_cache if x in self._session_history]
+            while len(process_created_sessions) > 2:
+                session_to_delete_id = process_created_sessions.pop(0)
+                await self.delete_session(session_to_delete_id)  # delete the oldest session
+                # remove the session from the cache to prevent its use
+                self.session_cache.remove(session_to_delete_id) if session_to_delete_id in self.session_cache else None
 
     async def health_check(self) -> bool:
         """
@@ -126,6 +155,7 @@ class FlareSolverrAPI:
             session_id = new_session.get("session")
             self.session_cache.append(session_id)  # update the session cache
             self.manager.bot.logger.debug(f"[FlareSolverr] New session {session_id} created.")
+            self._session_history.append(session_id)  # update the session history
             return session_id
 
     async def delete_session(self, session_id: str) -> None:
