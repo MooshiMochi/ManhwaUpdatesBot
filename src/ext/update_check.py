@@ -14,6 +14,7 @@ import patreon
 from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError, ClientResponseError
 from patreon.jsonapi.parser import JSONAPIResource
 
+import src.utils
 from src.core.errors import CustomError, URLAccessFailed
 from src.core.objects import ChapterUpdate, MangaHeader, PartialManga, Patron
 from src.core.scanlators import scanlators
@@ -211,7 +212,7 @@ class UpdateCheckCog(commands.Cog):
         # assuming that partial_mangas is a list of the latest mangas, we don't need to check the other manga for
         # updates.
         mangas = [m for m in mangas if m in partial_mangas]
-        partial_mangas = [m for m in partial_mangas if m in mangas]
+        partial_mangas: list[PartialManga] = [m for m in partial_mangas if m in mangas]
         if not mangas:  # nothing to update
             return [], []
 
@@ -237,6 +238,9 @@ class UpdateCheckCog(commands.Cog):
                 continue
             elif manga.last_chapter.url == partial_manga.latest_chapters[-1].url:  # no updates here
                 continue
+            # elif (manga.last_chapter.url == partial_manga.latest_chapters[-1].url and
+            #       manga.last_chapter.is_premium != partial_manga.latest_chapters[-1].is_premium):  # no updates here
+            #     continue
             p_manga_chapter_urls = [x.url for x in partial_manga.latest_chapters]
             if manga.last_chapter.url in p_manga_chapter_urls:  # new chapters
                 index = p_manga_chapter_urls.index(manga.last_chapter.url)
@@ -278,6 +282,7 @@ class UpdateCheckCog(commands.Cog):
         """
         guilds_to_updates: dict[int, list[tuple[ChapterUpdate, int]]] = defaultdict(list)
         users_to_update: dict[discord.User, list[ChapterUpdate]] = defaultdict(list)
+        next_update_noti_channels: list[discord.TextChannel | discord.User] = []
         for update in chapter_updates:
             if not update.new_chapters:
                 continue
@@ -298,12 +303,16 @@ class UpdateCheckCog(commands.Cog):
                 k: v for k, v in guilds_to_updates.items() if k not in [x.id for x in user_objects]
             })
         # {g_id: [upd1, upd2, upd3, ...], ...}
+        next_update_noti_channels.extend(users_to_update.keys())
 
         for user in users_to_update:
+            user_config = await self.bot.db.get_guild_config(user.id)
             try:
                 for update in users_to_update[user]:
                     manga_title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
                     for i, chapter in enumerate(update.new_chapters):
+                        # if chapter.is_premium and not user_config.paid_chapter_notifs:
+                        #     continue
                         view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
                         extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
                         spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
@@ -334,6 +343,8 @@ class UpdateCheckCog(commands.Cog):
 
         for guild_id in guilds_to_updates:
             guild_config = await self.bot.db.get_guild_config(guild_id)
+            scanlator_associations = await self.bot.db.get_scanlator_channel_associations(guild_id)
+            scanlator_associations = {x.scanlator: x for x in scanlator_associations}
             updates = guilds_to_updates[guild_id]
             if not (guild_config and updates and guild_config.notifications_channel):
                 continue
@@ -353,6 +364,8 @@ class UpdateCheckCog(commands.Cog):
                 formatted_pings = "".join(pings)
                 manga_title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
                 for i, chapter in enumerate(update.new_chapters):
+                    # if chapter.is_premium and not guild_config.paid_chapter_notifs:
+                    #     continue
                     if guild_config.show_update_buttons:
                         view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
                     else:
@@ -361,8 +374,16 @@ class UpdateCheckCog(commands.Cog):
                     spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
                     if bool(guild_config.show_update_buttons) is False:
                         spoiler_text = ""
+
+                    noti_channel = scanlator_associations.get(update.scanlator, guild_config.notifications_channel)
+                    if src.utils.check_missing_perms(  # there are missing perms if this is not empty
+                            noti_channel.permissions_for(guild_config.guild.me),
+                            discord.Permissions(
+                                send_messages=True, embed_links=True, attach_files=True, use_external_emojis=True)
+                    ):
+                        continue
                     try:
-                        await guild_config.notifications_channel.send(
+                        await noti_channel.send(
                             (
                                 # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
                                 f"{spoiler_text}{formatted_pings}** {manga_title} {chapter.name}**"
@@ -376,14 +397,21 @@ class UpdateCheckCog(commands.Cog):
                         self.logger.error(
                             f"Failed to send update for {manga_title}| {chapter.name}", exc_info=e
                         )
-            next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
-            await guild_config.notifications_channel.send(
-                embed=(
-                    discord.Embed(
-                        description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
-                ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url),
-                delete_after=25 * 60  # 25 min
-            )
+                        continue
+                    next_update_noti_channels.append(noti_channel)
+
+        next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
+        for ch in list(set(next_update_noti_channels)):
+            try:
+                await ch.send(
+                    embed=(
+                        discord.Embed(
+                            description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
+                    ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url),
+                    delete_after=25 * 60  # 25 min
+                )
+            except discord.Forbidden:
+                continue
 
     async def update_database_entries(self, chapter_updates: list[ChapterUpdate]) -> None:
         """

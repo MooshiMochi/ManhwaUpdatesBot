@@ -784,8 +784,9 @@ class DynamicURLScanlator(BasicScanlator):
         Returns:
             None
         """
-        for manga_url, chapter_urls in [(x.url, [y.url for y in x.latest_chapters]) for x in partial_manhwas]:
-            manga_id_found = chapter_id_found = False
+        manga_id_found = chapter_id_found = False
+        # reversed to use old IDs first. Guarantees older series wil work
+        for manga_url, chapter_urls in [(x.url, [y.url for y in x.latest_chapters]) for x in reversed(partial_manhwas)]:
             if chapter_id_found is False:
                 for url in chapter_urls:
                     if (rx_result := self.json_tree.rx.search(url)) is not None:

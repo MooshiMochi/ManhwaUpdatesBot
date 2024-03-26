@@ -7,6 +7,7 @@ from ..static import Constants
 if TYPE_CHECKING:
     from src.core.objects import Bookmark
     from . import BookmarkView
+    from .views import ScanlatorChannelAssociationView
 
 import traceback
 import discord
@@ -107,3 +108,38 @@ class InputModal(BaseModal, title="Language to translate to"):
             await interaction.response.send_message(  # noqa
                 "Language not found.", ephemeral=True
             )
+
+
+class ScanlatorModal(BaseModal, title="Select a scanlator"):
+    input_value = discord.ui.TextInput(
+        label='Scanlator Name',
+        placeholder='Enter the scanlator name...',
+    )
+
+    def __init__(self, view: ScanlatorChannelAssociationView, scanlator_opts: list[str]) -> None:
+        super().__init__()
+        self._available_options: list[str] = scanlator_opts
+        self.scanlator: str | None = None
+        self.view = view
+
+    async def on_submit(self, interaction: discord.Interaction, /) -> None:
+
+        val = self.input_value.value.lower().strip()
+        if val not in self._available_options:
+            # try to return the scanlator that starts with the string
+            for scanlator in self._available_options:
+                if scanlator.lower().startswith(val):
+                    self.scanlator = scanlator
+                    break
+            # try to find scanlator using levenshtein distance
+            self.scanlator = max(
+                self._available_options,
+                key=lambda x: _levenshtein_distance(x.lower(), val)
+            )
+            if _levenshtein_distance(val, self.scanlator.lower()) < 75:  # <75% similarity
+                self.scanlator = None
+
+        else:
+            self.scanlator = val
+
+        await interaction.response.defer(ephemeral=True, thinking=False)  # acknowledge the interaction

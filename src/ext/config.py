@@ -173,7 +173,7 @@ class ConfigCog(Cog):
             guild_config = GuildSettings(self.bot, interaction.guild_id, None, None)  # noqa
         view = SettingsView(self.bot, interaction, guild_config)
         # noinspection PyProtectedMember
-        embed = view._create_embed()
+        embed = view.create_embed()
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)  # noqa
 
         issues_embed: discord.Embed = await self.check_for_issues(interaction)

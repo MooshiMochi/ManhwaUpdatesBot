@@ -708,9 +708,7 @@ class Restricted(commands.Cog):
             f"Are you sure you want to send this message to {len(guild_configs_to_notify)} guilds?", embed=em, view=view
         )
         await view.wait()
-        if view.value is None:  # timed out
-            return
-        elif view.value is False:  # cancelled = False
+        if not view.result:
             await view.message.edit(embed=discord.Embed(
                 title="Cancelled!",
                 description="The message has been cancelled.",

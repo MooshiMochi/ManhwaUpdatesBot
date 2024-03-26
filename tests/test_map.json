@@ -303,7 +303,7 @@
     "user_input_url": "https://bato.to/title/95400-queen-in-the-shadows",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://xfs-s118.xfsbb.com/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
+      "cover_image": "https://xfs-n18.xfsbb.com/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
       "curr_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/2031007-ch_60",
       "first_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/1803219-ch_1",
       "last_3_chapter_urls": [
@@ -340,19 +340,19 @@
     }
   },
   "nightscans": {
-    "user_input_url": "https://night-scans.com/series/all-attributes-in-martial-arts/",
+    "user_input_url": "https://night-scans.com/series/2825750948-all-attributes-in-martial-arts/",
     "expected_results": {
       "completed": true,
       "cover_image": "https://night-scans.com/wp-content/uploads/2023/03/AAAMAcover_result.webp",
-      "curr_chapter_url": "https://night-scans.com/all-attribute-in-martial-arts-chapter-70/",
-      "first_chapter_url": "https://night-scans.com/all-attribute-martial-arts-00/",
+      "curr_chapter_url": "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-70/",
+      "first_chapter_url": "https://night-scans.com/5002592384-all-attribute-martial-arts-00/",
       "last_3_chapter_urls": [
-        "https://night-scans.com/all-attribute-in-martial-arts-chapter-68/",
-        "https://night-scans.com/all-attribute-in-martial-arts-chapter-69/",
-        "https://night-scans.com/all-attribute-in-martial-arts-chapter-70/"
+        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-68/",
+        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-69/",
+        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-70/"
       ],
       "manga_id": "https://night-scans.com/series/all-attributes-in-martial-arts",
-      "manga_url": "https://night-scans.com/series/all-attributes-in-martial-arts",
+      "manga_url": "https://night-scans.com/series/2825750948-all-attributes-in-martial-arts",
       "scanlator_name": "nightscans",
       "title": "All-Attributes in Martial Arts",
       "use_default_id_function": true,
@@ -500,41 +500,41 @@
     }
   },
   "resetscans": {
-    "user_input_url": "https://reset-scans.us/manga/oopart/",
+    "user_input_url": "https://reset-scans.xyz/manga/oopart/",
     "expected_results": {
       "scanlator_name": "resetscans",
-      "manga_url": "https://reset-scans.us/manga/oopart/",
+      "manga_url": "https://reset-scans.xyz/manga/oopart/",
       "completed": true,
       "title": "OOPARTS",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://reset-scans.us/manga/oopart/chapter-97/",
-      "first_chapter_url": "https://reset-scans.us/manga/oopart/chapter-01/",
-      "cover_image": "https://reset-scans.us/wp-content/uploads/2022/11/OOPARTS.webp",
+      "curr_chapter_url": "https://reset-scans.xyz/manga/oopart/chapter-97/",
+      "first_chapter_url": "https://reset-scans.xyz/manga/oopart/chapter-01/",
+      "cover_image": "https://reset-scans.xyz/wp-content/uploads/2022/11/OOPARTS.webp",
       "last_3_chapter_urls": [
-        "https://reset-scans.us/manga/oopart/chapter-95/",
-        "https://reset-scans.us/manga/oopart/chapter-96/",
-        "https://reset-scans.us/manga/oopart/chapter-97/"
+        "https://reset-scans.xyz/manga/oopart/chapter-95/",
+        "https://reset-scans.xyz/manga/oopart/chapter-96/",
+        "https://reset-scans.xyz/manga/oopart/chapter-97/"
       ],
       "has_fp_manhwa": true
     }
   },
   "kaiscans": {
-    "user_input_url": "https://kaiscans.org/manga/return-of-the-mad-demon/",
+    "user_input_url": "https://kaiscans.org/manga/7301267747-cry-even-better-if-you-beg/",
     "expected_results": {
       "scanlator_name": "kaiscans",
-      "manga_url": "https://kaiscans.org/manga/return-of-the-mad-demon/",
+      "manga_url": "https://kaiscans.org/manga/7301267747-cry-even-better-if-you-beg/",
       "completed": false,
-      "title": "Return of the Mad Demon",
+      "title": "Cry, Even Better if You Beg",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://kaiscans.org/return-of-the-mad-demon-chapter-90/",
-      "first_chapter_url": "https://kaiscans.org/return-of-the-mad-demon-82/",
-      "cover_image": "https://kaiscans.org/wp-content/uploads/2023/08/2102434127.webp",
+      "curr_chapter_url": "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-24/",
+      "first_chapter_url": "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-1/",
+      "cover_image": "https://kaiscans.org/wp-content/uploads/2024/03/why-is-no-talking-about-the-cry-even-better-if-you-beg-v0-jrn87uhfdznb1.webp",
       "last_3_chapter_urls": [
-        "https://kaiscans.org/return-of-the-mad-demon-chapter-88/",
-        "https://kaiscans.org/return-of-the-mad-demon-chapter-89/",
-        "https://kaiscans.org/return-of-the-mad-demon-chapter-90/"
+        "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-22/",
+        "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-23/",
+        "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-24/"
       ],
       "has_fp_manhwa": true
     }
@@ -590,7 +590,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27",
       "first_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554453-vol-1-ch-1",
-      "cover_image": "https://xfs-s111.xfspp.com/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
+      "cover_image": "https://xfs-n11.xfspp.com/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
       "last_3_chapter_urls": [
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554478-vol-7-ch-25",
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554479-vol-7-ch-26",
@@ -639,22 +639,22 @@
       "has_fp_manhwa": true
     }
   },
-  "demoncomics": {
-    "user_input_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA48",
+  "demonreader": {
+    "user_input_url": "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince-VA52",
     "expected_results": {
-      "scanlator_name": "demoncomics",
-      "manga_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince-VA48",
+      "scanlator_name": "demonreader",
+      "manga_url": "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince-VA52",
       "completed": false,
       "title": "Reborn as the Enemy Prince",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA48",
-      "first_chapter_url": "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA48",
+      "curr_chapter_url": "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA52",
+      "first_chapter_url": "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince/chapter/0-VA52",
       "cover_image": "https://readermc.org/images/thumbnails/Reborn as the Enemy Prince.webp",
       "last_3_chapter_urls": [
-        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA48",
-        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA48",
-        "https://demoncomics.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA48"
+        "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince/chapter/26-VA52",
+        "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince/chapter/27-VA52",
+        "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince/chapter/28-VA52"
       ],
       "has_fp_manhwa": true
     }
@@ -679,22 +679,22 @@
       "has_fp_manhwa": true
     }
   },
-  "arvenscans": {
-    "user_input_url": "https://arvenscans.org/series/would-you-like-to-sign-the-contract/",
+  "vortexscans": {
+    "user_input_url": "https://vortexscans.com/series/would-you-like-to-sign-the-contract/",
     "expected_results": {
-      "scanlator_name": "arvenscans",
-      "manga_url": "https://arvenscans.org/series/would-you-like-to-sign-the-contract/",
+      "scanlator_name": "vortexscans",
+      "manga_url": "https://vortexscans.com/series/would-you-like-to-sign-the-contract/",
       "completed": false,
       "title": "Would You Like to Sign The Contract?",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-37/",
-      "first_chapter_url": "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-1/",
-      "cover_image": "https://arvenscans.org/wp-content/uploads/2023/09/Would-You-Like-to-Sign-The-Contract-1.webp",
+      "curr_chapter_url": "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-37/",
+      "first_chapter_url": "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-1/",
+      "cover_image": "https://vortexscans.com/wp-content/uploads/2023/09/Would-You-Like-to-Sign-The-Contract-1.webp",
       "last_3_chapter_urls": [
-        "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-35/",
-        "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-36/",
-        "https://arvenscans.org/would-you-like-to-sign-the-contract-chapter-37/"
+        "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-35/",
+        "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-36/",
+        "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-37/"
       ],
       "has_fp_manhwa": true
     }
@@ -810,7 +810,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangafire.to/read/hellsing.y8x/en/chapter-88",
       "first_chapter_url": "https://mangafire.to/read/hellsing.y8x/en/chapter-1",
-      "cover_image": "https://static.bunnycdn.ru/i/cache/images/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
+      "cover_image": "https://static.mangafire.to/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
       "last_3_chapter_urls": [
         "https://mangafire.to/read/hellsing.y8x/en/chapter-86",
         "https://mangafire.to/read/hellsing.y8x/en/chapter-87",
@@ -850,7 +850,7 @@
       "use_default_id_function": true,
       "curr_chapter_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-159/",
       "first_chapter_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-1/",
-      "cover_image": "https://nvmanga.com/wp-content/uploads/2022/10/A-Guide-to-Proper-Dating.webp",
+      "cover_image": "https://nvmanga.com/wp-content/uploads/2022/10/a-guide-to-proper-dating.webp",
       "last_3_chapter_urls": [
         "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-157/",
         "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-158/",

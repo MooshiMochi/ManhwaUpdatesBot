@@ -13,7 +13,8 @@ from ..static import Constants
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, SubscriptionObject
+from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, ScanlatorChannelAssociation, \
+    SubscriptionObject
 from src.core.scanlators import scanlators
 from io import BytesIO
 import pandas as pd
@@ -106,6 +107,7 @@ class Database:
                     auto_create_role BOOLEAN NOT NULL DEFAULT false,
                     system_channel_id INTEGER default null,
                     show_update_buttons BOOLEAN NOT NULL DEFAULT true,
+                    paid_chapter_notifications BOOLEAN NOT NULL DEFAULT false,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
                 """
@@ -156,6 +158,19 @@ class Database:
                 )
                 """
             )
+
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS scanlator_channel_associations (
+                    guild_id INTEGER NOT NULL,
+                    scanlator TEXT NOT NULL,
+                    channel_id INTEGER NOT NULL,
+                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
+                    UNIQUE (guild_id, scanlator, channel_id) ON CONFLICT REPLACE
+                );
+                """
+            )
+
             await db.commit()
 
     async def execute(self, query: str, *args, levenshtein: bool = False) -> Any:
@@ -561,13 +576,13 @@ class Database:
                 """
                 INSERT INTO guild_config (
                     guild_id, notifications_channel_id, default_ping_role_id, 
-                    auto_create_role, system_channel_id, show_update_buttons
+                    auto_create_role, system_channel_id, show_update_buttons, paid_chapter_notifications
                 )
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT(guild_id)
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
-                    auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6
+                    auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6, paid_chapter_notifications = $7
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
@@ -1634,3 +1649,110 @@ class Database:
             ) as cursor:
                 await db.commit()
                 return cursor.rowcount
+
+    async def get_used_scanlator_names(self, guild_id: int) -> list[str]:
+        """
+        Summary:
+            Returns a list of scanlator names that are used in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            list[str]: A list of scanlator names that are used in the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1
+                """,
+                (guild_id,),
+            )
+            result = await cursor.fetchall()
+            if result:
+                return [row[0] for row in result]
+            return []
+
+    async def get_scanlator_channel_associations(self, guild_id: int) -> list[ScanlatorChannelAssociation]:
+        """
+        Summary:
+            Returns a ScanlatorChannelAssociation object for the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            list[ScanlatorChannelAssociation]: A list of ScanlatorChannelAssociation objects for the guild.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT * FROM scanlator_channel_associations WHERE guild_id = $1;
+                """,
+                (guild_id,),
+            )
+            result = await cursor.fetchall()
+            if result:
+                return ScanlatorChannelAssociation.from_tuples(self.bot, result)
+            return []
+
+    async def upsert_scanlator_channel_associations(self, associations: list[ScanlatorChannelAssociation]) -> None:
+        """
+        Summary:
+            Upserts the scanlator channel associations in the database.
+
+        Args:
+            associations: list[ScanlatorChannelAssociation] - A list of ScanlatorChannelAssociation objects
+
+        Returns:
+            None
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            for association in associations:
+                await db.execute(
+                    """
+                    INSERT INTO scanlator_channel_associations (guild_id, scanlator, channel_id) 
+                    VALUES ($1, $2, $3) ON CONFLICT (guild_id, scanlator, channel_id) DO UPDATE SET channel_id = $3;
+                    """,
+                    association.to_tuple()
+                )
+            await db.commit()
+
+    async def delete_scanlator_channel_association(self, guild_id: int, scanlator: str) -> None:
+        """
+        Deletes a scanlator channel association from the database for a guild.
+
+        Args:
+            guild_id: int - The guild's ID
+            scanlator: str - The scanlator's name
+
+        Returns:
+            None
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute(
+                """
+                DELETE FROM scanlator_channel_associations WHERE guild_id = $1 AND scanlator = $2;
+                """,
+                (guild_id, scanlator)
+            )
+            await db.commit()
+
+    async def delete_all_scanlator_channel_associations(self, guild_id: int) -> None:
+        """
+        Deletes all scanlator channel associations from the database for a guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            None
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute(
+                """
+                DELETE FROM scanlator_channel_associations WHERE guild_id = $1;
+                """,
+                (guild_id,)
+            )
+            await db.commit()

@@ -12,6 +12,8 @@ __all__ = (
     "scanlators",
 )
 
+from ...static import Constants
+
 from ...utils import raise_and_report_for_status
 
 
@@ -99,6 +101,12 @@ class _OmegaScans(BasicScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 
+    async def get_id(self, raw_url: str) -> str | None:
+        async with self.bot.session.get(raw_url) as resp:
+            await raise_and_report_for_status(self.bot, resp)
+            manga_id = re.search(r'\\"series_id\\":(\d+),', await resp.text()).group(1)
+            return manga_id
+
     async def get_cover(self, raw_url: str) -> str:
         url_name = await super()._get_url_name(raw_url)
         return await self.bot.apis.omegascans.get_cover(url_name)
@@ -121,7 +129,16 @@ class _OmegaScans(BasicScanlator):
             cover = item_dict["thumbnail"]
             _id = await self.get_id(url)
 
-            p_manga = PartialManga(_id, title, url, self.name, cover_url=cover)
+            chapter = item_dict["latest_chapter"]
+            base_chapter_url = await self.format_manga_url(url_name=item_dict["series_slug"])
+            chapter_url = base_chapter_url.removesuffix("/") + "/" + chapter["chapter_slug"]
+            chapter_name = chapter["chapter_name"]
+            is_premium_chapter = "price" in chapter.keys() and chapter["price"] > 0
+            if chapter.get("chapter_title") is not None:
+                chapter_name += f" - {chapter['chapter_title']}"
+            last_chapter = Chapter(chapter_url, chapter_name, 987654321, is_premium=is_premium_chapter)
+
+            p_manga = PartialManga(_id, title, url, self.name, cover, [last_chapter])
             found_manga.append(p_manga)
         if as_em:
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
@@ -129,15 +146,17 @@ class _OmegaScans(BasicScanlator):
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
         url_name = await self._get_url_name(raw_url)
-        chapters: list[dict] = await self.bot.apis.omegascans.get_chapters_list(url_name)
+        series_id = await self.get_id(raw_url)
+        chapters: list[dict] = await self.bot.apis.omegascans.get_chapters_list(series_id)
         found_chapters: list[Chapter] = []
         for i, chapter in enumerate(chapters):
             base_chapter_url = await self.format_manga_url(url_name=url_name)
             chapter_url = base_chapter_url.removesuffix("/") + "/" + chapter["chapter_slug"]
             chapter_name = chapter["chapter_name"]
-            if chapter["chapter_title"] is not None:
+            is_premium_chapter = "price" in chapter.keys() and chapter["price"] > 0
+            if chapter.get("chapter_title") is not None:
                 chapter_name += f" - {chapter['chapter_title']}"
-            found_chapters.append(Chapter(chapter_url, chapter_name, i))
+            found_chapters.append(Chapter(chapter_url, chapter_name, i, is_premium=is_premium_chapter))
         return found_chapters
 
     async def get_status(self, raw_url: str) -> str:
@@ -251,12 +270,22 @@ class _MangaparkAndBato(BasicScanlator):
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
         status_selectors = self.json_tree.selectors.status
+        # if both statuses show completed, then return any of the avaialble statuses
+        # otherwise return the one that is not completed!
+        found_statuses = []
         for selector in status_selectors:
-            status = soup.select_one(selector)
-            if status is not None:
-                status_text = status.get_text(strip=True)
-                return re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
-        return "Unknown"
+            statuses = soup.select(selector)
+            if statuses:
+                for status in statuses:
+                    status_text = status.get_text(strip=True)
+                    found_status = re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
+                    found_statuses.append(found_status)
+        if not found_statuses:
+            return "Unknown"
+        for _status in found_statuses:
+            if _status.lower() not in Constants.completed_status_set:
+                return _status
+        return found_statuses[0]
 
 
 class _Zinmanga(BasicScanlator):

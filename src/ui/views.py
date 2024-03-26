@@ -4,8 +4,10 @@ from typing import Iterable, Optional, TYPE_CHECKING, Union
 
 from discord.app_commands import AppCommandError
 
+from .modals import ScanlatorModal
 from ..core.scanlators import scanlators
 from ..core.scanlators.classes import AbstractScanlator
+from ..static import Emotes
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -20,7 +22,7 @@ from discord.ext import commands
 from discord.ui import View, Button
 from discord.ext.commands import Context
 
-from src.core.objects import Bookmark, GuildSettings, Manga
+from src.core.objects import Bookmark, GuildSettings, Manga, ScanlatorChannelAssociation
 from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped, MangaNotFoundError
 
 from src.utils import (
@@ -45,7 +47,7 @@ class BaseView(View):
             timeout: float | None = 60.0,
     ):
         super().__init__(timeout=timeout)
-        self.bot = bot
+        self.bot: MangaClient = bot
         self.interaction_or_ctx: discord.Interaction | Context = interaction
         self.message: discord.Message | None = None
 
@@ -780,6 +782,10 @@ class ConfirmView(BaseView):
         self.value = False
         self.stop()
 
+    @property
+    def result(self) -> bool:
+        return self.value is not None and self.value is True
+
     async def prompt(
             self,
             interaction: discord.Interaction,
@@ -787,7 +793,7 @@ class ConfirmView(BaseView):
             prompt_title: str = "Are you sure?",
             edit_original_response: bool = False,
             ephemeral: bool = True
-    ):
+    ) -> bool:
         """
         Summary:
             Prompts the user to confirm or cancel an action.
@@ -810,12 +816,13 @@ class ConfirmView(BaseView):
         if interaction.response.is_done():  # noqa
             if edit_original_response:
                 await interaction.edit_original_response(embed=embed, view=self)
+                self.message = await interaction.original_response()  # noqas
             else:
-                await interaction.followup.send(embed=embed, ephemeral=ephemeral, view=self)
+                self.message = await interaction.followup.send(embed=embed, ephemeral=ephemeral, view=self, wait=True)
         else:
-            await interaction.response.send_message(embed=embed, ephemeral=ephemeral, view=self)  # noqa
+            self.message = await interaction.response.send_message(embed=embed, ephemeral=ephemeral, view=self)  # noqa
         await self.wait()
-        return False if self.value is None else self.value
+        return self.result
 
 
 class BookmarkChapterView(View):
@@ -833,7 +840,7 @@ class BookmarkChapterView(View):
                 self.add_item(child)
 
     @discord.ui.button(
-        label="☑️ Mark Read", style=discord.ButtonStyle.green, custom_id="btn_mark_read"
+        label="Mark Read", style=discord.ButtonStyle.blurple, custom_id="btn_mark_read", emoji=Emotes.success
     )
     async def mark_read(self, interaction: discord.Interaction, btn: Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
@@ -1184,7 +1191,7 @@ class SubscribeListPaginatorView(PaginatorView):
         )
         await confirm_view.wait()
 
-        if confirm_view.value is None or confirm_view.value is False:  # cancelled = False
+        if not confirm_view.result:  # cancelled = False
             button.disabled = False
             await interaction.edit_original_response(view=self)
             await confirm_view.message.delete()
@@ -1230,24 +1237,29 @@ class SettingsView(BaseView):
         self.clear_items()
         self._refresh_components()
 
-    def _create_embed(self) -> discord.Embed:
+    def create_embed(self) -> discord.Embed:
         channel = self.guild_config.notifications_channel
         role = self.guild_config.default_ping_role
         system_channel = self.guild_config.system_channel
         auto_create_role = self.guild_config.auto_create_role
         show_update_buttons = self.guild_config.show_update_buttons
+        paid_chapter_notifs = self.guild_config.paid_chapter_notifs
 
         text = f"""
         **#️⃣ Updates Channel:** {channel.mention if channel else "Not set."}
         \u200b \u200b \u200b **^** `The channel the bot will send chapter updates to.`
         **🔔 Default Ping Role:** {role.mention if role else "Not set."}
         \u200b \u200b \u200b **^** `The role that will be pinged for all updates.`
-        **🔄️ Auto Create Role:** {'Yes' if auto_create_role else 'No'}
+        **🔄️ Auto Create Role:** {Emotes.success if auto_create_role else Emotes.error}
         \u200b \u200b \u200b **^** `Whether to auto create roles for new tracked manhwa.`
         **❗ System Alerts Channel:** {system_channel.mention if system_channel else "Not set."}
         \u200b \u200b \u200b **^** `The channel to send critical/dev/system alerts to.`
-        **🔘Show Update Buttons:** {'Yes' if show_update_buttons else 'No'}
+        **🔘Show Update Buttons:** {Emotes.success if show_update_buttons else Emotes.error}
         \u200b \u200b \u200b **^** `Whether to show buttons for chapter updates.`
+        **🗨️ Custom Scanlator Channels**: Select for details.
+        \u200b \u200b \u200b **^** `Set custom notification channels for specific scanlators.`
+        **💰 Notify for Paid Chapter releases:** {Emotes.success if paid_chapter_notifs else Emotes.error}
+        \u200b \u200b \u200b **^** `Whether to notify for paid chapter releases.`
         """
         return discord.Embed(
             title="Settings",
@@ -1265,7 +1277,7 @@ class SettingsView(BaseView):
             self.add_item(self.child_map["channel"])
         elif self.selected_option == "default_ping_role":
             self.add_item(self.child_map["role"])
-        elif self.selected_option in ["auto_create_role", "dev_ping", "show_update_buttons"]:
+        elif self.selected_option in ["auto_create_role", "dev_ping", "show_update_buttons", "paid_chapter_notifs"]:
             self.add_item(self.child_map["bool"])
         else:
             raise ValueError(f"Invalid value: {self.selected_option}")
@@ -1277,6 +1289,8 @@ class SettingsView(BaseView):
             discord.SelectOption(label="Auto create role for new tracked manhwa", value="auto_create_role", emoji="🔄"),
             discord.SelectOption(label="Set the system notifications channel", value="system_channel", emoji="❗"),
             discord.SelectOption(label="Show buttons for chapter updates", value="show_update_buttons", emoji="🔘"),
+            discord.SelectOption(label="Custom Scanlator Channels", value="custom_scanlator_channels", emoji="🗨️"),
+            discord.SelectOption(label="Notify for Paid Chapter releases", value="paid_chapter_notifs", emoji="💵"),
         ],
         max_values=1,
         min_values=1,
@@ -1284,15 +1298,23 @@ class SettingsView(BaseView):
         row=0
     )
     async def _default_select_callback(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
-        embed = self._create_embed()
+        if select.values[0] == "custom_scanlator_channels":
+            scanlator_channels_view = ScanlatorChannelAssociationView(self.bot, interaction, self.guild_config)
+            embed: discord.Embed = await scanlator_channels_view.get_display_embed()
+            if not self.guild_config.notifications_channel:
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.edit_message(embed=embed, view=scanlator_channels_view)
+            return
+        embed = self.create_embed()
         self.selected_option = select.values[0]
         self._refresh_components()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
     @discord.ui.select(
         options=[
-            discord.SelectOption(label="Enabled", value="True", emoji="✅"),
-            discord.SelectOption(label="Disabled", value="False", emoji="❌"),
+            discord.SelectOption(label="Enabled", value="True", emoji=Emotes.success),
+            discord.SelectOption(label="Disabled", value="False", emoji=Emotes.error),
         ],
         max_values=1,
         min_values=1,
@@ -1304,11 +1326,13 @@ class SettingsView(BaseView):
             self.guild_config.auto_create_role = select.values[0] == "True"
         elif self.selected_option == "show_update_buttons":
             self.guild_config.show_update_buttons = select.values[0] == "True"
+        elif self.selected_option == "paid_chapter_notifs":
+            self.guild_config.paid_chapter_notifs = select.values[0] == "True"
         else:
             raise ValueError(f"Invalid value: {self.selected_option}")
         self.selected_option = None
         self._refresh_components()
-        embed = self._create_embed()
+        embed = self.create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
     @discord.ui.select(
@@ -1321,7 +1345,7 @@ class SettingsView(BaseView):
         channel_id = select.values[0].id
         channel = interaction.guild.get_channel(channel_id)
         if not channel:
-            embed = self._create_embed()
+            embed = self.create_embed()
             self.selected_option = None
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
@@ -1342,7 +1366,7 @@ class SettingsView(BaseView):
             ("discord.Embed Links", my_perms.embed_links)
         ]
         if not all([x[1] for x in required_perms]):
-            embed = self._create_embed()
+            embed = self.create_embed()
             self.selected_option = None
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
@@ -1363,7 +1387,7 @@ class SettingsView(BaseView):
             self.guild_config.notifications_channel = channel
         self.selected_option = None
         self._refresh_components()
-        embed = self._create_embed()
+        embed = self.create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
     @discord.ui.select(cls=discord.ui.RoleSelect, row=3, placeholder="Select a default role to ping for updates.")
@@ -1371,7 +1395,7 @@ class SettingsView(BaseView):
         role_id = select.values[0].id
         role = interaction.guild.get_role(role_id)
         if not role:
-            embed = self._create_embed()
+            embed = self.create_embed()
             self.selected_option = None
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
@@ -1386,7 +1410,7 @@ class SettingsView(BaseView):
             )
             return
         elif role.position >= interaction.guild.me.top_role.position:
-            embed = self._create_embed()
+            embed = self.create_embed()
             self.selected_option = None
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
@@ -1401,7 +1425,7 @@ class SettingsView(BaseView):
             )
             return
         elif not role.is_assignable() or role.is_bot_managed() or role.is_integration():
-            embed = self._create_embed()
+            embed = self.create_embed()
             self.selected_option = None
             self._refresh_components()
             await interaction.response.edit_message(embed=embed, view=self)  # noqa
@@ -1417,10 +1441,10 @@ class SettingsView(BaseView):
         self.guild_config.default_ping_role = role
         self.selected_option = None
         self._refresh_components()
-        embed = self._create_embed()
+        embed = self.create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
-    @discord.ui.button(label="Done", emoji="☑️", style=discord.ButtonStyle.green, row=4)
+    @discord.ui.button(label="Done", emoji=Emotes.success, style=discord.ButtonStyle.blurple, row=4)
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
         if not self.guild_config.notifications_channel:
             await interaction.response.send_message(  # noqa
@@ -1445,6 +1469,18 @@ class SettingsView(BaseView):
         )
         self.stop()
 
+    @discord.ui.button(label="Cancel", emoji=Emotes.error, style=discord.ButtonStyle.blurple, row=4)
+    async def cancel_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        await interaction.response.edit_message(  # noqas
+            embed=discord.Embed(
+                title="Cancelled",
+                description="Setting changes have been cancelled.",
+                color=discord.Color.green(),
+            ),
+            view=None
+        )
+        self.stop()
+
     @discord.ui.button(label="Delete config", emoji="🗑️", style=discord.ButtonStyle.red, row=4)
     async def delete_config_btn_callback(self, interaction: discord.Interaction, _) -> None:
         await self.bot.db.delete_config(interaction.guild_id)
@@ -1466,7 +1502,7 @@ class SettingsView(BaseView):
         msg = await interaction.followup.send(**send_kwargs)
         if view is not None:
             await view.wait()
-            if view.value is False or view.value is None:
+            if not view.result:
                 return await msg.edit(view=None, embed=discord.Embed(
                     title="Operation Cancelled",
                     description="The bot will not delete the roles it created.",
@@ -1492,14 +1528,293 @@ class SettingsView(BaseView):
                 await self.bot.db.delete_all_guild_created_roles(interaction.guild_id)
         self.stop()
 
-    @discord.ui.button(label="Cancel", emoji="✖️", style=discord.ButtonStyle.red, row=4)
-    async def cancel_btn_callback(self, interaction: discord.Interaction, _) -> None:
-        await interaction.response.edit_message(  # noqas
+
+class ScanlatorChannelAssociationView(BaseView):
+    def __init__(self, bot: MangaClient, interaction: discord.Interaction, temp_config: GuildSettings):
+        super().__init__(bot, interaction)
+        self.interaction: discord.Interaction = interaction
+        self.temp_config: GuildSettings = temp_config
+
+        self.selected_scanlator: str | None = None
+        self.selected_channel: discord.TextChannel | None = None
+        self.used_guild_scanlators: list[str] = []
+        self.current_associations: list[ScanlatorChannelAssociation] = []
+        self.pending_removals: list[str] = []
+        # self._refresh_components()
+
+    async def get_display_embed(self) -> discord.Embed:
+        """
+        Creats an embed showing the current custom scanlator-channel associations, as well as possible new associations
+
+        Returns:
+            discord.Embed: The embed to display
+
+        """
+        if not self.temp_config.notifications_channel:
+            return discord.Embed(
+                title="Channel not set",
+                description="You must set a **Notifications Channel** first and track a manhwa to use this setting.",
+                color=discord.Color.red(),
+            )
+        em = discord.Embed(
+            title="Custom Scanlator Channels",
+            description="Press `New Association` to create a new redirect for a scanlator's notifications.\n",
+            color=discord.Color.blurple()
+        )
+        db_associations = await self.bot.db.get_scanlator_channel_associations(
+            self.interaction.guild_id
+        )
+        db_associations = [x for x in db_associations if x.scanlator not in self.pending_removals]
+        self.current_associations = db_associations + self.current_associations
+        self.current_associations = list({x.scanlator: x for x in self.current_associations}.values())
+
+        em.set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
+        if not self.current_associations:
+            em.description += "\n`No custom scanlator channels set.`\n"
+        else:
+            for association in sorted(self.current_associations, key=lambda x: x.scanlator.lower()):
+                scanlator_name = association.scanlator
+                channel = association.channel
+                em.description += f"\n**`{scanlator_name.title()}`** - {channel.mention}"
+        em.description += "\n"
+
+        association_strings = [x.scanlator for x in self.current_associations]
+        self.used_guild_scanlators = await self.bot.db.get_used_scanlator_names(self.interaction.guild_id)
+        available_associations = sorted(
+            [scanlator.title() for scanlator in self.used_guild_scanlators if scanlator not in association_strings]
+        )
+
+        if available_associations:
+            em.description += "\n**Available Associations**\n"
+            for scanlator in available_associations:
+                em.description += f"**`{scanlator}`**\n"
+        return em
+
+    @discord.ui.button(label="New Association", style=discord.ButtonStyle.blurple, row=0)
+    async def new_association_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        modal = ScanlatorModal(self, self.used_guild_scanlators)
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        if not modal.scanlator:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title=f"Scanlator not found",
+                    description="Please copy and paste the name from the **available scanaltors** provided."
+                ).set_footer(
+                    text=interaction.client.user.display_name,
+                    icon_url=interaction.client.user.display_avatar.url
+                ),
+                ephemeral=True
+            )
+
+        response_embed = discord.Embed(
+            title="Select channel",
+            description=f"Select the channel to redirect updates to for **`{modal.scanlator.title()}`**"
+        )
+        select_view = ChannelSelectorView(
+            self.bot, interaction, self, [discord.ChannelType.text], modal.scanlator
+        )
+        select_msg = await interaction.followup.send(embed=response_embed, view=select_view, ephemeral=True, wait=True)
+        await select_view.wait()
+
+        # check that the bot has the required permissions in the selected channel
+        from ..utils import check_missing_perms
+        missing_perms = check_missing_perms(
+            select_view.selected_channel.permissions, discord.Permissions(
+                send_messages=True, embed_links=True, attach_files=True
+            )
+        )
+        if missing_perms:
+            await select_msg.edit(
+                embed=discord.Embed(
+                    title="Missing Permissions",
+                    description=f"I am missing the following permissions in {select_view.selected_channel.mention}:\n"
+                                f"{' '.join(missing_perms)}\nPlease select another channel or update my permissions "
+                                f"in the selected channel and try agin.",
+                    color=discord.Color.red()
+                ),
+                view=None
+            )
+            return
+
+        guild_config: GuildSettings = await interaction.client.db.get_guild_config(interaction.guild_id)
+        if select_view.selected_channel.id == guild_config.notifications_channel.id:
+            return await select_msg.edit(
+                embed=discord.Embed(
+                    title="Already Set",
+                    description="This channel is already set as the updates channel.",
+                    color=discord.Color.red()
+                ),
+                view=None
+            )
+
+        await select_msg.edit(
             embed=discord.Embed(
-                title="Cancelled",
-                description="Setting changes have been cancelled.",
-                color=discord.Color.green(),
+                title="Redirect Set",
+                description=f"Notifications from **{modal.scanlator.title()}** will "
+                            f"now be sent to {select_view.selected_channel.mention}.\n\n*Don't forget to save your "
+                            f"changes!*",
+                color=discord.Color.green()
             ),
             view=None
         )
+
+        self.current_associations.append(
+            ScanlatorChannelAssociation(
+                self.bot,
+                guild_id=interaction.guild_id,
+                scanlator=modal.scanlator,
+                channel_id=select_view.selected_channel.id
+            )
+        )
+        if modal.scanlator in self.pending_removals:
+            self.pending_removals.remove(modal.scanlator)
+
+        await self.interaction.edit_original_response(embed=await self.get_display_embed(), view=self)
+
+    @discord.ui.button(label="Delete Association", style=discord.ButtonStyle.red, row=0)
+    async def delete_association_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        modal = ScanlatorModal(self, self.used_guild_scanlators)
+        await interaction.response.send_modal(modal)  # noqa: Dynamic typing issue on pycharm :(
+        await modal.wait()
+        if not modal.scanlator:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title=f"Scanlator '{modal.input_value.value}' not found",
+                    description="Please copy and paste the name from the **available scanaltors** provided."
+                ).set_footer(
+                    text=interaction.client.user.display_name,
+                    icon_url=interaction.client.user.display_avatar.url
+                ),
+                ephemeral=True
+            )
+        target_association = [x for x in self.current_associations if x.scanlator != self.selected_scanlator]
+        if not target_association:
+            return await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Association not found",
+                    description=f"No association found for **`{modal.input_value.value}`**.",
+                    color=discord.Color.red()
+                ).set_footer(
+                    text=interaction.client.user.display_name,
+                    icon_url=interaction.client.user.display_avatar.url),
+                ephemeral=True
+            )
+        await interaction.followup.send(
+            embed=discord.Embed(
+                title="Deleted",
+                description=f"Successfully deleted the association for **`{modal.scanlator.title()}`**\n\n*Don't "
+                            f"forget to save your changes!*",
+                color=discord.Color.green()
+            ).set_footer(
+                text=interaction.client.user.display_name,
+                icon_url=interaction.client.user.display_avatar.url
+            ),
+            ephemeral=True
+        )
+        self.current_associations.remove(target_association[0])  # remove the association
+        self.pending_removals.append(modal.scanlator)
+        embed = await self.get_display_embed()
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(label="Save changes", emoji="💾", style=discord.ButtonStyle.green, row=1)
+    async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        # save the association changes here
+        if self.current_associations:
+            associations_to_delete = [x for x in self.current_associations if x.scanlator in self.pending_removals]
+            self.current_associations = [
+                x for x in self.current_associations if x.scanlator not in self.pending_removals
+            ]
+
+            await ScanlatorChannelAssociation.delete_many(associations_to_delete)
+            await ScanlatorChannelAssociation.upsert_many(self.bot, self.current_associations)
+
+        new_view = SettingsView(self.bot, interaction, self.temp_config)
+        embed = new_view.create_embed()
+        await interaction.response.edit_message(embed=embed, view=new_view)  # noqa
+        await interaction.followup.send(
+            embed=discord.Embed(
+                title="Changes Saved",
+                description=f"{Emotes.success} Successfully saved the changes.",
+                colour=discord.Colour.green()
+            ).set_footer(
+                text=interaction.client.user.display_name,
+                icon_url=interaction.client.user.display_avatar.url
+            ),
+            ephemeral=True
+        )
+        self.stop()
+
+    @discord.ui.button(label="Cancel", emoji="✖️", style=discord.ButtonStyle.red, row=1)
+    async def cancel_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        new_view = SettingsView(self.bot, interaction, self.temp_config)
+        embed = new_view.create_embed()
+        await interaction.response.edit_message(embed=embed, view=new_view)
+        self.stop()
+
+    @discord.ui.button(label="Delete all", emoji="🗑️", style=discord.ButtonStyle.red, row=1)
+    async def delete_all_btn_callback(self, interaction: discord.Interaction, _) -> None:
+        if not self.current_associations:
+            return await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="No Associations",
+                    description="There are no custom scanlator-channel associations to delete.",
+                    color=discord.Color.red()
+                ),
+                ephemeral=True
+            )
+        await interaction.response.defer(thinking=False, ephemeral=True)  # noqa
+
+        confirm_view = ConfirmView(self.bot, interaction)
+        result = await confirm_view.prompt(
+            interaction,
+            "Are you sure you want to delete all custom scanlator-channel associations?"
+        )
+        if not result:
+            await confirm_view.message.edit(
+                embed=discord.Embed(
+                    title="Operation Cancelled",
+                    description="The operation was cancelled.",
+                    color=discord.Color.green()
+                ),
+                view=None
+            )
+            return
+        self.pending_removals = [x.scanlator for x in self.current_associations]
+        self.current_associations = []
+        await confirm_view.message.edit(
+            embed=discord.Embed(
+                title="Deleted",
+                description="Successfully deleted all custom scanlator-channel associations.\n\n*Don't forget to "
+                            "save your changes!*",
+                color=discord.Color.green()
+            ),
+            view=None
+        )
+
+        embed = await self.get_display_embed()
+        await interaction.edit_original_response(embed=embed, view=self)
+
+
+class ChannelSelectorView(BaseView):
+    def __init__(self, bot: MangaClient, interaction: discord.Interaction, parent: ScanlatorChannelAssociationView,
+                 channel_types: list[discord.ChannelType], selected_scanlator: str):
+        super().__init__(bot, interaction, timeout=None)
+        self._channel_types: list[discord.ChannelType] = channel_types
+        self.association_view: ScanlatorChannelAssociationView = parent
+        self.selected_scanlator: str = selected_scanlator
+
+        self.selected_channel: discord.app_commands.AppCommandChannel | None = None
+
+        select_to_add = discord.ui.ChannelSelect(
+            placeholder="Select a channel...",
+            channel_types=self._channel_types
+        )
+        select_to_add.callback = partial(self._channel_select_callback, select=select_to_add)
+        self.add_item(select_to_add)
+
+    async def _channel_select_callback(self, interaction: discord.Interaction,
+                                       select: discord.ui.ChannelSelect) -> None:
+        self.selected_channel: discord.app_commands.AppCommandChannel = select.values[0]
+        await interaction.response.defer(ephemeral=True, thinking=False)  # acknowledge the interaction
         self.stop()

@@ -1,16 +1,16 @@
 {
   "static": {
-    "voidscans": {
+    "hivescans": {
       "chapter_ajax": null,
       "request_method": "flare",
-      "url_regex": "(?:https?://)?(?:www\\.)?void-scans\\.com/(?:manga/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?hivescans\\.com/(?:manga/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://void-scans.com",
-        "icon_url": "https://void-scans.com/wp-content/uploads/cropped-cropped-weblogo-1-2.png",
+        "base_url": "https://hivescans.com",
+        "icon_url": "https://hivescans.com/wp-content/uploads/cropped-cropped-weblogo-1-2.png",
         "format_urls": {
-          "manga": "https://void-scans.com/manga/{url_name}/"
+          "manga": "https://hivescans.com/manga/{url_name}/"
         },
-        "latest_updates_url": "https://void-scans.com/",
+        "latest_updates_url": "https://hivescans.com/",
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": false
@@ -52,7 +52,7 @@
         }
       },
       "search": {
-        "url": "https://void-scans.com",
+        "url": "https://hivescans.com",
         "search_param_name": "s",
         "extra_params": {},
         "as_type": "param",
@@ -675,15 +675,17 @@
     "nightscans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?night-scans\\.com/series/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?night-scans\\.com/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://night-scans.com",
         "icon_url": "https://night-scans.com/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png",
         "format_urls": {
-          "manga": "https://night-scans.com/series/{url_name}/"
+          "manga": "https://night-scans.com/series/{id}-{url_name}/"
         },
         "latest_updates_url": "https://night-scans.com",
-        "dynamicURL": false
+        "dynamicURL": true,
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?night-scans\\.com/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
+        "missing_id_connector_char": "-"
       },
       "selectors": {
         "title": [
@@ -1273,15 +1275,15 @@
     "resetscans": {
       "chapter_ajax": "html",
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?reset-scans\\.us/(?:manga/)?(?P<url_name>\\w[\\w-]*?.+?)(?:/chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?reset-scans\\.xyz/(?:manga/)?(?P<url_name>\\w[\\w-]*?.+?)(?:/chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://reset-scans.us",
-        "icon_url": "https://reset-scans.us/wp-content/uploads/2022/10/cropped-01-1-1.png",
+        "base_url": "https://reset-scans.xyz",
+        "icon_url": "https://reset-scans.xyz/wp-content/uploads/2022/10/cropped-01-1-1.png",
         "format_urls": {
-          "manga": "https://reset-scans.us/manga/{url_name}/",
-          "ajax": "https://reset-scans.us/manga/{url_name}/ajax/chapters"
+          "manga": "https://reset-scans.xyz/manga/{url_name}/",
+          "ajax": "https://reset-scans.xyz/manga/{url_name}/ajax/chapters"
         },
-        "latest_updates_url": "https://reset-scans.us",
+        "latest_updates_url": "https://reset-scans.xyz",
         "dynamicURL": false
       },
       "selectors": {
@@ -1327,7 +1329,7 @@
         "unwanted_tags": []
       },
       "search": {
-        "url": "https://reset-scans.us/",
+        "url": "https://reset-scans.xyz/",
         "search_param_name": "s",
         "extra_params": {
           "post_type": "wp-manga",
@@ -1347,15 +1349,17 @@
     "kaiscans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.org/(?:manga/)?(?P<url_name>[\\w-]+?)(?:-chapter-[\\d.-]+)?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.org/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://kaiscans.org",
         "icon_url": "https://i3.wp.com/kaiscans.org/wp-content/uploads/2023/08/cropped-kai-gradient.png",
         "format_urls": {
-          "manga": "https://kaiscans.org/manga/{url_name}/"
+          "manga": "https://kaiscans.org/manga/{id}-{url_name}/"
         },
         "latest_updates_url": "https://kaiscans.org",
-        "dynamicURL": false
+        "dynamicURL": true,
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?kaiscans\\.org/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
+        "missing_id_connector_char": "-"
       },
       "selectors": {
         "title": [
@@ -1375,14 +1379,14 @@
           "div.imptdt:-soup-contains(\"Status\") > i"
         ],
         "front_page": {
-          "container": "div.postbody > div.bixbox > div.listupd > div.utao",
+          "container": "div.postbody > div.bixbox > div.listupd > div.bs > div.bsx",
           "chapters": {
             "container": "ul > li",
             "name": "a",
             "url": "a"
           },
-          "title": "div.luf > a.series",
-          "url": "div.luf > a.series",
+          "title": "div.tt > a",
+          "url": "div.tt > a",
           "cover": "img.ts-post-image, picture.ts-post-image > img"
         },
         "unwanted_tags": [],
@@ -1532,19 +1536,19 @@
         "request_method": "GET"
       }
     },
-    "demoncomics": {
+    "demonreader": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/(?P<url_name>[\\w\\d\\-%\\.]+?)(?:/chapter/\\d+)?-?(?P<id>[\\w\\d]{4})/?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?demonreader\\.org/manga/(?P<url_name>[\\w\\d\\-%\\.]+?)(?:/chapter/\\d+)?-?(?P<id>[\\w\\d]{4})/?$",
       "properties": {
-        "base_url": "https://demoncomics.org",
-        "icon_url": "https://demoncomics.org/img/logo.png",
+        "base_url": "https://demonreader.org",
+        "icon_url": "https://demonreader.org/img/logo.png",
         "format_urls": {
-          "manga": "https://demoncomics.org/manga/{url_name}-{id}"
+          "manga": "https://demonreader.org/manga/{url_name}-{id}"
         },
-        "latest_updates_url": "https://demoncomics.org/updates",
+        "latest_updates_url": "https://demonreader.org/updates",
         "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?demoncomics\\.org/manga/.+?)(?P<id>\\w+)(?P<after_id>/?$)",
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?demonreader\\.org/manga/.+?)(?P<id>\\w+)(?P<after_id>/?$)",
         "missing_id_connector_char": ""
       },
       "selectors": {
@@ -1584,7 +1588,7 @@
       },
       "search": {
         "search_param_name": "manga",
-        "url": "https://demoncomics.org/search.php",
+        "url": "https://demonreader.org/search.php",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -1657,67 +1661,6 @@
         },
         "request_method": "GET",
         "extra_params": {}
-      }
-    },
-    "arvenscans": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?arvenscans\\.org/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://arvenscans.org",
-        "icon_url": "https://arvenscans.org/wp-content/uploads/2023/08/icon_website1.png",
-        "format_urls": {
-          "manga": "https://arvenscans.org/series/{url_name}/"
-        },
-        "latest_updates_url": "https://arvenscans.org",
-        "dynamicURL": false
-      },
-      "selectors": {
-        "title": [
-          "div#titlemove > h1.entry-title"
-        ],
-        "synopsis": "div.entry-content > p",
-        "cover": [
-          "div.thumb > img"
-        ],
-        "chapters": {
-          "container": "div.eplister div.eph-num",
-          "name": "a > span.chapternum",
-          "url": "a"
-        },
-        "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
-        ],
-        "front_page": {
-          "container": "div.listupd div.uta",
-          "chapters": {
-            "container": "ul > li",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.luf > a > h4",
-          "url": "div.luf > a",
-          "cover": "img.ts-post-image, picture.ts-post-image > img"
-        },
-        "unwanted_tags": [
-          "div.entry-content > h3"
-        ],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://arvenscans.org/",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
       }
     },
     "freakcomic": {
@@ -2589,15 +2532,15 @@
           "ul.MuiList-root > a:first-child li > div.MuiListItemText-root > p"
         ],
         "front_page": {
-          "container": "section > div:first-child div.rounded.p-3 > div.lg\\:gap-x-3 > div",
+          "container": "div:not(.container) > h1 + div.grid > div.flex",
           "chapters": {
-            "container": "div.text-center > a",
-            "name": "div > div.chapterName",
+            "container": "div.pb-1 > a",
+            "name": "div > span.text-xxs",
             "url": "_container_"
           },
-          "title": "div.justify-center > a > h5",
-          "url": "div.justify-center > a",
-          "cover": "div > a > img[loading]"
+          "title": "a > h5",
+          "url": "a:has(h5)",
+          "cover": "img"
         },
         "unwanted_tags": [],
         "search": {

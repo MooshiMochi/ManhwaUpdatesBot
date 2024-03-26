@@ -2,6 +2,35 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // March 26th 2024
+
+- Made SettingsView's create_embed method public.
+- Added new scanlator_channel_associations table to the database.
+    - Added get_used_scanlator_names method to the Database class.
+    - Added get_scanlator_channel_associations method to the Database class.
+    - Added upsert_scanlator_channel_associations method to the Database class.
+    - Added delete_scanlator_channel_associations method to the Database class.
+    - Added delete_all_scanlator_channel_associations method to the Database class.
+- Updated the way ConfirmView result is being checked. This is done by a property `result.'
+- Changed void-scans.com to hivescans.com.
+- Changed nightscans to a dynamic url type scanlator.
+- Changed TLD for reset-scans from .us to .xyz.
+- Changed kaiscans to a dynamic url type scanlator and fixed some selectors.
+- Changed domain of demoncomics.org to demonreader.org
+- Removed Arvenscans (now known as Vortexscans) from the bot for now.
+- Added `premium_status` field to the json schema.
+- Added ScanlatorModal that will prompt the user to select a scanlator from the provided options available.
+- Added ScanlatorChannelAssociation class to objects.py.
+- Fixed the emoji string for Emotes.success.
+- Added ability to redirect notifications for each scanlator to a specific channel other than the default one.
+    - See `/settings` for this new feature.
+- Added ScanlatorChannelAssociationView and ChannelSelectorView to the view.py file.
+
+### Bug Fixes:
+
+- Fixed Omegascans website being updateed (including internal API and selectors). Everything should now function
+  normally.
+
 ## // February 20th 2024
 
 - Extensions will now load to the global tree regardless of whether the bot is run in debug mode or not.

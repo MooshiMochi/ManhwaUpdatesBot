@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
 from ..enums import BookmarkFolderType
@@ -50,10 +50,12 @@ class ChapterUpdate:
 
 
 class Chapter:
-    def __init__(self, url: str, name: str, index: int):
+    # def __init__(self, url: str, name: str, index: int, is_premium: bool = False):
+    def __init__(self, url: str, name: str, index: int, *args, **kwargs):
         self.url = url
         self.name = self._fix_chapter_string(name)
         self.index = index
+        # self.is_premium = is_premium
 
     @staticmethod
     def _fix_chapter_string(chapter_string: str) -> str:
@@ -72,7 +74,8 @@ class Chapter:
         return {
             "url": self.url,
             "name": self.name,
-            "index": self.index
+            "index": self.index,
+            # "is_premium": self.is_premium,
         }
 
     def to_json(self):
@@ -476,6 +479,7 @@ class GuildSettings:
             auto_create_role: bool = False,
             system_channel: int | None = None,
             show_update_buttons: bool = True,
+            paid_chapter_notifs: bool = False,
             *args,
             **kwargs,
     ) -> None:
@@ -492,6 +496,7 @@ class GuildSettings:
             self.system_channel: Optional[discord.TextChannel] = None
         self.auto_create_role: bool = bool(auto_create_role)
         self.show_update_buttons: bool = bool(show_update_buttons)
+        self.paid_chapter_notifs: bool = bool(paid_chapter_notifs)
         self._args = args
         self._kwargs = kwargs
 
@@ -514,6 +519,7 @@ class GuildSettings:
             1 if self.auto_create_role else 0,
             self.system_channel.id if self.system_channel else None,
             1 if self.show_update_buttons else 0,
+            1 if self.paid_chapter_notifs else 0,
         )
 
 
@@ -720,3 +726,54 @@ class MangaHeader:
         return isinstance(
             other, (MangaHeader, PartialManga, Manga)
         ) and self.id == other.id and self.scanlator == other.scanlator
+
+
+@dataclass
+class ScanlatorChannelAssociation:
+    bot: MangaClient
+    guild_id: int
+    scanlator: str
+    channel_id: int
+
+    guild: discord.Guild | None = field(default=None, init=False)
+    channel: discord.TextChannel | None = field(default=None, init=False)
+
+    def __post_init__(self):
+        self.guild = self.bot.get_guild(self.guild_id)
+        self.channel = self.guild.get_channel(self.channel_id) if self.guild else None
+
+    def to_tuple(self) -> tuple[int, str, int]:
+        return self.guild_id, self.scanlator, self.channel_id
+
+    @classmethod
+    def from_tuple(cls, bot: MangaClient, data: tuple[int, str, int]) -> "ScanlatorChannelAssociation":
+        return cls(bot, *data)
+
+    @classmethod
+    def from_tuples(cls, bot: MangaClient, data: list[tuple[int, str, int]]) -> list["ScanlatorChannelAssociation"]:
+        return [cls.from_tuple(bot, d) for d in data] if data else []
+
+    async def delete(self) -> bool:
+        return await self.bot.db.delete_scanlator_channel_association(self.guild_id, self.scanlator)
+
+    async def upsert(self) -> bool:
+        return await self.bot.db.upsert_scanlator_channel_association(self)
+
+    async def get_channel(self) -> discord.TextChannel | None:
+        guild = self.bot.get_guild(self.guild_id)
+        return guild.get_channel(self.channel_id) if guild else None
+
+    @classmethod
+    async def upsert_many(cls, bot: MangaClient, data: list["ScanlatorChannelAssociation"]) -> None:
+        await bot.db.upsert_scanlator_channel_associations(data)
+
+    @classmethod
+    async def delete_many(cls, data: list["ScanlatorChannelAssociation"]) -> None:
+        for d in data:
+            await d.delete()
+
+    def __hash__(self):
+        return hash((self.guild_id, self.scanlator, self.channel_id))
+
+    def __repr__(self):
+        return f"ScanlatorChannelAssociation({self.guild.name} [{self.guild_id}] - {self.scanlator} - {self.channel_id})"

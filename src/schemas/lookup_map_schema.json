@@ -183,6 +183,9 @@
                     },
                     "url": {
                       "type": "string"
+                    },
+                    "premium_status": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false,
@@ -245,6 +248,23 @@
                             }
                           ],
                           "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "premium_status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
                         }
                       },
                       "additionalProperties": false,
@@ -320,6 +340,23 @@
                             }
                           ],
                           "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "premium_status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
                         }
                       },
                       "additionalProperties": false,
@@ -723,6 +760,9 @@
                     },
                     "url": {
                       "type": "string"
+                    },
+                    "premium_status": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false,
@@ -785,6 +825,23 @@
                             }
                           ],
                           "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "premium_status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
                         }
                       },
                       "additionalProperties": false,
@@ -860,6 +917,23 @@
                             }
                           ],
                           "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "premium_status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
                         }
                       },
                       "additionalProperties": false,

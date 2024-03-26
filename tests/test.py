@@ -94,7 +94,6 @@ class Bot:
         # await self.cf_scraper.close()
         self.logger.info("Closing test instance...")
 
-        self.curl_session.close() if self.curl_session else None
         if self.apis.flare.is_available:
             self.logger.info("[FlareSolverr] > Begin server session cleanup...")
             await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
@@ -482,7 +481,7 @@ class TestCases(dict):
 
 async def main():
     async with TestCases() as testCases:
-        tests_to_ignore = ["asura", "luminousscans", "rizzcomic", "reaperscans", "manhwa-freak"]
+        tests_to_ignore = ["asura", "lumitoon", "rizzcomic", "reaperscans", "manhwa-freak", "zeroscans", "vortexscan"]
         # "voidscans", "astrascans", "reaperscans"
         await run_tests(testCases, tests_to_ignore)
 
@@ -571,7 +570,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "mangabat"))
-        asyncio.run(test_single_scanlator("newmanhua"))
+        asyncio.run(test_single_scanlator("nightscans"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

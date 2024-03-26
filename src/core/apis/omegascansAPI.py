@@ -83,44 +83,56 @@ class OmegaScansAPI:
         return None
 
     async def get_chapters_list(
-            self, url_name: str, limit: int = -1
+            self, manga_id: str, page: int = 1, limit: int = -1
     ) -> list[Dict[str, Any]]:
         """
         Summary:
             Return a list of chapters in ascending order
 
         Args:
-            url_name (str): The url_name of the manga
+            manga_id (str): The ID of the manga
+            page: (int, optional): The page number to return. Defaults to 1.
             limit (int, optional): The number of chapters to return. Defaults to -1 (no limit).
 
         Returns:
             list[Dict[str, Any]]: A list of chapters in ascending order
 
         """
-        endpoint = f"series/{url_name}"
-        result = await self.__request("GET", endpoint)
-        seasons = result.get("seasons") or {}
-        # no seasons == no chapters so return an empty list
-        if not seasons:
-            return []
-        chapters = []
-        for season in reversed(seasons):  # start from the first season to the latest one (inc order)
-            season_chapters = reversed(season.get("chapters", []))
-            if season_chapters:
-                chapters.extend(list(season_chapters))
-
-        # remove any patreon chapters from being considered by the bot
-        chapters = [x for x in chapters if x.get("price", 0) == 0]
         if limit == 0:
             raise ValueError("limit must be greater than 0")
-        elif limit < 0:
-            return list(chapters)
-        else:
-            return list(chapters)[:limit]
 
-    async def search(self, title: str, limit: Optional[int] = None) -> Dict[str, Any]:
+        endpoint = f"chapter/query?page={page}&perPage=30&series_id={manga_id}"
+        result = await self.__request("GET", endpoint)
+        metadata = result.get("meta", {})
+
+        if not metadata.get("total", 0):  # No chapters available
+            return []
+
+        data = result.get("data", [])
+        # Filter out any chapters that are for patreon only
+        free_chapters = [x for x in data if x.get("price", 0) == 0]
+
+        last_page = metadata.get("last_page", 1)
+        current_page = metadata.get("current_page", 1)
+
+        # Reverse the order of chapters to make it ascending
+        free_chapters = free_chapters[::-1]
+
+        # Check if there are more pages to fetch
+        if current_page < last_page and (limit < 0 or len(free_chapters) < limit):
+            next_limit = limit - len(free_chapters) if limit > 0 else -1
+            next_page_chapters = await self.get_chapters_list(manga_id, page + 1, next_limit)
+            # Since both lists are in ascending order, extend in reverse
+            free_chapters = next_page_chapters + free_chapters
+
+        if limit > 0:
+            return free_chapters[:limit]
+
+        return free_chapters
+
+    async def search(self, title: str, limit: Optional[int] = None) -> list[Any]:
         endpoint = "query"
-        params = {"query_string": title}
+        params = {"adult": "true", "query_string": title}
         kwargs = {}
         if isinstance(self.manager.session, CachedClientSession):
             kwargs["cache_time"] = 0
