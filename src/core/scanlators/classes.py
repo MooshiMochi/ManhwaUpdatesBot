@@ -69,9 +69,15 @@ class _AbstractScanlatorUtilsMixin:
     async def _get_status_tag(self: BasicScanlator, raw_url: str) -> bs4.Tag | None:
         if self.json_tree.properties.no_status:
             method = "POST" if self.json_tree.uses_ajax else "GET"
-            text = await self._get_text(await self.format_manga_url(raw_url, use_ajax_url=True), method=method)  # noqa
+            if not isinstance(self, DynamicURLScanlator):
+                request_url = await self.format_manga_url(raw_url, use_ajax_url=True)
+            else:
+                requests_url = raw_url
+            text = await self._get_text(requests_url, method=method)  # noqa
         else:
-            text = await self._get_text(await self.format_manga_url(raw_url))
+
+            text = await self._get_text(
+                await self.format_manga_url(raw_url) if not isinstance(self, DynamicURLScanlator) else raw_url)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -546,7 +552,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return url_id
 
     async def get_title(self, raw_url: str) -> str | None:
-        text = await self._get_text(await self.format_manga_url(raw_url))
+        if not isinstance(self, DynamicURLScanlator):
+            raw_url = await self.format_manga_url(raw_url)
+        text = await self._get_text(raw_url)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -560,9 +568,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                     return title.get_text(strip=True)
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
-        req_url = await self.format_manga_url(raw_url, use_ajax_url=True)
+        if not isinstance(self, DynamicURLScanlator):
+            raw_url = await self.format_manga_url(raw_url, use_ajax_url=True)
         method = "POST" if self.json_tree.uses_ajax else "GET"
-        text = await self._get_text(req_url, method=method)  # noqa
+        text = await self._get_text(raw_url, method=method)  # noqa
         return self._extract_chapters_from_html(text)
 
     def _extract_chapters_from_html(self, text: str) -> list[Chapter]:
@@ -593,7 +602,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             return re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
 
     async def get_synopsis(self, raw_url: str) -> str:
-        text = await self._get_text(await self.format_manga_url(raw_url))
+        if not isinstance(self, DynamicURLScanlator):
+            raw_url = await self.format_manga_url(raw_url)
+        text = await self._get_text(raw_url)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -603,7 +614,9 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             return synopsis.get_text(strip=True, separator="\n")
 
     async def get_cover(self, raw_url: str) -> str:
-        text = await self._get_text(await self.format_manga_url(raw_url))
+        if not isinstance(self, DynamicURLScanlator):
+            raw_url = await self.format_manga_url(raw_url)
+        text = await self._get_text(raw_url)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 

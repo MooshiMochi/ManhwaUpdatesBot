@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // March 27th 2024
+
+- Added EpsilonScan.fr (adult verison) to the bot.
+
+### Bug Fixes:
+
+- Fixed bug where bot throws error when tracking a series from asura that does not contain an ID.
+
 ## // March 26th 2024
 
 - Made SettingsView's create_embed method public.

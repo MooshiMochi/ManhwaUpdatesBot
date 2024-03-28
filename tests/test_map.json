@@ -918,5 +918,24 @@
       ],
       "has_fp_manhwa": true
     }
+  },
+  "epsilonscan": {
+    "user_input_url": "https://epsilonscan.fr/manga/not-safe-for-work/",
+    "expected_results": {
+      "scanlator_name": "epsilonscan",
+      "manga_url": "https://epsilonscan.fr/manga/not-safe-for-work/",
+      "completed": true,
+      "title": "Not Safe For Work",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-24/",
+      "first_chapter_url": "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-1/",
+      "cover_image": "https://epsilonscan.fr/wp-content/uploads/2024/02/NSFW-cover-02_digital_art_x4_colored_toned_light_ai-1.webp",
+      "last_3_chapter_urls": [
+        "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-22/",
+        "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-23/",
+        "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-24/"
+      ]
+    }
   }
 }

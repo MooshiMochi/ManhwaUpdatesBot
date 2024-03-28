@@ -2431,6 +2431,78 @@
         },
         "request_method": "GET"
       }
+    },
+    "epsilonscan": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?epsilonscan\\.fr/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://epsilonscan.fr",
+        "icon_url": "https://epsilonscan.fr/wp-content/uploads/2024/02/logo_grand_2-1.png",
+        "format_urls": {
+          "manga": "https://epsilonscan.fr/manga/{url_name}/",
+          "ajax": "https://epsilonscan.fr/manga/{url_name}/ajax/chapters"
+        },
+        "latest_updates_url": "https://epsilonscan.fr/",
+        "dynamicURL": false,
+        "requires_update_embed": true,
+        "can_render_cover": true
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1"
+        ],
+        "synopsis": "div.manga-excerpt",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
+        "front_page": {
+          "container": "div.page-item-detail.manga",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a",
+          "url": "div.post-title > h3.h5 > a",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "span.manga-title-badges"
+        ],
+        "search": {
+          "container": "div.c-tabs-item__content",
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          }
+        }
+      },
+      "search": {
+        "url": "https://epsilonscan.fr/",
+        "search_param_name": "s",
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET"
+      }
     }
   },
   "custom": {
