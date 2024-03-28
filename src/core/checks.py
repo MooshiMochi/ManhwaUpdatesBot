@@ -23,8 +23,8 @@ def has_permissions(**perms):
         if not interaction.guild_id:
             return True
         member: discord.Member = interaction.guild.get_member(interaction.user.id)
-        if not member or member.guild_permissions < discord.Permissions(**perms):
-            missing_perms = check_missing_perms(member.guild_permissions, discord.Permissions(**perms))
+        missing_perms = check_missing_perms(member.guild_permissions, discord.Permissions(**perms))
+        if not member or missing_perms:
             raise app_commands.MissingPermissions(missing_perms)
         return True
 
@@ -45,8 +45,7 @@ def bot_has_permissions(**perms):
         # Check if the bot has the required permissions.
         if not interaction.guild_id:
             return True
-        if interaction.guild.me.guild_permissions < discord.Permissions(**perms):
-            missing_perms = check_missing_perms(interaction.guild.me.guild_permissions, discord.Permissions(**perms))
+        if missing_perms := check_missing_perms(interaction.guild.me.guild_permissions, discord.Permissions(**perms)):
             raise app_commands.BotMissingPermissions(missing_perms)
         return True
 

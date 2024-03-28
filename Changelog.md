@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // March 28th 2024
+
+### Bug Fixes:
+
+- Fixed failing permission check.
+
 ## // March 27th 2024
 
 - Added EpsilonScan.fr (adult verison) to the bot.
