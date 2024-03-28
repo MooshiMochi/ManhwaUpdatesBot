@@ -845,9 +845,17 @@ class DynamicURLScanlator(BasicScanlator):
             await self.get_fp_partial_manga()  # this function calls the '_extract_dynamic_ids' method
         for manga in mangas:
             manga._url = manga.url.replace(self.id_placeholder, self.manga_id)
-            manga._last_chapter.url = manga.last_chapter.url.replace(self.id_placeholder, self.chapter_id)
+
+            # if the chapter id is None, remove the placeholder and connecting character
+            to_replace = self.id_placeholder
+            replace_with = self.chapter_id
+            if self.chapter_id is None:
+                to_replace = self.id_placeholder + self.json_tree.properties.missing_id_connector_char
+                replace_with = ""
+
+            manga._last_chapter.url = manga.last_chapter.url.replace(to_replace, replace_with)
             for chapter in manga._available_chapters:
-                chapter.url = chapter.url.replace(self.id_placeholder, self.chapter_id)
+                chapter.url = chapter.url.replace(to_replace, replace_with)
         return mangas
 
     async def _insert_id_placeholder(self, url: str) -> str:

@@ -9,6 +9,7 @@
 ### Bug Fixes:
 
 - Fixed bug where bot throws error when tracking a series from asura that does not contain an ID.
+- Fixed luminousscans breaking update check due to missing chapter id in front page series.
 
 ## // March 26th 2024
 
