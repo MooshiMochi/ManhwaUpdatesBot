@@ -1498,7 +1498,8 @@ class SettingsView(BaseView):
             )
             return
 
-        if self._init_guild_config.bot_manager_role != self.guild_config.bot_manager_role:
+        if (self._init_guild_config.bot_manager_role is not None and
+                self._init_guild_config.bot_manager_role != self.guild_config.bot_manager_role):
             missing_perms = check_missing_perms(interaction.permissions, discord.Permissions(manage_guild=True))
             is_bot_manager = self._init_guild_config.bot_manager_role.id in [role.id for role in interaction.user.roles]
             if is_bot_manager and missing_perms:
