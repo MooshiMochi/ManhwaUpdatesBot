@@ -2,6 +2,11 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // March 29th 2024
+
+- Added new setting -> Set a bot manager role that will give you access to the track commands without requiring perms.
+    - see `/settings` for this option
+
 ## // March 28th 2024
 
 ### Bug Fixes:

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 import discord
 from discord import app_commands
 from discord.ext.commands import Cog
+from src.core import checks
 
 from src.core.objects import GuildSettings
 
@@ -33,22 +34,7 @@ class ConfigCog(Cog):
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return False
-
-        if (
-                interaction.user.guild_permissions.manage_roles
-                or interaction.user.id in self.bot.owner_ids
-                or interaction.user.guild_permissions.administrator
-                or interaction.user.guild_permissions.manage_channels
-        ):
-            return True
-
-        em = discord.Embed(
-            title="Error",
-            description="You don't have permission to do that.",
-            color=0xFF0000,
-        )
-        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
-        return False
+        return True
 
     async def check_for_issues(self, interaction: discord.Interaction):
         """Checks for various system issues and outputs an embed with warnings if any.
@@ -165,7 +151,7 @@ class ConfigCog(Cog):
         name="settings",
         description="View and Edit the server settings."
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @checks.has_permissions(manage_guild=True, is_bot_manager=True)
     @app_commands.guild_only()
     async def _settings(self, interaction: discord.Interaction):
         guild_config: GuildSettings = await self.bot.db.get_guild_config(interaction.guild_id)

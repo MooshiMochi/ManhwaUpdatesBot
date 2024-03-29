@@ -90,7 +90,7 @@ class CommandsCog(commands.Cog):
         ping_role="The role to ping when a notification is sent."
     )
     @checks.bot_has_permissions(manage_roles=True)
-    @checks.has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True, is_bot_manager=True)
     @checks.has_premium(dm_only=True)
     @app_commands.autocomplete(manga_url=autocompletes.track_new_cmd)
     async def track_new(
@@ -197,7 +197,7 @@ class CommandsCog(commands.Cog):
     @app_commands.describe(manga_id="The name of the manga.", role="The new role to ping.")
     @app_commands.autocomplete(manga_id=autocompletes.tracked_manga)
     @app_commands.rename(manga_id="manga")
-    @checks.has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True, is_bot_manager=True)
     @checks.bot_has_permissions(manage_roles=True)
     @checks.has_premium(dm_only=True)
     async def track_update(
@@ -283,7 +283,7 @@ class CommandsCog(commands.Cog):
     )
     @app_commands.autocomplete(manga_id=autocompletes.tracked_manga)
     @app_commands.rename(manga_id="manga")
-    @checks.has_permissions(manage_roles=True)
+    @checks.has_permissions(manage_roles=True, is_bot_manager=True)
     @checks.bot_has_permissions(manage_roles=True)
     @checks.has_premium(dm_only=True)
     async def track_remove(self, interaction: discord.Interaction, manga_id: str, delete_role: Optional[bool] = False):

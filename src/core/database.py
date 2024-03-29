@@ -108,6 +108,7 @@ class Database:
                     system_channel_id INTEGER default null,
                     show_update_buttons BOOLEAN NOT NULL DEFAULT true,
                     paid_chapter_notifications BOOLEAN NOT NULL DEFAULT false,
+                    bot_manager_role_id INTEGER DEFAULT NULL,
                     UNIQUE (guild_id) ON CONFLICT IGNORE
                 )
                 """
@@ -576,13 +577,15 @@ class Database:
                 """
                 INSERT INTO guild_config (
                     guild_id, notifications_channel_id, default_ping_role_id, 
-                    auto_create_role, system_channel_id, show_update_buttons, paid_chapter_notifications
+                    auto_create_role, system_channel_id, show_update_buttons, 
+                    paid_chapter_notifications, bot_manager_role_id
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT(guild_id)
                 DO UPDATE SET 
                     notifications_channel_id = $2, default_ping_role_id = $3, 
-                    auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6, paid_chapter_notifications = $7
+                    auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6, 
+                    paid_chapter_notifications = $7, bot_manager_role_id = $8
                 WHERE guild_id = $1;
                 """,
                 settings.to_tuple(),
@@ -1756,3 +1759,44 @@ class Database:
                 (guild_id,)
             )
             await db.commit()
+
+    async def get_guild_manager_role(self, guild_id: int) -> int | None:
+        """
+        Summary:
+            Returns the guild's manager role ID.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            int | None: The guild's manager role ID.
+        """
+        async with aiosqlite.connect(self.db_name) as db:
+            cursor = await db.execute(
+                """
+                SELECT bot_manager_role_id FROM guild_config WHERE guild_id = $1;
+                """,
+                (guild_id,),
+            )
+            result = await cursor.fetchone()
+            if result:
+                return result[0]
+
+    async def set_guild_manager_role(self, guild_id: int, role_id: int) -> None:
+        """
+        Summary:
+            Sets the guild's manager role ID.
+
+        Args:
+            guild_id: int - The guild's ID
+            role_id: int - The role's ID
+
+        Returns:
+            None
+        """
+        await self.execute(
+            """
+            UPDATE guild_config SET bot_manager_role_id = $1 WHERE guild_id = $2;
+            """,
+            role_id, guild_id
+        )

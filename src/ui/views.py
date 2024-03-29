@@ -26,7 +26,7 @@ from src.core.objects import Bookmark, GuildSettings, Manga, ScanlatorChannelAss
 from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped, MangaNotFoundError
 
 from src.utils import (
-    create_bookmark_embed,
+    check_missing_perms, create_bookmark_embed,
     create_dynamic_grouped_embeds, modify_embeds, respond_if_limit_reached, sort_bookmarks,
     group_items_by,
     get_manga_scanlator_class
@@ -1219,6 +1219,7 @@ class SettingsView(BaseView):
     def __init__(self, bot: MangaClient, interaction: discord.Interaction, guild_config: GuildSettings):
         super().__init__(bot, interaction, timeout=2 * 24 * 60 * 60)  # 2 days timeout
         self.bot = bot
+        self._init_guild_config: GuildSettings = GuildSettings.from_tuple(self.bot, guild_config.to_tuple())
         self.guild_config: GuildSettings = guild_config
         self.selected_option: str | None = None
 
@@ -1234,12 +1235,15 @@ class SettingsView(BaseView):
         self.child_map["role"] = self.child_map.pop(3)
         self.child_map["buttons"]: list[discord.ui.Button] = [x for x in self.children if x.row == 4]  # noqa
 
+        self.delete_mode: bool = False
+
         self.clear_items()
         self._refresh_components()
 
     def create_embed(self) -> discord.Embed:
         channel = self.guild_config.notifications_channel
-        role = self.guild_config.default_ping_role
+        ping_role = self.guild_config.default_ping_role
+        bot_manager_role = self.guild_config.bot_manager_role
         system_channel = self.guild_config.system_channel
         auto_create_role = self.guild_config.auto_create_role
         show_update_buttons = self.guild_config.show_update_buttons
@@ -1248,12 +1252,14 @@ class SettingsView(BaseView):
         text = f"""
         **#️⃣ Updates Channel:** {channel.mention if channel else "Not set."}
         \u200b \u200b \u200b **^** `The channel the bot will send chapter updates to.`
-        **🔔 Default Ping Role:** {role.mention if role else "Not set."}
+        **🔔 Default Ping Role:** {ping_role.mention if ping_role else "Not set."}
         \u200b \u200b \u200b **^** `The role that will be pinged for all updates.`
         **🔄️ Auto Create Role:** {Emotes.success if auto_create_role else Emotes.error}
         \u200b \u200b \u200b **^** `Whether to auto create roles for new tracked manhwa.`
         **❗ System Alerts Channel:** {system_channel.mention if system_channel else "Not set."}
         \u200b \u200b \u200b **^** `The channel to send critical/dev/system alerts to.`
+        **🔧 Bot Manager Role:** {bot_manager_role.mention if bot_manager_role else "Not set."}
+        \u200b \u200b \u200b **^** `The role the bot will consider as a manager role.`
         **🔘Show Update Buttons:** {Emotes.success if show_update_buttons else Emotes.error}
         \u200b \u200b \u200b **^** `Whether to show buttons for chapter updates.`
         **🗨️ Custom Scanlator Channels**: Select for details.
@@ -1261,11 +1267,12 @@ class SettingsView(BaseView):
         **💰 Notify for Paid Chapter releases:** {Emotes.success if paid_chapter_notifs else Emotes.error}
         \u200b \u200b \u200b **^** `Whether to notify for paid chapter releases.`
         """
-        return discord.Embed(
-            title="Settings",
-            description=f"__Select the setting you want to edit.__\n{text}",
-            color=discord.Color.blurple(),
-        )
+        desc = f"__Select the setting you want to edit.__"
+        if self.delete_mode:
+            desc = (f"{Emotes.warning} **DELETE MODE IS ENABLED** {Emotes.warning}\n"
+                    f"__Select the setting you want to delete.__")
+
+        return discord.Embed(title="Settings", description=desc + "\n" + text, color=discord.Color.blurple())
 
     def _refresh_components(self):
         self.clear_items()
@@ -1275,7 +1282,7 @@ class SettingsView(BaseView):
                 self.add_item(item)
         elif self.selected_option in ["channel", "system_channel"]:
             self.add_item(self.child_map["channel"])
-        elif self.selected_option == "default_ping_role":
+        elif self.selected_option in ["default_ping_role", "bot_manager_role"]:
             self.add_item(self.child_map["role"])
         elif self.selected_option in ["auto_create_role", "dev_ping", "show_update_buttons", "paid_chapter_notifs"]:
             self.add_item(self.child_map["bool"])
@@ -1287,6 +1294,7 @@ class SettingsView(BaseView):
             discord.SelectOption(label="Set the updates channel", value="channel", emoji="#️⃣"),
             discord.SelectOption(label="Set Default ping role", value="default_ping_role", emoji="🔔"),
             discord.SelectOption(label="Auto create role for new tracked manhwa", value="auto_create_role", emoji="🔄"),
+            discord.SelectOption(label="Set the bot manager role", value="bot_manager_role", emoji="🔧"),
             discord.SelectOption(label="Set the system notifications channel", value="system_channel", emoji="❗"),
             discord.SelectOption(label="Show buttons for chapter updates", value="show_update_buttons", emoji="🔘"),
             discord.SelectOption(label="Custom Scanlator Channels", value="custom_scanlator_channels", emoji="🗨️"),
@@ -1302,12 +1310,37 @@ class SettingsView(BaseView):
             scanlator_channels_view = ScanlatorChannelAssociationView(self.bot, interaction, self.guild_config)
             embed: discord.Embed = await scanlator_channels_view.get_display_embed()
             if not self.guild_config.notifications_channel:
-                await interaction.response.send_message(embed=embed, ephemeral=True)
+                await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
             else:
-                await interaction.response.edit_message(embed=embed, view=scanlator_channels_view)
+                await interaction.response.edit_message(embed=embed, view=scanlator_channels_view)  # noqa
             return
+
+        if self.delete_mode:
+            match select.values[0]:
+                case "default_ping_role":
+                    self.guild_config.default_ping_role = None
+                case "bot_manager_role":
+                    self.guild_config.bot_manager_role = None
+                case "system_channel":
+                    self.guild_config.system_channel = None
+                case "auto_create_role":
+                    self.guild_config.auto_create_role = False
+                case "show_update_buttons":
+                    self.guild_config.show_update_buttons = False
+                case "paid_chapter_notifs":
+                    self.guild_config.paid_chapter_notifs = False
+                case "channel":
+                    return await interaction.response.send_message(  # noqa
+                        embed=discord.Embed(
+                            title="Cannot delete updates channel",
+                            description="If you truly wish to remove it, use the `🗑️ Delete config` button instead.",
+                            colour=discord.Colour.red()
+                        ),
+                        ephemeral=True
+                    )
+        else:
+            self.selected_option = select.values[0]
         embed = self.create_embed()
-        self.selected_option = select.values[0]
         self._refresh_components()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
@@ -1409,6 +1442,7 @@ class SettingsView(BaseView):
                 ephemeral=True
             )
             return
+
         elif role.position >= interaction.guild.me.top_role.position:
             embed = self.create_embed()
             self.selected_option = None
@@ -1417,7 +1451,7 @@ class SettingsView(BaseView):
             await interaction.followup.send(  # noqa
                 embed=discord.Embed(
                     title="Role too high",
-                    description=f"The <@&{role_id}> role is too high for me to ping!\n"
+                    description=f"The <@&{role.id}> role is too high for me to ping!\n"
                                 f"Please move it below my top role.",
                     colour=discord.Colour.red(),
                 ),
@@ -1432,13 +1466,19 @@ class SettingsView(BaseView):
             await interaction.followup.send(  # noqa
                 embed=discord.Embed(
                     title="Role is not assignable",
-                    description=f"I cannot assign the <@&{role_id}> role to users.\n"
+                    description=f"I cannot assign the <@&{role.id}> role to users.\n"
                                 f"Please use a different role.",
                 ),
                 ephemeral=True
             )
             return
-        self.guild_config.default_ping_role = role
+
+        if self.selected_option == "default_ping_role":
+            self.guild_config.default_ping_role = role
+
+        elif self.selected_option == "bot_manager_role":
+            self.guild_config.bot_manager_role = role
+
         self.selected_option = None
         self._refresh_components()
         embed = self.create_embed()
@@ -1449,13 +1489,34 @@ class SettingsView(BaseView):
         if not self.guild_config.notifications_channel:
             await interaction.response.send_message(  # noqa
                 embed=discord.Embed(
-                    title="Channel not set",
-                    description="You must set a channel to send updates to.",
+                    title="Cannot save changes",
+                    description="You must set a channel to send updates to.\n"
+                                "If you are deleting settings, please use the `🗑️ Delete Config` button instead.",
                     color=discord.Color.red(),
                 ),
                 ephemeral=True
             )
             return
+
+        if self._init_guild_config.bot_manager_role != self.guild_config.bot_manager_role:
+            missing_perms = check_missing_perms(interaction.permissions, discord.Permissions(manage_guild=True))
+            is_bot_manager = self._init_guild_config.bot_manager_role.id in [role.id for role in interaction.user.roles]
+            if is_bot_manager and missing_perms:
+                self.guild_config.bot_manager_role = self._init_guild_config.bot_manager_role
+                self.selected_option = None
+                self._refresh_components()
+                embed = self.create_embed()
+                await interaction.response.edit_message(embed=embed, view=self)  # noqa
+                missing_perms = ", ".join([s.replace("_", " ").title() for s in missing_perms])
+                return await interaction.followup.send(  # noqa
+                    embed=discord.Embed(
+                        title="Missing Permissions",
+                        description=f"Sorry, you don't have the required permissions to edit or "
+                                    f"remove the `bot manager role`.\n"
+                                    f"Missing permissions: `{missing_perms}`",
+                        colour=discord.Colour.red()
+                    ), ephemeral=True
+                )
 
         await self.bot.db.upsert_config(self.guild_config)
         await interaction.response.edit_message(view=None)  # noqa
@@ -1480,6 +1541,18 @@ class SettingsView(BaseView):
             view=None
         )
         self.stop()
+
+    @discord.ui.button(label="Delete Mode: Off", emoji=Emotes.warning, style=discord.ButtonStyle.green, row=4)
+    async def delete_mode_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.delete_mode = not self.delete_mode
+        if self.delete_mode:
+            button.label = "Delete Mode: On"
+            button.style = discord.ButtonStyle.red
+        else:
+            button.label = "Delete Mode: Off"
+            button.style = discord.ButtonStyle.green
+        embed = self.create_embed()
+        await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
     @discord.ui.button(label="Delete config", emoji="🗑️", style=discord.ButtonStyle.red, row=4)
     async def delete_config_btn_callback(self, interaction: discord.Interaction, _) -> None:

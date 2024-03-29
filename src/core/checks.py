@@ -13,6 +13,7 @@ def has_permissions(**perms):
     A check that checks if the user has the required permissions to run the command.
     Args:
         perms: The permissions to check for.
+        is_bot_manager: Whether to check if the user has the bot manager role configured for the guild as well.
 
     Returns:
         A check function.
@@ -23,8 +24,19 @@ def has_permissions(**perms):
         if not interaction.guild_id:
             return True
         member: discord.Member = interaction.guild.get_member(interaction.user.id)
+        is_manager_perm = perms.pop("is_bot_manager", None)
         missing_perms = check_missing_perms(member.guild_permissions, discord.Permissions(**perms))
-        if not member or missing_perms:
+
+        if is_manager_perm is not None:
+            perms["is_bot_manager"] = is_manager_perm
+
+        if is_manager_perm:
+            manager_role_id = await interaction.client.db.get_guild_manager_role(interaction.guild_id)
+            if manager_role_id is not None:
+                if manager_role_id not in [role.id for role in interaction.user.roles] and missing_perms:
+                    raise app_commands.MissingRole(manager_role_id)
+                return True  # If the user has the bot manager role, return True.
+        if missing_perms:
             raise app_commands.MissingPermissions(missing_perms)
         return True
 

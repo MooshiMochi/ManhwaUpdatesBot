@@ -502,7 +502,7 @@
     <routine id="191" parent="1" name="fts5"/>
     <schema id="192" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2024-03-25.02:43:10</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2024-03-29.00:43:16</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="193" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1740,272 +1740,277 @@ role_id</ColNames>
       <NotNull>1</NotNull>
       <Position>7</Position>
     </column>
-    <index id="592" parent="560" name="sqlite_autoindex_guild_config_1">
+    <column id="592" parent="560" name="bot_manager_role_id">
+      <DasType>INTEGER|0s</DasType>
+      <DefaultExpression>NULL</DefaultExpression>
+      <Position>8</Position>
+    </column>
+    <index id="593" parent="560" name="sqlite_autoindex_guild_config_1">
       <ColNames>guild_id</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="593" parent="560">
+    <key id="594" parent="560">
       <ColNames>guild_id</ColNames>
       <Primary>1</Primary>
       <UnderlyingIndexName>sqlite_autoindex_guild_config_1</UnderlyingIndexName>
     </key>
-    <key id="594" parent="560">
+    <key id="595" parent="560">
       <ColNames>guild_id</ColNames>
       <OnConflict>ignore</OnConflict>
       <UnderlyingIndexName>sqlite_autoindex_guild_config_1</UnderlyingIndexName>
     </key>
-    <column id="595" parent="561" name="email">
+    <column id="596" parent="561" name="email">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>1</Position>
     </column>
-    <column id="596" parent="561" name="user_id">
+    <column id="597" parent="561" name="user_id">
       <DasType>INTEGER|0s</DasType>
       <Position>2</Position>
     </column>
-    <column id="597" parent="561" name="first_name">
+    <column id="598" parent="561" name="first_name">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>3</Position>
     </column>
-    <column id="598" parent="561" name="last_name">
+    <column id="599" parent="561" name="last_name">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>4</Position>
     </column>
-    <index id="599" parent="561" name="sqlite_autoindex_patreons_1">
+    <index id="600" parent="561" name="sqlite_autoindex_patreons_1">
       <ColNames>email</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="600" parent="561">
+    <key id="601" parent="561">
       <ColNames>email</ColNames>
       <Primary>1</Primary>
       <UnderlyingIndexName>sqlite_autoindex_patreons_1</UnderlyingIndexName>
     </key>
-    <key id="601" parent="561">
+    <key id="602" parent="561">
       <ColNames>email</ColNames>
       <OnConflict>replace</OnConflict>
       <UnderlyingIndexName>sqlite_autoindex_patreons_1</UnderlyingIndexName>
     </key>
-    <column id="602" parent="562" name="guild_id">
+    <column id="603" parent="562" name="guild_id">
       <DasType>INTEGER|0s</DasType>
       <NotNull>1</NotNull>
       <Position>1</Position>
     </column>
-    <column id="603" parent="562" name="scanlator">
+    <column id="604" parent="562" name="scanlator">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>2</Position>
     </column>
-    <column id="604" parent="562" name="channel_id">
+    <column id="605" parent="562" name="channel_id">
       <DasType>INTEGER|0s</DasType>
       <NotNull>1</NotNull>
       <Position>3</Position>
     </column>
-    <foreign-key id="605" parent="562">
+    <foreign-key id="606" parent="562">
       <ColNames>guild_id</ColNames>
       <RefColNames>guild_id</RefColNames>
       <RefTableName>guild_config</RefTableName>
     </foreign-key>
-    <index id="606" parent="562" name="sqlite_autoindex_scanlator_channel_associations_1">
+    <index id="607" parent="562" name="sqlite_autoindex_scanlator_channel_associations_1">
       <ColNames>guild_id
 scanlator
 channel_id</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="607" parent="562">
+    <key id="608" parent="562">
       <ColNames>guild_id
 scanlator
 channel_id</ColNames>
       <OnConflict>replace</OnConflict>
       <UnderlyingIndexName>sqlite_autoindex_scanlator_channel_associations_1</UnderlyingIndexName>
     </key>
-    <column id="608" parent="563" name="scanlator">
+    <column id="609" parent="563" name="scanlator">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>1</Position>
     </column>
-    <column id="609" parent="563" name="enabled">
+    <column id="610" parent="563" name="enabled">
       <DasType>BOOLEAN|0s</DasType>
       <DefaultExpression>1</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>2</Position>
     </column>
-    <index id="610" parent="563" name="sqlite_autoindex_scanlators_config_1">
+    <index id="611" parent="563" name="sqlite_autoindex_scanlators_config_1">
       <ColNames>scanlator</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="611" parent="563">
+    <key id="612" parent="563">
       <ColNames>scanlator</ColNames>
       <Primary>1</Primary>
       <UnderlyingIndexName>sqlite_autoindex_scanlators_config_1</UnderlyingIndexName>
     </key>
-    <column id="612" parent="564" name="id">
+    <column id="613" parent="564" name="id">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>1</Position>
     </column>
-    <column id="613" parent="564" name="title">
+    <column id="614" parent="564" name="title">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>2</Position>
     </column>
-    <column id="614" parent="564" name="url">
+    <column id="615" parent="564" name="url">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>3</Position>
     </column>
-    <column id="615" parent="564" name="synopsis">
+    <column id="616" parent="564" name="synopsis">
       <DasType>TEXT|0s</DasType>
       <Position>4</Position>
     </column>
-    <column id="616" parent="564" name="series_cover_url">
+    <column id="617" parent="564" name="series_cover_url">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>5</Position>
     </column>
-    <column id="617" parent="564" name="last_chapter">
+    <column id="618" parent="564" name="last_chapter">
       <DasType>TEXT|0s</DasType>
       <Position>6</Position>
     </column>
-    <column id="618" parent="564" name="available_chapters">
+    <column id="619" parent="564" name="available_chapters">
       <DasType>TEXT|0s</DasType>
       <Position>7</Position>
     </column>
-    <column id="619" parent="564" name="status">
+    <column id="620" parent="564" name="status">
       <DasType>TEXT|0s</DasType>
       <DefaultExpression>&apos;Ongoing&apos;</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>8</Position>
     </column>
-    <column id="620" parent="564" name="scanlator">
+    <column id="621" parent="564" name="scanlator">
       <DasType>TEXT|0s</DasType>
       <DefaultExpression>&apos;Unknown&apos;</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>9</Position>
     </column>
-    <index id="621" parent="564" name="sqlite_autoindex_series_1">
+    <index id="622" parent="564" name="sqlite_autoindex_series_1">
       <ColNames>id
 scanlator</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="622" parent="564">
+    <key id="623" parent="564">
       <ColNames>id
 scanlator</ColNames>
       <OnConflict>ignore</OnConflict>
       <UnderlyingIndexName>sqlite_autoindex_series_1</UnderlyingIndexName>
     </key>
-    <column id="623" parent="565" name="type">
+    <column id="624" parent="565" name="type">
       <DasType>TEXT|0s</DasType>
       <Position>1</Position>
     </column>
-    <column id="624" parent="565" name="name">
+    <column id="625" parent="565" name="name">
       <DasType>TEXT|0s</DasType>
       <Position>2</Position>
     </column>
-    <column id="625" parent="565" name="tbl_name">
+    <column id="626" parent="565" name="tbl_name">
       <DasType>TEXT|0s</DasType>
       <Position>3</Position>
     </column>
-    <column id="626" parent="565" name="rootpage">
+    <column id="627" parent="565" name="rootpage">
       <DasType>INT|0s</DasType>
       <Position>4</Position>
     </column>
-    <column id="627" parent="565" name="sql">
+    <column id="628" parent="565" name="sql">
       <DasType>TEXT|0s</DasType>
       <Position>5</Position>
     </column>
-    <column id="628" parent="566" name="guild_id">
+    <column id="629" parent="566" name="guild_id">
       <DasType>INTEGER|0s</DasType>
       <NotNull>1</NotNull>
       <Position>1</Position>
     </column>
-    <column id="629" parent="566" name="series_id">
+    <column id="630" parent="566" name="series_id">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>2</Position>
     </column>
-    <column id="630" parent="566" name="role_id">
+    <column id="631" parent="566" name="role_id">
       <DasType>INTEGER|0s</DasType>
       <Position>3</Position>
     </column>
-    <column id="631" parent="566" name="scanlator">
+    <column id="632" parent="566" name="scanlator">
       <DasType>TEXT|0s</DasType>
       <DefaultExpression>&apos;Unknown&apos;</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>4</Position>
     </column>
-    <foreign-key id="632" parent="566">
+    <foreign-key id="633" parent="566">
       <ColNames>guild_id</ColNames>
       <RefColNames>guild_id</RefColNames>
       <RefTableName>guild_config_old</RefTableName>
     </foreign-key>
-    <foreign-key id="633" parent="566">
+    <foreign-key id="634" parent="566">
       <ColNames>series_id</ColNames>
       <RefColNames>id</RefColNames>
       <RefTableName>series_old</RefTableName>
     </foreign-key>
-    <foreign-key id="634" parent="566">
+    <foreign-key id="635" parent="566">
       <ColNames>scanlator</ColNames>
       <RefColNames>scanlator</RefColNames>
       <RefTableName>series_old</RefTableName>
     </foreign-key>
-    <index id="635" parent="566" name="sqlite_autoindex_tracked_guild_series_1">
+    <index id="636" parent="566" name="sqlite_autoindex_tracked_guild_series_1">
       <ColNames>guild_id
 series_id
 scanlator</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="636" parent="566">
+    <key id="637" parent="566">
       <ColNames>guild_id
 series_id
 scanlator</ColNames>
       <OnConflict>replace</OnConflict>
       <UnderlyingIndexName>sqlite_autoindex_tracked_guild_series_1</UnderlyingIndexName>
     </key>
-    <column id="637" parent="567" name="id">
+    <column id="638" parent="567" name="id">
       <DasType>INTEGER|0s</DasType>
       <NotNull>1</NotNull>
       <Position>1</Position>
     </column>
-    <column id="638" parent="567" name="series_id">
+    <column id="639" parent="567" name="series_id">
       <DasType>TEXT|0s</DasType>
       <NotNull>1</NotNull>
       <Position>2</Position>
     </column>
-    <column id="639" parent="567" name="guild_id">
+    <column id="640" parent="567" name="guild_id">
       <DasType>INTEGER|0s</DasType>
       <NotNull>1</NotNull>
       <Position>3</Position>
     </column>
-    <column id="640" parent="567" name="scanlator">
+    <column id="641" parent="567" name="scanlator">
       <DasType>TEXT|0s</DasType>
       <DefaultExpression>&apos;Unknown&apos;</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>4</Position>
     </column>
-    <foreign-key id="641" parent="567">
+    <foreign-key id="642" parent="567">
       <ColNames>series_id</ColNames>
       <RefColNames>id</RefColNames>
       <RefTableName>series</RefTableName>
     </foreign-key>
-    <foreign-key id="642" parent="567">
+    <foreign-key id="643" parent="567">
       <ColNames>guild_id</ColNames>
       <RefColNames>guild_id</RefColNames>
       <RefTableName>guild_config_old</RefTableName>
     </foreign-key>
-    <foreign-key id="643" parent="567">
+    <foreign-key id="644" parent="567">
       <ColNames>scanlator</ColNames>
       <RefColNames>scanlator</RefColNames>
       <RefTableName>series</RefTableName>
     </foreign-key>
-    <index id="644" parent="567" name="sqlite_autoindex_user_subs_1">
+    <index id="645" parent="567" name="sqlite_autoindex_user_subs_1">
       <ColNames>id
 series_id
 scanlator
@@ -2013,7 +2018,7 @@ guild_id</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="645" parent="567">
+    <key id="646" parent="567">
       <ColNames>id
 series_id
 scanlator

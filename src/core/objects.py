@@ -480,6 +480,7 @@ class GuildSettings:
             system_channel: int | None = None,
             show_update_buttons: bool = True,
             paid_chapter_notifs: bool = False,
+            bot_manager_role: int | None = None,
             *args,
             **kwargs,
     ) -> None:
@@ -489,10 +490,12 @@ class GuildSettings:
         if self.guild:
             self.notifications_channel: discord.TextChannel = self.guild.get_channel(notifications_channel_id)
             self.default_ping_role: Optional[discord.Role] = self.guild.get_role(default_ping_role_id)
+            self.bot_manager_role: Optional[discord.Role] = self.guild.get_role(bot_manager_role)
             self.system_channel: Optional[discord.TextChannel] = self.guild.get_channel(system_channel)
         else:
             self.notifications_channel: Optional[discord.TextChannel] = None
             self.default_ping_role: Optional[discord.Role] = None
+            self.bot_manager_role: Optional[discord.Role] = None
             self.system_channel: Optional[discord.TextChannel] = None
         self.auto_create_role: bool = bool(auto_create_role)
         self.show_update_buttons: bool = bool(show_update_buttons)
@@ -520,6 +523,8 @@ class GuildSettings:
             self.system_channel.id if self.system_channel else None,
             1 if self.show_update_buttons else 0,
             1 if self.paid_chapter_notifs else 0,
+            self.bot_manager_role.id if self.bot_manager_role else None,
+
         )
 
 
