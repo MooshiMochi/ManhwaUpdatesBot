@@ -14,13 +14,12 @@ import patreon
 from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError, ClientResponseError
 from patreon.jsonapi.parser import JSONAPIResource
 
-import src.utils
 from src.core.errors import CustomError, URLAccessFailed
 from src.core.objects import ChapterUpdate, MangaHeader, PartialManga, Patron
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
 from src.ui.views import BookmarkChapterView
-from src.utils import chunked, group_items_by
+from src.utils import check_missing_perms, chunked, group_items_by
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -344,9 +343,9 @@ class UpdateCheckCog(commands.Cog):
         for guild_id in guilds_to_updates:
             guild_config = await self.bot.db.get_guild_config(guild_id)
             scanlator_associations = await self.bot.db.get_scanlator_channel_associations(guild_id)
-            scanlator_associations = {x.scanlator: x for x in scanlator_associations}
+            scanlator_associations = {x.scanlator: x.channel for x in scanlator_associations}
             updates = guilds_to_updates[guild_id]
-            if not (guild_config and updates and guild_config.notifications_channel):
+            if not guild_config or not updates or not guild_config.notifications_channel:
                 continue
             if not guild_config.notifications_channel.permissions_for(guild_config.guild.me).send_messages:
                 self.logger.warning(
@@ -376,12 +375,13 @@ class UpdateCheckCog(commands.Cog):
                         spoiler_text = ""
 
                     noti_channel = scanlator_associations.get(update.scanlator, guild_config.notifications_channel)
-                    if src.utils.check_missing_perms(  # there are missing perms if this is not empty
-                            noti_channel.permissions_for(guild_config.guild.me),
+                    if check_missing_perms(  # there are missing perms if this is not empty
+                            noti_channel.permissions_for(noti_channel.guild.me),
                             discord.Permissions(
                                 send_messages=True, embed_links=True, attach_files=True, use_external_emojis=True)
                     ):
                         continue
+                    await noti_channel.send("TEST")
                     try:
                         await noti_channel.send(
                             (
