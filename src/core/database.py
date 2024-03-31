@@ -262,7 +262,7 @@ class Database:
                     DELETE FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
                     AND (SELECT status FROM series WHERE id = $1 AND scanlator = $2) IN ({completed_db_set});
                     """,
-                series_id, scanlator
+                (series_id, scanlator)
             )
             await db.commit()
             return cursor.rowcount if cursor.rowcount > 0 else 0
