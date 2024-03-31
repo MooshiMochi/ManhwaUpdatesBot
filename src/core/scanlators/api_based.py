@@ -8,7 +8,6 @@ import discord
 from src.core.objects import Chapter, PartialManga
 from .classes import AbstractScanlator, scanlators
 from ...static import RegExpressions
-from ...utils import raise_and_report_for_status
 
 __all__ = (
     "scanlators",
@@ -17,8 +16,8 @@ __all__ = (
 
 class _Comick(AbstractScanlator):
     rx: re.Pattern = RegExpressions.comick_url
-    icon_url = "https://comick.cc/static/icons/unicorn-256_maskable.png"
-    base_url = "https://comick.cc"
+    icon_url = "https://comick.io/static/icons/unicorn-256_maskable.png"
+    base_url = "https://comick.io"
     fmt_url = base_url + "/comic/{url_name}?lang=en"
     chp_url_fmt = base_url + "/comic/{url_name}/{chapter_id}"
 
@@ -48,14 +47,14 @@ class _Comick(AbstractScanlator):
         return self.rx.search(raw_url) is not None
 
     async def get_synopsis(self, raw_url: str) -> str:
-        manga_id = await self.get_id(raw_url)
-        return await self.bot.apis.comick.get_synopsis(manga_id)
+        url_name = await self._get_url_name(raw_url)
+        return await self.bot.apis.comick.get_synopsis(url_name)
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter] | None:
         manga_id = await self.get_id(raw_url)
         chapters = await self.bot.apis.comick.get_chapters_list(manga_id)
         if chapters:
-            url_name = self.rx.search(raw_url).groupdict()["url_name"]
+            url_name = await self._get_url_name(raw_url)
             return [
                 Chapter(
                     self.chp_url_fmt.format(
@@ -67,22 +66,27 @@ class _Comick(AbstractScanlator):
         else:
             return []
 
+    async def _get_url_name(self, raw_url: str) -> str:
+        try:
+            return self.rx.search(raw_url).groupdict().get("url_name")
+        except (AttributeError, TypeError) as e:
+            self.bot.logger.error(raw_url)
+            raise e
+
     async def get_title(self, raw_url: str) -> str | None:
-        manga_id = await self.get_id(raw_url)
-        manga = await self.bot.apis.comick.get_manga(manga_id)
+        url_name = await self._get_url_name(raw_url)
+        manga = await self.bot.apis.comick.get_manga(url_name)
         if manga.get("statusCode", 200) == 404:
             return None
         return manga["comic"]["title"]
 
     async def get_id(self, raw_url: str) -> str | None:
-        async with self.bot.session.get(raw_url) as resp:
-            await raise_and_report_for_status(self.bot, resp)
-            manga_id = re.search(r"\"hid\":\"([^\"]+)\"", await resp.text()).group(1)
-            return manga_id
+        url_name = await self._get_url_name(raw_url)
+        return await self.bot.apis.comick.get_id(url_name)
 
     async def get_status(self, raw_url: str) -> str:
-        manga_id = await self.get_id(raw_url)
-        manga = await self.bot.apis.comick.get_manga(manga_id)
+        url_name = await self._get_url_name(raw_url)
+        manga = await self.bot.apis.comick.get_manga(url_name)
         if manga.get("statusCode", 200) == 404:
             return "Unknown"
         status_map = {1: "Ongoing", 2: "Completed", 3: "Cancelled", 4: "Hiatus"}
@@ -92,12 +96,12 @@ class _Comick(AbstractScanlator):
             self, raw_url: Optional[str] = None, url_name: Optional[str] = None, _: Optional[str] = None
     ) -> str:
         if not url_name:
-            url_name = self.rx.search(raw_url).groupdict()["url_name"]
+            url_name = await self._get_url_name(raw_url)
         return self.fmt_url.format(url_name=url_name)
 
     async def get_cover(self, raw_url: str) -> str | None:
-        manga_id = await self.get_id(raw_url)
-        return await self.bot.apis.comick.get_cover(manga_id)
+        url_name = await self._get_url_name(raw_url)
+        return await self.bot.apis.comick.get_cover(url_name)
 
     async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
         json_resp: list[dict] = await self.bot.apis.comick.search(query=query)

@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // March 31st 2024
+
+### Bug Fixes:
+
+- Fixed Kaiscans having incorrect selector for the front page cover for manhwa.
+- Changed comicks domain to .io from .cc and changed the bot to use their public API insteasd.
+- Attempted fix for update check on series from Asura that don't have an ID assigned yet.
+
 ## // March 29th 2024
 
 - Added new setting -> Set a bot manager role that will give you access to the track commands without requiring perms.

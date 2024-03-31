@@ -15,7 +15,7 @@ class ComickAppAPI:
             self,
             api_manager: APIManager
     ):
-        self.api_url: str = "https://api.comick.cc"
+        self.api_url: str = "https://api.comick.fun"
         self.manager = api_manager
         self.headers = {
             # "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
@@ -63,12 +63,16 @@ class ComickAppAPI:
             self.manager.session.logger.error("Server disconnected, retrying request...")
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
-    async def get_manga(self, manga_id: str) -> Dict[str, Any]:
-        endpoint = f"comic/{manga_id}"
+    async def get_manga(self, url_name: str) -> Dict[str, Any]:
+        endpoint = f"comic/{url_name}"
         return await self.__request("GET", endpoint)
 
-    async def get_synopsis(self, manga_id: str) -> Optional[str]:
-        endpoint = f"comic/{manga_id}"
+    async def get_id(self, url_name: str) -> str:
+        data = await self.get_manga(url_name)
+        return data["comic"]["hid"]
+
+    async def get_synopsis(self, url_name: str) -> Optional[str]:
+        endpoint = f"comic/{url_name}"
         data = await self.__request("GET", endpoint)
         return data.get("comic", {}).get("desc", None)
 

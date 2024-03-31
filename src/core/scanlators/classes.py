@@ -72,8 +72,8 @@ class _AbstractScanlatorUtilsMixin:
             if not isinstance(self, DynamicURLScanlator):
                 request_url = await self.format_manga_url(raw_url, use_ajax_url=True)
             else:
-                requests_url = raw_url
-            text = await self._get_text(requests_url, method=method)  # noqa
+                request_url = raw_url
+            text = await self._get_text(request_url, method=method)  # noqa
         else:
 
             text = await self._get_text(
@@ -817,6 +817,45 @@ class DynamicURLScanlator(BasicScanlator):
                         manga_id_found = False
             if (manga_id_found and chapter_id_found) is True:
                 break
+
+    async def _get_text(self, url: str, method: Literal["GET", "POST"] = "GET", **params) -> str:
+        # one thing to note:
+        # headers are only really required to let websites that gave us special access to identify us.
+        # so, realistically, we can ignore headers in the flare request, as it's intended to be used for websites that
+        # block us.
+        provided_headers = params.pop("headers", None)
+        if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
+        headers = ((self.create_headers() or {}) | provided_headers) or None
+        if self.json_tree.request_method == "http":
+            async with self.bot.session.request(
+                    method, url, headers=headers, **self.get_extra_req_kwargs(), **params
+            ) as resp:
+                if resp.status == 404 and self.manga_id is not None:
+                    if self.manga_id in url:
+                        self.bot.logger.warning(f"404 error on {url}. Removing manga_id from URL and trying again.")
+                        url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector_char, "")
+                        return await self._get_text(url, method, **params)
+
+                await raise_and_report_for_status(self.bot, resp)
+                return await resp.text()
+        elif self.json_tree.request_method == "curl":
+            resp = await self.bot.curl_session.request(
+                method, url, headers=headers, **self.get_extra_req_kwargs(), **params
+            )
+            if resp.status_code == 404 and self.manga_id is not None:
+                if self.manga_id in url:
+                    self.bot.logger.warning(f"404 error on {url}. Removing manga_id from URL and trying again.")
+                    url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector_char, "")
+                    return await self._get_text(url, method, **params)
+
+            await raise_and_report_for_status(self.bot, resp)
+            return resp.text
+        elif self.json_tree.request_method == "flare":
+            resp = await self.bot.apis.flare.get(url, headers=headers, **params)
+            await raise_and_report_for_status(self.bot, resp)
+            return (await resp.json()).get("solution", {}).get("response")
+        else:
+            raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 
     async def format_manga_url(
             self, raw_url: Optional[str] = None, url_name: Optional[str] = None, _id: Optional[str] = None,

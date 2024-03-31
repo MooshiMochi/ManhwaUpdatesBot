@@ -160,20 +160,20 @@
     }
   },
   "comick": {
-    "user_input_url": "https://comick.cc/comic/00-solo-leveling",
+    "user_input_url": "https://comick.io/comic/00-solo-leveling",
     "expected_results": {
       "scanlator_name": "comick",
-      "manga_url": "https://comick.cc/comic/00-solo-leveling?lang=en",
+      "manga_url": "https://comick.io/comic/00-solo-leveling?lang=en",
       "completed": true,
       "title": "Solo Leveling",
       "manga_id": "71gMd0vF",
-      "curr_chapter_url": "https://comick.cc/comic/00-solo-leveling/DARIhC3K",
-      "first_chapter_url": "https://comick.cc/comic/00-solo-leveling/P_ysNE3VbnLbwN",
+      "curr_chapter_url": "https://comick.io/comic/00-solo-leveling/DARIhC3K",
+      "first_chapter_url": "https://comick.io/comic/00-solo-leveling/P_ysNE3VbnLbwN",
       "cover_image": "https://meo.comick.pictures/0GRgd.jpg",
       "last_3_chapter_urls": [
-        "https://comick.cc/comic/00-solo-leveling/s_ukimbV",
-        "https://comick.cc/comic/00-solo-leveling/YgUzmswO",
-        "https://comick.cc/comic/00-solo-leveling/DARIhC3K"
+        "https://comick.io/comic/00-solo-leveling/s_ukimbV",
+        "https://comick.io/comic/00-solo-leveling/YgUzmswO",
+        "https://comick.io/comic/00-solo-leveling/DARIhC3K"
       ],
       "use_default_id_function": false,
       "has_fp_manhwa": false

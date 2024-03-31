@@ -1387,7 +1387,7 @@
           },
           "title": "div.tt > a",
           "url": "div.tt > a",
-          "cover": "img.ts-post-image, picture.ts-post-image > img"
+          "cover": "img"
         },
         "unwanted_tags": [],
         "search": {
