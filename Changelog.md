@@ -9,6 +9,7 @@
 - Fixed Kaiscans having incorrect selector for the front page cover for manhwa.
 - Changed comicks domain to .io from .cc and changed the bot to use their public API insteasd.
 - Attempted fix for update check on series from Asura that don't have an ID assigned yet.
+- is_tracked_in_any_mutual_guild query bug fix in database.py
 
 ## // March 29th 2024
 

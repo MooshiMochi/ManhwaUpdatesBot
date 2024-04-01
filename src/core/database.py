@@ -1397,7 +1397,7 @@ class Database:
                 SELECT COUNT(*) FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
                 AND guild_id IN ({})
                 """.format(
-                    ','.join(mutual_guild_ids)
+                    ','.join(map(str, mutual_guild_ids))
                 ),
                 header.id, header.scanlator
             )
