@@ -450,7 +450,7 @@
             "name": "a",
             "url": "a"
           },
-          "title": "div.luf > a.series > h4",
+          "title": "div.luf > a.series > h3",
           "url": "div.luf > a.series",
           "cover": "img"
         },
@@ -535,64 +535,56 @@
       }
     },
     "drakescans": {
-      "chapter_ajax": "html",
+      "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?drakescans\\.com/series/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?drake-scans\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://drakescans.com",
-        "icon_url": "https://i0.wp.com/drakescans.com/wp-content/uploads/2023/08/cropped-dragonlogo-min-1.png?ssl=1",
+        "base_url": "https://drake-scans.com",
+        "icon_url": "https://i0.wp.com/drake-scans.com/wp-content/uploads/2023/08/cropped-dragonlogo-min-1.png?ssl=1",
         "format_urls": {
-          "ajax": "https://drakescans.com/series/{url_name}/ajax/chapters",
-          "manga": "https://drakescans.com/series/{url_name}/"
+          "manga": "https://drake-scans.com/manga/{url_name}/"
         },
-        "latest_updates_url": "https://drakescans.com/",
+        "latest_updates_url": "https://drake-scans.com/",
         "dynamicURL": false
       },
       "selectors": {
         "title": [
-          "div.post-title > h1",
-          ".breadcrumb > li:last-child > a"
+          "div#titlemove > h1"
         ],
-        "synopsis": "div.description-summary > div > p",
+        "synopsis": "div[itemprop=description] > p",
         "cover": [
-          "[property=og\\:image]",
-          "div.summary_image > a > img"
+          "div.thumb > img"
         ],
         "chapters": {
-          "container": "li.wp-manga-chapter",
-          "name": "a",
-          "url": "a"
+          "container": "div.eplister > ul > li",
+          "name": "a[href] > span.chapternum",
+          "url": "a[href]"
         },
         "status": [
-          "div.summary-heading:-soup-contains(\"Status\") + div"
+          "div.imptdt:-soup-contains(\"Status\") > i"
         ],
         "front_page": {
-          "container": "div.page-item-detail",
+          "container": "div.listupd:not(div.poconslide) > .bs > div.bsx",
           "chapters": {
-            "container": "div.chapter-item > span.chapter",
-            "name": "a",
+            "container": "ul.chfiv > li",
+            "name": "span.fivchap",
             "url": "a"
           },
-          "title": "div.post-title > h3.h5 > a",
-          "url": "div.post-title > h3.h5 > a",
-          "cover": "img"
+          "title": "div.tt > a",
+          "url": "div.tt > a",
+          "cover": "a[title] img"
         },
         "unwanted_tags": [],
         "search": {
-          "container": "div.row.c-tabs-item__content",
-          "chapters": {
-            "container": "span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "h3.h4 > a",
-          "url": "h3.h4 > a",
+          "container": "div.listupd:not(div.poconslide) > .bs > div.bsx",
+          "title": "div.tt > a",
+          "url": "a[title]",
           "cover": "img"
         }
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://drakescans.com/",
+        "url": "https://drake-scans.com/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -602,18 +594,18 @@
         "request_method": "GET"
       }
     },
-    "nitromanga": {
+    "nitroscans": {
       "chapter_ajax": "html",
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?nitromanga\\.com/mangas/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?nitroscans\\.net/mangas/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://nitromanga.com",
-        "icon_url": "https://nitromanga.com/wp-content/uploads/2023/08/YT-Logo-1.png",
+        "base_url": "https://nitroscans.net",
+        "icon_url": "https://nitroscans.net/wp-content/uploads/2023/08/YT-Logo-1.png",
         "format_urls": {
-          "ajax": "https://nitromanga.com/mangas/{url_name}/ajax/chapters",
-          "manga": "https://nitromanga.com/mangas/{url_name}/"
+          "ajax": "https://nitroscans.net/mangas/{url_name}/ajax/chapters",
+          "manga": "https://nitroscans.net/mangas/{url_name}/"
         },
-        "latest_updates_url": "https://nitromanga.com/",
+        "latest_updates_url": "https://nitroscans.net/",
         "dynamicURL": false
       },
       "selectors": {
@@ -661,7 +653,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://nitromanga.com/",
+        "url": "https://nitroscans.net/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -675,16 +667,16 @@
     "nightscans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?night-scans\\.com/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?night-scans\\.net/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://night-scans.com",
-        "icon_url": "https://night-scans.com/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png",
+        "base_url": "https://night-scans.net",
+        "icon_url": "https://night-scans.net/wp-content/uploads/2023/03/cropped-PicsArt_09-07-01.23.08-1-2.png",
         "format_urls": {
-          "manga": "https://night-scans.com/series/{id}-{url_name}/"
+          "manga": "https://night-scans.net/series/{id}-{url_name}/"
         },
-        "latest_updates_url": "https://night-scans.com",
+        "latest_updates_url": "https://night-scans.net",
         "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?night-scans\\.com/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?night-scans\\.net/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
         "missing_id_connector_char": "-"
       },
       "selectors": {
@@ -693,8 +685,8 @@
         ],
         "synopsis": "div.entry-content",
         "cover": [
-          "[property=og\\:image]",
-          "div.thumb > img"
+          "div.thumb > img",
+          "[property=og\\:image]"
         ],
         "chapters": {
           "container": "div.eph-num:not(:has(a[onclick]))",
@@ -725,7 +717,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://night-scans.com",
+        "url": "https://night-scans.net",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -1155,17 +1147,15 @@
     "astrascans": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?astrascans\\.com/(?:(?P<id>\\d+)/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?astrascans\\.org/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://astrascans.com",
-        "icon_url": "https://i1.wp.com/astrascans.com/wp-content/uploads/2023/09/cropped-cropped-logo.png",
+        "base_url": "https://astrascans.org",
+        "icon_url": "https://astrascans.org/wp-content/uploads/2024/03/cropped-logo.png",
         "format_urls": {
-          "manga": "https://astrascans.com/{id}/{url_name}/"
+          "manga": "https://astrascans.org/series/{url_name}/"
         },
-        "latest_updates_url": "https://astrascans.com",
-        "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?astrascans\\.com/)(?:(?P<id>\\d+)/)?(?P<after_id>([\\w-]+)?/?$)",
-        "missing_id_connector_char": "/"
+        "latest_updates_url": "https://astrascans.org",
+        "dynamicURL": false
       },
       "selectors": {
         "title": [
@@ -1184,15 +1174,15 @@
           "div.imptdt:-soup-contains(\"Status\") > i"
         ],
         "front_page": {
-          "container": "div.uta",
+          "container": "div.bixbox:not(.hothome) > div.listupd div.bsx",
           "chapters": {
-            "container": "div.luf > ul > li",
-            "name": "a",
+            "container": "ul.chfiv > li",
+            "name": "span.fivchap",
             "url": "a"
           },
-          "title": "div.luf > a.series > h4",
-          "url": "div.luf > a.series",
-          "cover": "img"
+          "title": "div.tt > a",
+          "url": "div.tt > a",
+          "cover": "a[title] img"
         },
         "unwanted_tags": [],
         "search": {
@@ -1204,7 +1194,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://astrascans.com/",
+        "url": "https://astrascans.org/",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -2500,6 +2490,145 @@
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
+        },
+        "request_method": "GET"
+      }
+    },
+    "firescans": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?firescans\\.xyz/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://firescans.xyz",
+        "icon_url": "https://firescans.xyz/wp-content/uploads/2022/06/favi.jpg",
+        "format_urls": {
+          "ajax": "https://firescans.xyz/manga/{url_name}/ajax/chapters",
+          "manga": "https://firescans.xyz/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://firescans.xyz/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1"
+        ],
+        "synopsis": "div.manga-excerpt> p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a:not([target])",
+          "url": "div.post-title > h3.h5 > a:not([target])",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+        ],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://firescans.xyz/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "raw"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "gourmet": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?gourmetsupremacy\\.com/project/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://gourmetsupremacy.com",
+        "icon_url": "https://gourmetsupremacy.com/wp-content/uploads/2022/06/favi.jpg",
+        "format_urls": {
+          "ajax": "https://gourmetsupremacy.com/manga/{url_name}/ajax/chapters",
+          "manga": "https://gourmetsupremacy.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://gourmetsupremacy.com/",
+        "dynamicURL": false
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1",
+          ".breadcrumb > li:nth-child(4) > a:nth-child(1)"
+        ],
+        "synopsis": "div.description-summary > div",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a:not([target])",
+          "url": "div.post-title > h3.h5 > a:not([target])",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+          "div.summary__content h2, div.summary__content h3, div.summary__content h4, div.summary__content div",
+          "div.summary__content section"
+        ],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://gourmetsupremacy.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga"
         },
         "request_method": "GET"
       }

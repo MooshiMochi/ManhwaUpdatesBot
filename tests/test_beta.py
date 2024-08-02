@@ -119,8 +119,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "comick"
-        url = "https://comick.io/comic/the-main-characters-that-only-i-know"
+        key = "gourmet"
+        url = "https://gourmetsupremacy.com/project/the-struggle-of-being-reincarnated-as-the-marquesss-daughter/"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url)

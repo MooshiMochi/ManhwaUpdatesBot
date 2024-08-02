@@ -295,6 +295,18 @@ class AbstractScanlator(ABC):
         """
         return mangas
 
+    # @abstractmethod
+    # async def download_cover(self, raw_url: str) -> BytesIO:
+    #     """
+    #     Downloads the cover image of the manga and save it in a local filestystem on the VPS.
+    #
+    #     Args:
+    #         raw_url: str - The URL of the manga to request
+    #
+    #     Returns:
+    #         BytesIO - The cover image of the manga as a BytesIO object
+    #     """
+
     async def unload_manga(self, mangas: list[Manga]) -> list[Manga]:  # noqa: Other implementations require 'self'
         """
         *For Dynamic URL Websites*
@@ -457,6 +469,7 @@ class AbstractScanlator(ABC):
 
 
 class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
+
     def __init__(self, name, **kwargs):  # noqa: Invalid scope warning
         self.name = name
         self.json_tree = JSONTree(**kwargs)
@@ -509,6 +522,11 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         else:
             raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 
+    # async def download_cover(self, raw_url: str) -> BytesIO:
+    #     cover_url = await self.get_cover(raw_url)
+    #     cover = await self._get_text(cover_url)
+    #     return BytesIO(cover.encode())
+
     async def format_manga_url(
             self, raw_url: Optional[str] = None, url_name: Optional[str] = None, _id: Optional[str] = None,
             *, use_ajax_url: bool = False
@@ -550,7 +568,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             key = await self._get_url_name(raw_url)
             return hashlib.sha256(key.encode()).hexdigest()
         return url_id
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
     async def get_title(self, raw_url: str) -> str | None:
         if not isinstance(self, DynamicURLScanlator):
             raw_url = await self.format_manga_url(raw_url)

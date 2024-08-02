@@ -240,40 +240,40 @@
     }
   },
   "drakescans": {
-    "user_input_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
+    "user_input_url": "https://drake-scans.com/manga/overlord-of-insects/",
     "expected_results": {
-      "completed": true,
-      "cover_image": "https://drakescans.com/wp-content/uploads/2022/02/01.jpg",
-      "curr_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
-      "first_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-00/",
+      "completed": false,
+      "cover_image": "https://drake-scans.com/wp-content/uploads/2024/03/Insect.png",
+      "curr_chapter_url": "https://drake-scans.com/overlord-of-insects-chapter-7/",
+      "first_chapter_url": "https://drake-scans.com/overlord-of-insects-chapter-0/",
       "last_3_chapter_urls": [
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-26/",
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-27/",
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/"
+        "https://drake-scans.com/overlord-of-insects-chapter-5/",
+        "https://drake-scans.com/overlord-of-insects-chapter-6/",
+        "https://drake-scans.com/overlord-of-insects-chapter-7/"
       ],
-      "manga_id": "https://drakescans.com/series/spirit-pet-creation-simulator1",
-      "manga_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
+      "manga_id": "https://drake-scans.com/manga/overlord-of-insects/",
+      "manga_url": "https://drake-scans.com/manga/overlord-of-insects/",
       "scanlator_name": "drakescans",
-      "title": "Spirit Pet Creation Simulator",
+      "title": "Overlord of Insects",
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
   },
-  "nitromanga": {
-    "user_input_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
+  "nitroscans": {
+    "user_input_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://nitromanga.com/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
-      "curr_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/",
-      "first_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter/",
+      "cover_image": "https://nitroscans.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
+      "curr_chapter_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-100/",
+      "first_chapter_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter/",
       "last_3_chapter_urls": [
-        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-98/",
-        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-99/",
-        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/"
+        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-98/",
+        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-99/",
+        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-100/"
       ],
-      "manga_id": "https://nitromanga.com/mangas/i-grow-stronger-by-eating",
-      "manga_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
-      "scanlator_name": "nitromanga",
+      "manga_id": "https://nitroscans.net/mangas/i-grow-stronger-by-eating",
+      "manga_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/",
+      "scanlator_name": "nitroscans",
       "title": "I Grow Stronger By Eating!",
       "use_default_id_function": true,
       "has_fp_manhwa": true
@@ -340,19 +340,19 @@
     }
   },
   "nightscans": {
-    "user_input_url": "https://night-scans.com/series/2825750948-all-attributes-in-martial-arts/",
+    "user_input_url": "https://night-scans.net/series/2825750948-all-attributes-in-martial-arts/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://night-scans.com/wp-content/uploads/2023/03/AAAMAcover_result.webp",
-      "curr_chapter_url": "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-70/",
-      "first_chapter_url": "https://night-scans.com/5002592384-all-attribute-martial-arts-00/",
+      "cover_image": "https://night-scans.net/wp-content/uploads/2023/03/AAAMAcover_result.webp",
+      "curr_chapter_url": "https://night-scans.net/5002592384-all-attribute-in-martial-arts-chapter-70/",
+      "first_chapter_url": "https://night-scans.net/5002592384-all-attribute-martial-arts-00/",
       "last_3_chapter_urls": [
-        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-68/",
-        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-69/",
-        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-70/"
+        "https://night-scans.net/5002592384-all-attribute-in-martial-arts-chapter-68/",
+        "https://night-scans.net/5002592384-all-attribute-in-martial-arts-chapter-69/",
+        "https://night-scans.net/5002592384-all-attribute-in-martial-arts-chapter-70/"
       ],
-      "manga_id": "https://night-scans.com/series/all-attributes-in-martial-arts",
-      "manga_url": "https://night-scans.com/series/2825750948-all-attributes-in-martial-arts",
+      "manga_id": "https://night-scans.net/series/all-attributes-in-martial-arts",
+      "manga_url": "https://night-scans.net/series/2825750948-all-attributes-in-martial-arts",
       "scanlator_name": "nightscans",
       "title": "All-Attributes in Martial Arts",
       "use_default_id_function": true,
@@ -460,21 +460,21 @@
     }
   },
   "astrascans": {
-    "user_input_url": "https://astrascans.com/10000/empress-hunt/",
+    "user_input_url": "https://astrascans.org/series/apocalyptic-survival-i-can-see-hidden-clues/",
     "expected_results": {
       "scanlator_name": "astrascans",
-      "manga_url": "https://astrascans.com/10000/empress-hunt/",
-      "completed": true,
-      "title": "Empress Hunt",
+      "manga_url": "https://astrascans.org/series/apocalyptic-survival-i-can-see-hidden-clues/",
+      "completed": false,
+      "title": "Apocalyptic Survival: I Can See Hidden Clues",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://astrascans.com/empress-hunt-chapter-45/",
-      "first_chapter_url": "https://astrascans.com/empress-hunt-chapter-1/",
-      "cover_image": "https://i3.wp.com/astrascans.com/wp-content/uploads/2023/09/Empress-Hunt.png",
+      "curr_chapter_url": "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-42/",
+      "first_chapter_url": "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-0-5/",
+      "cover_image": "https://i3.wp.com/astrascans.org/wp-content/uploads/2024/04/Apocalyptic-Survival-I-Can-See-Hidden-Clues.jpeg",
       "last_3_chapter_urls": [
-        "https://astrascans.com/empress-hunt-chapter-43/",
-        "https://astrascans.com/empress-hunt-chapter-44/",
-        "https://astrascans.com/empress-hunt-chapter-45/"
+        "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-40/",
+        "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-41/",
+        "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-42/"
       ],
       "has_fp_manhwa": true
     }
@@ -935,6 +935,25 @@
         "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-22/",
         "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-23/",
         "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-24/"
+      ]
+    }
+  },
+  "firescans": {
+    "user_input_url": "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/",
+    "expected_results": {
+      "scanlator_name": "firescans",
+      "manga_url": "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/",
+      "completed": false,
+      "title": "Keep a Low Profile, Sect Leader",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/chapter-303/",
+      "first_chapter_url": "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/chapter-1_1/",
+      "cover_image": "https://firescans.xyz/storage/2023/12/ezgif.com-webp-to-jpg-converted.jpg",
+      "last_3_chapter_urls": [
+        "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/chapter-301/",
+        "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/chapter-302/",
+        "https://firescans.xyz/manga/keep-a-low-profile-sect-leader/chapter-303/"
       ]
     }
   }
