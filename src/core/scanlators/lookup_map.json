@@ -293,14 +293,14 @@
     "flamecomics": {
       "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?flamecomics\\.com/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?flamecomics\\.xyz/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
-        "base_url": "https://flamecomics.com",
-        "icon_url": "https://flamecomics.com/wp-content/uploads/2021/03/cropped-fds-1.png",
+        "base_url": "https://flamecomics.xyz",
+        "icon_url": "https://flamecomics.xyz/wp-content/uploads/2021/03/cropped-fds-1.png",
         "format_urls": {
-          "manga": "https://flamecomics.com/series/{url_name}/"
+          "manga": "https://flamecomics.xyz/series/{url_name}/"
         },
-        "latest_updates_url": "https://flamecomics.com/",
+        "latest_updates_url": "https://flamecomics.xyz/",
         "dynamicURL": false
       },
       "selectors": {
@@ -341,7 +341,7 @@
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://flamescans.org",
+        "url": "https://flamecomics.xyz",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -353,63 +353,65 @@
     "asura": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?asuratoon\\.com/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "url_regex": "(?:https?://)?(?:www\\.)?asuracomic\\.net/(?:series/)?(?P<url_name>[\\w-]+)-(?P<id>\\w+)(?:.*)?",
       "properties": {
-        "base_url": "https://asuratoon.com",
-        "icon_url": "https://asuratoon.com/wp-content/uploads/2023/07/cropped-cropped-Group_1-1.png",
+        "base_url": "https://asuracomic.net",
+        "icon_url": "https://asuracomic.net/images/logo.webp",
         "format_urls": {
-          "manga": "https://asuratoon.com/manga/{id}-{url_name}/"
+          "manga": "https://asuracomic.net/series/{url_name}-{id}/"
         },
-        "latest_updates_url": "https://asuratoon.com",
+        "latest_updates_url": "https://asuracomic.net",
         "dynamicURL": true,
         "requires_update_embed": true,
         "can_render_cover": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?asuratoon\\.com/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
-        "missing_id_connector_char": "-"
+        "missing_id_connector_char": "/series"
       },
       "selectors": {
         "title": [
-          "div.infox > h1.entry-title"
+          "div.grid-cols-12 div.col-span-12 > div.text-center > span"
         ],
-        "synopsis": "div.entry-content > p, div.entry-content > div[role=article] > div",
+        "synopsis": "div.grid-cols-12 div.col-span-12 > span.font-medium",
         "cover": [
-          "div.thumb > img"
+          "meta[property=\"og:image\"]",
+          "div > img[alt=poster]"
         ],
         "chapters": {
-          "container": "div.eph-num",
-          "name": "a > span.chapternum",
-          "url": "a"
+          "container": "div.pl-4.py-2:has(h3)",
+          "name": "div.pl-4.py-2:has(h3) > h3 > a.block",
+          "url": "div.pl-4.py-2:has(h3) > h3 > a.block"
         },
         "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
+          "div.px-2.py-2 > h3:-soup-contains(\"Status\") + h3"
         ],
         "front_page": {
-          "container": "div.uta",
+          "container": "div.w-full.p-1",
           "chapters": {
-            "container": "div.luf > ul > li",
-            "name": "a",
+            "container": "div.w-full.p-1 > div > div.col-span-9 > div.flex > span > div > div.flex",
+            "name": "a > span.flex > div.flex > p",
             "url": "a"
           },
-          "title": "div.luf > a.series > h4",
-          "url": "div.luf > a.series",
-          "cover": "img"
+          "title": "div > div > span > a",
+          "url": "div > div > span > a",
+          "cover": "div > div > div > a > img"
         },
-        "unwanted_tags": [],
+        "unwanted_tags": ["span.pl-1", "div.flex.sm\\:hidden"],
         "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
+          "container": "div.grid.grid-cols-2 > a",
+          "title": "div > div.block > span.block",
+          "url": "_container_",
+          "cover": "div > div > div > img.rounded-md"
         }
       },
       "search": {
-        "search_param_name": "s",
-        "url": "https://asuratoon.com",
+        "search_param_name": "name",
+        "url": "https://asuracomic.net/series",
         "as_type": "param",
         "query_parsing": {
-          "encoding": "url"
+          "encoding": "raw"
         },
-        "extra_params": {},
+        "extra_params": {
+          "page": 1
+        },
         "request_method": "GET"
       }
     },
@@ -432,7 +434,6 @@
         ],
         "synopsis": "div.entry-content > p",
         "cover": [
-          "[property=og\\:image]",
           "div.thumb > img"
         ],
         "chapters": {
@@ -450,7 +451,7 @@
             "name": "a",
             "url": "a"
           },
-          "title": "div.luf > a.series > h4",
+          "title": "div.luf > a.series > *",
           "url": "div.luf > a.series",
           "cover": "img"
         },
@@ -535,67 +536,64 @@
       }
     },
     "drakescans": {
-      "chapter_ajax": "html",
+      "chapter_ajax": null,
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?drakescans\\.com/series/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?drakecomic\\.org/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
-        "base_url": "https://drakescans.com",
-        "icon_url": "https://i0.wp.com/drakescans.com/wp-content/uploads/2023/08/cropped-dragonlogo-min-1.png?ssl=1",
+        "base_url": "https://drakecomic.org",
+        "icon_url": "https://i0.wp.com/drakecomic.org/wp-content/uploads/2024/04/dragonlogo_512x512-1.png?ssl=1",
         "format_urls": {
-          "ajax": "https://drakescans.com/series/{url_name}/ajax/chapters",
-          "manga": "https://drakescans.com/series/{url_name}/"
+          "manga": "https://drakecomic.org/manga/{url_name}/"
         },
-        "latest_updates_url": "https://drakescans.com/",
-        "dynamicURL": false
+        "latest_updates_url": "https://drakecomic.org/",
+        "dynamicURL": false,
+        "no_status": true,
+        "time_formats": [
+          "%B %d, %Y"
+        ]
       },
       "selectors": {
         "title": [
-          "div.post-title > h1",
-          ".breadcrumb > li:last-child > a"
+          "h1.entry-title"
         ],
-        "synopsis": "div.description-summary > div > p",
+        "synopsis": "div[itemprop=description]",
         "cover": [
-          "[property=og\\:image]",
-          "div.summary_image > a > img"
+          "div.thumb > img"
         ],
         "chapters": {
-          "container": "li.wp-manga-chapter",
-          "name": "a",
+          "container": "div#chapterlist > ul > li > div.chbox > div.eph-num",
+          "name": "a > span.chapternum",
           "url": "a"
         },
         "status": [
-          "div.summary-heading:-soup-contains(\"Status\") + div"
+          "div.tsinfo > div.imptdt:-soup-contains(\"Status\") > i",
+          "div.tsinfo > div.imptdt:-soup-contains(\"Updated On\") > i"
         ],
         "front_page": {
-          "container": "div.page-item-detail",
+          "container": "div.postbody div.bixbox > div.listupd div.bsx",
           "chapters": {
-            "container": "div.chapter-item > span.chapter",
-            "name": "a",
+            "container": "ul.chfiv > li",
+            "name": "a > span.fivchap",
             "url": "a"
           },
-          "title": "div.post-title > h3.h5 > a",
-          "url": "div.post-title > h3.h5 > a",
-          "cover": "img"
+          "title": "div.tt > a",
+          "url": "div.tt > a",
+          "cover": "img[alt=\"Post Thumbnail\"]"
         },
         "unwanted_tags": [],
         "search": {
-          "container": "div.row.c-tabs-item__content",
-          "chapters": {
-            "container": "span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "h3.h4 > a",
-          "url": "h3.h4 > a",
-          "cover": "img"
+          "container": "div.postbody div.bixbox > div.listupd div.bsx",
+          "title": "div.tt",
+          "url": "a[title]",
+          "cover": "img[title]"
         }
       },
       "search": {
         "search_param_name": "s",
-        "url": "https://drakescans.com/",
+        "url": "https://drakecomic.org/",
         "as_type": "param",
         "query_parsing": {
-          "encoding": "url"
+          "encoding": "raw"
         },
         "extra_params": {
         },

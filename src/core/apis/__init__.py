@@ -42,7 +42,7 @@ class APIManager:
     def session(self) -> CachedClientSession:
         return self._session
 
-    async def reset_session(self):
+    async def reset_session(self, curl:bool=False):
         await self._session.close() if self._session is not None else None
         timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)  # 5 min
         self._session = CachedClientSession(

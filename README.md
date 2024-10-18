@@ -109,6 +109,7 @@ How to set up the bot:
 
 > **Note:**
 > It is recommended that you use a webshare rotating proxy with backbone connection method.
+> To run the test file, use the command `python -m tests`
 
 ## Contributing:
 

@@ -4,6 +4,9 @@ import os
 import sys
 from typing import Dict, Optional
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from src.core import (
     CachedClientSession,
     CachedCurlCffiSession,
@@ -119,8 +122,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "comick"
-        url = "https://comick.io/comic/the-main-characters-that-only-i-know"
+        key = "asura"
+        url = "https://asuracomic.net/series/return-of-the-sss-class-ranker-e03dfc4f"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url)
@@ -151,7 +154,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     setup_logging(level=logging.DEBUG)
     silence_debug_loggers(
         logger,

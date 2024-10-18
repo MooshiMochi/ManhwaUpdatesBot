@@ -30,5 +30,8 @@
     "volumn",
     "webtoon"
   ],
-  "editor.renderWhitespace": "selection"
+  "editor.renderWhitespace": "selection",
+  "IDX.aI.enableInlineCompletion": true,
+  "IDX.aI.enableCodebaseIndexing": true,
+  "editor.bracketPairColorization.independentColorPoolPerBracketType": true
 }

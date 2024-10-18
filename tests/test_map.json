@@ -80,40 +80,40 @@
     }
   },
   "flamecomics": {
-    "user_input_url": "https://flamecomics.com/series/the-villainess-is-a-marionette/",
+    "user_input_url": "https://flamecomics.xyz/series/the-villainess-is-a-marionette/",
     "expected_results": {
       "scanlator_name": "flamecomics",
-      "manga_url": "https://flamecomics.com/series/the-villainess-is-a-marionette/",
+      "manga_url": "https://flamecomics.xyz/series/the-villainess-is-a-marionette/",
       "completed": true,
       "title": "The Villainess is a Marionette",
-      "manga_id": "https://flamecomics.com/series/the-villainess-is-a-marionette",
-      "curr_chapter_url": "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/",
-      "first_chapter_url": "https://flamecomics.com/the-villainess-is-a-marionette-chapter-0/",
-      "cover_image": "https://flamecomics.com/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
+      "manga_id": "https://flamecomics.¬xyz/series/the-villainess-is-a-marionette",
+      "curr_chapter_url": "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-69/",
+      "first_chapter_url": "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-0/",
+      "cover_image": "https://flamecomics.xyz/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
       "last_3_chapter_urls": [
-        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-67/",
-        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-68/",
-        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/"
+        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-67/",
+        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-68/",
+        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-69/"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
   },
   "asura": {
-    "user_input_url": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke/",
+    "user_input_url": "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b",
     "expected_results": {
       "scanlator_name": "asura",
-      "manga_url": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke/",
+      "manga_url": "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b/",
       "completed": true,
       "title": "I Regressed As The Duke",
-      "manga_id": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke",
-      "curr_chapter_url": "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-64-notice/",
-      "first_chapter_url": "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-1/",
-      "cover_image": "https://asuratoon.com/wp-content/uploads/2022/04/unknown_1-1.png",
+      "manga_id": "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b",
+      "curr_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b/chapter/63",
+      "first_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b/chapter/1",
+      "cover_image": "https://gg.asuracomic.net/storage/media/253/conversions/01J3BAW83KA3WAT4FRPDR572F1-optimized.webp",
       "last_3_chapter_urls": [
-        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-62/",
-        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-63/",
-        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-64-notice/"
+        "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b/chapter/61",
+        "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b/chapter/62",
+        "https://asuracomic.net/series/i-regressed-as-the-duke-3ee02d1b/chapter/63"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true
@@ -222,7 +222,7 @@
   "lscomic": {
     "user_input_url": "https://lscomic.com/manga/8th-class-mage-returns/",
     "expected_results": {
-      "completed": true,
+      "completed": false,
       "cover_image": "https://lscomic.com/wp-content/uploads/2023/09/cover-8CMR.png",
       "curr_chapter_url": "https://lscomic.com/manga/8th-class-mage-returns/chapter-81/",
       "first_chapter_url": "https://lscomic.com/manga/8th-class-mage-returns/chapter-1/",
@@ -240,19 +240,19 @@
     }
   },
   "drakescans": {
-    "user_input_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
+    "user_input_url": "https://drakecomic.org/manga/spirit-pet-creation-simulator1/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://drakescans.com/wp-content/uploads/2022/02/01.jpg",
-      "curr_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
-      "first_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-00/",
+      "cover_image": "https://drakecomic.org/wp-content/uploads/2022/02/01.jpg",
+      "curr_chapter_url": "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-28/",
+      "first_chapter_url": "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-00/",
       "last_3_chapter_urls": [
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-26/",
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-27/",
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/"
+        "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-26/",
+        "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-27/",
+        "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-28/"
       ],
-      "manga_id": "https://drakescans.com/series/spirit-pet-creation-simulator1",
-      "manga_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
+      "manga_id": "https://drakecomic.org/manga/spirit-pet-creation-simulator1",
+      "manga_url": "https://drakecomic.org/manga/spirit-pet-creation-simulator1/",
       "scanlator_name": "drakescans",
       "title": "Spirit Pet Creation Simulator",
       "use_default_id_function": true,

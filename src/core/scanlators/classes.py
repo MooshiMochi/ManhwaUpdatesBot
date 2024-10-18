@@ -587,11 +587,14 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             else:
                 url = chapter.select_one(chapter_selector["url"]).get("href")
             if not url.startswith(self.json_tree.properties.base_url):
-                url = self.json_tree.properties.base_url + url
+                if self.json_tree.properties.missing_id_connector_char is not None:
+                    url = self.json_tree.properties.base_url.removesuffix("/") + self.json_tree.properties.missing_id_connector_char + "/" + url.removeprefix("/")
+                else:
+                    url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
             if chapter_selector["name"] == "_container_":
-                name = chapter.get_text(strip=True)  # noqa: Invalid scope warning
+                name = chapter.get_text.replace("\n", " ")
             else:
-                name = chapter.select_one(chapter_selector["name"]).get_text(strip=True)  # noqa: Invalid scope warning
+                name = chapter.select_one(chapter_selector["name"]).get_text().replace("\n", " ")
             found_chapters.append(Chapter(url, name, i))
         return found_chapters
 
@@ -715,7 +718,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             else:
                 url = manga_tag.select_one(self.json_tree.selectors.search.url).get("href")
             if not (url.startswith("https://") or url.startswith("http://")):  # noqa
-                url = self.json_tree.properties.base_url + url
+                url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
 
             _title_selector = self.json_tree.selectors.search.title  # noqa: Invalid scope warning
             if _title_selector == "_container_":
@@ -753,7 +756,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                     else:
                         ch_url = ch_tag.select_one(chapters_selector["url"]).get("href")
                     if not ch_url.startswith(self.json_tree.properties.base_url):
-                        ch_url = self.json_tree.properties.base_url + url
+                        ch_url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
                     chapters.append(Chapter(ch_url, ch_name, i))
             manga_id = await self.get_id(url)
             found_manga.append(PartialManga(manga_id, name, url, self.name, cover_url, chapters))
@@ -770,6 +773,12 @@ class NoStatusBasicScanlator(BasicScanlator):
         date_tag = await self._get_status_tag(self, raw_url)
         if date_tag:
             latest_release_date = date_tag.get_text(strip=True)
+
+            # The next line is to check in case the manga does in fact have a status (i.e. Drakescans - some have status and some don't)
+            probably_real_status = ":" not in latest_release_date and " " not in latest_release_date and not bool(re.search(r"\d+", latest_release_date))
+            if probably_real_status:
+                return await super().get_status(raw_url)  # ideally the request is cached, so this should not be a problem
+            
             timestamp = time_string_to_seconds(latest_release_date, formats=self.json_tree.properties.time_formats)
             if (
                     datetime.now().timestamp() - timestamp
@@ -891,7 +900,7 @@ class DynamicURLScanlator(BasicScanlator):
             if self.chapter_id is None:
                 to_replace = self.id_placeholder + self.json_tree.properties.missing_id_connector_char
                 replace_with = ""
-
+            print(manga.last_chapter.url)
             manga._last_chapter.url = manga.last_chapter.url.replace(to_replace, replace_with)
             for chapter in manga._available_chapters:
                 chapter.url = chapter.url.replace(to_replace, replace_with)

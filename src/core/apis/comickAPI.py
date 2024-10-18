@@ -40,20 +40,17 @@ class ComickAppAPI:
         if self.rate_limit_remaining is not None and self.rate_limit_remaining == 0:
             await asyncio.sleep(self.rate_limit_reset)
         try:
-            async with self.manager.session.request(
-                    method, url, params=params, json=data, headers=headers, **kwargs
-            ) as response:
-                json_data = await response.json()
-                self.rate_limit_remaining = int(
-                    response.headers.get("X-RateLimit-Remaining", "-1")
+            response = await self.manager.bot.curl_session.request(method, url, params=params, json=data, headers=headers, **kwargs)
+            if response.status_code != 200:
+                raise Exception(
+                    f"Request failed with status {response.status_code}\nURL: {response.url}"
                 )
-                self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
-
-                if response.status != 200:
-                    raise Exception(
-                        f"Request failed with status {response.status}: {json_data}\nURL: {response.url}"
-                    )
-                return json_data
+            json_data = response.json()
+            self.rate_limit_remaining = int(
+                    response.headers.get("X-RateLimit-Remaining", "-1")
+            )
+            self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
+            return json_data
 
         except aiohttp.ServerDisconnectedError:
             if kwargs.get("call_depth", 0) > 3:
