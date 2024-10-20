@@ -44,6 +44,18 @@ class EventListenerCog(commands.Cog):
             await self.bot.db.delete_role_from_db(role_id=entry.target.id)
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
+        logs_channel: discord.TextChannel = self.bot.get_channel(self.bot.log_channel_id)
+        if logs_channel is not None:
+            await logs_channel.send(
+                embed=discord.Embed(
+                    title="Joined Guild",
+                    description=f"Joined guild {guild.name} ({guild.id})\nWe're at {len(self.bot.guilds)} guilds now!",
+                    color=discord.Colour.green()
+                ).set_footer(
+                    text=self.bot.user.display_name, icon_url=self.bot.user.avatar.url
+                )
+            )
+
         guild_config: GuildSettings = await self.bot.db.get_guild_config(guild.id)
         if not guild_config:
             return

@@ -1787,7 +1787,7 @@ class ScanlatorChannelAssociationView(BaseView):
             ephemeral=True
         )
         self.current_associations.remove(target_association[0])  # remove the association
-        self.pending_removals.append(modal.scanlator)
+        self.pending_removals.append(modal.scanlator.lower())
         embed = await self.get_display_embed()
         await interaction.edit_original_response(embed=embed, view=self)
 
@@ -1795,10 +1795,14 @@ class ScanlatorChannelAssociationView(BaseView):
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
         # save the association changes here
         if self.current_associations:
-            associations_to_delete = [x for x in self.current_associations if x.scanlator in self.pending_removals]
+            print("Pending removals:", self.pending_removals)
+            associations_to_delete = [x for x in self.current_associations if
+                                      x.scanlator.lower() in self.pending_removals]
+            print("Associations to delete:", associations_to_delete)
             self.current_associations = [
                 x for x in self.current_associations if x.scanlator not in self.pending_removals
             ]
+            print("Current associations:", self.current_associations)
 
             await ScanlatorChannelAssociation.delete_many(associations_to_delete)
             await ScanlatorChannelAssociation.upsert_many(self.bot, self.current_associations)

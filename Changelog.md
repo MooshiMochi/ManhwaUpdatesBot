@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // May 15th 2024
+
+### Bug Fixes:
+
+- Fixed drakescans.
+- Fixed nitromanga.
+- Fixed nightscans.
+
 ## // March 31st 2024
 
 ### Bug Fixes:
