@@ -2,6 +2,25 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // November 2nd 2024
+
+### Bug Fixes:
+
+- Fixed a lot of scanlator links that were broken due to changes in the website.
+- Fix missing check if guild_config is None in the update check.
+- Added prepare_folder method to the BookmarkView to make sure that if there's only one bookmarked manga,
+  set the folder to that manga's folder
+
+
+- Created a custom API class for reaperscans.
+- Added json_map.rx attribute to api_based scanlators.
+- Added function to automatically update comick urls to the correct ID in the database.
+- Added database close method, which is called in bot.close.
+- Updated database to use an open connection rather than opening a connection every time a query is run.
+- Updated the function that adds the ID for dynamic scanlators.
+- Added new property for dynamic ID scanlators (the location of the prefix)
+- Added firescans to the bot.
+
 ## // May 15th 2024
 
 ### Bug Fixes:

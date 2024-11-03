@@ -155,6 +155,9 @@ class MangaClient(commands.Bot):
 
     async def close(self):
         self.logger.info("Closing bot...")
+        self.logger.info("Closing database connection...")
+        await self.db.conn.close()
+        self.logger.info("Database connection closed.")
         if self.apis.flare.is_available:
             self.logger.info("[FlareSolverr] > Begin server session cleanup...")
             await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe

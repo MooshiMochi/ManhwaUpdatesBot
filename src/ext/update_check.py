@@ -516,6 +516,8 @@ class UpdateCheckCog(commands.Cog):
                     manga.update(status=update_check_result.status)
                 guild_ids = await self.bot.db.get_manga_guild_ids(manga.id, manga.scanlator)
                 guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
+                if guild_configs is None:
+                    guild_configs = []
                 await self.bot.db.update_series(manga)
                 untracked_from_X_guilds: int = 0
                 if manga.completed:
@@ -545,7 +547,7 @@ class UpdateCheckCog(commands.Cog):
                     scanlator_hyperlink = (
                         f"[{manga.scanlator.title()}]({scanlators[manga.scanlator].json_tree.properties.base_url})"
                     )
-                    description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to"
+                    description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to "
                                    f"**'{manga.status.lower()}'**")
                     if untracked_from_X_guilds > 1:
                         description += f" and has been untracked from {untracked_from_X_guilds} guilds."

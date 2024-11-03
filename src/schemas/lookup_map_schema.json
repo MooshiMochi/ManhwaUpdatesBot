@@ -101,10 +101,30 @@
                 "chapter_regex": {
                   "type": "string"
                 },
-                "missing_id_connector_char": {
-                  "type": "string",
-                  "maxLength": 1,
-                  "default": "-"
+                "missing_id_connector": {
+                  "type": "object",
+                  "properties": {
+                    "char": {
+                      "type": "string",
+                      "default": "-"
+                    },
+                    "before_id": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "char",
+                    "before_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "url_chapter_prefix": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null
                 }
               },
               "allOf": [
@@ -119,7 +139,7 @@
                   "then": {
                     "required": [
                       "chapter_regex",
-                      "missing_id_connector_char"
+                      "missing_id_connector"
                     ]
                   }
                 },
@@ -137,7 +157,8 @@
                       "icon_url",
                       "format_urls",
                       "latest_updates_url",
-                      "dynamicURL"
+                      "dynamicURL",
+                      "url_chapter_prefix"
                     ]
                   },
                   "else": {
@@ -147,7 +168,8 @@
                       "format_urls",
                       "latest_updates_url",
                       "dynamicURL",
-                      "can_render_cover"
+                      "can_render_cover",
+                      "url_chapter_prefix"
                     ]
                   }
                 }
@@ -465,7 +487,8 @@
                   "default": "param",
                   "enum": [
                     "path",
-                    "param"
+                    "param",
+                    "data"
                   ]
                 },
                 "query_parsing": {
@@ -502,32 +525,52 @@
                       "required": [
                         "pattern",
                         "sub_value"
+                      ],
+                      "minItems": 1
+                    }
+                  },
+                  "required": [
+                    "encoding"
+                  ],
+                  "dependencies": {
+                    "encoding": {
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "encoding": {
+                              "const": null
+                            }
+                          },
+                          "required": [
+                            "regex"
+                          ]
+                        },
+                        {
+                          "properties": {
+                            "encoding": {
+                              "enum": [
+                                "raw",
+                                "url"
+                              ]
+                            }
+                          }
+                        }
                       ]
                     }
                   },
-                  "if": {
-                    "properties": {
-                      "encoding": {
-                        "const": null
-                      }
-                    }
-                  },
-                  "then": {
-                    "required": [
-                      "encoding",
-                      "regex"
-                    ]
-                  },
-                  "else": {
-                    "required": [
-                      "encoding"
-                    ]
-                  }
+                  "additionalProperties": false
                 },
                 "extra_params": {
                   "type": "object",
                   "description": "The additional required static parameters for the search",
-                  "default": {}
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "null",
+                      "integer",
+                      "boolean"
+                    ]
+                  }
                 },
                 "request_method": {
                   "type": "string",
@@ -678,10 +721,30 @@
                 "chapter_regex": {
                   "type": "string"
                 },
-                "missing_id_connector_char": {
-                  "type": "string",
-                  "maxLength": 1,
-                  "default": "-"
+                "missing_id_connector": {
+                  "type": "object",
+                  "properties": {
+                    "char": {
+                      "type": "string",
+                      "default": "-"
+                    },
+                    "before_id": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "char",
+                    "before_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "url_chapter_prefix": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null
                 }
               },
               "allOf": [
@@ -696,7 +759,7 @@
                   "then": {
                     "required": [
                       "chapter_regex",
-                      "missing_id_connector_char"
+                      "missing_id_connector"
                     ]
                   }
                 },
@@ -714,7 +777,8 @@
                       "icon_url",
                       "format_urls",
                       "latest_updates_url",
-                      "dynamicURL"
+                      "dynamicURL",
+                      "url_chapter_prefix"
                     ]
                   },
                   "else": {
@@ -724,7 +788,8 @@
                       "format_urls",
                       "latest_updates_url",
                       "dynamicURL",
-                      "can_render_cover"
+                      "can_render_cover",
+                      "url_chapter_prefix"
                     ]
                   }
                 }
@@ -1042,7 +1107,8 @@
                   "default": "param",
                   "enum": [
                     "path",
-                    "param"
+                    "param",
+                    "data"
                   ]
                 },
                 "query_parsing": {
@@ -1079,28 +1145,51 @@
                       "required": [
                         "pattern",
                         "sub_value"
-                      ]
+                      ],
+                      "minItems": 1
                     }
-                  },
-                  "if": {
-                    "properties": {
-                      "encoding": {
-                        "const": null
-                      }
-                    }
-                  },
-                  "then": {
-                    "required": [
-                      "regex"
-                    ]
                   },
                   "required": [
                     "encoding"
-                  ]
+                  ],
+                  "dependencies": {
+                    "encoding": {
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "encoding": {
+                              "const": null
+                            }
+                          },
+                          "required": [
+                            "regex"
+                          ]
+                        },
+                        {
+                          "properties": {
+                            "encoding": {
+                              "enum": [
+                                "raw",
+                                "url"
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
                 },
                 "extra_params": {
                   "type": "object",
-                  "description": "The additional required static parameters for the search"
+                  "description": "The additional required static parameters for the search",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "null",
+                      "integer",
+                      "boolean"
+                    ]
+                  }
                 },
                 "request_method": {
                   "type": "string",

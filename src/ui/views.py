@@ -103,6 +103,8 @@ class BookmarkView(BaseView):
         self.folder: BookmarkFolderType = folder
 
         self.bookmarks: list[Bookmark] = bookmarks
+        self.prepare_folder()
+
         self.viewable_bookmarks = self.get_bookmarks_from_folder()
         # the method below will sort the bookmarks by the sort_type
         self.text_view_embeds: list[discord.Embed] = self._bookmarks_to_text_embeds()
@@ -112,6 +114,12 @@ class BookmarkView(BaseView):
 
         self._btn_callbacks = CustomButtonCallbacks(self.bot, self)
         self.load_components()
+
+    def prepare_folder(self) -> None:
+        """This method will check if there are any bookmarks in the selected folder. If not, it will change the
+        folder"""
+        if len(self.get_bookmarks_from_folder()) == 0:
+            self.folder = self.bookmarks[0].folder
 
     def get_bookmarks_from_folder(self) -> list[Bookmark]:
         return [x for x in self.bookmarks if x.folder == self.folder or self.folder == BookmarkFolderType.All]

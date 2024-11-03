@@ -108,17 +108,16 @@ class BookmarkCog(commands.Cog):
             folder: Optional[BookmarkFolderType] = None
     ):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-        bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
+        bookmarks = (await self.bot.db.get_user_bookmarks(interaction.user.id)) or []
 
+        # remove unsupported websites
+        bookmarks = [bookmark for bookmark in bookmarks if bookmark.manga.scanlator in scanlators]
         if not bookmarks:
             return await interaction.followup.send(embed=discord.Embed(
                 title="No Bookmarks",
                 description="You have no bookmarks.",
                 color=discord.Color.red(),
             ), ephemeral=True)
-
-        # remove unsupported websites
-        bookmarks = [bookmark for bookmark in bookmarks if bookmark.manga.scanlator in scanlators]
 
         view = BookmarkView(
             self.bot, interaction, bookmarks, BookmarkViewType.VISUAL, folder=folder or BookmarkFolderType.Reading

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 from .comickAPI import ComickAppAPI
 from .mangadexAPI import MangaDexAPI
 from .omegascansAPI import OmegaScansAPI
+from .reaperAPI import ReaperScansAPI
 from .zeroscansAPI import ZeroScansAPI
 from .flaresolverr import FlareSolverrAPI
 from .webshare import WebsShare
@@ -26,6 +27,7 @@ class APIManager:
         self.mangadex = MangaDexAPI(self)
         self.omegascans = OmegaScansAPI(self)
         self.zeroscans = ZeroScansAPI(self)
+        self.reaperscans = ReaperScansAPI(self)
         self.webshare = WebsShare(self, bot.config.get("api-keys", {}).get("webshare"))
         self.flare = FlareSolverrAPI(
             self,
@@ -42,7 +44,7 @@ class APIManager:
     def session(self) -> CachedClientSession:
         return self._session
 
-    async def reset_session(self, curl:bool=False):
+    async def reset_session(self, curl: bool = False):
         await self._session.close() if self._session is not None else None
         timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)  # 5 min
         self._session = CachedClientSession(

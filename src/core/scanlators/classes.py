@@ -92,6 +92,7 @@ class _AbstractScanlatorUtilsMixin:
 class AbstractScanlator(ABC):
     bot: MangaClient
     json_tree: JSONTree
+    _raw_kwargs: dict
 
     def __init__(self, name: str):  # noqa: Invalid scope warning
         self.name: str = name
@@ -473,6 +474,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
     def __init__(self, name, **kwargs):  # noqa: Invalid scope warning
         self.name = name
         self.json_tree = JSONTree(**kwargs)
+        self._raw_kwargs = kwargs
         super().__init__(name)
 
     def create_headers(self) -> dict | None:
@@ -568,11 +570,12 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             key = await self._get_url_name(raw_url)
             return hashlib.sha256(key.encode()).hexdigest()
         return url_id
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+
     async def get_title(self, raw_url: str) -> str | None:
         if not isinstance(self, DynamicURLScanlator):
             raw_url = await self.format_manga_url(raw_url)
         text = await self._get_text(raw_url)
+
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -605,12 +608,16 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             else:
                 url = chapter.select_one(chapter_selector["url"]).get("href")
             if not url.startswith(self.json_tree.properties.base_url):
-                if self.json_tree.properties.missing_id_connector_char is not None:
-                    url = self.json_tree.properties.base_url.removesuffix("/") + self.json_tree.properties.missing_id_connector_char + "/" + url.removeprefix("/")
+                if self.json_tree.properties.url_chapter_prefix is not None:
+                    url = self.json_tree.properties.base_url + self.json_tree.properties.url_chapter_prefix + url
                 else:
-                    url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
+                    if self.json_tree.properties.missing_id_connector.exists:
+                        url = self.json_tree.properties.base_url.removesuffix(
+                            "/") + self.json_tree.properties.missing_id_connector.char + "/" + url.removeprefix("/")
+                    else:
+                        url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
             if chapter_selector["name"] == "_container_":
-                name = chapter.get_text.replace("\n", " ")
+                name = chapter.get_text().replace("\n", " ")
             else:
                 name = chapter.select_one(chapter_selector["name"]).get_text().replace("\n", " ")
             found_chapters.append(Chapter(url, name, i))
@@ -687,9 +694,11 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 if self.json_tree.selectors.front_page.chapters["name"] == "_container_":
                     ch_name = ch_tag.get_text(strip=True)
                 else:
-                    ch_name = ch_tag.select_one(self.json_tree.selectors.front_page.chapters["name"]).get_text(
-                        strip=True
-                    )
+                    ch_name = ch_tag.select_one(self.json_tree.selectors.front_page.chapters["name"])
+                    if ch_name is not None:
+                        ch_name = ch_name.get_text(strip=True)
+                    else:
+                        continue
                 if self.json_tree.selectors.front_page.chapters["url"] == "_container_":
                     ch_url = ch_tag.get("href")
                 else:
@@ -701,7 +710,17 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             found_manga.append(PartialManga(manga_id, name, url, self.name, cover_url, chapters, actual_url=url))
         return found_manga
 
-    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+    async def _search_req(self, query: str) -> str:
+        """
+        Summar:
+            Performs the search request and returns the text of the response.
+
+        Args:
+            query: The search term
+
+        Returns:
+            str: The webpage text
+        """
         search_url = self.json_tree.search.url
         if self.json_tree.search.query_parsing.encoding == "url":
             query = url_encode(query)
@@ -719,10 +738,16 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 params += "&".join([f"{k}" for k, v in null_params.items()])
             query += params
             text = await self._get_text(search_url + query, method=self.json_tree.search.request_method)
+        elif self.json_tree.search.as_type == "data":
+            params = {self.json_tree.search.search_param_name: query} | extra_params
+            text = await self._get_text(search_url, data=params, method=self.json_tree.search.request_method)
         else:  # as param
             params = {self.json_tree.search.search_param_name: query} | extra_params
             text = await self._get_text(search_url, params=params, method=self.json_tree.search.request_method)
+        return text
 
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        text = await self._search_req(query)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -793,10 +818,12 @@ class NoStatusBasicScanlator(BasicScanlator):
             latest_release_date = date_tag.get_text(strip=True)
 
             # The next line is to check in case the manga does in fact have a status (i.e. Drakescans - some have status and some don't)
-            probably_real_status = ":" not in latest_release_date and " " not in latest_release_date and not bool(re.search(r"\d+", latest_release_date))
+            probably_real_status = ":" not in latest_release_date and " " not in latest_release_date and not bool(
+                re.search(r"\d+", latest_release_date))
             if probably_real_status:
-                return await super().get_status(raw_url)  # ideally the request is cached, so this should not be a problem
-            
+                return await super().get_status(
+                    raw_url)  # ideally the request is cached, so this should not be a problem
+
             timestamp = time_string_to_seconds(latest_release_date, formats=self.json_tree.properties.time_formats)
             if (
                     datetime.now().timestamp() - timestamp
@@ -860,7 +887,10 @@ class DynamicURLScanlator(BasicScanlator):
                 if resp.status == 404 and self.manga_id is not None:
                     if self.manga_id in url:
                         self.bot.logger.warning(f"404 error on {url}. Removing manga_id from URL and trying again.")
-                        url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector_char, "")
+                        if self.json_tree.properties.missing_id_connector.before_id:
+                            url = url.replace(self.json_tree.properties.missing_id_connector.char + self.manga_id, "")
+                        else:
+                            url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector.char, "")
                         return await self._get_text(url, method, **params)
 
                 await raise_and_report_for_status(self.bot, resp)
@@ -872,7 +902,10 @@ class DynamicURLScanlator(BasicScanlator):
             if resp.status_code == 404 and self.manga_id is not None:
                 if self.manga_id in url:
                     self.bot.logger.warning(f"404 error on {url}. Removing manga_id from URL and trying again.")
-                    url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector_char, "")
+                    if self.json_tree.properties.missing_id_connector.before_id:
+                        url = url.replace(self.json_tree.properties.missing_id_connector.char + self.manga_id, "")
+                    else:
+                        url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector.char, "")
                     return await self._get_text(url, method, **params)
 
             await raise_and_report_for_status(self.bot, resp)
@@ -916,9 +949,11 @@ class DynamicURLScanlator(BasicScanlator):
             to_replace = self.id_placeholder
             replace_with = self.chapter_id
             if self.chapter_id is None:
-                to_replace = self.id_placeholder + self.json_tree.properties.missing_id_connector_char
+                if self.json_tree.properties.missing_id_connector.before_id:
+                    to_replace = self.json_tree.properties.missing_id_connector.char + self.id_placeholder
+                else:
+                    to_replace = self.id_placeholder + self.json_tree.properties.missing_id_connector.char
                 replace_with = ""
-            print(manga.last_chapter.url)
             manga._last_chapter.url = manga.last_chapter.url.replace(to_replace, replace_with)
             for chapter in manga._available_chapters:
                 chapter.url = chapter.url.replace(to_replace, replace_with)
@@ -934,9 +969,12 @@ class DynamicURLScanlator(BasicScanlator):
         chapter_rx = self.json_tree.properties.chapter_regex
         if chapter_rx is not None and (res := chapter_rx.search(url)) is not None:
             groups = res.groupdict()
+            if self.json_tree.properties.missing_id_connector.before_id:
+                id_placeholder_str = self.json_tree.properties.missing_id_connector.char + self.id_placeholder
+            else:
+                id_placeholder_str = self.id_placeholder + self.json_tree.properties.missing_id_connector.char
             return (
-                    groups["before_id"] + self.id_placeholder + self.json_tree.properties.missing_id_connector_char
-                    + groups["after_id"]
+                    groups["before_id"] + id_placeholder_str + groups["after_id"]
             )
         else:
             url_name = await self._get_url_name(url)

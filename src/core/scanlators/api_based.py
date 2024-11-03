@@ -37,7 +37,8 @@ class _Comick(AbstractScanlator):
                     manga=self.fmt_url.removesuffix("?lang=en"),
                 )
             ),
-            request_method="http"
+            request_method="http",
+            rx=self.rx
         )
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
@@ -73,9 +74,31 @@ class _Comick(AbstractScanlator):
             self.bot.logger.error(raw_url)
             raise e
 
+    async def _get_and_update_manga_obj(self, url_name: str) -> dict:
+        manga_dict = await self.bot.apis.comick.get_manga(url_name)
+        new_prefix = manga_dict.get("new_prefix")
+        if new_prefix is None:
+            return manga_dict
+
+        _manga_id = manga_dict["comic"]["hid"]  # This is the same implementation as ComickAppAPI.get_id
+        db_manga = await self.bot.db.get_series(_manga_id, self.name)
+
+        if db_manga is None:  # no idea why, but adding this anyway
+            return manga_dict
+
+        rx = re.compile(r'/comic/(0\d-)?')
+        db_manga._url = rx.sub('/comic/' + new_prefix + '-', db_manga._url)
+        for chp in db_manga.available_chapters:
+            chp.url = rx.sub('/comic/' + new_prefix + '-', chp.url)
+        if db_manga.last_chapter:
+            db_manga.last_chapter.url = rx.sub('/comic/' + new_prefix + '-', db_manga.last_chapter.url)
+
+        await self.bot.db.update_series(db_manga)
+        return manga_dict
+
     async def get_title(self, raw_url: str) -> str | None:
         url_name = await self._get_url_name(raw_url)
-        manga = await self.bot.apis.comick.get_manga(url_name)
+        manga = await self._get_and_update_manga_obj(url_name)
         if manga.get("statusCode", 200) == 404:
             return None
         return manga["comic"]["title"]
@@ -86,7 +109,7 @@ class _Comick(AbstractScanlator):
 
     async def get_status(self, raw_url: str) -> str:
         url_name = await self._get_url_name(raw_url)
-        manga = await self.bot.apis.comick.get_manga(url_name)
+        manga = await self._get_and_update_manga_obj(url_name)
         if manga.get("statusCode", 200) == 404:
             return "Unknown"
         status_map = {1: "Ongoing", 2: "Completed", 3: "Cancelled", 4: "Hiatus"}
@@ -149,7 +172,8 @@ class _MangaDex(AbstractScanlator):
                     manga=self.fmt_url,
                 )
             ),
-            request_method="http"
+            request_method="http",
+            rx=self.rx
         )
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
@@ -259,7 +283,8 @@ class _ZeroScans(AbstractScanlator):
                     manga=self.fmt_url,
                 )
             ),
-            request_method="http"
+            request_method="http",
+            rx=self.rx
         )
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
