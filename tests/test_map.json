@@ -80,62 +80,62 @@
     }
   },
   "flamecomics": {
-    "user_input_url": "https://flamecomics.com/series/the-villainess-is-a-marionette/",
+    "user_input_url": "https://flamecomics.xyz/series/the-villainess-is-a-marionette/",
     "expected_results": {
       "scanlator_name": "flamecomics",
-      "manga_url": "https://flamecomics.com/series/the-villainess-is-a-marionette/",
+      "manga_url": "https://flamecomics.xyz/series/the-villainess-is-a-marionette/",
       "completed": true,
       "title": "The Villainess is a Marionette",
-      "manga_id": "https://flamecomics.com/series/the-villainess-is-a-marionette",
-      "curr_chapter_url": "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/",
-      "first_chapter_url": "https://flamecomics.com/the-villainess-is-a-marionette-chapter-0/",
-      "cover_image": "https://flamecomics.com/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
+      "manga_id": "https://flamecomics.¬xyz/series/the-villainess-is-a-marionette",
+      "curr_chapter_url": "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-69/",
+      "first_chapter_url": "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-0/",
+      "cover_image": "https://flamecomics.xyz/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
       "last_3_chapter_urls": [
-        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-67/",
-        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-68/",
-        "https://flamecomics.com/the-villainess-is-a-marionette-chapter-69/"
+        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-67/",
+        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-68/",
+        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-69/"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
   },
   "asura": {
-    "user_input_url": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke/",
+    "user_input_url": "https://asuracomic.net/series/i-regressed-as-the-duke-6d1e6e94",
     "expected_results": {
       "scanlator_name": "asura",
-      "manga_url": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke/",
+      "manga_url": "https://asuracomic.net/series/i-regressed-as-the-duke-6d1e6e94/",
       "completed": true,
       "title": "I Regressed As The Duke",
-      "manga_id": "https://asuratoon.com/manga/5588556462-i-regressed-as-the-duke",
-      "curr_chapter_url": "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-64-notice/",
-      "first_chapter_url": "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-1/",
-      "cover_image": "https://asuratoon.com/wp-content/uploads/2022/04/unknown_1-1.png",
+      "manga_id": "https://asuracomic.net/series/i-regressed-as-the-duke-6d1e6e94",
+      "curr_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/63",
+      "first_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/1",
+      "cover_image": "https://gg.asuracomic.net/storage/media/253/conversions/01J3BAW83KA3WAT4FRPDR572F1-optimized.webp",
       "last_3_chapter_urls": [
-        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-62/",
-        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-63/",
-        "https://asuratoon.com/2006886814-i-regressed-as-the-duke-chapter-64-notice/"
+        "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/61",
+        "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/62",
+        "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/63"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
   },
   "reaperscans": {
-    "user_input_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic",
+    "user_input_url": "https://reaperscans.com/series/the-legendary-mechanic",
     "expected_results": {
       "scanlator_name": "reaperscans",
-      "manga_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic",
+      "manga_url": "https://reaperscans.com/series/the-legendary-mechanic",
       "completed": true,
       "title": "The Legendary Mechanic",
-      "manga_id": "4099",
-      "curr_chapter_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10",
-      "first_chapter_url": "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/24239107-chapter-0",
+      "manga_id": "https://reaperscans.com/series/the-legendary-mechanic",
+      "curr_chapter_url": "https://reaperscans.com/series/the-legendary-mechanic/chapter-10",
+      "first_chapter_url": "https://reaperscans.com/series/the-legendary-mechanic/chapter-0",
       "cover_image": "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg",
       "last_3_chapter_urls": [
-        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/56469949-chapter-8",
-        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/11904616-chapter-9",
-        "https://reaperscans.com/comics/4099-the-legendary-mechanic/chapters/22619310-chapter-10"
+        "https://reaperscans.com/series/the-legendary-mechanic/chapter-8",
+        "https://reaperscans.com/series/the-legendary-mechanic/chapter-9",
+        "https://reaperscans.com/series/the-legendary-mechanic/chapter-10"
       ],
-      "use_default_id_function": false,
+      "use_default_id_function": true,
       "has_fp_manhwa": true
     }
   },
@@ -167,13 +167,13 @@
       "completed": true,
       "title": "Solo Leveling",
       "manga_id": "71gMd0vF",
-      "curr_chapter_url": "https://comick.io/comic/00-solo-leveling/DARIhC3K",
+      "curr_chapter_url": "https://comick.io/comic/00-solo-leveling/5N_wGCXG",
       "first_chapter_url": "https://comick.io/comic/00-solo-leveling/P_ysNE3VbnLbwN",
       "cover_image": "https://meo.comick.pictures/0GRgd.jpg",
       "last_3_chapter_urls": [
-        "https://comick.io/comic/00-solo-leveling/s_ukimbV",
-        "https://comick.io/comic/00-solo-leveling/YgUzmswO",
-        "https://comick.io/comic/00-solo-leveling/DARIhC3K"
+        "https://comick.io/comic/00-solo-leveling/JaFXXmsI",
+        "https://comick.io/comic/00-solo-leveling/GMhAHmIL",
+        "https://comick.io/comic/00-solo-leveling/5N_wGCXG"
       ],
       "use_default_id_function": false,
       "has_fp_manhwa": false
@@ -222,7 +222,7 @@
   "lscomic": {
     "user_input_url": "https://lscomic.com/manga/8th-class-mage-returns/",
     "expected_results": {
-      "completed": true,
+      "completed": false,
       "cover_image": "https://lscomic.com/wp-content/uploads/2023/09/cover-8CMR.png",
       "curr_chapter_url": "https://lscomic.com/manga/8th-class-mage-returns/chapter-81/",
       "first_chapter_url": "https://lscomic.com/manga/8th-class-mage-returns/chapter-1/",
@@ -240,40 +240,40 @@
     }
   },
   "drakescans": {
-    "user_input_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
+    "user_input_url": "https://drakecomic.org/manga/spirit-pet-creation-simulator1/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://drakescans.com/wp-content/uploads/2022/02/01.jpg",
-      "curr_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/",
-      "first_chapter_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-00/",
+      "cover_image": "https://drakecomic.org/wp-content/uploads/2022/02/01.jpg",
+      "curr_chapter_url": "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-28/",
+      "first_chapter_url": "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-00/",
       "last_3_chapter_urls": [
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-26/",
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-27/",
-        "https://drakescans.com/series/spirit-pet-creation-simulator1/chapter-28/"
+        "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-26/",
+        "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-27/",
+        "https://drakecomic.org/spirit-pet-creation-simulator1-chapter-28/"
       ],
-      "manga_id": "https://drakescans.com/series/spirit-pet-creation-simulator1",
-      "manga_url": "https://drakescans.com/series/spirit-pet-creation-simulator1/",
+      "manga_id": "https://drakecomic.org/manga/spirit-pet-creation-simulator1",
+      "manga_url": "https://drakecomic.org/manga/spirit-pet-creation-simulator1/",
       "scanlator_name": "drakescans",
       "title": "Spirit Pet Creation Simulator",
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
   },
-  "nitromanga": {
-    "user_input_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
+  "nitroscans": {
+    "user_input_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://nitromanga.com/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
-      "curr_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/",
-      "first_chapter_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter/",
+      "cover_image": "https://nitroscans.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
+      "curr_chapter_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-100/",
+      "first_chapter_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter/",
       "last_3_chapter_urls": [
-        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-98/",
-        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-99/",
-        "https://nitromanga.com/mangas/i-grow-stronger-by-eating/chapter-100/"
+        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-98/",
+        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-99/",
+        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-100/"
       ],
-      "manga_id": "https://nitromanga.com/mangas/i-grow-stronger-by-eating",
-      "manga_url": "https://nitromanga.com/mangas/i-grow-stronger-by-eating/",
-      "scanlator_name": "nitromanga",
+      "manga_id": "https://nitroscans.net/mangas/i-grow-stronger-by-eating",
+      "manga_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/",
+      "scanlator_name": "nitroscans",
       "title": "I Grow Stronger By Eating!",
       "use_default_id_function": true,
       "has_fp_manhwa": true
@@ -303,7 +303,7 @@
     "user_input_url": "https://bato.to/title/95400-queen-in-the-shadows",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://xfs-n18.xfsbb.com/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
+      "cover_image": "https://n15.ellie.wiki/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
       "curr_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/2031007-ch_60",
       "first_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/1803219-ch_1",
       "last_3_chapter_urls": [
@@ -340,19 +340,19 @@
     }
   },
   "nightscans": {
-    "user_input_url": "https://night-scans.com/series/2825750948-all-attributes-in-martial-arts/",
+    "user_input_url": "https://nightsup.net/series/4190634673-all-attributes-in-martial-arts/",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://night-scans.com/wp-content/uploads/2023/03/AAAMAcover_result.webp",
-      "curr_chapter_url": "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-70/",
-      "first_chapter_url": "https://night-scans.com/5002592384-all-attribute-martial-arts-00/",
+      "cover_image": "https://nightsup.net/wp-content/uploads/2023/03/AAAMAcover_result.webp",
+      "curr_chapter_url": "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-70/",
+      "first_chapter_url": "https://nightsup.net/8781815493-all-attribute-martial-arts-00/",
       "last_3_chapter_urls": [
-        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-68/",
-        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-69/",
-        "https://night-scans.com/5002592384-all-attribute-in-martial-arts-chapter-70/"
+        "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-68/",
+        "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-69/",
+        "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-70/"
       ],
-      "manga_id": "https://night-scans.com/series/all-attributes-in-martial-arts",
-      "manga_url": "https://night-scans.com/series/2825750948-all-attributes-in-martial-arts",
+      "manga_id": "https://nightsup.net/series/all-attributes-in-martial-arts",
+      "manga_url": "https://nightsup.net/series/4190634673-all-attributes-in-martial-arts",
       "scanlator_name": "nightscans",
       "title": "All-Attributes in Martial Arts",
       "use_default_id_function": true,
@@ -428,13 +428,13 @@
       "title": "Tensei Shitara Slime Datta Ken",
       "manga_id": "ye359223",
       "use_default_id_function": false,
-      "curr_chapter_url": "https://readmangabat.com/read-ye359223-chap-111",
+      "curr_chapter_url": "https://readmangabat.com/read-ye359223-chap-122",
       "first_chapter_url": "https://readmangabat.com/read-ye359223-chap-1",
       "cover_image": "https://avt.mkklcdnv6temp.com/19/y/2-1583466482.jpg",
       "last_3_chapter_urls": [
-        "https://readmangabat.com/read-ye359223-chap-109",
-        "https://readmangabat.com/read-ye359223-chap-110",
-        "https://readmangabat.com/read-ye359223-chap-111"
+        "https://readmangabat.com/read-ye359223-chap-120.1",
+        "https://readmangabat.com/read-ye359223-chap-121",
+        "https://readmangabat.com/read-ye359223-chap-122"
       ],
       "has_fp_manhwa": true
     }
@@ -460,21 +460,21 @@
     }
   },
   "astrascans": {
-    "user_input_url": "https://astrascans.com/10000/empress-hunt/",
+    "user_input_url": "https://astrascans.org/series/apocalyptic-survival-i-can-see-hidden-clues/",
     "expected_results": {
       "scanlator_name": "astrascans",
-      "manga_url": "https://astrascans.com/10000/empress-hunt/",
-      "completed": true,
-      "title": "Empress Hunt",
+      "manga_url": "https://astrascans.org/series/apocalyptic-survival-i-can-see-hidden-clues/",
+      "completed": false,
+      "title": "Apocalyptic Survival: I Can See Hidden Clues",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://astrascans.com/empress-hunt-chapter-45/",
-      "first_chapter_url": "https://astrascans.com/empress-hunt-chapter-1/",
-      "cover_image": "https://i3.wp.com/astrascans.com/wp-content/uploads/2023/09/Empress-Hunt.png",
+      "curr_chapter_url": "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-42/",
+      "first_chapter_url": "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-0-5/",
+      "cover_image": "https://i3.wp.com/astrascans.org/wp-content/uploads/2024/04/Apocalyptic-Survival-I-Can-See-Hidden-Clues.jpeg",
       "last_3_chapter_urls": [
-        "https://astrascans.com/empress-hunt-chapter-43/",
-        "https://astrascans.com/empress-hunt-chapter-44/",
-        "https://astrascans.com/empress-hunt-chapter-45/"
+        "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-40/",
+        "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-41/",
+        "https://astrascans.org/apocalyptic-survival-i-can-see-hidden-clues-chapter-42/"
       ],
       "has_fp_manhwa": true
     }
@@ -520,21 +520,21 @@
     }
   },
   "kaiscans": {
-    "user_input_url": "https://kaiscans.org/manga/7301267747-cry-even-better-if-you-beg/",
+    "user_input_url": "https://kaiscans.org/manga/from-misery-to-majesty/",
     "expected_results": {
       "scanlator_name": "kaiscans",
-      "manga_url": "https://kaiscans.org/manga/7301267747-cry-even-better-if-you-beg/",
+      "manga_url": "https://kaiscans.org/manga/from-misery-to-majesty/",
       "completed": false,
-      "title": "Cry, Even Better if You Beg",
+      "title": "From Misery to Majesty",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-24/",
-      "first_chapter_url": "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-1/",
-      "cover_image": "https://kaiscans.org/wp-content/uploads/2024/03/why-is-no-talking-about-the-cry-even-better-if-you-beg-v0-jrn87uhfdznb1.webp",
+      "curr_chapter_url": "https://kaiscans.org/from-misery-to-majesty-chapter-50/",
+      "first_chapter_url": "https://kaiscans.org/from-misery-to-majesty-chapter-2/",
+      "cover_image": "https://i2.wp.com/kaiscans.org/wp-content/uploads/2024/09/From-Misery-to-Majesty-harimanga.jpg",
       "last_3_chapter_urls": [
-        "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-22/",
-        "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-23/",
-        "https://kaiscans.org/8117881900-cry-even-better-if-you-beg-24/"
+        "https://kaiscans.org/from-misery-to-majesty-chapter-48/",
+        "https://kaiscans.org/from-misery-to-majesty-chapter-49/",
+        "https://kaiscans.org/from-misery-to-majesty-chapter-50/"
       ],
       "has_fp_manhwa": true
     }
@@ -590,7 +590,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27",
       "first_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554453-vol-1-ch-1",
-      "cover_image": "https://xfs-n11.xfspp.com/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
+      "cover_image": "https://n01.eminence.pics/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
       "last_3_chapter_urls": [
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554478-vol-7-ch-25",
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554479-vol-7-ch-26",
@@ -760,21 +760,21 @@
     }
   },
   "topreadmanhwa": {
-    "user_input_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/",
+    "user_input_url": "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/",
     "expected_results": {
       "scanlator_name": "topreadmanhwa",
-      "manga_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/",
+      "manga_url": "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/",
       "completed": false,
-      "title": "A Suspicious Confession",
+      "title": "I Became the Ugly Lady",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-44/",
-      "first_chapter_url": "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-1/",
-      "cover_image": "https://topreadmanhwa.com/wp-content/uploads/2023/11/A-Suspicious-Confession.png",
+      "curr_chapter_url": "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/chapter-131/",
+      "first_chapter_url": "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/chapter-0/",
+      "cover_image": "https://topreadmanhwa.com/wp-content/uploads/2023/09/I-Became-the-Ugly-Lady.png",
       "last_3_chapter_urls": [
-        "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-42/",
-        "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-43/",
-        "https://topreadmanhwa.com/manga/a-suspicious-confession/chapter-44/"
+        "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/chapter-129/",
+        "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/chapter-130/",
+        "https://topreadmanhwa.com/manga/i-became-the-ugly-lady/chapter-131/"
       ],
       "has_fp_manhwa": true
     }
@@ -800,41 +800,41 @@
     }
   },
   "mangafire": {
-    "user_input_url": "https://mangafire.to/manga/hellsing.y8x",
+    "user_input_url": "https://mangafire.to/manga/hellsingg.y8x",
     "expected_results": {
       "scanlator_name": "mangafire",
-      "manga_url": "https://mangafire.to/manga/hellsing.y8x",
+      "manga_url": "https://mangafire.to/manga/hellsingg.y8x",
       "completed": true,
       "title": "HELLSING",
       "manga_id": "y8x",
       "use_default_id_function": false,
-      "curr_chapter_url": "https://mangafire.to/read/hellsing.y8x/en/chapter-88",
-      "first_chapter_url": "https://mangafire.to/read/hellsing.y8x/en/chapter-1",
-      "cover_image": "https://static.mangafire.to/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
+      "curr_chapter_url": "https://mangafire.to/read/hellsingg.y8x/en/chapter-88",
+      "first_chapter_url": "https://mangafire.to/read/hellsingg.y8x/en/chapter-1",
+      "cover_image": "https://static.mangafire.to/3b2d5/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
       "last_3_chapter_urls": [
-        "https://mangafire.to/read/hellsing.y8x/en/chapter-86",
-        "https://mangafire.to/read/hellsing.y8x/en/chapter-87",
-        "https://mangafire.to/read/hellsing.y8x/en/chapter-88"
+        "https://mangafire.to/read/hellsingg.y8x/en/chapter-86",
+        "https://mangafire.to/read/hellsingg.y8x/en/chapter-87",
+        "https://mangafire.to/read/hellsingg.y8x/en/chapter-88"
       ],
       "has_fp_manhwa": true
     }
   },
   "theblank": {
-    "user_input_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/",
+    "user_input_url": "https://theblank.net/manga/predatory-marriage/",
     "expected_results": {
       "scanlator_name": "theblank",
-      "manga_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/",
+      "manga_url": "https://theblank.net/manga/predatory-marriage/",
       "completed": true,
-      "title": "Traditional Erotic Fairy Tales",
+      "title": "Predatory Marriage",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-4/",
-      "first_chapter_url": "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-1/",
-      "cover_image": "https://theblank.net/wp-content/uploads/2023/09/Traditional-Erotic-Fairy-Tales.jpg",
+      "curr_chapter_url": "https://theblank.net/manga/predatory-marriage/chapter-9/",
+      "first_chapter_url": "https://theblank.net/manga/predatory-marriage/chapter-0/",
+      "cover_image": "https://theblank.net/wp-content/uploads/2024/10/10001.jpg",
       "last_3_chapter_urls": [
-        "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-2/",
-        "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-3/",
-        "https://theblank.net/manga/traditional-erotic-fairy-tales/chapter-4/"
+        "https://theblank.net/manga/predatory-marriage/chapter-7/",
+        "https://theblank.net/manga/predatory-marriage/chapter-8/",
+        "https://theblank.net/manga/predatory-marriage/chapter-9/"
       ],
       "has_fp_manhwa": true
     }
@@ -880,61 +880,99 @@
     }
   },
   "zinmanga": {
-    "user_input_url": "https://zinmanga.com/manga/duchess-what-is-identity/",
+    "user_input_url": "https://zinmanga.net/manga/duchess-what-is-identity/",
     "expected_results": {
       "scanlator_name": "zinmanga",
-      "manga_url": "https://zinmanga.com/manga/duchess-what-is-identity/",
+      "manga_url": "https://zinmanga.net/manga/duchess-what-is-identity/",
       "completed": true,
       "title": "Duchess, what is identity?",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://zinmanga.com/manga/duchess-what-is-identity/chapter-7-end/",
-      "first_chapter_url": "https://zinmanga.com/manga/duchess-what-is-identity/chapter-1/",
-      "cover_image": "https://zinmanga.com/wp-content/uploads/2020/12/Young-Hyun.png",
+      "curr_chapter_url": "https://zinmanga.net/manga/duchess-what-is-identity/chapter-7",
+      "first_chapter_url": "https://zinmanga.net/manga/duchess-what-is-identity/chapter-1",
+      "cover_image": "https://cdn.zinmanga1.com/thumb/duchess-what-is-identity.png",
       "last_3_chapter_urls": [
-        "https://zinmanga.com/manga/duchess-what-is-identity/chapter-5/",
-        "https://zinmanga.com/manga/duchess-what-is-identity/chapter-6/",
-        "https://zinmanga.com/manga/duchess-what-is-identity/chapter-7-end/"
+        "https://zinmanga.net/manga/duchess-what-is-identity/chapter-5",
+        "https://zinmanga.net/manga/duchess-what-is-identity/chapter-6",
+        "https://zinmanga.net/manga/duchess-what-is-identity/chapter-7"
       ],
       "has_fp_manhwa": true
     }
   },
   "epsilonscansoft": {
-    "user_input_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/",
+    "user_input_url": "https://soft.epsilonscan.to/manga/innocent-rouge/",
     "expected_results": {
       "scanlator_name": "epsilonscansoft",
-      "manga_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/",
+      "manga_url": "https://soft.epsilonscan.to/manga/innocent-rouge/",
       "completed": true,
       "title": "Innocent Rouge",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/88e-episode/",
-      "first_chapter_url": "https://soft.epsilonscan.fr/manga/innocent-rouge/1er-episode/",
-      "cover_image": "https://soft.epsilonscan.fr/wp-content/uploads/2024/02/innocent-Rouge-1-delcourt.jpg",
+      "curr_chapter_url": "https://soft.epsilonscan.to/manga/innocent-rouge/88e-episode/",
+      "first_chapter_url": "https://soft.epsilonscan.to/manga/innocent-rouge/1er-episode/",
+      "cover_image": "https://soft.epsilonscan.to/wp-content/uploads/2024/02/innocent-Rouge-1-delcourt.jpg",
       "last_3_chapter_urls": [
-        "https://soft.epsilonscan.fr/manga/innocent-rouge/86e-episode/",
-        "https://soft.epsilonscan.fr/manga/innocent-rouge/87e-episode/",
-        "https://soft.epsilonscan.fr/manga/innocent-rouge/88e-episode/"
+        "https://soft.epsilonscan.to/manga/innocent-rouge/86e-episode/",
+        "https://soft.epsilonscan.to/manga/innocent-rouge/87e-episode/",
+        "https://soft.epsilonscan.to/manga/innocent-rouge/88e-episode/"
       ],
       "has_fp_manhwa": true
     }
   },
   "epsilonscan": {
-    "user_input_url": "https://epsilonscan.fr/manga/not-safe-for-work/",
+    "user_input_url": "https://epsilonscan.to/manga/not-safe-for-work/",
     "expected_results": {
       "scanlator_name": "epsilonscan",
-      "manga_url": "https://epsilonscan.fr/manga/not-safe-for-work/",
+      "manga_url": "https://epsilonscan.to/manga/not-safe-for-work/",
       "completed": true,
       "title": "Not Safe For Work",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-24/",
-      "first_chapter_url": "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-1/",
-      "cover_image": "https://epsilonscan.fr/wp-content/uploads/2024/02/NSFW-cover-02_digital_art_x4_colored_toned_light_ai-1.webp",
+      "curr_chapter_url": "https://epsilonscan.to/manga/not-safe-for-work/chapitre-24/",
+      "first_chapter_url": "https://epsilonscan.to/manga/not-safe-for-work/chapitre-1/",
+      "cover_image": "https://epsilonscan.to/wp-content/uploads/2024/02/NSFW-cover-02_digital_art_x4_colored_toned_light_ai-1.webp",
       "last_3_chapter_urls": [
-        "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-22/",
-        "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-23/",
-        "https://epsilonscan.fr/manga/not-safe-for-work/chapitre-24/"
+        "https://epsilonscan.to/manga/not-safe-for-work/chapitre-22/",
+        "https://epsilonscan.to/manga/not-safe-for-work/chapitre-23/",
+        "https://epsilonscan.to/manga/not-safe-for-work/chapitre-24/"
+      ]
+    }
+  },
+  "firescans": {
+    "user_input_url": "https://firescans.xyz/manga/the-savior-is-ruined/",
+    "expected_results": {
+      "scanlator_name": "firescans",
+      "manga_url": "https://firescans.xyz/manga/the-savior-is-ruined/",
+      "completed": false,
+      "title": "The Savior is Ruined",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://firescans.xyz/manga/the-savior-is-ruined/chapter-03/",
+      "first_chapter_url": "https://firescans.xyz/manga/the-savior-is-ruined/chapter-01/",
+      "cover_image": "https://firescans.xyz/wp-content/uploads/2023/09/cb_173096_c_601_300_400.jpg",
+      "last_3_chapter_urls": [
+        "https://firescans.xyz/manga/the-savior-is-ruined/chapter-01/",
+        "https://firescans.xyz/manga/the-savior-is-ruined/chapter-02/",
+        "https://firescans.xyz/manga/the-savior-is-ruined/chapter-03/"
+      ]
+    }
+  },
+  "gourmet": {
+    "user_input_url": "https://gourmetsupremacy.com/project/secret-love-night-affair/",
+    "expected_results": {
+      "scanlator_name": "gourmet",
+      "manga_url": "https://gourmetsupremacy.com/project/secret-love-night-affair/",
+      "completed": true,
+      "title": "Secret Love: Night Affair",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-36-end/",
+      "first_chapter_url": "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-0-prologue/",
+      "cover_image": "https://gourmetsupremacy.com/wp-content/uploads/2021/03/Secret-Love-Gourmet-Scans.jpg",
+      "last_3_chapter_urls": [
+        "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-34/",
+        "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-35/",
+        "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-36-end/"
       ]
     }
   }

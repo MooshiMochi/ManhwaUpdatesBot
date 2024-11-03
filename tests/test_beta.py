@@ -4,6 +4,8 @@ import os
 import sys
 from typing import Dict, Optional
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.core import (
     CachedClientSession,
     CachedCurlCffiSession,
@@ -52,6 +54,7 @@ class Bot:
             self.load_scanlators(scanlaors)
 
     async def close(self):
+        await self.db.conn.close()
         await self.curl_session.close()
         await self.session.close()
 
@@ -120,23 +123,32 @@ async def main():
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
         key = "comick"
-        url = "https://comick.io/comic/the-main-characters-that-only-i-know"
+        url = "https://api.comick.fun/comic/05-one-punch-man"
         query = "he"
         scanlator = scanlators[key]
-        title = await scanlator.get_title(url)
+        title = await scanlator.get_title(url);
+        # print("Title:", title)
+        _id = await scanlator.get_id(url);
+        # print("ID:", _id)
+        all_chapters = await scanlator.get_all_chapters(url);
+        # print("All chapters:", all_chapters)
+        status = await scanlator.get_status(url);
+        # print("Status:", status)
+        synopsis = await scanlator.get_synopsis(url);
+        # print("Synopsis:", synopsis)
+        cover = await scanlator.get_cover(url);
+        # print("Cover:", cover)
+        fp_manga = await scanlator.get_fp_partial_manga();
+        # print("FP Manhwa:", fp_manga)
+        search_result = await scanlator.search(query);
+        # print("Search:", search_result)
+        manga = await scanlator.make_manga_object(url, load_from_db=False)
+        # print("Manga obj:", manga)
+        updates_result = await scanlator.check_updates(manga);
+        # print("Updates result:", updates_result)
 
-        _id = await scanlator.get_id(url)
-        all_chapters = await scanlator.get_all_chapters(url)
-        status = await scanlator.get_status(url)
-        synopsis = await scanlator.get_synopsis(url)
-        cover = await scanlator.get_cover(url)
-        fp_manga = await scanlator.get_fp_partial_manga()
-        search_result = await scanlator.search(query)
-        manga = await scanlator.make_manga_object(url)
-        updates_result = await scanlator.check_updates(manga)
-        #
         results = (
-            f"Title: {title}", f"ID: {_id}", f"All Chapters: {all_chapters}", f"Status: {status}",
+            f"Title: {title}", f"ID: {_id}", f"URL: {manga.url}", f"All Chapters: {all_chapters}", f"Status: {status}",
             f"Synopsis: {synopsis}", f"Cover: {cover}", f"FP Manhwa: {fp_manga}", f"Search: {search_result}",
             f"Manga obj: {manga}", f"Updates result: {updates_result}"
         )
@@ -151,7 +163,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     setup_logging(level=logging.DEBUG)
     silence_debug_loggers(
         logger,
@@ -166,4 +179,9 @@ if __name__ == "__main__":
             "filelock"
         ]
     )
-    asyncio.run(main())
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
+    finally:
+        loop.close()

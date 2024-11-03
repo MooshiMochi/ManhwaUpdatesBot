@@ -12,6 +12,13 @@ class _FormatUrlsProperties:
         self.ajax: Optional[str] = format_urls_dict.get("ajax")  # optional
 
 
+class MissingIDConnector:
+    def __init__(self, **missing_id_connector_dict):
+        self.exists: bool = missing_id_connector_dict is not None and missing_id_connector_dict != {}
+        self.char: str | None = missing_id_connector_dict.get("char")
+        self.before_id: bool = missing_id_connector_dict.get("before_id", False)
+
+
 class _Properties:
     def __init__(self, **properties_dict):
         self.base_url: str = properties_dict["base_url"]
@@ -23,7 +30,8 @@ class _Properties:
         self.no_status: bool = properties_dict.get("no_status", False)
         self.requires_update_embed = properties_dict.get("requires_update_embed", False),
         self.can_render_cover = properties_dict.get("can_render_cover", True)
-        self.missing_id_connector_char = properties_dict.get("missing_id_connector_char", "-")
+        self.missing_id_connector = MissingIDConnector(**properties_dict.get("missing_id_connector", {}))
+        self.url_chapter_prefix = properties_dict.get("url_chapter_prefix")
         self.chapter_regex = properties_dict.get("chapter_regex", None)
         if self.chapter_regex is not None:
             self.chapter_regex = re.compile(self.chapter_regex)

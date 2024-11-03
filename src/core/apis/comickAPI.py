@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -40,20 +41,18 @@ class ComickAppAPI:
         if self.rate_limit_remaining is not None and self.rate_limit_remaining == 0:
             await asyncio.sleep(self.rate_limit_reset)
         try:
-            async with self.manager.session.request(
-                    method, url, params=params, json=data, headers=headers, **kwargs
-            ) as response:
-                json_data = await response.json()
-                self.rate_limit_remaining = int(
-                    response.headers.get("X-RateLimit-Remaining", "-1")
+            response = await self.manager.bot.curl_session.request(method, url, params=params, json=data,
+                                                                   headers=headers, **kwargs)
+            if response.status_code != 200:
+                raise Exception(
+                    f"Request failed with status {response.status_code}\nURL: {response.url}"
                 )
-                self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
-
-                if response.status != 200:
-                    raise Exception(
-                        f"Request failed with status {response.status}: {json_data}\nURL: {response.url}"
-                    )
-                return json_data
+            json_data = response.json()
+            self.rate_limit_remaining = int(
+                response.headers.get("X-RateLimit-Remaining", "-1")
+            )
+            self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", "-1"))
+            return json_data
 
         except aiohttp.ServerDisconnectedError:
             if kwargs.get("call_depth", 0) > 3:
@@ -63,17 +62,45 @@ class ComickAppAPI:
             self.manager.session.logger.error("Server disconnected, retrying request...")
             return await self.__request(method, endpoint, params, data, headers, **kwargs)
 
-    async def get_manga(self, url_name: str) -> Dict[str, Any]:
+    async def get_manga(self, url_name: str, used_prefixes: set[str] | None = None) -> Dict[str, Any]:
+        if not used_prefixes:
+            used_prefixes = set()
+        possible_prefixes = {None, '00', '01', '02', '03', '04', '05'} - used_prefixes
+        match = re.match(r"(\d{2})-", url_name)
+        curr_prefix = match.group(1) if match else None
+
+        if curr_prefix in possible_prefixes:
+            possible_prefixes.remove(curr_prefix)
+
+        used_prefixes.add(curr_prefix)
         endpoint = f"comic/{url_name}"
-        return await self.__request("GET", endpoint)
+        try:
+            result = await self.__request("GET", endpoint)
+            if len(used_prefixes) > 1:
+                self.manager.session.logger.debug(f"✅ Success!")
+                result['new_prefix'] = curr_prefix
+            else:
+                result['new_prefix'] = None
+            return result
+        except Exception as e:
+            if not possible_prefixes:
+                raise Exception(f"❌ Exhausted all possbile prefixes for {url_name}\n{e.__traceback__}")
+
+            new_prefix = possible_prefixes.pop()
+            if new_prefix is None:
+                new_url_name = url_name[3:] if match else url_name
+            else:
+                new_url_name = f"{new_prefix}-{url_name}" if not match else f"{new_prefix}{url_name[2:]}"
+            self.manager.session.logger.debug(
+                f"❌ Failed to get manga with url_name {url_name}\nTrying with {new_url_name}")
+            return await self.get_manga(new_url_name, used_prefixes | {new_prefix})
 
     async def get_id(self, url_name: str) -> str:
         data = await self.get_manga(url_name)
         return data["comic"]["hid"]
 
     async def get_synopsis(self, url_name: str) -> Optional[str]:
-        endpoint = f"comic/{url_name}"
-        data = await self.__request("GET", endpoint)
+        data = await self.get_manga(url_name)
         return data.get("comic", {}).get("desc", None)
 
     @staticmethod

@@ -103,6 +103,8 @@ class BookmarkView(BaseView):
         self.folder: BookmarkFolderType = folder
 
         self.bookmarks: list[Bookmark] = bookmarks
+        self.prepare_folder()
+
         self.viewable_bookmarks = self.get_bookmarks_from_folder()
         # the method below will sort the bookmarks by the sort_type
         self.text_view_embeds: list[discord.Embed] = self._bookmarks_to_text_embeds()
@@ -112,6 +114,12 @@ class BookmarkView(BaseView):
 
         self._btn_callbacks = CustomButtonCallbacks(self.bot, self)
         self.load_components()
+
+    def prepare_folder(self) -> None:
+        """This method will check if there are any bookmarks in the selected folder. If not, it will change the
+        folder"""
+        if len(self.get_bookmarks_from_folder()) == 0:
+            self.folder = self.bookmarks[0].folder
 
     def get_bookmarks_from_folder(self) -> list[Bookmark]:
         return [x for x in self.bookmarks if x.folder == self.folder or self.folder == BookmarkFolderType.All]
@@ -1787,7 +1795,7 @@ class ScanlatorChannelAssociationView(BaseView):
             ephemeral=True
         )
         self.current_associations.remove(target_association[0])  # remove the association
-        self.pending_removals.append(modal.scanlator)
+        self.pending_removals.append(modal.scanlator.lower())
         embed = await self.get_display_embed()
         await interaction.edit_original_response(embed=embed, view=self)
 
@@ -1795,10 +1803,14 @@ class ScanlatorChannelAssociationView(BaseView):
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
         # save the association changes here
         if self.current_associations:
-            associations_to_delete = [x for x in self.current_associations if x.scanlator in self.pending_removals]
+            print("Pending removals:", self.pending_removals)
+            associations_to_delete = [x for x in self.current_associations if
+                                      x.scanlator.lower() in self.pending_removals]
+            print("Associations to delete:", associations_to_delete)
             self.current_associations = [
                 x for x in self.current_associations if x.scanlator not in self.pending_removals
             ]
+            print("Current associations:", self.current_associations)
 
             await ScanlatorChannelAssociation.delete_many(associations_to_delete)
             await ScanlatorChannelAssociation.upsert_many(self.bot, self.current_associations)

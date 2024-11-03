@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="dataSourceStorageLocal" created-in="PY-233.15026.15">
-    <data-source name="database.db" uuid="0bc8821d-f561-4efd-af3d-8e8d02375fc1">
+  <component name="dataSourceStorageLocal" created-in="PY-241.19416.19">
+    <data-source name="Main db" uuid="0bc8821d-f561-4efd-af3d-8e8d02375fc1">
       <database-info product="SQLite" version="3.45.1" jdbc-version="4.2" driver-name="SQLite JDBC" driver-version="3.45.1.0" dbms="SQLITE" exact-version="3.45.1" exact-driver-version="3.45">
         <identifier-quote-string>&quot;</identifier-quote-string>
       </database-info>
@@ -14,6 +14,19 @@
         </introspection-scope>
       </schema-mapping>
       <load-sources>user_and_system_sources</load-sources>
+    </data-source>
+    <data-source name="Test db" uuid="c93e9bbb-057f-46cc-b2d5-25a16f607fbf">
+      <database-info product="SQLite" version="3.45.1" jdbc-version="4.2" driver-name="SQLite JDBC" driver-version="3.45.1.0" dbms="SQLITE" exact-version="3.45.1" exact-driver-version="3.45">
+        <identifier-quote-string>&quot;</identifier-quote-string>
+      </database-info>
+      <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed" />
+      <secret-storage>master_key</secret-storage>
+      <auth-provider>no-auth</auth-provider>
+      <schema-mapping>
+        <introspection-scope>
+          <node kind="schema" qname="@" />
+        </introspection-scope>
+      </schema-mapping>
     </data-source>
   </component>
 </project>

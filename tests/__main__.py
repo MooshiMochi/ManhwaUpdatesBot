@@ -94,6 +94,8 @@ class Bot:
         # await self.cf_scraper.close()
         self.logger.info("Closing test instance...")
 
+        await self.db.conn.close()
+
         if self.apis.flare.is_available:
             self.logger.info("[FlareSolverr] > Begin server session cleanup...")
             await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
@@ -133,7 +135,7 @@ class Bot:
             self.config["proxy"]["enabled"] = False
             return None
 
-        ip, port = proxy_dict.get("proxy_address"), proxy_dict.get("port")
+        ip, port = proxy_dict.get("ip"), proxy_dict.get("port")
         if not ip or not port:
             return None
 
@@ -434,7 +436,11 @@ async def run_single_test(test_case: TestCase, test_method: str = "all"):
 
 
 class TestCases(dict):
-    def __init__(self):
+    def __init__(self, tests_to_ignore: list[str] | None = None):
+        if tests_to_ignore is None:
+            self.tests_to_ignore = []
+        else:
+            self.tests_to_ignore = tests_to_ignore
         self.test_setup = SetupTest()
 
         with open(os.path.join(root_path, "tests/test_map.json"), "r", encoding="utf-8") as f:
@@ -471,6 +477,8 @@ class TestCases(dict):
     async def __aenter__(self):
         await self.test_setup.bot.async_init()
         for name, klass in self.testCases.items():
+            if name in self.tests_to_ignore:
+                continue
             if isinstance(klass.expected_result.manga_id, Coroutine):
                 klass.expected_result.manga_id = await klass.expected_result.manga_id
         return self
@@ -480,9 +488,24 @@ class TestCases(dict):
 
 
 async def main():
-    async with TestCases() as testCases:
-        tests_to_ignore = ["asura", "lumitoon", "rizzcomic", "reaperscans", "manhwa-freak", "zeroscans", "vortexscan"]
-        # "voidscans", "astrascans", "reaperscans"
+    tests_to_ignore = [
+        # Support ended:
+        "epsilonscansoft", "epsilonscan",
+
+        # The website is broken, waiting for it to be fixed:
+        "theblank",
+
+        # The websites died/got taken down:
+        "lumitoon", "freakscans", "cosmic", "nvmanga", "newmanhua", "freakcomic", "rizzcomic",
+
+        "resetscans",  # the website added pagination for chapters. need to hard-code custom scanlator class
+        "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
+        "demonreader",  # Need to work on figuring out the ID for the chapter. It might need custom implementation
+
+        # The website(s) id down at the time of testing:
+        "lscomic",
+    ]
+    async with TestCases(tests_to_ignore) as testCases:
         await run_tests(testCases, tests_to_ignore)
 
 
@@ -569,8 +592,8 @@ if __name__ == "__main__":
     if os.name != "nt":
         asyncio.run(main())
     else:
-        # asyncio.run(test_single_method("show_front_page_results", "mangabat"))
-        # asyncio.run(test_single_scanlator("epsilonscan"))
+        # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
+        # asyncio.run(test_single_scanlator("gourmet"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         asyncio.run(main())
