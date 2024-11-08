@@ -1350,7 +1350,7 @@ class Database:
         if not user:
             return 0
         mutual_guild_ids = [f"{x.id}" for x in user.mutual_guilds] + [user_id]
-        cursor = await self.execute(
+        result = await self.execute(
             """
             SELECT COUNT(*) FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
             AND guild_id IN ({})
@@ -1359,7 +1359,7 @@ class Database:
             ),
             header.id, header.scanlator
         )
-        return cursor.rowcount
+        return result[0][0] if result else 0
 
     async def delete_guild_user_subs(self, guild_id: int) -> int:
         """
