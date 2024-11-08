@@ -83,6 +83,8 @@ class ComickAppAPI:
                 result['new_prefix'] = None
             return result
         except Exception as e:
+            if "429" in str(e):  # Prevent the bot from making unnecessary requests if the bot is ratelimited.
+                raise Exception("❌ Rate limited")
             if not possible_prefixes:
                 raise Exception(f"❌ Exhausted all possbile prefixes for {url_name}\n{e.__traceback__}")
 
