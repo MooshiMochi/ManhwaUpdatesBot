@@ -465,6 +465,11 @@ class Bookmark:
         self.last_updated_ts = datetime.now().timestamp()
         return await bot.db.upsert_bookmark(self)
 
+    async def move_to_folder(self, bot: MangaClient, new_folder: BookmarkFolderType) -> bool:
+        """Move the bookmark to a different folder"""
+        self.folder = new_folder
+        return await bot.db.upsert_bookmark(self)
+
     def __repr__(self) -> str:
         return f"Bookmark({self.user_id} - {self.manga.title} - {self.manga.id})"
 
@@ -782,3 +787,11 @@ class ScanlatorChannelAssociation:
 
     def __repr__(self):
         return f"ScanlatorChannelAssociation({self.guild.name} [{self.guild_id}] - {self.scanlator} - {self.channel_id})"
+
+    def __eq__(self, other):
+        return (
+                isinstance(other, ScanlatorChannelAssociation) and
+                self.guild_id == other.guild_id and
+                self.scanlator == other.scanlator and
+                self.channel_id == other.channel_id
+        )

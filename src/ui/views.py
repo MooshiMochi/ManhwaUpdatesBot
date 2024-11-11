@@ -1492,7 +1492,7 @@ class SettingsView(BaseView):
         embed = self.create_embed()
         await interaction.response.edit_message(embed=embed, view=self)  # noqa
 
-    @discord.ui.button(label="Done", emoji=Emotes.success, style=discord.ButtonStyle.blurple, row=4)
+    @discord.ui.button(label="Save", emoji=Emotes.success, style=discord.ButtonStyle.blurple, row=4)
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
         if not self.guild_config.notifications_channel:
             await interaction.response.send_message(  # noqa
@@ -1617,11 +1617,10 @@ class ScanlatorChannelAssociationView(BaseView):
         self.interaction: discord.Interaction = interaction
         self.temp_config: GuildSettings = temp_config
 
-        self.selected_scanlator: str | None = None
         self.selected_channel: discord.TextChannel | None = None
         self.used_guild_scanlators: list[str] = []
         self.current_associations: list[ScanlatorChannelAssociation] = []
-        self.pending_removals: list[str] = []
+        self.pending_removals: list[ScanlatorChannelAssociation] = []
         # self._refresh_components()
 
     async def get_display_embed(self) -> discord.Embed:
@@ -1646,14 +1645,19 @@ class ScanlatorChannelAssociationView(BaseView):
         db_associations = await self.bot.db.get_scanlator_channel_associations(
             self.interaction.guild_id
         )
-        db_associations = [x for x in db_associations if x.scanlator not in self.pending_removals]
+
+        # remove the associations from showing up if they are pending to be deleted
+        db_associations = [x for x in db_associations if x not in self.pending_removals]
         self.current_associations = db_associations + self.current_associations
+
+        # remove duplicates
         self.current_associations = list({x.scanlator: x for x in self.current_associations}.values())
 
         em.set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
         if not self.current_associations:
             em.description += "\n`No custom scanlator channels set.`\n"
         else:
+            # sort them alphabetically
             for association in sorted(self.current_associations, key=lambda x: x.scanlator.lower()):
                 scanlator_name = association.scanlator
                 channel = association.channel
@@ -1694,7 +1698,7 @@ class ScanlatorChannelAssociationView(BaseView):
             description=f"Select the channel to redirect updates to for **`{modal.scanlator.title()}`**"
         )
         select_view = ChannelSelectorView(
-            self.bot, interaction, self, [discord.ChannelType.text], modal.scanlator
+            self.bot, interaction, self, [discord.ChannelType.text]
         )
         select_msg = await interaction.followup.send(embed=response_embed, view=select_view, ephemeral=True, wait=True)
         await select_view.wait()
@@ -1749,16 +1753,18 @@ class ScanlatorChannelAssociationView(BaseView):
                 channel_id=select_view.selected_channel.id
             )
         )
-        if modal.scanlator in self.pending_removals:
-            self.pending_removals.remove(modal.scanlator)
+
+        # remove the new association from 'pending_removals' so it doesn't get deleted when 'Save Button' is pressed
+        self.pending_removals = [x for x in self.pending_removals if x != modal.scanlator]
 
         await self.interaction.edit_original_response(embed=await self.get_display_embed(), view=self)
 
     @discord.ui.button(label="Delete Association", style=discord.ButtonStyle.red, row=0)
     async def delete_association_btn_callback(self, interaction: discord.Interaction, _) -> None:
-        modal = ScanlatorModal(self, self.used_guild_scanlators)
+        modal = ScanlatorModal(self, self.used_guild_scanlators)  # modal to input the scanlator
         await interaction.response.send_modal(modal)  # noqa: Dynamic typing issue on pycharm :(
         await modal.wait()
+        # if the scanlator is not available / doesn't exist, we tell the user it's not found
         if not modal.scanlator:
             return await interaction.followup.send(
                 embed=discord.Embed(
@@ -1770,7 +1776,7 @@ class ScanlatorChannelAssociationView(BaseView):
                 ),
                 ephemeral=True
             )
-        target_association = [x for x in self.current_associations if x.scanlator != self.selected_scanlator]
+        target_association = [x for x in self.current_associations if x.scanlator == modal.scanlator]
         if not target_association:
             return await interaction.followup.send(
                 embed=discord.Embed(
@@ -1795,25 +1801,18 @@ class ScanlatorChannelAssociationView(BaseView):
             ephemeral=True
         )
         self.current_associations.remove(target_association[0])  # remove the association
-        self.pending_removals.append(modal.scanlator.lower())
+        self.pending_removals.append(target_association[0])
         embed = await self.get_display_embed()
         await interaction.edit_original_response(embed=embed, view=self)
 
     @discord.ui.button(label="Save changes", emoji="💾", style=discord.ButtonStyle.green, row=1)
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
         # save the association changes here
-        if self.current_associations:
-            print("Pending removals:", self.pending_removals)
-            associations_to_delete = [x for x in self.current_associations if
-                                      x.scanlator.lower() in self.pending_removals]
-            print("Associations to delete:", associations_to_delete)
-            self.current_associations = [
-                x for x in self.current_associations if x.scanlator not in self.pending_removals
-            ]
-            print("Current associations:", self.current_associations)
-
-            await ScanlatorChannelAssociation.delete_many(associations_to_delete)
-            await ScanlatorChannelAssociation.upsert_many(self.bot, self.current_associations)
+        self.current_associations = [
+            x for x in self.current_associations if x not in self.pending_removals
+        ]
+        await ScanlatorChannelAssociation.delete_many(self.pending_removals)
+        await ScanlatorChannelAssociation.upsert_many(self.bot, self.current_associations)
 
         new_view = SettingsView(self.bot, interaction, self.temp_config)
         embed = new_view.create_embed()
@@ -1831,7 +1830,7 @@ class ScanlatorChannelAssociationView(BaseView):
         )
         self.stop()
 
-    @discord.ui.button(label="Cancel", emoji="✖️", style=discord.ButtonStyle.red, row=1)
+    @discord.ui.button(label="Discard", emoji="✖️", style=discord.ButtonStyle.red, row=1)
     async def cancel_btn_callback(self, interaction: discord.Interaction, _) -> None:
         new_view = SettingsView(self.bot, interaction, self.temp_config)
         embed = new_view.create_embed()
@@ -1866,7 +1865,7 @@ class ScanlatorChannelAssociationView(BaseView):
                 view=None
             )
             return
-        self.pending_removals = [x.scanlator for x in self.current_associations]
+        self.pending_removals = self.current_associations
         self.current_associations = []
         await confirm_view.message.edit(
             embed=discord.Embed(
@@ -1884,11 +1883,10 @@ class ScanlatorChannelAssociationView(BaseView):
 
 class ChannelSelectorView(BaseView):
     def __init__(self, bot: MangaClient, interaction: discord.Interaction, parent: ScanlatorChannelAssociationView,
-                 channel_types: list[discord.ChannelType], selected_scanlator: str):
+                 channel_types: list[discord.ChannelType]):
         super().__init__(bot, interaction, timeout=None)
         self._channel_types: list[discord.ChannelType] = channel_types
         self.association_view: ScanlatorChannelAssociationView = parent
-        self.selected_scanlator: str = selected_scanlator
 
         self.selected_channel: discord.app_commands.AppCommandChannel | None = None
 
