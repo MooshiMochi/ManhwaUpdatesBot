@@ -157,6 +157,10 @@ class ChapterSelect(Select):
                 )
             elif not is_tracked:
                 should_track = True
+
+            # if the bookmark ins't in the user's Subscribe folder, move it there.
+            await self.bookmark.move_to_folder(self.view.bot, BookmarkFolderType.Subscribed)
+
         # -----
 
         self.view.clear_components()
