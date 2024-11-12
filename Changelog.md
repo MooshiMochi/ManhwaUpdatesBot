@@ -2,6 +2,13 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // November 12th 2024
+
+- Added `View Bookmark` button to the `Mylast read chapter` button in the chapter update message.
+    - See `LastReadChapterViewBookmarkView` in [views.py](src/ui/views.py) for the implementation.
+- Added `d test_update` command to dev commands.
+- Moved the `BookmarkChapterView` to be loaded in the commands.py file instead of update_check.py
+
 ## // November 11th 2024
 
 ### Bug Fixes:

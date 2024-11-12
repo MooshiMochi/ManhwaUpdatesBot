@@ -23,7 +23,7 @@ import discord
 from discord.ext import commands
 
 from src.core.objects import TextPageSource, GuildSettings
-from src.ui.views import ConfirmView, PaginatorView
+from src.ui.views import BookmarkChapterView, ConfirmView, PaginatorView
 from src.core.scanlators import scanlators
 
 
@@ -738,6 +738,23 @@ class Restricted(commands.Cog):
             description=f"Sent the message to {successes} guilds.",
             color=discord.Color.green()
         ))
+
+    @developer.command(
+        name="test_update",
+        help="Send a test update.",
+        brief="Send a test update.",
+    )
+    async def test_update(self, ctx: commands.Context) -> None:
+
+        chapter_url = "https://asuracomic.net/series/star-embracing-swordmaster-136daffe/chapter/66"
+        view = BookmarkChapterView(self.bot, chapter_link=chapter_url)
+        await ctx.send(
+            (
+                    "||e6e123aa376ea7e51e9f427252d7cc77b67e57f843055b42d7f862f895ce5cd7|asura|65||" +
+                    "\n**Star-Embracing Swordmaster Chapter 66** has been released!\n" +
+                    chapter_url),
+            view=view
+        )
 
 
 async def setup(bot: MangaClient) -> None:

@@ -18,7 +18,8 @@ import discord
 from src.core import errors, checks
 from src.core.scanlators import scanlators
 from src.core.objects import Manga, SubscriptionObject
-from src.ui.views import ConfirmView, SubscribeListPaginatorView, SubscribeView, PaginatorView, SupportView
+from src.ui.views import BookmarkChapterView, ConfirmView, SubscribeListPaginatorView, SubscribeView, PaginatorView, \
+    SupportView
 from src.ui.modals import InputModal
 from src.utils import (
     group_items_by,
@@ -48,6 +49,7 @@ class CommandsCog(commands.Cog):
     async def cog_load(self):
         self.bot.logger.info("Loaded Commands Cog...")
         self.bot.add_view(SubscribeView(self.bot))
+        self.bot.add_view(BookmarkChapterView(self.bot))
         self.bot.add_view(SupportView())
 
     @app_commands.command(
