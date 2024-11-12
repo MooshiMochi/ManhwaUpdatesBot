@@ -971,6 +971,9 @@ class BookmarkChapterView(View):
         next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
         next_not_available = "`Wait for updates!`" if not bookmark.manga.completed else "`None, manga is finished!`"
 
+        #  Attach a 'view bookmark' button to this message
+        view = LastReadChapterViewBookmarkView(self.bot, interaction, manga_id, scanlator_name)
+
         await interaction.followup.send(
             embed=discord.Embed(
                 title="Last Chapter Read",
@@ -981,6 +984,7 @@ class BookmarkChapterView(View):
                 color=discord.Color.green(),
             ),
             ephemeral=True,
+            view=view
         )
 
     @staticmethod
@@ -988,7 +992,6 @@ class BookmarkChapterView(View):
             interaction: discord.Interaction, _: Button, /,
     ) -> tuple[str, str, int]:
         key_message: str = interaction.message.content.split("||")[1]
-        # f"||<ID:SCANLATOR:CH_IDX>-{update.manga_id}|{update.scanlator}|{chapter.index}>||\n"
         manga_id, scanlator, chapter_index = key_message.split("|")
         return manga_id.strip(), scanlator.strip(), int(chapter_index.strip())
 
@@ -1000,6 +1003,29 @@ class BookmarkChapterView(View):
             /,
     ) -> None:
         await self.bot.tree.on_error(interaction, error)
+
+
+class LastReadChapterViewBookmarkView(BaseView):
+    def __init__(self, bot: MangaClient, interaction: discord.Interaction, manga_id: str, scanlator: str):
+        super().__init__(bot, interaction=interaction, timeout=None)
+        self.manga_id = manga_id
+        self.scanlator = scanlator
+
+    @discord.ui.button(label="View Bookmark", custom_id="view_bookmark", style=discord.ButtonStyle.green)
+    async def view_bookmark(self, interaction: discord.Interaction, _: Button):
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa
+        available_user_bookmarks = await self.bot.db.get_user_bookmarks(interaction.user.id)
+        bookmark_folder = [x.folder for x in available_user_bookmarks if
+                           x.manga.id == self.manga_id and x.manga.scanlator == self.scanlator][0]
+        view = BookmarkView(self.bot, interaction, available_user_bookmarks, folder=bookmark_folder)
+        bookmark_index = next(
+            (
+                i for i, x in enumerate(view.viewable_bookmarks)
+                if x.manga.id == self.manga_id and x.manga.scanlator == self.scanlator
+            ), None
+        )
+        view.visual_item_index = bookmark_index
+        await interaction.edit_original_response(embed=view._get_display_embed(), view=view)  # noqa
 
 
 class DeleteBookmarkView(BaseView):

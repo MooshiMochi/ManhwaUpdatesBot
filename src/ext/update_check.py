@@ -34,7 +34,6 @@ class UpdateCheckCog(commands.Cog):
 
     async def cog_load(self):
         self.bot.logger.info("Loaded Updates Cog...")
-        self.bot.add_view(BookmarkChapterView(self.bot))
 
         self.check_updates_task.add_exception_type(
             Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
