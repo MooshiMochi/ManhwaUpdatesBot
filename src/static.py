@@ -17,11 +17,16 @@ class Constants:
         "terminé", "annuler", "annulé", "terminer", "abandonné", "abandonner", "fin",
     }
 
+    _it_completed_status_set: set[str] = {
+        "completo", "completato", "completare", "cancellare", "cancellato",
+        "terminare", "abbandonato", "abbandonare", "fine",
+    }
+
     completed_status_set: set[str] = {
         "completed", "complete", "cancel", "cancelled", "canceled", "finish",
         "finished", "dropped", "drop", "end",
         "ended",
-    }.union(_fr_completed_status_set)
+    }.union(_fr_completed_status_set).union(_it_completed_status_set)
 
     @staticmethod
     def default_headers() -> dict:
