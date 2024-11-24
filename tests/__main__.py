@@ -492,12 +492,6 @@ async def main():
         # Support ended:
         "epsilonscansoft", "epsilonscan",
 
-        # The website is broken, waiting for it to be fixed:
-        "theblank",
-
-        # The websites died/got taken down:
-        "lumitoon", "freakscans", "cosmic", "nvmanga", "newmanhua", "freakcomic", "rizzcomic",
-
         "resetscans",  # the website added pagination for chapters. need to hard-code custom scanlator class
         "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
         "demonreader",  # Need to work on figuring out the ID for the chapter. It might need custom implementation
@@ -505,6 +499,10 @@ async def main():
         # The website(s) id down at the time of testing:
         "lscomic",
     ]
+    
+    if os.name != "nt":  # reaperscans doesn't work for git workflow check
+        tests_to_ignore.append("reaperscans")
+
     async with TestCases(tests_to_ignore) as testCases:
         await run_tests(testCases, tests_to_ignore)
 
@@ -593,7 +591,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("gourmet"))
+        asyncio.run(test_single_scanlator("ataraxia"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

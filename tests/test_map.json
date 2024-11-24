@@ -199,26 +199,6 @@
       "has_fp_manhwa": true
     }
   },
-  "lumitoon": {
-    "user_input_url": "https://lumitoon.com/series/12455-my-office-noonas-story/",
-    "expected_results": {
-      "completed": true,
-      "cover_image": "https://lumitoon.com/wp-content/uploads/2021/05/My_Office_Noona_Story_Title-1.jpg",
-      "curr_chapter_url": "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-03/",
-      "first_chapter_url": "https://lumitoon.com/{id}-my-office-noonas-story-prologue/",
-      "last_3_chapter_urls": [
-        "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-01/",
-        "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-02/",
-        "https://lumitoon.com/{id}-my-office-noonas-story-epilogue-chapter-03/"
-      ],
-      "manga_id": "https://lumitoon.com/series/{id}-my-office-noonas-story",
-      "manga_url": "https://lumitoon.com/series/{id}-my-office-noonas-story/",
-      "scanlator_name": "lumitoon",
-      "title": "My Office Noona’s Story",
-      "use_default_id_function": true,
-      "has_fp_manhwa": true
-    }
-  },
   "lscomic": {
     "user_input_url": "https://lscomic.com/manga/8th-class-mage-returns/",
     "expected_results": {
@@ -376,26 +356,6 @@
       "scanlator_name": "suryatoon",
       "title": "Modern Dude in the Murim",
       "use_default_id_function": true,
-      "has_fp_manhwa": true
-    }
-  },
-  "rizzcomic": {
-    "user_input_url": "https://rizzcomic.com/series/r3513102-death-god",
-    "expected_results": {
-      "scanlator_name": "rizzcomic",
-      "manga_url": "https://rizzcomic.com/series/r3513102-death-god",
-      "completed": true,
-      "title": "Death God",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://rizzcomic.com/chapter/r3513102-death-god-chapter-46",
-      "first_chapter_url": "https://rizzcomic.com/chapter/r3513102-death-god-chapter-0",
-      "cover_image": "https://rizzcomic.com/assets/images/43__death_god-23-06-2023_11_44_09_PM1.webp",
-      "last_3_chapter_urls": [
-        "https://rizzcomic.com/chapter/r3513102-death-god-chapter-44",
-        "https://rizzcomic.com/chapter/r3513102-death-god-chapter-45",
-        "https://rizzcomic.com/chapter/r3513102-death-god-chapter-46"
-      ],
-      "manga_id": "default_id_function",
       "has_fp_manhwa": true
     }
   },
@@ -619,26 +579,6 @@
       "has_fp_manhwa": true
     }
   },
-  "cosmic": {
-    "user_input_url": "https://cosmic-scans.com/manga/updater/",
-    "expected_results": {
-      "scanlator_name": "cosmic",
-      "manga_url": "https://cosmic-scans.com/manga/updater/",
-      "completed": false,
-      "title": "Updater",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://cosmic-scans.com/updater-chapter-99/",
-      "first_chapter_url": "https://cosmic-scans.com/updater-chapter-93-season-2-end/",
-      "cover_image": "https://cosmic-scans.com/wp-content/uploads/2022/11/resource-1_cugan_conservative_4x_i1.00.webp",
-      "last_3_chapter_urls": [
-        "https://cosmic-scans.com/updater-chapter-97/",
-        "https://cosmic-scans.com/updater-chapter-98/",
-        "https://cosmic-scans.com/updater-chapter-99/"
-      ],
-      "has_fp_manhwa": true
-    }
-  },
   "demonreader": {
     "user_input_url": "https://demonreader.org/manga/Reborn-as-the-Enemy-Prince-VA52",
     "expected_results": {
@@ -695,46 +635,6 @@
         "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-35/",
         "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-36/",
         "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-37/"
-      ],
-      "has_fp_manhwa": true
-    }
-  },
-  "freakcomic": {
-    "user_input_url": "https://freakcomic.com/manga/i-stack-experience-through-writing-books/",
-    "expected_results": {
-      "scanlator_name": "freakcomic",
-      "manga_url": "https://freakcomic.com/manga/i-stack-experience-through-writing-books/",
-      "completed": true,
-      "title": "I Stack Experience Through Writing Books",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://freakcomic.com/i-stack-experience-through-writing-books-ch-150-345a6/",
-      "first_chapter_url": "https://freakcomic.com/i-stack-experience-through-writing-books-ch-144-1baed/",
-      "cover_image": "https://freakcomic.com/wp-content/uploads/2022/04/large_xxlarge_zdKz1Hb.jpg",
-      "last_3_chapter_urls": [
-        "https://freakcomic.com/i-stack-experience-through-writing-books-ch-148-e60fb/",
-        "https://freakcomic.com/i-stack-experience-through-writing-books-ch-149-e9b21/",
-        "https://freakcomic.com/i-stack-experience-through-writing-books-ch-150-345a6/"
-      ],
-      "has_fp_manhwa": true
-    }
-  },
-  "freakscans": {
-    "user_input_url": "https://freakscans.com/manga/the-live/",
-    "expected_results": {
-      "scanlator_name": "freakscans",
-      "manga_url": "https://freakscans.com/manga/the-live/",
-      "completed": true,
-      "title": "The Live",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://freakscans.com/the-live-ch-176/",
-      "first_chapter_url": "https://freakscans.com/the-live-ch-172/",
-      "cover_image": "https://i1.wp.com/freakscans.com/wp-content/uploads/2023/12/the-live.png",
-      "last_3_chapter_urls": [
-        "https://freakscans.com/the-live-ch-174/",
-        "https://freakscans.com/the-live-ch-175/",
-        "https://freakscans.com/the-live-ch-176/"
       ],
       "has_fp_manhwa": true
     }
@@ -839,46 +739,6 @@
       "has_fp_manhwa": true
     }
   },
-  "nvmanga": {
-    "user_input_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/",
-    "expected_results": {
-      "scanlator_name": "nvmanga",
-      "manga_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/",
-      "completed": true,
-      "title": "A Guide to Proper Dating",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-159/",
-      "first_chapter_url": "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-1/",
-      "cover_image": "https://nvmanga.com/wp-content/uploads/2022/10/a-guide-to-proper-dating.webp",
-      "last_3_chapter_urls": [
-        "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-157/",
-        "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-158/",
-        "https://nvmanga.com/webtoon/a-guide-to-proper-dating/chapter-159/"
-      ],
-      "has_fp_manhwa": true
-    }
-  },
-  "newmanhua": {
-    "user_input_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/",
-    "expected_results": {
-      "scanlator_name": "newmanhua",
-      "manga_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/",
-      "completed": false,
-      "title": "The Great Villain Who Threatened to Kill Himself",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-12/",
-      "first_chapter_url": "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-0/",
-      "cover_image": "https://newmanhua.com/wp-content/uploads/2023/12/the-great-villain-who-threatened-to-kill-himself.webp",
-      "last_3_chapter_urls": [
-        "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-10/",
-        "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-11/",
-        "https://newmanhua.com/manga/the-great-villain-who-threatened-to-kill-himself/chapter-12/"
-      ],
-      "has_fp_manhwa": true
-    }
-  },
   "zinmanga": {
     "user_input_url": "https://zinmanga.net/manga/duchess-what-is-identity/",
     "expected_results": {
@@ -973,6 +833,25 @@
         "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-34/",
         "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-35/",
         "https://gourmetsupremacy.com/project/secret-love-night-affair/chapter-36-end/"
+      ]
+    }
+  },
+  "ataraxia": {
+    "user_input_url": "https://www.beyondtheataraxia.com/manga/new-game/",
+    "expected_results": {
+      "scanlator_name": "ataraxia",
+      "manga_url": "https://www.beyondtheataraxia.com/manga/new-game/",
+      "completed": true,
+      "title": "New Game!",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://www.beyondtheataraxia.com/manga/new-game/volume-02/capitolo-13/",
+      "first_chapter_url": "https://www.beyondtheataraxia.com/manga/new-game/volume-01/capitolo-01/",
+      "cover_image": "https://www.beyondtheataraxia.com/storage/2024/08/New-Game-Vol-1-1200x630.jpg",
+      "last_3_chapter_urls": [
+        "https://www.beyondtheataraxia.com/manga/new-game/volume-01/capitolo-12/",
+        "https://www.beyondtheataraxia.com/manga/new-game/volume-01/capitolo-12-5/",
+        "https://www.beyondtheataraxia.com/manga/new-game/volume-02/capitolo-13/"
       ]
     }
   }

@@ -122,8 +122,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "comick"
-        url = "https://api.comick.fun/comic/05-one-punch-man"
+        key = "ataraxia"
+        url = "https://www.beyondtheataraxia.com/manga/new-game/"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);

@@ -224,7 +224,7 @@
     "manganato": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?(?:chap)?manganato\\.to/manga-(?P<id>[a-zA-Z0-9]+)(?:/.*)?",
+      "url_regex": "^(?:https?://)?(?:www\\.)?(?:chapmanganato\\.to|manganato\\.com)/manga-(?P<id>[a-zA-Z0-9]+)(?:/.*)?$",
       "properties": {
         "base_url": "https://chapmanganato.to",
         "icon_url": "https://manganato.to/favicon.png",
@@ -480,71 +480,6 @@
       "search": {
         "search_param_name": "s",
         "url": "https://anigliscans.xyz/",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
-    "lumitoon": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?lumitoon\\.com/(?:series/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://lumitoon.com",
-        "icon_url": "https://lumitoon.com/wp-content/uploads/2021/12/cropped-logo.png",
-        "format_urls": {
-          "manga": "https://lumitoon.com/series/{id}-{url_name}/"
-        },
-        "latest_updates_url": "https://lumitoon.com",
-        "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?lumitoon\\.com/)(?:(?P<id>\\d+)-)?(?P<after_id>([\\w-]+)?/?$)",
-        "missing_id_connector": {
-          "char": "-",
-          "before_id": false
-        },
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "div#titlemove > h1.entry-title"
-        ],
-        "synopsis": "div.entry-content",
-        "cover": [
-          "div.thumb > img"
-        ],
-        "chapters": {
-          "container": "div.eplister div.eph-num",
-          "name": "a > span.chapternum",
-          "url": "a"
-        },
-        "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
-        ],
-        "front_page": {
-          "container": "div.postbody > div.bixbox:has(div.releases > h2:-soup-contains('Latest Update')) > div.listupd div.uta",
-          "chapters": {
-            "container": "ul > li",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.luf > a > h4",
-          "url": "div.luf > a",
-          "cover": "img.ts-post-image, picture.ts-post-image > img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://lumitoon.com",
         "as_type": "param",
         "query_parsing": {
           "encoding": "url"
@@ -1508,68 +1443,6 @@
         "request_method": "GET"
       }
     },
-    "cosmic": {
-      "chapter_ajax": null,
-      "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?cosmic-scans\\.com/(?:manga/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://cosmic-scans.com",
-        "icon_url": "https://cosmic-scans.com/wp-content/uploads/2022/06/cropped-Cosmic-2.png",
-        "format_urls": {
-          "manga": "https://cosmic-scans.com/manga/{url_name}/"
-        },
-        "latest_updates_url": "https://cosmic-scans.com",
-        "dynamicURL": false,
-        "can_render_cover": true,
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "div.infox > h1.entry-title"
-        ],
-        "synopsis": "div.entry-content > p",
-        "cover": [
-          "[property=og\\:image]",
-          "div.thumb > img"
-        ],
-        "chapters": {
-          "container": "div.eph-num",
-          "name": "a > span.chapternum",
-          "url": "a"
-        },
-        "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
-        ],
-        "front_page": {
-          "container": "div.uta",
-          "chapters": {
-            "container": "div.luf > ul > li",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.luf > a.series > h4",
-          "url": "div.luf > a.series",
-          "cover": "img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://cosmic-scans.com",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
     "demonreader": {
       "chapter_ajax": null,
       "request_method": "http",
@@ -1700,128 +1573,6 @@
         },
         "request_method": "GET",
         "extra_params": {}
-      }
-    },
-    "freakcomic": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?freakcomic\\.com/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-ch-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://freakcomic.com",
-        "icon_url": "https://freakcomic.com/wp-content/uploads/2022/04/2.png",
-        "format_urls": {
-          "manga": "https://freakcomic.com/manga/{url_name}/"
-        },
-        "latest_updates_url": "https://freakcomic.com",
-        "dynamicURL": false,
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "h1.title"
-        ],
-        "synopsis": "div#summary > p",
-        "cover": [
-          "div.info > img[alt]"
-        ],
-        "chapters": {
-          "container": "div.chapter-li > a",
-          "name": "div.chapter-info > p:first-child",
-          "url": "_container_"
-        },
-        "status": [
-          "div.right > div > p:-soup-contains(\"Status\") + p"
-        ],
-        "front_page": {
-          "container": "div.lastest div.lastest-serie",
-          "chapters": {
-            "container": "ul.lastest-chap > a",
-            "name": "li",
-            "url": "_container_"
-          },
-          "title": "div.lastest-title > a[title]",
-          "url": "div.lastest-title > a[title]",
-          "cover": "div.img > img[alt]"
-        },
-        "unwanted_tags": [
-          "li > span > p"
-        ],
-        "search": {
-          "container": "div.lastest-serie",
-          "title": "a[title]",
-          "url": "a[title]",
-          "cover": "div.img > img[alt]"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://freakcomic.com/",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
-    "freakscans": {
-      "chapter_ajax": null,
-      "request_method": "flare",
-      "url_regex": "(?:https?://)?(?:www\\.)?freakscans\\.com/(?:manga/)?(?P<url_name>\\w[\\w-]*?)(?:-ch-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://freakscans.com",
-        "icon_url": "https://i2.wp.com/freakscans.com/wp-content/uploads/2023/12/cropped-Site-Freak-Icon-PSD.png",
-        "format_urls": {
-          "manga": "https://freakscans.com/manga/{url_name}/"
-        },
-        "latest_updates_url": "https://freakscans.com",
-        "dynamicURL": false,
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "div.infox > h1.entry-title"
-        ],
-        "synopsis": "div.entry-content",
-        "cover": [
-          "div.thumb > img"
-        ],
-        "chapters": {
-          "container": "div.eph-num",
-          "name": "a > span.chapternum",
-          "url": "a"
-        },
-        "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
-        ],
-        "front_page": {
-          "container": "div.uta",
-          "chapters": {
-            "container": "div.luf > ul > li",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.luf > a.series > h4",
-          "url": "div.luf > a.series",
-          "cover": "img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://freakscans.com/",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
       }
     },
     "mangabuddy": {
@@ -2174,169 +1925,6 @@
         "request_method": "GET"
       }
     },
-    "nvmanga": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?nvmanga\\.com/webtoon/(?P<url_name>[\\w-]+)(?:/.*)?",
-      "properties": {
-        "base_url": "https://nvmanga.com",
-        "icon_url": "https://nvmanga.com/wp-content/uploads/2023/10/mininv.webp",
-        "format_urls": {
-          "manga": "https://nvmanga.com/webtoon/{url_name}/"
-        },
-        "latest_updates_url": "https://nvmanga.com/",
-        "dynamicURL": false,
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "div.post-title > h1"
-        ],
-        "synopsis": "div.entry-content, div.summary__content.show-more",
-        "cover": [
-          "div.summary_image > a > img"
-        ],
-        "chapters": {
-          "container": "li.wp-manga-chapter",
-          "name": "a",
-          "url": "a"
-        },
-        "status": [
-          "div.summary-heading:-soup-contains(\"Translation\") + div"
-        ],
-        "front_page": {
-          "container": "div.page-item-detail",
-          "chapters": {
-            "container": "div.chapter-item > span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.post-title > h3.h5 > a",
-          "url": "div.post-title > h3.h5 > a",
-          "cover": "img"
-        },
-        "unwanted_tags": [
-          "span.manga-title-badges"
-        ],
-        "search": {
-          "container": "div.c-tabs-item__content",
-          "title": "h3.h4 > a",
-          "url": "h3.h4 > a",
-          "cover": "img",
-          "chapters": {
-            "container": "span.chapter",
-            "name": "a",
-            "url": "a"
-          }
-        }
-      },
-      "custom_headers": {
-        "Cookies": [
-          {
-            "name": "wpmanga-adault",
-            "value": "1",
-            "domain": "nvmanga.com",
-            "path": "/"
-          }
-        ]
-      },
-      "search": {
-        "url": "https://nvmanga.com/",
-        "search_param_name": "s",
-        "extra_params": {
-          "post_type": "wp-manga"
-        },
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": null,
-          "regex": [
-            {
-              "pattern": "\\s",
-              "sub_value": "-"
-            },
-            {
-              "pattern": "[^a-zA-Z0-9-]",
-              "sub_value": ""
-            }
-          ]
-        },
-        "request_method": "GET"
-      }
-    },
-    "newmanhua": {
-      "chapter_ajax": "html",
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?newmanhua\\.com/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
-      "properties": {
-        "base_url": "https://newmanhua.com",
-        "icon_url": "https://newmanhua.com/wp-content/uploads/2023/12/fav.png",
-        "format_urls": {
-          "ajax": "https://newmanhua.com/manga/{url_name}/ajax/chapters",
-          "manga": "https://newmanhua.com/manga/{url_name}/"
-        },
-        "latest_updates_url": "https://newmanhua.com/",
-        "dynamicURL": false,
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "div.post-title > h1",
-          ".breadcrumb > li:nth-child(4) > a:nth-child(1)"
-        ],
-        "synopsis": "div.description-summary > div",
-        "cover": [
-          "[property=og\\:image]",
-          "div.summary_image > a > img"
-        ],
-        "chapters": {
-          "container": "li.wp-manga-chapter",
-          "name": "a",
-          "url": "a"
-        },
-        "status": [
-          "div.summary-heading:-soup-contains(\"Status\") + div"
-        ],
-        "front_page": {
-          "container": "div.page-item-detail",
-          "chapters": {
-            "container": "div.chapter-item > span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.post-title > h3.h5 > a:not([target])",
-          "url": "div.post-title > h3.h5 > a:not([target])",
-          "cover": "img"
-        },
-        "unwanted_tags": [
-          "div.summary__content h2, div.summary__content h3, div.summary__content h4, div.summary__content div",
-          "div.summary__content section",
-          "div.summary__content > p:has(strong)"
-        ],
-        "search": {
-          "container": "div.row.c-tabs-item__content",
-          "chapters": {
-            "container": "span.chapter",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "h3.h4 > a",
-          "url": "h3.h4 > a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://newmanhua.com/",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {
-          "post_type": "wp-manga"
-        },
-        "request_method": "GET"
-      }
-    },
     "zinmanga": {
       "chapter_ajax": null,
       "request_method": "http",
@@ -2622,6 +2210,76 @@
         "extra_params": {},
         "request_method": "GET"
       }
+    },
+    "ataraxia": {
+      "chapter_ajax": "html",
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?beyondtheataraxia\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://www.beyondtheataraxia.com",
+        "icon_url": "https://www.beyondtheataraxia.com/storage/2023/06/cropped-logo_reader.png",
+        "format_urls": {
+          "ajax": "https://www.beyondtheataraxia.com/manga/{url_name}/ajax/chapters",
+          "manga": "https://www.beyondtheataraxia.com/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://www.beyondtheataraxia.com/",
+        "dynamicURL": false,
+        "url_chapter_prefix": null
+      },
+      "selectors": {
+        "title": [
+          "div#manga-title > h1"
+        ],
+        "synopsis": "div.post-content_item > div p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": [
+          "div.summary-heading:-soup-contains(\"Stato\") + div"
+        ],
+        "front_page": {
+          "container": "div.page-item-detail",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.post-title > h3.h5 > a:not([target])",
+          "url": "div.post-title > h3.h5 > a:not([target])",
+          "cover": "img"
+        },
+        "unwanted_tags": [
+        ],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://beyondtheataraxia.com/",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "request_method": "GET"
+      }
     }
   },
   "custom": {
@@ -2749,74 +2407,6 @@
         },
         "extra_params": {},
         "request_method": "GET"
-      }
-    },
-    "rizzcomic": {
-      "chapter_ajax": null,
-      "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?rizzcomic\\.com/(?:series|chapter)/(?:(?P<id>\\w+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://rizzcomic.com",
-        "icon_url": "https://rizzcomic.com/assets/images/realm-scans-fav.ico",
-        "format_urls": {
-          "manga": "https://rizzcomic.com/series/{id}-{url_name}"
-        },
-        "latest_updates_url": "https://rizzcomic.com",
-        "dynamicURL": true,
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?rizzcomic\\.com/chapter/)(?:(?P<id>\\w+)-)?(?P<after_id>([\\w-]+)?/?$)",
-        "missing_id_connector": {
-          "char": "-",
-          "before_id": false
-        },
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "h1.entry-title"
-        ],
-        "synopsis": "div.description-container > p",
-        "cover": [
-          "div.thumb > img"
-        ],
-        "chapters": {
-          "container": "ul > li[data-num]",
-          "name": "span.chapternum",
-          "url": "a"
-        },
-        "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
-        ],
-        "front_page": {
-          "container": "div.uta",
-          "chapters": {
-            "container": "div.luf > ul > li",
-            "name": "a",
-            "url": "a"
-          },
-          "title": "div.luf > a.series > h4",
-          "url": "div.luf > a.series",
-          "cover": "img"
-        },
-        "unwanted_tags": [
-          "i.epn-name",
-          "blockquote"
-        ],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "url": "https://rizzcomic.com/Index/live_search",
-        "search_param_name": "search_value",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "raw"
-        },
-        "extra_params": {},
-        "request_method": "POST"
       }
     },
     "novelmic": {
