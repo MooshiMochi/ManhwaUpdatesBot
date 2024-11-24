@@ -387,8 +387,8 @@
         ],
         "chapters": {
           "container": "div.pl-4.py-2:has(h3)",
-          "name": "div.pl-4.py-2:has(h3) > h3 > a.block",
-          "url": "div.pl-4.py-2:has(h3) > h3 > a.block"
+          "name": "h3 > a",
+          "url": "h3 > a"
         },
         "status": [
           "div.px-2.py-2 > h3:-soup-contains(\"Status\") + h3"

@@ -499,7 +499,7 @@ async def main():
         # The website(s) id down at the time of testing:
         "lscomic",
     ]
-    
+
     if os.name != "nt":  # reaperscans doesn't work for git workflow check
         tests_to_ignore.append("reaperscans")
 
@@ -591,7 +591,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("ataraxia"))
+        asyncio.run(test_single_scanlator("asura"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())
