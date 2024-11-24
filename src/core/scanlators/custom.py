@@ -1,12 +1,11 @@
 import json
 import re
-from urllib.parse import quote_plus as url_encode
 
 import discord
 from bs4 import BeautifulSoup
 
 from src.core.objects import Chapter, PartialManga
-from .classes import BasicScanlator, DynamicURLScanlator, scanlators
+from .classes import BasicScanlator, scanlators
 
 __all__ = (
     "scanlators",
@@ -183,75 +182,6 @@ class _GourmetScans(BasicScanlator):
         return found_manga
 
 
-class _Rizzcomic(DynamicURLScanlator):
-    def __init__(self, name: str, **kwargs):
-        super().__init__(name, **kwargs)
-
-    def extract_cover_link_from_tag(self, tag, base_url: str) -> str | None:
-        for attr in ["data-src", "src", "href", "content", "data-lazy-src"]:
-            result = tag.get(attr)
-            if result is not None:
-                if result.startswith("/"):  # partial URL, we just need to append base URL to it
-                    return base_url + result
-                elif not result.startswith("https://"):
-                    continue
-                return result
-
-    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
-        search_url = self.json_tree.search.url
-        if self.json_tree.search.query_parsing.encoding == "url":
-            query = url_encode(query)
-        elif self.json_tree.search.query_parsing.encoding is None:
-            for pattern_val_dict in self.json_tree.search.query_parsing.regex:
-                pattern = re.compile(pattern_val_dict["pattern"])
-                sub_value = pattern_val_dict["sub_value"]
-                query = pattern.sub(sub_value, query)
-        # if encoding is == "raw" then we do nothing
-        extra_params: dict = self.json_tree.search.extra_params
-        if self.json_tree.search.as_type == "path":
-            params = "?" + "&".join([f"{k}={v}" for k, v in extra_params.items() if v is not None])
-            null_params = {k: v for k, v in extra_params.items() if v is None}
-            if null_params:
-                params += "&".join([f"{k}" for k, v in null_params.items()])
-            query += params
-            request_kwargs = {
-                "url": search_url + query, "method": self.json_tree.search.request_method
-            }
-        else:  # as param
-            params = extra_params
-            data = {self.json_tree.search.search_param_name: query}
-            request_kwargs = {
-                "url": search_url, "params": params, "method": self.json_tree.search.request_method, "data": data
-            }
-
-        if self.json_tree.request_method == "http":
-            # noinspection PyProtectedMember
-            resp = await self.bot.session._request(**request_kwargs)
-            await raise_and_report_for_status(self.bot, resp)
-            json_resp = await resp.text()
-        else:  # req method is "curl"
-            resp = await self.bot.curl_session.request(**request_kwargs)
-            await raise_and_report_for_status(self.bot, resp)
-            json_resp = resp.text
-        json_resp = json.loads(json_resp)
-
-        found_manga: list[PartialManga] = []
-
-        for item_dict in json_resp:
-            title = item_dict["title"]
-            url_name = re.sub("[^a-zA-Z0-9-]+", "-", title).lower()
-            url = self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=self.manga_id)
-            cover_filename = item_dict["image_url"]
-            cover = f"https://realmscans.to/assets/images/{cover_filename}"
-            _id = await self.get_id(url)
-
-            p_manga = PartialManga(_id, title, url, self.name, cover_url=cover)
-            found_manga.append(p_manga)
-        if as_em:
-            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
-        return found_manga
-
-
 class _NovelMic(BasicScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
@@ -349,7 +279,6 @@ class _Zinmanga(BasicScanlator):
 class CustomKeys:
     reaperscans: str = "reaperscans"
     omegascans: str = "omegascans"
-    rizzcomic: str = "rizzcomic"
     novelmic: str = "novelmic"
     mangapark: str = "mangapark"
     bato: str = "bato"
@@ -360,7 +289,6 @@ keys = CustomKeys()
 
 scanlators[keys.reaperscans] = _ReaperScans(keys.reaperscans, **scanlators[keys.reaperscans])  # noqa: This is a dict
 scanlators[keys.omegascans] = _OmegaScans(keys.omegascans, **scanlators[keys.omegascans])  # noqa: This is a dict
-scanlators[keys.rizzcomic] = _Rizzcomic(keys.rizzcomic, **scanlators[keys.rizzcomic])  # noqa: This is a dict
 scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic])  # noqa: This is a dict
 scanlators[keys.mangapark] = _Mangapark(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict
 scanlators[keys.bato] = _Bato(keys.bato, **scanlators[keys.bato])  # noqa: This is a dict
