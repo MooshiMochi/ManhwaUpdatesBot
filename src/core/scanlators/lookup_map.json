@@ -294,67 +294,6 @@
         "request_method": "GET"
       }
     },
-    "flamecomics": {
-      "chapter_ajax": null,
-      "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?flamecomics\\.xyz/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://flamecomics.xyz",
-        "icon_url": "https://flamecomics.xyz/wp-content/uploads/2021/03/cropped-fds-1.png",
-        "format_urls": {
-          "manga": "https://flamecomics.xyz/series/{url_name}/"
-        },
-        "latest_updates_url": "https://flamecomics.xyz/",
-        "dynamicURL": false,
-        "url_chapter_prefix": null
-      },
-      "selectors": {
-        "title": [
-          "h1.entry-title"
-        ],
-        "synopsis": "div.wd-full > div.entry-content[itemprop=description] > p:first-child",
-        "cover": [
-          "div.thumb-half > div.thumb > img",
-          "[property=og\\:image]"
-        ],
-        "chapters": {
-          "container": "li[data-num]",
-          "name": "span.chapternum",
-          "url": "a"
-        },
-        "status": [
-          "div.imptdt > h1:-soup-contains(\"Status\") + i"
-        ],
-        "front_page": {
-          "container": "div.latest-updates > div > div.bsx",
-          "chapters": {
-            "container": "div.chapter-list > a:not(a[title])",
-            "name": "div.epxs",
-            "url": "_container_"
-          },
-          "title": "div.info > a > div",
-          "url": "div.info > a",
-          "cover": "a > div > img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://flamecomics.xyz",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
     "asura": {
       "chapter_ajax": null,
       "request_method": "curl",
@@ -557,13 +496,13 @@
     "nitroscans": {
       "chapter_ajax": "html",
       "request_method": "http",
-      "url_regex": "(?:https?://)?(?:www\\.)?nitroscans\\.net/mangas/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?nitroscans\\.net/series/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://nitroscans.net",
         "icon_url": "https://nitroscans.net/wp-content/uploads/2023/08/YT-Logo-1.png",
         "format_urls": {
-          "ajax": "https://nitroscans.net/mangas/{url_name}/ajax/chapters",
-          "manga": "https://nitroscans.net/mangas/{url_name}/"
+          "ajax": "https://nitroscans.net/series/{url_name}/ajax/chapters",
+          "manga": "https://nitroscans.net/series/{url_name}/"
         },
         "latest_updates_url": "https://nitroscans.net/",
         "dynamicURL": false,
@@ -1346,7 +1285,7 @@
           "ul > li[data-num]:first-child a > span.chapterdate"
         ],
         "front_page": {
-          "container": "div.postbody > div.bixbox > div.listupd > div.bs > div.bsx",
+          "container": "div.listupd > div.bs > div.bsx",
           "chapters": {
             "container": "ul > li",
             "name": "a",
@@ -2690,6 +2629,66 @@
           "action": "wp-manga-search-manga"
         },
         "request_method": "POST"
+      }
+    },
+    "flamecomics": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?flamecomics\\.xyz/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://flamecomics.xyz",
+        "icon_url": "https://flamecomics.xyz/favicon.ico",
+        "format_urls": {
+          "manga": "https://flamecomics.xyz/series/{url_name}/"
+        },
+        "latest_updates_url": "https://flamecomics.xyz/",
+        "dynamicURL": false,
+        "url_chapter_prefix": null
+      },
+      "selectors": {
+        "title": [
+          "h1.mantine-Title-root"
+        ],
+        "synopsis": "div[style=\"transition: 600ms;\"] p.mantine-Text-root",
+        "cover": [
+          "img[alt=Cover]"
+        ],
+        "chapters": {
+          "container": "div.m_c0783ff9 a",
+          "name": "div.mantine-Stack-root > p:first-child",
+          "url": "_container_"
+        },
+        "status": [
+          "div.mantine-Badge-root > span.mantine-Badge-label"
+        ],
+        "front_page": {
+          "container": "div.mantine-Container-root:has(h2) > div:last-child > div > div",
+          "chapters": {
+            "container": "a.m_b6d8b162:not([style])",
+            "name": "p.mantine-Text-root:first-child",
+            "url": "_container_"
+          },
+          "title": "a.mantine-Text-root:first-child[style]",
+          "url": "a.mantine-Text-root:first-child[style]",
+          "cover": "img"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.DescSeriesCard_cardContainer__CpvGh",
+          "title": "a.DescSeriesCard_title__q8Xt7:nth-child(2)",
+          "url": "a.DescSeriesCard_title__q8Xt7:nth-child(2)",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "search_param_name": "search",
+        "url": "https://flamecomics.xyz/browse",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "raw"
+        },
+        "extra_params": {},
+        "request_method": "GET"
       }
     }
   }

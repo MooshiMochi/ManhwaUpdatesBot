@@ -80,20 +80,20 @@
     }
   },
   "flamecomics": {
-    "user_input_url": "https://flamecomics.xyz/series/the-villainess-is-a-marionette/",
+    "user_input_url": "https://flamecomics.xyz/series/8",
     "expected_results": {
       "scanlator_name": "flamecomics",
-      "manga_url": "https://flamecomics.xyz/series/the-villainess-is-a-marionette/",
+      "manga_url": "https://flamecomics.xyz/series/8",
       "completed": true,
       "title": "The Villainess is a Marionette",
-      "manga_id": "https://flamecomics.¬xyz/series/the-villainess-is-a-marionette",
-      "curr_chapter_url": "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-69/",
-      "first_chapter_url": "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-0/",
-      "cover_image": "https://flamecomics.xyz/wp-content/uploads/2021/02/VIAM_S2_COVER.jpg",
+      "manga_id": "https://flamecomics.xyz/series/8",
+      "curr_chapter_url": "https://flamecomics.xyz/series/8/216edb7b2af67148",
+      "first_chapter_url": "https://flamecomics.xyz/series/8/61bc5405b22d34ef",
+      "cover_image": "https://flamecomics.xyz/_next/image?url=https%3A%2F%2Fcdn.flamecomics.xyz%2Fseries%2F8%2Fthumbnail.jpg&w=1920&q=100",
       "last_3_chapter_urls": [
-        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-67/",
-        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-68/",
-        "https://flamecomics.xyz/the-villainess-is-a-marionette-chapter-69/"
+        "https://flamecomics.xyz/series/8/9ae0f9e2ae08e6aa",
+        "https://flamecomics.xyz/series/8/7c71f717e554864a",
+        "https://flamecomics.xyz/series/8/216edb7b2af67148"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true
@@ -240,19 +240,19 @@
     }
   },
   "nitroscans": {
-    "user_input_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/",
+    "user_input_url": "https://nitroscans.net/series/i-grow-stronger-by-eating/",
     "expected_results": {
       "completed": false,
       "cover_image": "https://nitroscans.net/wp-content/uploads/2023/03/I-Grow-Stronger-By-Eating.jpg",
-      "curr_chapter_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-100/",
-      "first_chapter_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter/",
+      "curr_chapter_url": "https://nitroscans.net/series/i-grow-stronger-by-eating/chapter-100/",
+      "first_chapter_url": "https://nitroscans.net/series/i-grow-stronger-by-eating/chapter/",
       "last_3_chapter_urls": [
-        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-98/",
-        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-99/",
-        "https://nitroscans.net/mangas/i-grow-stronger-by-eating/chapter-100/"
+        "https://nitroscans.net/series/i-grow-stronger-by-eating/chapter-98/",
+        "https://nitroscans.net/series/i-grow-stronger-by-eating/chapter-99/",
+        "https://nitroscans.net/series/i-grow-stronger-by-eating/chapter-100/"
       ],
-      "manga_id": "https://nitroscans.net/mangas/i-grow-stronger-by-eating",
-      "manga_url": "https://nitroscans.net/mangas/i-grow-stronger-by-eating/",
+      "manga_id": "https://nitroscans.net/series/i-grow-stronger-by-eating",
+      "manga_url": "https://nitroscans.net/series/i-grow-stronger-by-eating/",
       "scanlator_name": "nitroscans",
       "title": "I Grow Stronger By Eating!",
       "use_default_id_function": true,
@@ -283,7 +283,7 @@
     "user_input_url": "https://bato.to/title/95400-queen-in-the-shadows",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://n15.ellie.wiki/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
+      "cover_image": "https://b01.mbtmv.org/thumb/W600/ampi/515/5153a1fcfcfd904decc8777384a7e5511c195a09_400_600_65091.jpeg",
       "curr_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/2031007-ch_60",
       "first_chapter_url": "https://bato.to/title/95400-queen-in-the-shadows/1803219-ch_1",
       "last_3_chapter_urls": [
@@ -550,7 +550,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27",
       "first_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554453-vol-1-ch-1",
-      "cover_image": "https://n01.eminence.pics/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
+      "cover_image": "https://s01.mprnm.org/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
       "last_3_chapter_urls": [
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554478-vol-7-ch-25",
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554479-vol-7-ch-26",

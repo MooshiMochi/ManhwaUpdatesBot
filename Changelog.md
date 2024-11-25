@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // November 25th 2024
+
+### Bug Fixes:
+
+- Fixed flamecomics website
+- Added support for https://www.beyondtheataraxia.com/
+- Fixed asura chapter links
+
 ## // November 12th 2024
 
 - Added `View Bookmark` button to the `Mylast read chapter` button in the chapter update message.

@@ -276,8 +276,27 @@ class _Zinmanga(BasicScanlator):
         return chapters
 
 
+class _Flamecomics(BasicScanlator):
+    def _extract_chapters_from_html(self, text: str) -> list[Chapter]:
+        token_rx = re.compile(r"\"token\":\"(?P<id>[a-z\d]+)\"")
+        chapter_num_rx = re.compile(r"\"chapter\":\"(?P<num>(?:\d*[.])?\d+)\"")
+        series_id_rx = re.compile(r"\"series_id\":(?P<id>\d+)")
+        url_base = self.json_tree.properties.base_url + "/series/"
+        series_id = series_id_rx.search(text).group("id")
+        url_base += series_id + "/"
+
+        found_chapters: list[Chapter] = []
+        for i, (name_match, token_match) in enumerate(
+                reversed(list(zip(chapter_num_rx.finditer(text), token_rx.finditer(text))))):
+            url = url_base + token_match.group("id")
+            name = name_match.group("num")
+            found_chapters.append(Chapter(url, name, i))
+        return found_chapters
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
+    flamecomics: str = "flamecomics"
     omegascans: str = "omegascans"
     novelmic: str = "novelmic"
     mangapark: str = "mangapark"
@@ -288,6 +307,7 @@ class CustomKeys:
 keys = CustomKeys()
 
 scanlators[keys.reaperscans] = _ReaperScans(keys.reaperscans, **scanlators[keys.reaperscans])  # noqa: This is a dict
+scanlators[keys.flamecomics] = _Flamecomics(keys.flamecomics, **scanlators[keys.flamecomics])  # noqa: This is a dict
 scanlators[keys.omegascans] = _OmegaScans(keys.omegascans, **scanlators[keys.omegascans])  # noqa: This is a dict
 scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic])  # noqa: This is a dict
 scanlators[keys.mangapark] = _Mangapark(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict

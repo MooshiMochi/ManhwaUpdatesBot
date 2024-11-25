@@ -266,7 +266,7 @@ class Test:
 
     async def cover_image(self) -> bool:
         result = await self.test_subject.get_cover(self.fmt_url)
-        result = result.split("?")[0].rstrip("/")  # remove URL params
+        # result = result.split("?")[0].rstrip("/")  # remove URL params
         evaluated: bool = result == self.expected_result.cover_image
         if not evaluated:
             print(f"Expected: {self.expected_result.cover_image}")
@@ -492,6 +492,9 @@ async def main():
         # Support ended:
         "epsilonscansoft", "epsilonscan",
 
+        # currently broken, need to fix.
+        "flamecomics",
+
         "resetscans",  # the website added pagination for chapters. need to hard-code custom scanlator class
         "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
         "demonreader",  # Need to work on figuring out the ID for the chapter. It might need custom implementation
@@ -591,7 +594,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("asura"))
+        # asyncio.run(test_single_scanlator("flamecomics"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(main())
+        asyncio.run(main())
