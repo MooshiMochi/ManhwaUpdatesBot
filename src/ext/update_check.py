@@ -216,10 +216,17 @@ class UpdateCheckCog(commands.Cog):
 
         grouped: list[list[MangaHeader | PartialManga]] = group_items_by([*mangas, *partial_mangas], ["id"])
         # check and make sure that each list is of length 2.
-        for group in grouped:
+        for i, group in enumerate(grouped):
             if len(group) != 2:
-                self.logger.error(f"Grouped list is not of length 2: {group}")
-                await scanlator.report_error(Exception(f"Grouped list is not of length 2: {group}"))
+                if len(group) > 2:  # managpill has more than 1 update listed for the same manhwa
+                    # group[0] = Manga
+                    # group[1+] = PartialManga
+                    for j in range(2, len(group)):
+                        group[1].latest_chapters.extend(group[j].latest_chapters)
+                    grouped[i] = group[:2]
+                else:
+                    self.logger.error(f"Grouped list is not of length 2: {group}")
+                    await scanlator.report_error(Exception(f"Grouped list is not of length 2: {group}"))
 
         grouped = [x for x in grouped if len(x) == 2]
 
