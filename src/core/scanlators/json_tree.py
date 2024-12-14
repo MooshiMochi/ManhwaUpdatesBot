@@ -1,5 +1,5 @@
 import re
-from typing import Any, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from curl_cffi.requests import Cookies
 
@@ -33,13 +33,14 @@ class _Properties:
         self.missing_id_connector = MissingIDConnector(**properties_dict.get("missing_id_connector", {}))
         self.url_chapter_prefix = properties_dict.get("url_chapter_prefix")
         self.chapter_regex = properties_dict.get("chapter_regex", None)
+        self.supports_search: bool = properties_dict.get("supports_search", True)
         if self.chapter_regex is not None:
             self.chapter_regex = re.compile(self.chapter_regex)
 
 
 class _CustomHeaders:
     def __init__(self, **custom_headers_dict):
-        cookies_list = custom_headers_dict.pop("Cookies", None)
+        cookies_list: List[Dict] | None = custom_headers_dict.pop("Cookies", None)
         self.headers: dict[str, str] = custom_headers_dict
 
         self.cookies: Cookies | None = None
@@ -66,7 +67,10 @@ class _Selectors:
         self.chapters: dict[str, str] = selectors_dict["chapters"]
         self.status: list[str] = selectors_dict["status"]
         self.front_page: _FrontPageSelectors = _FrontPageSelectors(**selectors_dict["front_page"])
-        self.search: _FrontPageSelectors = _FrontPageSelectors(**selectors_dict["search"])
+        self.search: Optional[_FrontPageSelectors] = None
+        if "search" in selectors_dict:  # supports search in properties
+            self.search = _FrontPageSelectors(**selectors_dict["search"])
+
         self.unwanted_tags: list[str] = selectors_dict["unwanted_tags"]
 
 
@@ -92,6 +96,10 @@ class JSONTree:
         self.selectors: _Selectors = _Selectors(**lookup_map_dict["selectors"])
         self.request_method: Literal["http", "curl", "flare"] = lookup_map_dict["request_method"]
         self.rx: re.Pattern = re.compile(lookup_map_dict["url_regex"])
-        self.search: _SearchProperties = _SearchProperties(**lookup_map_dict["search"])
+
+        self.search: Optional[_SearchProperties] = None
+        if self.properties.supports_search:
+            self.search = _SearchProperties(**lookup_map_dict["search"])
+
         self.uses_ajax: bool = lookup_map_dict["chapter_ajax"] is not None
         self.custom_headers: _CustomHeaders = _CustomHeaders(**lookup_map_dict.get("custom_headers", {}))

@@ -492,8 +492,11 @@ async def main():
         # Support ended:
         "epsilonscansoft", "epsilonscan",
 
+        # Disabled because of 403:
+        "astrascans", "nitroscans"
+
         # currently broken, need to fix.
-        "flamecomics",
+                      "anigliscans",
 
         "resetscans",  # the website added pagination for chapters. need to hard-code custom scanlator class
         "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
@@ -594,7 +597,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        # asyncio.run(test_single_scanlator("flamecomics"))
+        asyncio.run(test_single_scanlator("mangafire"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

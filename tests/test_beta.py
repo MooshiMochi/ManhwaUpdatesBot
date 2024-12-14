@@ -122,8 +122,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "ataraxia"
-        url = "https://www.beyondtheataraxia.com/manga/new-game/"
+        key = "gyarelease"
+        url = "https://www.gyarelease.it/manga/mizuki-senpai-no-koi-uranai/"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);
@@ -140,7 +140,10 @@ async def main():
         # print("Cover:", cover)
         fp_manga = await scanlator.get_fp_partial_manga();
         # print("FP Manhwa:", fp_manga)
-        search_result = await scanlator.search(query);
+        if scanlator.json_tree.properties.supports_search:
+            search_result = await scanlator.search(query);
+        else:
+            search_result = "Not supported"
         # print("Search:", search_result)
         manga = await scanlator.make_manga_object(url, load_from_db=False)
         # print("Manga obj:", manga)

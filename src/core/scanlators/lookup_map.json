@@ -14,7 +14,8 @@
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -76,7 +77,8 @@
         },
         "latest_updates_url": "https://tritinia.org/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -146,7 +148,8 @@
         },
         "latest_updates_url": "https://toonily.com/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -233,7 +236,8 @@
         },
         "latest_updates_url": "https://chapmanganato.to/nato",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -313,7 +317,8 @@
           "char": "-",
           "before_id": true
         },
-        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?asuracomic\\.net/series/[\\w-]+)(?P<id>-\\w+)(?P<after_id>.*)"
+        "chapter_regex": "(?P<before_id>(?:https?://)?(?:www\\.)?asuracomic\\.net/series/[\\w-]+)(?P<id>-\\w+)(?P<after_id>.*)",
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -379,7 +384,8 @@
         },
         "latest_updates_url": "https://anigliscans.xyz/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -443,7 +449,8 @@
         "time_formats": [
           "%B %d, %Y"
         ],
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -495,7 +502,7 @@
     },
     "nitroscans": {
       "chapter_ajax": "html",
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?nitroscans\\.net/series/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://nitroscans.net",
@@ -506,7 +513,8 @@
         },
         "latest_updates_url": "https://nitroscans.net/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -581,7 +589,8 @@
           "char": "-",
           "before_id": false
         },
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -642,7 +651,8 @@
         },
         "latest_updates_url": "https://suryatoon.com/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -705,7 +715,8 @@
         "dynamicURL": false,
         "no_status": true,
         "time_formats": [],
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -780,7 +791,8 @@
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -845,7 +857,8 @@
         },
         "latest_updates_url": "https://arcanescans.com",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -918,7 +931,8 @@
         },
         "latest_updates_url": "https://readmangabat.com/mangabat",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -981,7 +995,7 @@
     },
     "lhtranslation": {
       "chapter_ajax": "html",
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?lhtranslation\\.net/(?:manga/)?(?P<url_name>[\\w-]+?)(?:/chapter-[\\d.-]+)?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://lhtranslation.net",
@@ -992,7 +1006,8 @@
         },
         "latest_updates_url": "https://lhtranslation.net/home/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1066,7 +1081,8 @@
         },
         "latest_updates_url": "https://astrascans.org",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1126,7 +1142,8 @@
         },
         "latest_updates_url": "https://ravenscans.com",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1186,7 +1203,8 @@
         },
         "latest_updates_url": "https://reset-scans.xyz",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1265,7 +1283,8 @@
         "time_formats": [
           "%B %d, %Y"
         ],
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1326,7 +1345,8 @@
         },
         "latest_updates_url": "https://ww7.mangakakalot.tv",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1399,7 +1419,8 @@
           "char": "-",
           "before_id": false
         },
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1459,7 +1480,8 @@
         },
         "latest_updates_url": "https://mangareader.to/home",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1526,7 +1548,8 @@
         },
         "latest_updates_url": "https://mangabuddy.com/home",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1590,7 +1613,8 @@
         },
         "latest_updates_url": "https://topreadmanhwa.com/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1663,7 +1687,8 @@
         },
         "latest_updates_url": "https://kunmanga.com/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1735,7 +1760,8 @@
         },
         "latest_updates_url": "https://mangafire.to/updated",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1805,7 +1831,8 @@
         },
         "latest_updates_url": "https://theblank.net/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1876,7 +1903,8 @@
         },
         "latest_updates_url": "https://zinmanga.net/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -1951,7 +1979,8 @@
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": true,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2024,7 +2053,8 @@
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": true,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2095,7 +2125,8 @@
         },
         "latest_updates_url": "https://firescans.xyz/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2163,7 +2194,8 @@
         },
         "latest_updates_url": "https://www.beyondtheataraxia.com/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2219,6 +2251,53 @@
         },
         "request_method": "GET"
       }
+    },
+    "gyarelease": {
+      "chapter_ajax": null,
+      "request_method": "http",
+      "url_regex": "(?:https?://)?(?:www\\.)?gyarelease\\.it/(?:manga/)?(?:chapter/)?(?P<url_name>[\\w-]+?)(?:-capitolo-[\\d.-]+)?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://www.gyarelease.it",
+        "icon_url": "https://www.gyarelease.it/wp-content/uploads/2024/02/cropped-gyarelease.jpg",
+        "format_urls": {
+          "manga": "https://www.gyarelease.it/manga/{url_name}/"
+        },
+        "latest_updates_url": "https://www.gyarelease.it/",
+        "dynamicURL": false,
+        "url_chapter_prefix": null,
+        "supports_search": false
+      },
+      "selectors": {
+        "title": [
+          "h2.entry-title"
+        ],
+        "synopsis": "div.manga-description > div",
+        "cover": [
+          "img.uk-thumbnail"
+        ],
+        "chapters": {
+          "container": "div.chapter-list > a",
+          "name": "div:not(.date)",
+          "url": "_container_"
+        },
+        "status": [
+          "div.manga-status"
+        ],
+        "front_page": {
+          "container": "div.manga-item",
+          "chapters": {
+            "container": "li.chapter-item",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "div.manga-title > a",
+          "url": "div.manga-title a",
+          "cover": "div.manga-thumbnail > img"
+        },
+        "unwanted_tags": [
+          "div.manga-status > p"
+        ]
+      }
     }
   },
   "custom": {
@@ -2236,7 +2315,8 @@
         "dynamicURL": false,
         "requires_update_embed": true,
         "can_render_cover": true,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2299,7 +2379,8 @@
         },
         "latest_updates_url": "https://omegascans.org/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2361,7 +2442,8 @@
         },
         "latest_updates_url": "https://novelmic.com",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2435,7 +2517,8 @@
         },
         "latest_updates_url": "https://bato.to/v3x",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2504,7 +2587,8 @@
         },
         "latest_updates_url": "https://mangapark.net/latest",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2571,7 +2655,8 @@
         },
         "latest_updates_url": "https://gourmetsupremacy.com/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [
@@ -2633,7 +2718,7 @@
     },
     "flamecomics": {
       "chapter_ajax": null,
-      "request_method": "http",
+      "request_method": "curl",
       "url_regex": "(?:https?://)?(?:www\\.)?flamecomics\\.xyz/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://flamecomics.xyz",
@@ -2643,7 +2728,8 @@
         },
         "latest_updates_url": "https://flamecomics.xyz/",
         "dynamicURL": false,
-        "url_chapter_prefix": null
+        "url_chapter_prefix": null,
+        "supports_search": true
       },
       "selectors": {
         "title": [

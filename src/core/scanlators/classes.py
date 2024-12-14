@@ -1024,4 +1024,4 @@ for _type, _map in lookup_map.items():
             scanlators[name] = kwargs
 
 if __name__ == "__main__":
-    raise RuntimeError("This file is not meant to be run directly.")
+    raise RuntimeError("This file is not meant to be run directly. Please start main.py from the root dir instead.")

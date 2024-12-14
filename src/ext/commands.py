@@ -111,7 +111,7 @@ class CommandsCog(commands.Cog):
             manga: Manga | None = await respond_if_limit_reached(
                 scanlator.make_manga_object(manga_url, load_from_db=is_tracked), interaction
             )
-            if manga == "LIMIT_REACHED":
+            if manga == "LIMIT_REACHED":  # noqa
                 return  # Return because we already responded with the respond_if_limit_reached func above
         else:
             try:
@@ -856,7 +856,7 @@ Ensure the bot has these permissions for smooth operation.
     @app_commands.describe(query="The name of the manga.")
     @app_commands.describe(scanlator_website="The website to search on.")
     @app_commands.rename(scanlator_website="scanlator")
-    @app_commands.autocomplete(scanlator_website=autocompletes.scanlator)
+    @app_commands.autocomplete(scanlator_website=autocompletes.search)
     @checks.has_premium(dm_only=True)
     async def search(
             self,
@@ -876,7 +876,7 @@ Ensure the bot has these permissions for smooth operation.
             ephemeral=True,
         )
         cannot_search_em = discord.Embed(
-            title="Error",
+            title=f"{Emotes.warning} Cannot search",
             description=(
                 f"The bot cannot search on that website yet.\n"
                 "Try searching with the manga name instead."
@@ -884,7 +884,7 @@ Ensure the bot has these permissions for smooth operation.
             color=discord.Color.red(),
         )
         no_results_em = discord.Embed(
-            title="Error",
+            title=f"{Emotes.warning} No results",
             description=(
                 f"No results were found for `{query}`.\n"
             ),
@@ -933,7 +933,7 @@ Ensure the bot has these permissions for smooth operation.
             if not scanlator:
                 await interaction.edit_original_response(
                     embed=discord.Embed(
-                        title="Error",
+                        title=f"{Emotes.warning} Website not found",
                         description=f"Could not find a scanlator with the name `{scanlator_website}`.",
                     )
                     .set_footer(
@@ -941,7 +941,7 @@ Ensure the bot has these permissions for smooth operation.
                     )
                 )
                 return
-            if hasattr(scanlator, "search"):
+            if hasattr(scanlator, "search") and scanlator.json_tree.properties.supports_search:
                 embeds = await _try_request(scanlator.search(query=query, as_em=True), scanlator, True)
                 if not embeds:
                     await interaction.edit_original_response(embed=no_results_em)
@@ -955,7 +955,7 @@ Ensure the bot has these permissions for smooth operation.
             results = await asyncio.gather(*[
                 _try_request(scanlator.search(query=query, as_em=True), scanlator, False)
                 for scanlator in scanlators.values()
-                if hasattr(scanlator, "search")
+                if hasattr(scanlator, "search") and scanlator.json_tree.properties.supports_search
             ])
             results = [x for x in results if x is not None]
             if not results:
