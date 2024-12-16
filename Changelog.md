@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## // December 16th 2024
+
+### Bug Fixes:
+
+- Fixed asura selectors.
+
 ## // Decemper 11th 2024
 
 - Made the search method for the scanlators optional

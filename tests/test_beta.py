@@ -122,8 +122,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "gyarelease"
-        url = "https://www.gyarelease.it/manga/mizuki-senpai-no-koi-uranai/"
+        key = "asura"
+        url = "https://asuracomic.net/series/reformation-of-the-deadbeat-noble-239ec973"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);
