@@ -15,3 +15,4 @@ brotli
 fastapi
 patreon
 git+https://github.com/Rapptz/discord.py.git
+rapidfuzz

@@ -2,6 +2,11 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## December 22nd 2024
+
+- Improved the search button from the bookmarks view.
+- Adde rapidfuzz to requirements.txt
+
 ## // December 16th 2024
 
 ### Bug Fixes:
@@ -19,7 +24,6 @@
 
 - Fixed flamecomics website
 - Added support for https://www.beyondtheataraxia.com/
-- Added support for https://www.gyarelease.it/
 - Fixed asura chapter links
 
 ## // November 12th 2024
