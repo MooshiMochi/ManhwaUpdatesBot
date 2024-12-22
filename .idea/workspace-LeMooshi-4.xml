@@ -1,0 +1,1001 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="0cf8ed22-d826-4144-a96d-f71e9b5840fd" name="Changes" comment="added fix for mangapill having more than 1 updates in update_check.py">
+      <change beforePath="$PROJECT_DIR$/.idea/ManhwaUpdatesBot.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ManhwaUpdatesBot.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/0bc8821d-f561-4efd-af3d-8e8d02375fc1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/sqldialects.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/scanlators/lookup_map.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/scanlators/lookup_map.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="DatabaseLocalColorSettings">
+    <colors>
+      <entry key="0bc8821d-f561-4efd-af3d-8e8d02375fc1" value="Green" />
+      <entry key="c93e9bbb-057f-46cc-b2d5-25a16f607fbf" value="Orange" />
+    </colors>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FormatOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <favorite-branches>
+      <branch-storage>
+        <map>
+          <entry type="REMOTE">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="origin/dev" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </favorite-branches>
+    <option name="PUSH_TAGS">
+      <GitPushTagMode>
+        <option name="argument" value="--tags" />
+        <option name="title" value="All" />
+      </GitPushTagMode>
+    </option>
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="dbcc9fd0f456380175b7dbcbe7c54da72acb420b" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;MooshiMochi&quot;
+  }
+}</component>
+  <component name="GithubProjectSettings">
+    <option name="branchProtectionPatterns">
+      <list>
+        <option value="master" />
+      </list>
+    </option>
+  </component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/MooshiMochi/ManhwaUpdatesBot.git&quot;,
+    &quot;accountId&quot;: &quot;11273600-ecd3-45ef-858e-79913c6c1aba&quot;
+  }
+}</component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$USER_HOME$/AppData/Local/Programs/Python/Python311/Lib/asyncio/base_events.py" root0="SKIP_INSPECTION" />
+    <setting file="file://$USER_HOME$/AppData/Local/Programs/Python/Python311/Lib/logging/__init__.py" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/src/core/apis/patreonOauth.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/ui/views.py" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="OptimizeOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="2Mkd6ElyssU1Xn0OSD8F6LTJhrQ" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.__main__ (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.__main__.executor&quot;: &quot;Run&quot;,
+    &quot;Python.config.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.gui_app.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.parsaShi.executor&quot;: &quot;Run&quot;,
+    &quot;Python.scratch_1.executor&quot;: &quot;Run&quot;,
+    &quot;Python.scratch_2.executor&quot;: &quot;Run&quot;,
+    &quot;Python.scratch_3.executor&quot;: &quot;Run&quot;,
+    &quot;Python.scratch_4.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_beta (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_beta.executor&quot;: &quot;Run&quot;,
+    &quot;Python.turtlee.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;database.data.extractors.current.export.id&quot;: &quot;Comma-separated (CSV)_id&quot;,
+    &quot;deletionFromPopupRequiresConfirmation&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/rchir/OneDrive/Desktop/GitProjects/Adventure-Game&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  },
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;sqlite&quot;
+    ],
+    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
+      &quot;Python&quot;
+    ]
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot\tests" />
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot\src\core\apis" />
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot\test" />
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot\tests" />
+      <recent name="C:\Users\rchir\AppData\Roaming\JetBrains\PyCharm2023.3\scratches" />
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot" />
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot\src\schemas" />
+      <recent name="C:\Users\rchir\OneDrive\Desktop\GitProjects\ManhwaUpdatesBot\src\core\handlers" />
+    </key>
+  </component>
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value=".venv/scripts/python3 local/toonily.py" />
+    </option>
+  </component>
+  <component name="RunManager" selected="Python.__main__">
+    <configuration name="__main__" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="ManhwaUpdatesBot" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/__main__.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="ManhwaUpdatesBot" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test_beta" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="ManhwaUpdatesBot" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/test_beta.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.__main__" />
+      <item itemvalue="Python.main" />
+      <item itemvalue="Python.test_beta" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.test_beta" />
+        <item itemvalue="Python.main" />
+        <item itemvalue="Python.__main__" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.19416.19" />
+        <option value="bundled-python-sdk-337b0a7a993a-2767605e8bc2-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.19416.19" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="0cf8ed22-d826-4144-a96d-f71e9b5840fd" name="Changes" comment="" />
+      <created>1678315344303</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1678315344303</updated>
+      <workItem from="1697491311843" duration="437000" />
+      <workItem from="1697759440168" duration="539000" />
+      <workItem from="1697762284660" duration="1455000" />
+      <workItem from="1697788546905" duration="903000" />
+      <workItem from="1697884527339" duration="730000" />
+      <workItem from="1697887923987" duration="7633000" />
+      <workItem from="1698149346533" duration="666000" />
+      <workItem from="1698431279428" duration="816000" />
+      <workItem from="1698432110625" duration="1267000" />
+      <workItem from="1698664957026" duration="7628000" />
+      <workItem from="1698703438901" duration="67000" />
+      <workItem from="1698703523082" duration="600000" />
+      <workItem from="1698758644606" duration="665000" />
+      <workItem from="1699009139818" duration="2880000" />
+      <workItem from="1699135289229" duration="1402000" />
+      <workItem from="1699210136591" duration="1664000" />
+      <workItem from="1699396284720" duration="609000" />
+      <workItem from="1699486415735" duration="1000" />
+      <workItem from="1699486614506" duration="1000" />
+      <workItem from="1699563062796" duration="126000" />
+      <workItem from="1699563227823" duration="15010000" />
+      <workItem from="1699873118115" duration="443000" />
+      <workItem from="1699873569141" duration="5775000" />
+      <workItem from="1699897182847" duration="2437000" />
+      <workItem from="1699959285256" duration="2656000" />
+      <workItem from="1699966000641" duration="2528000" />
+      <workItem from="1699977363120" duration="4324000" />
+      <workItem from="1700159387116" duration="2917000" />
+      <workItem from="1700180424727" duration="1419000" />
+      <workItem from="1700212104127" duration="4330000" />
+      <workItem from="1700224094961" duration="1423000" />
+      <workItem from="1700250252369" duration="234000" />
+      <workItem from="1700473916465" duration="546000" />
+      <workItem from="1700474527427" duration="51000" />
+      <workItem from="1700483929723" duration="5179000" />
+      <workItem from="1700514956614" duration="300000" />
+      <workItem from="1700563346815" duration="3561000" />
+      <workItem from="1700571241520" duration="3656000" />
+      <workItem from="1700582420906" duration="1154000" />
+      <workItem from="1700586003729" duration="1100000" />
+      <workItem from="1700588008301" duration="922000" />
+      <workItem from="1700599793481" duration="1667000" />
+      <workItem from="1700601775730" duration="7575000" />
+      <workItem from="1700733508530" duration="7321000" />
+      <workItem from="1700914942869" duration="5904000" />
+      <workItem from="1700930287738" duration="607000" />
+      <workItem from="1701090590073" duration="1458000" />
+      <workItem from="1701191280101" duration="2919000" />
+      <workItem from="1701206444608" duration="5262000" />
+      <workItem from="1701381828202" duration="283000" />
+      <workItem from="1701422348822" duration="5348000" />
+      <workItem from="1701685109799" duration="34000" />
+      <workItem from="1701685159282" duration="2525000" />
+      <workItem from="1701703970883" duration="2728000" />
+      <workItem from="1701778633305" duration="619000" />
+      <workItem from="1701793611631" duration="2032000" />
+      <workItem from="1701951249733" duration="615000" />
+      <workItem from="1701976472732" duration="840000" />
+      <workItem from="1701986963320" duration="512000" />
+      <workItem from="1702030214205" duration="1153000" />
+      <workItem from="1702031830488" duration="2289000" />
+      <workItem from="1702300810719" duration="1357000" />
+      <workItem from="1702556754147" duration="945000" />
+      <workItem from="1702558126261" duration="327000" />
+      <workItem from="1702648141578" duration="676000" />
+      <workItem from="1702649361624" duration="1201000" />
+      <workItem from="1702989817772" duration="530000" />
+      <workItem from="1702990365756" duration="7056000" />
+      <workItem from="1703165218178" duration="2043000" />
+      <workItem from="1703167531352" duration="5258000" />
+      <workItem from="1703213601033" duration="3578000" />
+      <workItem from="1703516055818" duration="1234000" />
+      <workItem from="1703872961951" duration="2176000" />
+      <workItem from="1704307399808" duration="1119000" />
+      <workItem from="1704685824460" duration="18073000" />
+      <workItem from="1704769000116" duration="29000" />
+      <workItem from="1704769041708" duration="24395000" />
+      <workItem from="1704905211966" duration="44000" />
+      <workItem from="1704905268175" duration="600000" />
+      <workItem from="1704911526418" duration="2593000" />
+      <workItem from="1705174793277" duration="16099000" />
+      <workItem from="1705432638530" duration="709000" />
+      <workItem from="1705568743063" duration="30684000" />
+      <workItem from="1705680268445" duration="41000" />
+      <workItem from="1705680325190" duration="4955000" />
+      <workItem from="1705703226380" duration="21361000" />
+      <workItem from="1705842835570" duration="2583000" />
+      <workItem from="1706032707248" duration="174000" />
+      <workItem from="1706032899247" duration="2044000" />
+      <workItem from="1706186400452" duration="6334000" />
+      <workItem from="1706198153443" duration="35808000" />
+      <workItem from="1706443317048" duration="3092000" />
+      <workItem from="1706450991889" duration="26986000" />
+      <workItem from="1706531889479" duration="2645000" />
+      <workItem from="1706540622259" duration="62000" />
+      <workItem from="1706540766240" duration="2162000" />
+      <workItem from="1706542944652" duration="3248000" />
+      <workItem from="1706554111384" duration="15469000" />
+      <workItem from="1706617622123" duration="1429000" />
+      <workItem from="1706619578157" duration="850000" />
+      <workItem from="1706624880125" duration="3409000" />
+      <workItem from="1706643113910" duration="3729000" />
+      <workItem from="1706706659681" duration="37019000" />
+      <workItem from="1706823896981" duration="1448000" />
+      <workItem from="1706868689056" duration="1837000" />
+      <workItem from="1706915007648" duration="8802000" />
+      <workItem from="1707128522254" duration="113000" />
+      <workItem from="1707137589433" duration="1056000" />
+      <workItem from="1707352664462" duration="56000" />
+      <workItem from="1707398039736" duration="1893000" />
+      <workItem from="1707404642626" duration="2863000" />
+      <workItem from="1707407525799" duration="1055000" />
+      <workItem from="1707408600745" duration="2170000" />
+      <workItem from="1707415957021" duration="1047000" />
+      <workItem from="1707469369564" duration="4036000" />
+      <workItem from="1707476015751" duration="2336000" />
+      <workItem from="1707479426847" duration="2073000" />
+      <workItem from="1707506865547" duration="340000" />
+      <workItem from="1707507224221" duration="16404000" />
+      <workItem from="1707684156675" duration="1218000" />
+      <workItem from="1707853085160" duration="91000" />
+      <workItem from="1707853193445" duration="532000" />
+      <workItem from="1707853752481" duration="4830000" />
+      <workItem from="1707867483519" duration="1410000" />
+      <workItem from="1707877561582" duration="2000" />
+      <workItem from="1707912840034" duration="2510000" />
+      <workItem from="1707917011997" duration="28645000" />
+      <workItem from="1708002479563" duration="10153000" />
+      <workItem from="1708023912872" duration="1193000" />
+      <workItem from="1708027752711" duration="22263000" />
+      <workItem from="1708054380038" duration="430000" />
+      <workItem from="1708055266312" duration="55000" />
+      <workItem from="1708169759119" duration="2964000" />
+      <workItem from="1708201429781" duration="6285000" />
+      <workItem from="1708213553963" duration="5326000" />
+      <workItem from="1708343505188" duration="308000" />
+      <workItem from="1708343839233" duration="2254000" />
+      <workItem from="1708437166320" duration="27000" />
+      <workItem from="1708455046984" duration="13857000" />
+      <workItem from="1708482661636" duration="584000" />
+      <workItem from="1708501467360" duration="944000" />
+      <workItem from="1708613483916" duration="1962000" />
+      <workItem from="1708615467214" duration="4498000" />
+      <workItem from="1708620206369" duration="611000" />
+      <workItem from="1708652201981" duration="65000" />
+      <workItem from="1708683686041" duration="3909000" />
+      <workItem from="1708786032626" duration="6991000" />
+      <workItem from="1709049812441" duration="210000" />
+      <workItem from="1709050088523" duration="2140000" />
+      <workItem from="1709057339510" duration="274000" />
+      <workItem from="1709172135913" duration="113000" />
+      <workItem from="1709175050246" duration="2000" />
+      <workItem from="1709216562381" duration="330000" />
+      <workItem from="1709256371928" duration="46000" />
+      <workItem from="1709256491550" duration="396000" />
+      <workItem from="1709417388755" duration="2854000" />
+      <workItem from="1709552637467" duration="19000" />
+      <workItem from="1709552670624" duration="1385000" />
+      <workItem from="1709662966882" duration="1000" />
+      <workItem from="1709928502517" duration="18000" />
+      <workItem from="1710026857055" duration="216000" />
+      <workItem from="1710034308587" duration="50000" />
+      <workItem from="1710204709048" duration="3307000" />
+      <workItem from="1710274470429" duration="1651000" />
+      <workItem from="1710373670093" duration="4048000" />
+      <workItem from="1710454763747" duration="28000" />
+      <workItem from="1710540474042" duration="127000" />
+      <workItem from="1710874903394" duration="2192000" />
+      <workItem from="1710975801864" duration="3825000" />
+      <workItem from="1711022797967" duration="330000" />
+      <workItem from="1711023168495" duration="3202000" />
+      <workItem from="1711029771977" duration="151000" />
+      <workItem from="1711058312932" duration="5086000" />
+      <workItem from="1711115895669" duration="15896000" />
+      <workItem from="1711317068044" duration="19029000" />
+      <workItem from="1711406861174" duration="12212000" />
+      <workItem from="1711504556311" duration="4000" />
+      <workItem from="1711582717439" duration="6773000" />
+      <workItem from="1711656625078" duration="6724000" />
+      <workItem from="1711664386389" duration="8810000" />
+      <workItem from="1711680861985" duration="48000" />
+      <workItem from="1711716576653" duration="381000" />
+      <workItem from="1711740449024" duration="6183000" />
+      <workItem from="1711896187173" duration="9567000" />
+      <workItem from="1711936357210" duration="1257000" />
+      <workItem from="1711937631346" duration="9000" />
+      <workItem from="1712011204520" duration="356000" />
+      <workItem from="1712104780489" duration="1000" />
+      <workItem from="1712229985670" duration="20000" />
+      <workItem from="1712363715870" duration="1654000" />
+      <workItem from="1712366558491" duration="1000" />
+      <workItem from="1712534389100" duration="882000" />
+      <workItem from="1712698635680" duration="610000" />
+      <workItem from="1712793962827" duration="4000" />
+      <workItem from="1712824284172" duration="851000" />
+      <workItem from="1712869396944" duration="10000" />
+      <workItem from="1712869416246" duration="672000" />
+      <workItem from="1712871192312" duration="45000" />
+      <workItem from="1712871566873" duration="4000" />
+      <workItem from="1712880513355" duration="219000" />
+      <workItem from="1713052041646" duration="846000" />
+      <workItem from="1713338246571" duration="2000" />
+      <workItem from="1713339660332" duration="86000" />
+      <workItem from="1713658152047" duration="162000" />
+      <workItem from="1713658327032" duration="1373000" />
+      <workItem from="1713737601414" duration="1000" />
+      <workItem from="1713833259357" duration="1884000" />
+      <workItem from="1714154531636" duration="623000" />
+      <workItem from="1715160157136" duration="25000" />
+      <workItem from="1715160222791" duration="72000" />
+      <workItem from="1715698049918" duration="1314000" />
+      <workItem from="1715737059208" duration="14912000" />
+      <workItem from="1715901204629" duration="63000" />
+      <workItem from="1715997788838" duration="43000" />
+      <workItem from="1716155455345" duration="8000" />
+      <workItem from="1716251958260" duration="246000" />
+      <workItem from="1716340632123" duration="1000" />
+      <workItem from="1716688410571" duration="1000" />
+      <workItem from="1717202434021" duration="64000" />
+      <workItem from="1718004673829" duration="1195000" />
+      <workItem from="1720969862545" duration="6000" />
+      <workItem from="1721648501895" duration="17000" />
+      <workItem from="1721912535510" duration="61000" />
+      <workItem from="1721912670259" duration="641000" />
+      <workItem from="1722629301939" duration="343000" />
+      <workItem from="1722629843431" duration="20000" />
+      <workItem from="1722629873117" duration="47000" />
+      <workItem from="1722629981551" duration="38000" />
+      <workItem from="1722630030005" duration="115000" />
+      <workItem from="1726162005285" duration="95000" />
+      <workItem from="1726162151775" duration="452000" />
+      <workItem from="1726162610205" duration="1495000" />
+      <workItem from="1726165167967" duration="239000" />
+      <workItem from="1726165414095" duration="782000" />
+      <workItem from="1726167150499" duration="2880000" />
+      <workItem from="1729293137526" duration="1226000" />
+      <workItem from="1729295765007" duration="25000" />
+      <workItem from="1729598295858" duration="369000" />
+      <workItem from="1729604196384" duration="2789000" />
+      <workItem from="1729630210414" duration="13079000" />
+      <workItem from="1729677560702" duration="5682000" />
+      <workItem from="1729700786799" duration="711000" />
+      <workItem from="1729701527388" duration="3086000" />
+      <workItem from="1729779633422" duration="46000" />
+      <workItem from="1729779720023" duration="6887000" />
+      <workItem from="1729808674881" duration="6577000" />
+      <workItem from="1729857788969" duration="939000" />
+      <workItem from="1729863044972" duration="1074000" />
+      <workItem from="1729898920491" duration="305000" />
+      <workItem from="1729936750977" duration="904000" />
+      <workItem from="1729953806563" duration="1109000" />
+      <workItem from="1729955188297" duration="1347000" />
+      <workItem from="1729989145804" duration="30000" />
+      <workItem from="1729989192549" duration="255000" />
+      <workItem from="1729989458202" duration="1507000" />
+      <workItem from="1729990993287" duration="12554000" />
+      <workItem from="1730039222174" duration="8471000" />
+      <workItem from="1730110212155" duration="1075000" />
+      <workItem from="1730131227692" duration="8742000" />
+      <workItem from="1730149819199" duration="1034000" />
+      <workItem from="1730215159347" duration="20000" />
+      <workItem from="1730244214026" duration="2972000" />
+      <workItem from="1730368082596" duration="49000" />
+      <workItem from="1730368147919" duration="12978000" />
+      <workItem from="1730415890613" duration="1387000" />
+      <workItem from="1730462731450" duration="49000" />
+      <workItem from="1730462805478" duration="1152000" />
+      <workItem from="1730507736735" duration="238000" />
+      <workItem from="1730540598176" duration="24947000" />
+      <workItem from="1730641893027" duration="232000" />
+      <workItem from="1731072743999" duration="1271000" />
+      <workItem from="1731326451081" duration="7113000" />
+      <workItem from="1731339076487" duration="244000" />
+      <workItem from="1731434059777" duration="38000" />
+      <workItem from="1731434109052" duration="1352000" />
+      <workItem from="1731435484457" duration="5293000" />
+      <workItem from="1731937410098" duration="49000" />
+      <workItem from="1732376051787" duration="2672000" />
+      <workItem from="1732401946170" duration="3000" />
+      <workItem from="1732626393865" duration="57000" />
+      <workItem from="1732626511685" duration="965000" />
+      <workItem from="1732640647221" duration="985000" />
+      <workItem from="1732664254249" duration="32000" />
+      <workItem from="1732664298314" duration="1154000" />
+      <workItem from="1732724056384" duration="96000" />
+    </task>
+    <task id="LOCAL-00145" summary="handled logic for update check in case cover url is None (prevent it from being set to None in DB)">
+      <created>1685546730988</created>
+      <option name="number" value="00145" />
+      <option name="presentableId" value="LOCAL-00145" />
+      <option name="project" value="LOCAL" />
+      <updated>1685546730988</updated>
+    </task>
+    <task id="LOCAL-00146" summary="fixed bug where new chapters aren't added to available chapters list">
+      <created>1685636923997</created>
+      <option name="number" value="00146" />
+      <option name="presentableId" value="LOCAL-00146" />
+      <option name="project" value="LOCAL" />
+      <updated>1685636923997</updated>
+    </task>
+    <task id="LOCAL-00147" summary="added Confirm view&#10;added !d g_update command to send notifications to all guilds!">
+      <created>1685640607451</created>
+      <option name="number" value="00147" />
+      <option name="presentableId" value="LOCAL-00147" />
+      <option name="project" value="LOCAL" />
+      <updated>1685640607451</updated>
+    </task>
+    <task id="LOCAL-00148" summary="temp disabled update notifications&#10;pushed fix to update available_chapters of manga in db&#10;added chapters_to_text method for Manga cls">
+      <created>1685657357498</created>
+      <option name="number" value="00148" />
+      <option name="presentableId" value="LOCAL-00148" />
+      <option name="project" value="LOCAL" />
+      <updated>1685657357498</updated>
+    </task>
+    <task id="LOCAL-00149" summary="removed (,) from query in Database.update_series">
+      <created>1685657436154</created>
+      <option name="number" value="00149" />
+      <option name="presentableId" value="LOCAL-00149" />
+      <option name="project" value="LOCAL" />
+      <updated>1685657436154</updated>
+    </task>
+    <task id="LOCAL-00150" summary="fixed bug where only latest chapter is added to available_chapters&#10;sorted chapters in db based on index">
+      <created>1685659052648</created>
+      <option name="number" value="00150" />
+      <option name="presentableId" value="LOCAL-00150" />
+      <option name="project" value="LOCAL" />
+      <updated>1685659052648</updated>
+    </task>
+    <task id="LOCAL-00151" summary="made the Chapter class a dataclass&#10;added __eq__ method for Manga class">
+      <created>1685663090267</created>
+      <option name="number" value="00151" />
+      <option name="presentableId" value="LOCAL-00151" />
+      <option name="project" value="LOCAL" />
+      <updated>1685663090268</updated>
+    </task>
+    <task id="LOCAL-00152" summary="removed dataclass definition from Chapter&#10;added __eq__ method instead">
+      <created>1685663486734</created>
+      <option name="number" value="00152" />
+      <option name="presentableId" value="LOCAL-00152" />
+      <option name="project" value="LOCAL" />
+      <updated>1685663486734</updated>
+    </task>
+    <task id="LOCAL-00153" summary="implemented __hash__ for Chapter class">
+      <created>1685664200697</created>
+      <option name="number" value="00153" />
+      <option name="presentableId" value="LOCAL-00153" />
+      <option name="project" value="LOCAL" />
+      <updated>1685664200697</updated>
+    </task>
+    <task id="LOCAL-00154" summary="made update_check send updates (removed silent updates)">
+      <created>1685664277059</created>
+      <option name="number" value="00154" />
+      <option name="presentableId" value="LOCAL-00154" />
+      <option name="project" value="LOCAL" />
+      <updated>1685664277059</updated>
+    </task>
+    <task id="LOCAL-00155" summary="ignore 500+ status code errors when checking for updates">
+      <created>1685991345808</created>
+      <option name="number" value="00155" />
+      <option name="presentableId" value="LOCAL-00155" />
+      <option name="project" value="LOCAL" />
+      <updated>1685991345808</updated>
+    </task>
+    <task id="LOCAL-00156" summary="added ability to mark chapters as read/unread.">
+      <created>1686091521606</created>
+      <option name="number" value="00156" />
+      <option name="presentableId" value="LOCAL-00156" />
+      <option name="project" value="LOCAL" />
+      <updated>1686091521606</updated>
+    </task>
+    <task id="LOCAL-00157" summary="hid bot created bookmarks from user bookmarks">
+      <created>1686091704117</created>
+      <option name="number" value="00157" />
+      <option name="presentableId" value="LOCAL-00157" />
+      <option name="project" value="LOCAL" />
+      <updated>1686091704117</updated>
+    </task>
+    <task id="LOCAL-00158" summary="made bot unhide bookmark when it's newly bookmarked by user istead of creating a fresh bookmark">
+      <created>1686092586339</created>
+      <option name="number" value="00158" />
+      <option name="presentableId" value="LOCAL-00158" />
+      <option name="project" value="LOCAL" />
+      <updated>1686092586339</updated>
+    </task>
+    <task id="LOCAL-00159" summary="added command to view last_chapter_read">
+      <created>1686093409203</created>
+      <option name="number" value="00159" />
+      <option name="presentableId" value="LOCAL-00159" />
+      <option name="project" value="LOCAL" />
+      <updated>1686093409203</updated>
+    </task>
+    <task id="LOCAL-00160" summary="changed False to True to unhide bookmark">
+      <created>1686094219217</created>
+      <option name="number" value="00160" />
+      <option name="presentableId" value="LOCAL-00160" />
+      <option name="project" value="LOCAL" />
+      <updated>1686094219217</updated>
+    </task>
+    <task id="LOCAL-00161" summary="fixed bug in ABCScan.report_error (request_url kwarg.get -&gt; kwarg.pop)&#10;Fixed bookmark not retaining the MarkAsRead chapter info">
+      <created>1686126752565</created>
+      <option name="number" value="00161" />
+      <option name="presentableId" value="LOCAL-00161" />
+      <option name="project" value="LOCAL" />
+      <updated>1686126752565</updated>
+    </task>
+    <task id="LOCAL-00162" summary="added new format to time_string_to_seconds parse func">
+      <created>1686134746553</created>
+      <option name="number" value="00162" />
+      <option name="presentableId" value="LOCAL-00162" />
+      <option name="project" value="LOCAL" />
+      <updated>1686134746553</updated>
+    </task>
+    <task id="LOCAL-00163" summary="updated the get_manga_id method for some Scanlator Classes&#10;updated the button text in the DeleteBookmarkView">
+      <created>1686146565648</created>
+      <option name="number" value="00163" />
+      <option name="presentableId" value="LOCAL-00163" />
+      <option name="project" value="LOCAL" />
+      <updated>1686146565648</updated>
+    </task>
+    <task id="LOCAL-00164" summary="deleted `/last_read_chapter` command. use `/bookmark view` instead&#10;To view a hidden bookmark, name must be specified when using the `/bookmark view` command.">
+      <created>1686146946801</created>
+      <option name="number" value="00164" />
+      <option name="presentableId" value="LOCAL-00164" />
+      <option name="project" value="LOCAL" />
+      <updated>1686146946801</updated>
+    </task>
+    <task id="LOCAL-00165" summary="deleted `/last_read_chapter` command. use `/bookmark view` instead&#10;To view a hidden bookmark, name must be specified when using the `/bookmark view` command.">
+      <created>1686147004340</created>
+      <option name="number" value="00165" />
+      <option name="presentableId" value="LOCAL-00165" />
+      <option name="project" value="LOCAL" />
+      <updated>1686147004340</updated>
+    </task>
+    <task id="LOCAL-00166" summary="fixed bookmark.last_updated_ts not being updated in some cases&#10;added feature to automatically subscribe user when bookmarked chapter == last available chapter of manga.">
+      <created>1686433176399</created>
+      <option name="number" value="00166" />
+      <option name="presentableId" value="LOCAL-00166" />
+      <option name="project" value="LOCAL" />
+      <updated>1686433176399</updated>
+    </task>
+    <task id="LOCAL-00167" summary="added the ability to bookmark mangas that the bot already has registered">
+      <created>1686512517986</created>
+      <option name="number" value="00167" />
+      <option name="presentableId" value="LOCAL-00167" />
+      <option name="project" value="LOCAL" />
+      <updated>1686512517986</updated>
+    </task>
+    <task id="LOCAL-00168" summary="Changed Mooshi#6669 to .mooshi (my discord username changed)">
+      <created>1686512957595</created>
+      <option name="number" value="00168" />
+      <option name="presentableId" value="LOCAL-00168" />
+      <option name="project" value="LOCAL" />
+      <updated>1686512957595</updated>
+    </task>
+    <task id="LOCAL-00169" summary="changed bookmark_autocomplete to manga_autocomplete in /bookmark new">
+      <created>1686514188202</created>
+      <option name="number" value="00169" />
+      <option name="presentableId" value="LOCAL-00169" />
+      <option name="project" value="LOCAL" />
+      <updated>1686514188202</updated>
+    </task>
+    <task id="LOCAL-00170" summary="removed redundant comment&#10;testing github -&gt; discord webhook">
+      <created>1686514466644</created>
+      <option name="number" value="00170" />
+      <option name="presentableId" value="LOCAL-00170" />
+      <option name="project" value="LOCAL" />
+      <updated>1686514466644</updated>
+    </task>
+    <task id="LOCAL-00171" summary="fixed bug in /bookmark new">
+      <created>1686515385657</created>
+      <option name="number" value="00171" />
+      <option name="presentableId" value="LOCAL-00171" />
+      <option name="project" value="LOCAL" />
+      <updated>1686515385657</updated>
+    </task>
+    <task id="LOCAL-00172" summary="fixed bug in /bookmark new (x2)">
+      <created>1686515722120</created>
+      <option name="number" value="00172" />
+      <option name="presentableId" value="LOCAL-00172" />
+      <option name="project" value="LOCAL" />
+      <updated>1686515722120</updated>
+    </task>
+    <task id="LOCAL-00173" summary="added new logger to silence when debugging&#10;fixed bug in bookmark_autocomplete where name might be too long">
+      <created>1686523684496</created>
+      <option name="number" value="00173" />
+      <option name="presentableId" value="LOCAL-00173" />
+      <option name="project" value="LOCAL" />
+      <updated>1686523684496</updated>
+    </task>
+    <task id="LOCAL-00174" summary="updated gitignore&#10;started work on test case for scanlator classes">
+      <created>1686611904742</created>
+      <option name="number" value="00174" />
+      <option name="presentableId" value="LOCAL-00174" />
+      <option name="project" value="LOCAL" />
+      <updated>1686611904742</updated>
+    </task>
+    <task id="LOCAL-00175" summary="Added default User-Agent header to all cached requests&#10;Added TestCases for all available scanlator classes&#10;Tested the test cases locally. All passing!&#10;Updated GitHub workflow to run tests">
+      <created>1686789778485</created>
+      <option name="number" value="00175" />
+      <option name="presentableId" value="LOCAL-00175" />
+      <option name="project" value="LOCAL" />
+      <updated>1686789778486</updated>
+    </task>
+    <task id="LOCAL-00176" summary="updated test.py to only use config.yml on windows">
+      <created>1686789944322</created>
+      <option name="number" value="00176" />
+      <option name="presentableId" value="LOCAL-00176" />
+      <option name="project" value="LOCAL" />
+      <updated>1686789944322</updated>
+    </task>
+    <task id="LOCAL-00177" summary="fixed proxy url bug for workflow file">
+      <created>1686790032354</created>
+      <option name="number" value="00177" />
+      <option name="presentableId" value="LOCAL-00177" />
+      <option name="project" value="LOCAL" />
+      <updated>1686790032354</updated>
+    </task>
+    <task id="LOCAL-00178" summary="updated objects to use {}.get instead if dict[key] access">
+      <created>1686790530449</created>
+      <option name="number" value="00178" />
+      <option name="presentableId" value="LOCAL-00178" />
+      <option name="project" value="LOCAL" />
+      <updated>1686790530449</updated>
+    </task>
+    <task id="LOCAL-00179" summary="added handling for unexpected errors during testing">
+      <created>1686790615040</created>
+      <option name="number" value="00179" />
+      <option name="presentableId" value="LOCAL-00179" />
+      <option name="project" value="LOCAL" />
+      <updated>1686790615040</updated>
+    </task>
+    <task id="LOCAL-00180" summary="updated /supported_websites command to sort websites by name">
+      <created>1686791782908</created>
+      <option name="number" value="00180" />
+      <option name="presentableId" value="LOCAL-00180" />
+      <option name="project" value="LOCAL" />
+      <updated>1686791782908</updated>
+    </task>
+    <task id="LOCAL-00181" summary="changed config[key] to congig.get[key] in commands.py&#10;added an actual working proxy to config.yml.example&#10;updated imports in main.py&#10;added scanlators that require user agents as a class in static.py&#10;updated test.py to self-setup the config.yml&#10;finished the del_unavailable_scanlators func in setup.py&#10;added auto_exit kwarg to load_config &amp; ensure_config func">
+      <created>1686855044450</created>
+      <option name="number" value="00181" />
+      <option name="presentableId" value="LOCAL-00181" />
+      <option name="project" value="LOCAL" />
+      <updated>1686855044450</updated>
+    </task>
+    <task id="LOCAL-00182" summary="updated workflow file">
+      <created>1686855759248</created>
+      <option name="number" value="00182" />
+      <option name="presentableId" value="LOCAL-00182" />
+      <option name="project" value="LOCAL" />
+      <updated>1686855759248</updated>
+    </task>
+    <task id="LOCAL-00183" summary="updated todo">
+      <created>1686855975526</created>
+      <option name="number" value="00183" />
+      <option name="presentableId" value="LOCAL-00183" />
+      <option name="project" value="LOCAL" />
+      <updated>1686855975526</updated>
+    </task>
+    <task id="LOCAL-00184" summary="added new button to updated chapter view">
+      <created>1686935863957</created>
+      <option name="number" value="00184" />
+      <option name="presentableId" value="LOCAL-00184" />
+      <option name="project" value="LOCAL" />
+      <updated>1686935863957</updated>
+    </task>
+    <task id="LOCAL-00185" summary="added interactoin.defer to My last read chapter btn">
+      <created>1686935951568</created>
+      <option name="number" value="00185" />
+      <option name="presentableId" value="LOCAL-00185" />
+      <option name="project" value="LOCAL" />
+      <updated>1686935951568</updated>
+    </task>
+    <task id="LOCAL-00186" summary="added &quot;next chapter&quot; for the chapter update view button">
+      <created>1686938122988</created>
+      <option name="number" value="00186" />
+      <option name="presentableId" value="LOCAL-00186" />
+      <option name="project" value="LOCAL" />
+      <updated>1686938122988</updated>
+    </task>
+    <task id="LOCAL-00187" summary="updated the chapter update text for next chapter">
+      <created>1686938322701</created>
+      <option name="number" value="00187" />
+      <option name="presentableId" value="LOCAL-00187" />
+      <option name="project" value="LOCAL" />
+      <updated>1686938322701</updated>
+    </task>
+    <task id="LOCAL-00188" summary="updated time_string_to_seconds to attempt to convert relative time before attempting string parsing">
+      <created>1687214607002</created>
+      <option name="number" value="00188" />
+      <option name="presentableId" value="LOCAL-00188" />
+      <option name="project" value="LOCAL" />
+      <updated>1687214607002</updated>
+    </task>
+    <task id="LOCAL-00189" summary="updated config example&#10;added OmegaScans&#10;updated supported_websites&#10;fixed some bugs in a few scanlators&#10;updated tests to be more consistent">
+      <created>1687442073346</created>
+      <option name="number" value="00189" />
+      <option name="presentableId" value="LOCAL-00189" />
+      <option name="project" value="LOCAL" />
+      <updated>1687442073347</updated>
+    </task>
+    <task id="LOCAL-00190" summary="fixed the supported_website command">
+      <created>1687442491983</created>
+      <option name="number" value="00190" />
+      <option name="presentableId" value="LOCAL-00190" />
+      <option name="project" value="LOCAL" />
+      <updated>1687442491983</updated>
+    </task>
+    <task id="LOCAL-00191" summary="added omegascans to SCANLATORS">
+      <created>1687442759010</created>
+      <option name="number" value="00191" />
+      <option name="presentableId" value="LOCAL-00191" />
+      <option name="project" value="LOCAL" />
+      <updated>1687442759010</updated>
+    </task>
+    <task id="LOCAL-00192" summary="added OmegaScans to `/subscribe new` command">
+      <created>1687443108108</created>
+      <option name="number" value="00192" />
+      <option name="presentableId" value="LOCAL-00192" />
+      <option name="project" value="LOCAL" />
+      <updated>1687443108108</updated>
+    </task>
+    <task id="LOCAL-00193" summary="fixed void scans not showing up on supported websites command">
+      <created>1687443678161</created>
+      <option name="number" value="00193" />
+      <option name="presentableId" value="LOCAL-00193" />
+      <option name="project" value="LOCAL" />
+      <updated>1687443678161</updated>
+    </task>
+    <option name="localTasksCounter" value="445" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.History.Properties">
+    <option name="COLUMN_ID_ORDER">
+      <list>
+        <option value="Default.Root" />
+        <option value="Default.Author" />
+        <option value="Default.Date" />
+        <option value="Default.Subject" />
+        <option value="Space.CommitStatus" />
+      </list>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="1f39095a-2795-4c4b-98d3-8b33724dc536" value="TOOL_WINDOW" />
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="1f39095a-2795-4c4b-98d3-8b33724dc536">
+          <value>
+            <State />
+          </value>
+        </entry>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="true" />
+                </map>
+              </option>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="master" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Added EpsilonScan (adult version)&#10;Fixed tracking series without ID on asura." />
+    <MESSAGE value="Fixed lumitoon update check" />
+    <MESSAGE value="new config setting added" />
+    <MESSAGE value="fixed bug with adding new bot manager role" />
+    <MESSAGE value="fixed update check not sending notifs for channel associations" />
+    <MESSAGE value="removed &quot;TEST&quot; message from channel association notifs." />
+    <MESSAGE value="Fixed kaiscans and Comick. Changed comick.cc to comick.io" />
+    <MESSAGE value="fixed workflow actions" />
+    <MESSAGE value="small database query patch for completed series" />
+    <MESSAGE value="is_tracked_in_any_mutual_guild query bug fix in database.py" />
+    <MESSAGE value="saving changes before flight" />
+    <MESSAGE value="Fixed bot, added firescans" />
+    <MESSAGE value="merge from dev branch" />
+    <MESSAGE value="fixed bug when browsing bookmarks&#10;fixed comickAPI ignoring 429 status codes" />
+    <MESSAGE value="merge issues with .idea/ branch files" />
+    <MESSAGE value="merged dev and master branches" />
+    <MESSAGE value="added View Bookmark button to &quot;My last read chapter&quot; button response&#10;added `d test_update` command to dev commands" />
+    <MESSAGE value="committed xml config file for .idea" />
+    <MESSAGE value="merge conflict resolved" />
+    <MESSAGE value="disabled reaperscans test from running on git workflow&#10;removed lumitoon, cosmic, freakcomic, nvmanga, rizzcomic from lookup_map.json&#10;added ataraxia website to the bot" />
+    <MESSAGE value="merged changes from dev to master&#10;updated the supportedWebsites.md" />
+    <MESSAGE value="deleted RizzComick class from custom.py" />
+    <MESSAGE value="fixed asura chapter selector not working" />
+    <MESSAGE value="fixed flamecomics" />
+    <MESSAGE value="added fix for mangapill having more than 1 updates in update_check.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="added fix for mangapill having more than 1 updates in update_check.py" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/ext/bookmark.py</url>
+          <line>147</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$gui_app.coverage" NAME="gui_app Coverage Results" MODIFIED="1730045219912" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/local" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$main.coverage" NAME="main Coverage Results" MODIFIED="1732486694900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$parsaShi.coverage" NAME="parsaShi Coverage Results" MODIFIED="1711845674798" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$turtlee.coverage" NAME="turtlee Coverage Results" MODIFIED="1730045289273" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/local" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$test_beta__1_.coverage" NAME="test_beta Coverage Results" MODIFIED="1711913820498" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$test_beta.coverage" NAME="test_beta Coverage Results" MODIFIED="1732378004954" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$__main__.coverage" NAME="__main__ Coverage Results" MODIFIED="1732496096163" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$__main____1_.coverage" NAME="__main__ (1) Coverage Results" MODIFIED="1712364715420" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/ManhwaUpdatesBot$test.coverage" NAME="test Coverage Results" MODIFIED="1711586176716" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+  </component>
+</project>
