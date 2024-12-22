@@ -16,6 +16,7 @@ from logging import Logger
 from src.core.database import _levenshtein_distance
 from src.enums import BookmarkViewType
 import logging
+from rapidfuzz import process
 
 
 class BaseModal(discord.ui.Modal):
@@ -45,14 +46,17 @@ class SearchModal(discord.ui.Modal, title='Search Bookmark'):
         self.bookmarks: list[Bookmark] = self.view.bookmarks
 
     async def on_submit(self, interaction: discord.Interaction):
+        titles = [x.manga.title for x in self.bookmarks]
         possible_bookmark = [x for x in self.bookmarks if x.manga.title.lower().startswith(self.query.value.lower())]
-        if len(possible_bookmark) >= 1:
-            bookmark = possible_bookmark[0]
+
+        if possible_bookmark:
+            titles = [x.manga.title for x in possible_bookmark]
+            best_match, best_score, index = process.extractOne(self.query.value, titles)
+            bookmark = possible_bookmark[index]
         else:
-            bookmark = min(
-                self.bookmarks,
-                key=lambda x: _levenshtein_distance(x.manga.title.lower(), self.query.value.lower())
-            )
+            best_match, best_score, index = process.extractOne(self.query.value, titles)
+            bookmark = self.bookmarks[index]
+
         self.view.folder = bookmark.folder
         self.view.change_view_type(BookmarkViewType.VISUAL)
         self.view.clear_components()
@@ -142,4 +146,4 @@ class ScanlatorModal(BaseModal, title="Select a scanlator"):
         else:
             self.scanlator = val
 
-        await interaction.response.defer(ephemeral=True, thinking=False)  # acknowledge the interaction
+        await interaction.response.defer(ephemeral=True, thinking=False)  # noqa: acknowledge the interaction

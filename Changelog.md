@@ -2,6 +2,11 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## December 22nd 2024
+
+- Improved the search button from the bookmarks view.
+- Adde rapidfuzz to requirements.txt
+
 ## // November 25th 2024
 
 ### Bug Fixes:
