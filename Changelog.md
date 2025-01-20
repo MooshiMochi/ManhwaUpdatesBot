@@ -2,6 +2,15 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## January 20th 2024
+
+### Bug Fixes:
+
+- Fixed test case for ataraxia (expected status was true instead of false)
+- Fixed issue in update_check.py where the scanlator updates would crash if a manga had no chapters yet
+- Updated asura's chapter container selector not to include paid chapters for updates. This will be redacted when the
+    - option for premium chapter notifications will be introduced.
+
 ## December 22nd 2024
 
 - Improved the search button from the bookmarks view.

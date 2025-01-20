@@ -29,7 +29,7 @@
       "manga_id": "hf985162",
       "curr_chapter_url": "https://chapmanganato.to/manga-hf985162/chapter-155",
       "first_chapter_url": "https://chapmanganato.to/manga-hf985162/chapter-1",
-      "cover_image": "https://avt.mkklcdnv6temp.com/fld/94/q/10-1732803683-nw.webp",
+      "cover_image": "https://avt.mkklcdnv6temp.com/3/y/21-1587115897.jpg",
       "last_3_chapter_urls": [
         "https://chapmanganato.to/manga-hf985162/chapter-153",
         "https://chapmanganato.to/manga-hf985162/chapter-154",
@@ -100,20 +100,20 @@
     }
   },
   "asura": {
-    "user_input_url": "https://asuracomic.net/series/i-regressed-as-the-duke-8e0dd4c5",
+    "user_input_url": "https://asuracomic.net/series/i-regressed-as-the-duke-6d1e6e94",
     "expected_results": {
       "scanlator_name": "asura",
-      "manga_url": "https://asuracomic.net/series/i-regressed-as-the-duke-8e0dd4c5/",
+      "manga_url": "https://asuracomic.net/series/i-regressed-as-the-duke-6d1e6e94/",
       "completed": true,
       "title": "I Regressed As The Duke",
-      "manga_id": "https://asuracomic.net/series/i-regressed-as-the-duke-8e0dd4c5",
-      "curr_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-b2a55c53/chapter/63",
-      "first_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-b2a55c53/chapter/1",
+      "manga_id": "https://asuracomic.net/series/i-regressed-as-the-duke-6d1e6e94",
+      "curr_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/63",
+      "first_chapter_url": "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/1",
       "cover_image": "https://gg.asuracomic.net/storage/media/253/conversions/01J3BAW83KA3WAT4FRPDR572F1-optimized.webp",
       "last_3_chapter_urls": [
-        "https://asuracomic.net/series/i-regressed-as-the-duke-b2a55c53/chapter/61",
-        "https://asuracomic.net/series/i-regressed-as-the-duke-b2a55c53/chapter/62",
-        "https://asuracomic.net/series/i-regressed-as-the-duke-b2a55c53/chapter/63"
+        "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/61",
+        "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/62",
+        "https://asuracomic.net/series/i-regressed-as-the-duke-521117e9/chapter/63"
       ],
       "use_default_id_function": true,
       "has_fp_manhwa": true
@@ -390,7 +390,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://readmangabat.com/read-ye359223-chap-122",
       "first_chapter_url": "https://readmangabat.com/read-ye359223-chap-1",
-      "cover_image": "https://avt.mkklcdnv6temp.com/fld/72/j/1-1732719291-nw.webp",
+      "cover_image": "https://avt.mkklcdnv6temp.com/19/y/2-1583466482.jpg",
       "last_3_chapter_urls": [
         "https://readmangabat.com/read-ye359223-chap-120.1",
         "https://readmangabat.com/read-ye359223-chap-121",
@@ -550,7 +550,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554480-vol-7-ch-27",
       "first_chapter_url": "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554453-vol-1-ch-1",
-      "cover_image": "https://s02.mprnm.org/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
+      "cover_image": "https://s01.mprnm.org/thumb/W600/amim/917/60910ca5adc9c575545dd719_300_450_50681.jpg",
       "last_3_chapter_urls": [
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554478-vol-7-ch-25",
         "https://mangapark.net/title/120626-en-machida-kun-no-sekai/1554479-vol-7-ch-26",
@@ -710,7 +710,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangafire.to/read/hellsingg.y8x/en/chapter-88",
       "first_chapter_url": "https://mangafire.to/read/hellsingg.y8x/en/chapter-1",
-      "cover_image": "https://static.mangafire.to/3da8/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
+      "cover_image": "https://static.mangafire.to/3b2d5/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
       "last_3_chapter_urls": [
         "https://mangafire.to/read/hellsingg.y8x/en/chapter-86",
         "https://mangafire.to/read/hellsingg.y8x/en/chapter-87",
@@ -837,40 +837,21 @@
     }
   },
   "ataraxia": {
-    "user_input_url": "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/",
+    "user_input_url": "https://www.beyondtheataraxia.com/manga/new-game/",
     "expected_results": {
       "scanlator_name": "ataraxia",
-      "manga_url": "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/",
-      "completed": true,
-      "title": "Karakai Jouzu (?) no Nishikata-san",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/volume-01/capitolo-10-5/",
-      "first_chapter_url": "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/volume-01/capitolo-01/",
-      "cover_image": "https://www.beyondtheataraxia.com/storage/2024/02/04f3d761-8a5c-4b12-99c9-283e08bc9885.jpg.512.jpg",
-      "last_3_chapter_urls": [
-        "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/volume-01/capitolo-09/",
-        "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/volume-01/capitolo-10/",
-        "https://www.beyondtheataraxia.com/manga/karakai-jouzu-no-nishikata-san/volume-01/capitolo-10-5/"
-      ]
-    }
-  },
-  "gyarelease": {
-    "user_input_url": "https://www.gyarelease.it/manga/uzaki-chan-wa-asobitai/",
-    "expected_results": {
-      "scanlator_name": "gyarelease",
-      "manga_url": "https://www.gyarelease.it/manga/uzaki-chan-wa-asobitai/",
+      "manga_url": "https://www.beyondtheataraxia.com/manga/new-game/",
       "completed": false,
-      "title": "Uzaki-chan wa asobitai!",
+      "title": "New Game!",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://www.gyarelease.it/manga/chapter/uzaki-chan-capitolo-29/",
-      "first_chapter_url": "https://www.gyarelease.it/manga/chapter/uzaki-chan-capitolo-7/",
-      "cover_image": "https://www.gyarelease.it/wp-content/uploads/covers/Uzaki-chan-wa-asobitai!/uzaki.jpg",
+      "curr_chapter_url": "https://www.beyondtheataraxia.com/manga/new-game/volume-02/capitolo-13/",
+      "first_chapter_url": "https://www.beyondtheataraxia.com/manga/new-game/volume-01/capitolo-01/",
+      "cover_image": "https://www.beyondtheataraxia.com/storage/2024/08/New-Game-Vol-1-1200x630.jpg",
       "last_3_chapter_urls": [
-        "https://www.gyarelease.it/manga/chapter/uzaki-chan-capitolo-27/",
-        "https://www.gyarelease.it/manga/chapter/uzaki-chan-capitolo-28/",
-        "https://www.gyarelease.it/manga/chapter/uzaki-chan-capitolo-29/"
+        "https://www.beyondtheataraxia.com/manga/new-game/volume-01/capitolo-12/",
+        "https://www.beyondtheataraxia.com/manga/new-game/volume-01/capitolo-12-5/",
+        "https://www.beyondtheataraxia.com/manga/new-game/volume-02/capitolo-13/"
       ]
     }
   }
