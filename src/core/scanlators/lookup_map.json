@@ -335,7 +335,7 @@
         "front_page": {
           "container": "div.w-full.p-1",
           "chapters": {
-            "container": "div.w-full.p-1 > div > div.col-span-9 > div.flex > span > div > div.flex",
+            "container": "div.w-full.p-1 > div > div.col-span-9 > div.flex > span > div:not(:has(svg.lucide))",
             "name": "a > span.flex > div.flex > p",
             "url": "a"
           },

@@ -841,7 +841,7 @@
     "expected_results": {
       "scanlator_name": "ataraxia",
       "manga_url": "https://www.beyondtheataraxia.com/manga/new-game/",
-      "completed": true,
+      "completed": false,
       "title": "New Game!",
       "manga_id": "default_id_function",
       "use_default_id_function": true,

@@ -594,7 +594,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        # asyncio.run(test_single_scanlator("flamecomics"))
+        asyncio.run(test_single_scanlator("ataraxia"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

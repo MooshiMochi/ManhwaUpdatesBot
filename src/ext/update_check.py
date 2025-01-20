@@ -234,34 +234,35 @@ class UpdateCheckCog(commands.Cog):
             if not partial_manga.latest_chapters:  # websites that don't support front page scraping return []
                 solo_mangas_to_check.append(manga_header)
                 continue
-            elif manga.last_chapter.url == partial_manga.latest_chapters[-1].url:  # no updates here
-                continue
-            # elif (manga.last_chapter.url == partial_manga.latest_chapters[-1].url and
-            #       manga.last_chapter.is_premium != partial_manga.latest_chapters[-1].is_premium):  # no updates here
-            #     continue
-            p_manga_chapter_urls = [x.url for x in partial_manga.latest_chapters]
-            if manga.last_chapter.url in p_manga_chapter_urls:  # new chapters
-                index = p_manga_chapter_urls.index(manga.last_chapter.url)
-                latest_chapter_index = manga.last_chapter.index + 1
-                new_chapters = []
-                for chapter in partial_manga.latest_chapters[index + 1:]:
-                    chapter.index = latest_chapter_index
-                    latest_chapter_index += 1
-                    new_chapters.append(chapter)
-                manga_chapter_updates.append(
-                    ChapterUpdate(
-                        manga.id,
-                        new_chapters,
-                        manga.scanlator,
-                        partial_manga.cover_url,
-                        manga.status,
+            if manga.last_chapter is not None:
+                if manga.last_chapter.url == partial_manga.latest_chapters[-1].url:  # no updates here
+                    continue
+                # elif (manga.last_chapter.url == partial_manga.latest_chapters[-1].url and
+                #       manga.last_chapter.is_premium != partial_manga.latest_chapters[-1].is_premium):  # no updates here
+                #     continue
+                p_manga_chapter_urls = [x.url for x in partial_manga.latest_chapters]
+                if manga.last_chapter.url in p_manga_chapter_urls:  # new chapters
+                    index = p_manga_chapter_urls.index(manga.last_chapter.url)
+                    latest_chapter_index = manga.last_chapter.index + 1
+                    new_chapters = []
+                    for chapter in partial_manga.latest_chapters[index + 1:]:
+                        chapter.index = latest_chapter_index
+                        latest_chapter_index += 1
+                        new_chapters.append(chapter)
+                    manga_chapter_updates.append(
+                        ChapterUpdate(
+                            manga.id,
+                            new_chapters,
+                            manga.scanlator,
+                            partial_manga.cover_url,
+                            manga.status,
+                        )
                     )
-                )
-                if scanlator.json_tree.properties.requires_update_embed:
-                    manga_chapter_updates[-1].extra_kwargs = [
-                        {"embed": scanlator.create_chapter_embed(partial_manga, chapter)}
-                        for chapter in new_chapters
-                    ]
+                    if scanlator.json_tree.properties.requires_update_embed:
+                        manga_chapter_updates[-1].extra_kwargs = [
+                            {"embed": scanlator.create_chapter_embed(partial_manga, chapter)}
+                            for chapter in new_chapters
+                        ]
             else:  # old chapter is not visible in listed chapters (mass released updates)
                 solo_mangas_to_check.append(manga)
 
