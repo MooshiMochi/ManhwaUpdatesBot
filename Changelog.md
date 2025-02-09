@@ -2,7 +2,7 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
-## January 26th 2025
+## February 9th 2025
 
 - Replaced all requests to only use the curl_cffi library.
 - Added support for https://hivetoon.com.
