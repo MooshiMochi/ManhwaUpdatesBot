@@ -104,6 +104,8 @@ class _OmegaScans(BasicScanlator):
 
 
 class _ReaperScans(BasicScanlator):
+    cover_url_fmt = "https://media.reaperscans.com/file/4SRBHm/"
+
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 
@@ -117,7 +119,7 @@ class _ReaperScans(BasicScanlator):
         for item_dict in fp_mangas:
             title = item_dict["title"]
             url = self.json_tree.properties.format_urls.manga.format(url_name=item_dict["series_slug"])
-            cover = item_dict["thumbnail"]
+            cover = self.cover_url_fmt + item_dict["thumbnail"]
             _id = item_dict["id"]
 
             latest_chapters: list[Chapter] = []

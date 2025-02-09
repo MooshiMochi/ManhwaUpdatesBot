@@ -445,7 +445,7 @@ class AbstractScanlator(ABC):
         return ChapterUpdate(
             manga.id, new_chapters, manga.scanlator, cover_url, status, status_changed,
             extra_kwargs=[
-                {"embed": self.create_chapter_embed(manga, chapter)}
+                {"embed": self.create_chapter_embed(manga, chapter, cover_url)}
                 for chapter in new_chapters
             ] if self.json_tree.properties.requires_update_embed else None
         )

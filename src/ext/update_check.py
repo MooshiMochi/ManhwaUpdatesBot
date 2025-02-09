@@ -84,10 +84,16 @@ class UpdateCheckCog(Cog):
         except exceptions.HTTPError as e:
             if e.code == 404:  # 404 means that the website URL has most likely changed
                 # therefore, any later requests will also fail.
-                self.logger.error(
-                    f"404 Error occurred while checking for updates for {scanlator.name}. "
-                    f"URL probably chagned.\nRequested: {scanlator.json_tree.properties.latest_updates_url}")
+                msg = f"404 Error occurred while checking for FP updates for {scanlator.name}. URL probably changed."
+                self.logger.error(msg, exc_info=e)
+                await scanlator.report_error(Exception(msg), request_url=scanlator.json_tree.properties.base_url)
                 return []
+            await scanlator.report_error(e, request_url=getattr(
+                e.response, 'url', scanlator.json_tree.properties.base_url
+            ))
+            raise e
+        except Exception as e:
+            await scanlator.report_error(e, request_url=scanlator.json_tree.properties.base_url)
             raise e
         mangas_on_fp = [m for m in to_check if m in fp_mangas]
         if not mangas_on_fp:  # none of the mangas we track are on the fp ∴ they have no updates yet
@@ -432,6 +438,7 @@ class UpdateCheckCog(Cog):
                             self.logger.error(
                                 f"Failed to send update for {manga.title}| {chapter.name} to {user}", exc_info=e
                             )
+                            await self.bot.log_to_discord(f"Failed to send update to user: {user.id}", error=e)
                     if update.status_changed:
                         scanlator_hyperlink = f"[{manga.scanlator.title()}]({scanlators[manga.scanlator].json_tree.properties.base_url})"
                         description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to "
@@ -447,7 +454,7 @@ class UpdateCheckCog(Cog):
                             self.logger.error(
                                 f"Failed to send status update for {manga.title} to {user}", exc_info=e
                             )
-                            pass
+                            await self.bot.log_to_discord(f"Failed to send update to user: {user.id}", error=e)
             except discord.Forbidden:
                 self.logger.warning(f"Couldn't send updates to {user} - DMs are closed (Forbidden).")
 
@@ -541,8 +548,10 @@ class UpdateCheckCog(Cog):
                         self.logger.error(
                             f"Failed to send update for {title}| {chapter.name}", exc_info=e
                         )
+                        await self.bot.log_to_discord(f"Failed to send update to guild: {guild_id}", error=e)
                         continue
                     next_update_channels.add(channel)
+
         if self._task_iteraction_completed_count["guilds"] >= len(self.tasks) - 1:
             self._task_iteraction_completed_count["guilds"] = 0
             for channel in next_update_channels:

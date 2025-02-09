@@ -148,7 +148,7 @@ class FixDbCog(commands.Cog):
         new_m._chapters = new_m.chapters[:len(old_m.chapters)]
         new_m._last_chapter = new_m.chapters[-1]
         await self.insert_to_db(new_m)
-        await self.replace_series_id(old_m.id, new_m.id, "kaiscans", delete_old=False)
+        await self.replace_series_id(old_m.id, new_m.id, "kaiscans", delete_old=True)
 
     async def fix_zinamnga(self):
         sc = "zinmanga"
@@ -297,48 +297,48 @@ class FixDbCog(commands.Cog):
     async def fix_topreadmanhwa(self):
         sc = "topreadmanhwa"
         to_delete = ["9bc36ce558cad2711f6f460ccf100452f9b48f7691f19c9d6fcfb97cbad2b928",
-                     "55af4a7a9e04e2bf0ab058b4c932d44d22c7f7d8420b723d4847c04b0c39a4c5"
-                     ] + ['2de2bca4cf120d266dae0ded046525a30a576cde4cc964b78643a61101f56614',
-                          '887a951e8e09957cd59319ca7cc6ab7920455166658ab775b0077e7a3b062c07',
-                          'f81fca9915cfbeac14966da1f533e665b8c34d3714bdfdcc5318ef860788d2e0',
-                          '0c31121d423d74f57e664d8b383897a1244bc4dfa386e39ab990ae523ad364d2',
-                          '40e28044e8a242105e62f78c3efd7f22843a21a9f4356ddfe5a7d52cf8dd4411',
-                          '253bd3b780f05630b74b0b755b8631aabf3e87c66b3b8f69907564a114fd3d73',
-                          '2cb24d725a1f340ad05b4ffd5a61da184a082f4bb0d0da8c633a974766ab07b7',
-                          '2d20d93d205ad3e782363876b4ef71f91eb9b7fddb891144724144e253745b9b',
-                          'f9566527be1f7514aa6cbc42e0163a5bd2ef69c419bc4efd83daadcbf66521be',
-                          '07b322b31dcfa4fd84e0f6dad60d726095948b5e3d1c13fcc2225d60d4fb934b',
-                          'b2d8a508a67593379635607e85ef94d53dfd6193b376c30a9317884f7afca034',
-                          '31c80bcc7e0cfcdcaefc143ff28fc5bd5d5ca8bee3f1acb7c3c4eea19c772a20',
-                          '5bdc937d75ccf7811ce7997c247b949522100c56529dbe8f06c65f9f53210e75',
-                          '83bf5a903f29fb00c41745360dad6dc9a72cc562a25cb9c8c64fd798cd97ce2c',
-                          '32e54c5b6363c1f3d5f4c1f446f686f93749c0102f3d32dbee7ce7b3a49dea53',
-                          'b38913d96637402c31b7842dac32695d45859673bd93fd925fdf34112c6bd1d0',
-                          '1e4f7932f63f243ca7329c5da9558a682d1ea633ccf0b10002a95be4208c4b48',
-                          '9f7a89a896c0e1e341883d1192cfddb5cd0698e1e056ca685f08fe2fbd49f120',
-                          'e345f4b025c23caecf25f9569481640e349ea4c0122dcdf5a6b15d7a7c52650d',
-                          'd8df89406ff66bf930c6ef9e2f65f2eee192f1158d7c2652f2e75c9279716300',
-                          'b1ffd5e38277d1b7a0be45a07b8897319bfcc73798d57bd2480a5868b2203d53',
-                          '8edc290183959836c612b4c9db667e6b78fe28dc10e51a28b42187c736517b53',
-                          'b8c3fcd9df8dd489d8e621e8d9797b3332017f7319f79cda589e82b91ef7cda1',
-                          'e0ed15887046e5497fba5c9c0c2ba2b645b30d936b568490c0eac39eaa9f7a7d',
-                          '96f2b940bb84741a862bc4bece3188512d842e36d92be690ab11ea6778595497',
-                          '169ad77a7afb11a91fe0140a37116f8e7dff96ba5d91674fe1dde96590c74197',
-                          '6b1d2b5c9a4535f2868802fd8e8c322cec9c63ac3841cc772cca08732540861c',
-                          '74f1d3e9e20a1a99e0d7cb6aa869b5e77e996f812ae8e85a9a84bb658ff46075',
-                          'c9b5fab4817189ee1eeb60347bc3ee7ff838ccf40139d5a2691c91d32ab96d4c',
-                          '7ca71ba42bafd70bfc38d2bc3e696906c43707392414a64d55b8199b1aea90a2',
-                          '77d89596c4b3f290c1428228e5be9aec2e740586f4c0f656fa10a12078dcfe62',
-                          '84bebae3e7068fc40cf8a4b1b5cb11c77d2eaa2487cb6326493605a7623086c4',
-                          '374f28974bd4bd2eee8baf9136ef199af88bf8bd985bb9beba55617c29bf3aef',
-                          '6d17ec514e0e1ee2caf969b4c73fb90813295a7d89d1b4d7d3bf73a498d498f2',
-                          '78d3bd53345d14649d81f61b76f0ca8e162753af3019002f8ebffca157cb631a',
-                          'aef8eced2fb5aae88057ddec0a5e0298f7fd1b02a044b41d81ac006ef07e4c8b',
-                          '774ba022c37a696eb44fb369860e803816e8cdea88cba7b8b4e0b7baaf648943',
-                          '4c44c0445b82c377369e6eee7aa6732cc66d7abe443ab09f4d457d1f16543733',
-                          'f4c600d6caaee91102b64f60d134f107327e14d77db4604fbfe59d34229f472a',
-                          '49c3233cc0e55e9553d081834b7b6a50fc2a9ff815e2a47ec2c54ee92d3080d7',
-                          'fce740f687404660581ecce85b5c5e1ef1880b1e870dbd5849b57523da94123d']
+                     "55af4a7a9e04e2bf0ab058b4c932d44d22c7f7d8420b723d4847c04b0c39a4c5",
+                     '2de2bca4cf120d266dae0ded046525a30a576cde4cc964b78643a61101f56614',
+                     '887a951e8e09957cd59319ca7cc6ab7920455166658ab775b0077e7a3b062c07',
+                     'f81fca9915cfbeac14966da1f533e665b8c34d3714bdfdcc5318ef860788d2e0',
+                     '0c31121d423d74f57e664d8b383897a1244bc4dfa386e39ab990ae523ad364d2',
+                     '40e28044e8a242105e62f78c3efd7f22843a21a9f4356ddfe5a7d52cf8dd4411',
+                     '253bd3b780f05630b74b0b755b8631aabf3e87c66b3b8f69907564a114fd3d73',
+                     '2cb24d725a1f340ad05b4ffd5a61da184a082f4bb0d0da8c633a974766ab07b7',
+                     '2d20d93d205ad3e782363876b4ef71f91eb9b7fddb891144724144e253745b9b',
+                     'f9566527be1f7514aa6cbc42e0163a5bd2ef69c419bc4efd83daadcbf66521be',
+                     '07b322b31dcfa4fd84e0f6dad60d726095948b5e3d1c13fcc2225d60d4fb934b',
+                     'b2d8a508a67593379635607e85ef94d53dfd6193b376c30a9317884f7afca034',
+                     '31c80bcc7e0cfcdcaefc143ff28fc5bd5d5ca8bee3f1acb7c3c4eea19c772a20',
+                     '5bdc937d75ccf7811ce7997c247b949522100c56529dbe8f06c65f9f53210e75',
+                     '83bf5a903f29fb00c41745360dad6dc9a72cc562a25cb9c8c64fd798cd97ce2c',
+                     '32e54c5b6363c1f3d5f4c1f446f686f93749c0102f3d32dbee7ce7b3a49dea53',
+                     'b38913d96637402c31b7842dac32695d45859673bd93fd925fdf34112c6bd1d0',
+                     '1e4f7932f63f243ca7329c5da9558a682d1ea633ccf0b10002a95be4208c4b48',
+                     '9f7a89a896c0e1e341883d1192cfddb5cd0698e1e056ca685f08fe2fbd49f120',
+                     'e345f4b025c23caecf25f9569481640e349ea4c0122dcdf5a6b15d7a7c52650d',
+                     'd8df89406ff66bf930c6ef9e2f65f2eee192f1158d7c2652f2e75c9279716300',
+                     'b1ffd5e38277d1b7a0be45a07b8897319bfcc73798d57bd2480a5868b2203d53',
+                     '8edc290183959836c612b4c9db667e6b78fe28dc10e51a28b42187c736517b53',
+                     'b8c3fcd9df8dd489d8e621e8d9797b3332017f7319f79cda589e82b91ef7cda1',
+                     'e0ed15887046e5497fba5c9c0c2ba2b645b30d936b568490c0eac39eaa9f7a7d',
+                     '96f2b940bb84741a862bc4bece3188512d842e36d92be690ab11ea6778595497',
+                     '169ad77a7afb11a91fe0140a37116f8e7dff96ba5d91674fe1dde96590c74197',
+                     '6b1d2b5c9a4535f2868802fd8e8c322cec9c63ac3841cc772cca08732540861c',
+                     '74f1d3e9e20a1a99e0d7cb6aa869b5e77e996f812ae8e85a9a84bb658ff46075',
+                     'c9b5fab4817189ee1eeb60347bc3ee7ff838ccf40139d5a2691c91d32ab96d4c',
+                     '7ca71ba42bafd70bfc38d2bc3e696906c43707392414a64d55b8199b1aea90a2',
+                     '77d89596c4b3f290c1428228e5be9aec2e740586f4c0f656fa10a12078dcfe62',
+                     '84bebae3e7068fc40cf8a4b1b5cb11c77d2eaa2487cb6326493605a7623086c4',
+                     '374f28974bd4bd2eee8baf9136ef199af88bf8bd985bb9beba55617c29bf3aef',
+                     '6d17ec514e0e1ee2caf969b4c73fb90813295a7d89d1b4d7d3bf73a498d498f2',
+                     '78d3bd53345d14649d81f61b76f0ca8e162753af3019002f8ebffca157cb631a',
+                     'aef8eced2fb5aae88057ddec0a5e0298f7fd1b02a044b41d81ac006ef07e4c8b',
+                     '774ba022c37a696eb44fb369860e803816e8cdea88cba7b8b4e0b7baaf648943',
+                     '4c44c0445b82c377369e6eee7aa6732cc66d7abe443ab09f4d457d1f16543733',
+                     'f4c600d6caaee91102b64f60d134f107327e14d77db4604fbfe59d34229f472a',
+                     '49c3233cc0e55e9553d081834b7b6a50fc2a9ff815e2a47ec2c54ee92d3080d7',
+                     'fce740f687404660581ecce85b5c5e1ef1880b1e870dbd5849b57523da94123d']
         for _id in to_delete:
             await self.delete_from_db(_id, sc)
 
@@ -403,19 +403,19 @@ class FixDbCog(commands.Cog):
     async def cog_load(self) -> None:
         if not self.bot.is_ready():
             await self.bot.wait_until_ready()
-        await self.delete_old_scan_configs()
-        await self.enable_all_scanlators()
-        await self.fix_nightscans()
-        await self.fix_resetscans()
-        await self.fix_kaiscans()
-        await self.fix_zinamnga()
-        await self.fix_kunmanga()
-        await self.fix_hivescans()
+        # await self.delete_old_scan_configs()
+        # await self.enable_all_scanlators()
+        # await self.fix_nightscans()
+        # await self.fix_resetscans()
+        # await self.fix_kaiscans()
+        # await self.fix_zinamnga()
+        # await self.fix_kunmanga()
+        # await self.fix_hivescans()
         await self.fix_topreadmanhwa()
-        await self.fix_manganato()
-        await self.fix_flamecomics()
-        await self.fix_drakescans()
-        await self.fix_asura()
+        # await self.fix_manganato()
+        # await self.fix_flamecomics()
+        # await self.fix_drakescans()
+        # await self.fix_asura()
 
 
 async def setup(bot: "MangaClient"):
