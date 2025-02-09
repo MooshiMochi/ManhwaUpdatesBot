@@ -1,220 +1,101 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-import traceback as tb
+from asyncio import Lock
 from collections import defaultdict
-from datetime import datetime
-from typing import TYPE_CHECKING
+from functools import partial
+from typing import Optional, TYPE_CHECKING
 
-import aiohttp
-import curl_cffi.requests
 import discord
-import patreon
-from aiohttp.client_exceptions import ClientConnectorError, ClientHttpProxyError, ClientResponseError
-from patreon.jsonapi.parser import JSONAPIResource
+from curl_cffi.requests import exceptions, Response
+from discord.ext import tasks
+from discord.ext.commands import Cog
 
-from src.core.errors import CustomError, URLAccessFailed
-from src.core.objects import ChapterUpdate, MangaHeader, PartialManga, Patron
+from src.core.objects import ChapterUpdate, PartialManga
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
 from src.ui.views import BookmarkChapterView
-from src.utils import check_missing_perms, chunked, group_items_by
+from src.utils import check_missing_perms, group_items_by
 
 if TYPE_CHECKING:
-    from src.core import MangaClient
+    from src.core import GuildSettings, MangaClient
+    from src.core.objects import Chapter, Manga, MangaHeader
 
-from discord.ext import commands, tasks
 
-
-class UpdateCheckCog(commands.Cog):
+class UpdateCheckCog(Cog):
     def __init__(self, bot: MangaClient) -> None:
         self.bot: MangaClient = bot
-        self.logger = logging.getLogger("update-check")
+        self.logger = logging.getLogger('update-check')
+        self.tasks: dict[str, tuple[tasks.Loop, tasks.Loop]] = {}
+        self.locks: dict[str, Lock] = {}
+        self._task_iteraction_completed_count: dict[str, int] = {
+            "users": 0,
+            "guilds": 0
+        }
 
-    async def cog_load(self):
-        self.bot.logger.info("Loaded Updates Cog...")
+    async def cog_load(self) -> None:
+        self.logger.info('Loaded Updates Check Cog...')
+        # update check is started in the on_ready event at the bottom of the file.
 
-        self.check_updates_task.add_exception_type(
-            Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
-        self.check_manhwa_status.add_exception_type(
-            Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
-        self.check_patreon_users.add_exception_type(
-            Exception, aiohttp.ClientConnectorError, aiohttp.ClientResponseError)
+    async def cog_unload(self) -> None:
+        self.logger.info('Unloaded Updates Check Cog...')
+        await self.stop_update_check_tasks()
 
-        self.check_updates_task.start()
-        self.check_manhwa_status.start()
-        self.check_patreon_users.start()
+    async def start_update_check_tasks(self) -> None:
+        self.logger.info('Starting Update Check Tasks...')
+        self.logger = logging.getLogger('update-check')
+        self.tasks = {}
+        self.locks: dict[str, Lock] = {name: Lock() for name in scanlators.keys()}
 
-    async def handle_exception(self, coro: callable, scanlator: AbstractScanlator, req_url: str) -> str:
+        for name, scanlator in scanlators.items():
+            update_task = tasks.loop(minutes=25, name=name)(partial(self.update_check, scanlator))
+            update_task.__name__ = f"update_check_{scanlator.name}"
+            update_task.add_exception_type(Exception)
+            backup_task = tasks.loop(hours=4, name=f'{name}-backup')(partial(self.backup_update_check, scanlator))
+            backup_task.__name__ = f"backup_update_check_{scanlator.name}"
+            update_task.add_exception_type(Exception)
+            self.tasks[name] = (update_task, backup_task)
+
+        for task, backup_task in self.tasks.values():
+            task.start()
+            backup_task.start()
+
+    async def stop_update_check_tasks(self) -> None:
+        self.logger.info('Stopping Update Check Tasks...')
+        for scanlator, (task, backup_task) in list(self.tasks.items()):
+            task.cancel()
+            backup_task.cancel()
+            del self.tasks[scanlator]
+
+    async def check_with_fp(self, scanlator: AbstractScanlator, to_check: list[MangaHeader]) -> list[ChapterUpdate]:
         """
-        Handles exceptions that occur while checking for updates.
+        Check for updates using the scanlator's front page.
 
-        Parameters:
-            coro: The coroutine that was called.
-            scanlator: The scanner used to check for updates.
-            req_url: The URL that was requested.
+        Args:
+            scanlator: AnstractScanlator - The scanlator to check for updates.
+            to_check: list[MangaHeader] - The list of mangas to check for updates.
 
         Returns:
-            str: a string that you can call "eval" on to get the result of the exception handling.
+            list[ChapterUpdate] - A list of the new updates
+            that need to be sent out as notifications and updated in the database.
         """
         try:
-            return await coro
-        # Even though ClientConnectorError inherits from Exception, it's not getting caught.
-        except (Exception, ClientConnectorError, CustomError) as error:
-            rv = "None"
-            if isinstance(error, (ClientConnectorError, ClientHttpProxyError, CustomError)):
-                self.logger.warning(
-                    f"[{scanlator.name.title()}] Failed to connect to proxy: {error}"
-                )
-                rv = "continue"
-
-            elif isinstance(error, ConnectionResetError):
-                self.logger.warning(
-                    f"[{scanlator.name.title()}] Connection was reset while checking for updates."
-                )
-                rv = "continue"
-
-            if isinstance(error, curl_cffi.requests.RequestsError):
-                if error.code == 28:
-                    self.logger.warning(f"{scanlator.name.title()} timed out while checking for updates.")
-                    rv = "return"  # cancel update check as it's unlikely to succeed.
-            elif isinstance(error, ClientResponseError):
-                rv = "return"
-            elif isinstance(error, URLAccessFailed):
-                # ClientResponseError is raised in flaresolverr.py. We need to stop update check to that website
-                if error.status_code >= 500:
-                    self.logger.error(
-                        f"{scanlator.name} returned status code {error.status_code}. Update check stopped.")
-                    rv = "return"  # cancel update check as it's unlikely to succeed.
-                elif error.status_code == 404:
-                    self.logger.warning(f"[{scanlator.name.title()}] returned 404 for {req_url}")
-                elif error.status_code == 429:
-                    self.logger.warning(f"[{scanlator.name.title()}] returned 429 for {req_url}")
-                    rv = "return"  # Rate limiter should be able to handle this.
-                elif error.status_code == 403:
-                    self.logger.warning(f"[{scanlator.name.title()}] returned 403 for {req_url}")
-                    rv = "return"  # cancel update check as it's unlikely to succeed.
-                else:
-                    await self.bot.log_to_discord(
-                        f"Accessing {error.manga_url} failed with status code {error.status_code or 'unknown'}"
-                        " while checking for updates."
-                        + (f"\nError: {error.arg_error_msg}" if error.arg_error_msg else "")
-                    )
-                    rv = "continue"
-            elif isinstance(error, aiohttp.ClientHttpProxyError):
-                if error.status < 500:
-                    self.logger.error(
-                        f"Error while checking for updates for {scanlator.name.title()})",
-                        exc_info=error,
-                    )
-                    traceback = "".join(
-                        tb.format_exception(type(error), error, error.__traceback__)
-                    )
-                    await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
-                rv = "continue"
-            else:
+            fp_mangas: list[PartialManga] = await scanlator.get_fp_partial_manga()
+        except exceptions.HTTPError as e:
+            if e.code == 404:  # 404 means that the website URL has most likely changed
+                # therefore, any later requests will also fail.
                 self.logger.error(
-                    f"Error while checking for updates for {scanlator.name.title()}",
-                    exc_info=error,
-                )
-                traceback = "".join(
-                    tb.format_exception(type(error), error, error.__traceback__)
-                )
-                await self.bot.log_to_discord(
-                    f"Error when checking updates for {scanlator.name.title()}: {traceback}"
-                )
-                rv = "continue"
-            return rv
-
-    async def check_each_manga_url(
-            self, scanlator: AbstractScanlator, mangas: list[MangaHeader]) -> list[ChapterUpdate]:
-        """
-        Summary:
-            Checks for updates by checking each manga's URL individually.
-
-        Args:
-            scanlator: The scanlator class for the mangas.
-            mangas: List of manga to check for updates.
-
-        Returns:
-            list[ChapterUpdate]: A list of ChapterUpdate objects.
-        """
-        if not mangas:
+                    f"404 Error occurred while checking for updates for {scanlator.name}. "
+                    f"URL probably chagned.\nRequested: {scanlator.json_tree.properties.latest_updates_url}")
+                return []
+            raise e
+        mangas_on_fp = [m for m in to_check if m in fp_mangas]
+        if not mangas_on_fp:  # none of the mangas we track are on the fp ∴ they have no updates yet
             return []
-        chapter_updates: list[ChapterUpdate] = []
-        for manga_header in mangas:
-            manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
-            new_update = await self.handle_exception(scanlator.check_updates(manga), scanlator, manga.url)
-            if isinstance(new_update, str):
-                next_step = new_update
-                match next_step:
-                    case "continue" | "None":
-                        continue
-                    case "return":
-                        return chapter_updates
-                    case unknown_result:
-                        self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
-                        raise Exception(unknown_result)
-            elif isinstance(new_update, ChapterUpdate):
-                if (
-                        not new_update and
-                        new_update.new_cover_url == manga.cover_url and new_update.is_completed == manga.completed
-                ):
-                    continue
-                else:
-                    chapter_updates.append(new_update)
-            else:
-                raise TypeError(f"Unexpected type {type(new_update)} for new_update")
-        return chapter_updates
+        fp_mangas = [m for m in fp_mangas if m in to_check]  # Remove mangas that are not tracked\
 
-    async def check_with_front_page_scraping(
-            self, scanlator: AbstractScanlator, mangas: list[MangaHeader]
-    ) -> tuple[list[ChapterUpdate], list[MangaHeader]]:
-        """
-        Summary:
-            Checks for updates by scraping the front page of the scanlator's website.
-            If the scanlator doesn't support front page scraping, it will return all the manga passed in.
-            Otherwise, it may return a combination of Manga and ChapterUpdate objects.
-
-        Args:
-            mangas: List of manga to check for updates.
-            scanlator: The scanlator class for the mangas.
-
-        Returns:
-            tuple[list[ChapterUpdate], list[MangaHeader]]:
-                A tuple containing a list of ChapterUpdate objects and a list of Manga objects.
-                The ChapterUpdate objects contain the new chapters that were found, and the Manga objects
-                contain the manga that were not found in the front page scraping.
-
-        Note:
-            All error handling will be done in the caller function for simplicity.
-            In this case, this is the check_updates_by_scanlator function.
-        """
-        partial_mangas: list[PartialManga] = []
-        # setting a limit of 10 just in case all proxies are broken to avoid infinite loop with while loops.
-        for attempt_num in range(1, 11):
-            try:
-                partial_mangas = await scanlator.get_fp_partial_manga()
-                if not partial_mangas:
-                    return [], mangas
-                break
-            except aiohttp.client.ClientConnectorError:
-                if attempt_num == 10:
-                    raise CustomError(
-                        f"[{scanlator.name.title()}] Failed to connect to proxy after {attempt_num} attempts.",
-                        var=attempt_num
-                    )
-                continue
-
-        # assuming that partial_mangas is a list of the latest mangas, we don't need to check the other manga for
-        # updates.
-        mangas = [m for m in mangas if m in partial_mangas]
-        partial_mangas: list[PartialManga] = [m for m in partial_mangas if m in mangas]
-        if not mangas:  # nothing to update
-            return [], []
-
-        grouped: list[list[MangaHeader | PartialManga]] = group_items_by([*mangas, *partial_mangas], ["id"])
+        grouped: list[list[MangaHeader | PartialManga]] = group_items_by(  # noqa: Duplicated code will be deleted later
+            [*mangas_on_fp, *fp_mangas], ["id"])
         # check and make sure that each list is of length 2.
         for i, group in enumerate(grouped):
             if len(group) != 2:
@@ -228,97 +109,310 @@ class UpdateCheckCog(commands.Cog):
                     self.logger.error(f"Grouped list is not of length 2: {group}")
                     await scanlator.report_error(Exception(f"Grouped list is not of length 2: {group}"))
 
+        # Remove any groups that are not of length 2. They were reported above.
         grouped = [x for x in grouped if len(x) == 2]
 
         # sort the grouped manga so the Manga objects are at pos 0 and the PartialManga objects are at pos 1.
-        grouped = list(
-            map(lambda x: x if isinstance(x[1], PartialManga) else x[::-1], grouped)
+        grouped: list[tuple[MangaHeader, PartialManga]] = list(
+            map(lambda x: (x[0], x[1]) if isinstance(x[1], PartialManga) else (x[1], x[0]), grouped)
         )
-        solo_mangas_to_check: list[MangaHeader] = []
-        manga_chapter_updates = []
+
+        chapter_updates: list[ChapterUpdate] = []
+        remaining_manga: list[MangaHeader] = []
+
         for manga_header, partial_manga in grouped:
-            manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
             if not partial_manga.latest_chapters:  # websites that don't support front page scraping return []
-                solo_mangas_to_check.append(manga_header)
+                remaining_manga.append(manga_header)
                 continue
-            if manga.last_chapter is not None:
-                if manga.last_chapter.url == partial_manga.latest_chapters[-1].url:  # no updates here
-                    continue
-                # elif (manga.last_chapter.url == partial_manga.latest_chapters[-1].url and
-                #       manga.last_chapter.is_premium != partial_manga.latest_chapters[-1].is_premium):  # no updates here
-                #     continue
-                p_manga_chapter_urls = [x.url for x in partial_manga.latest_chapters]
-                if manga.last_chapter.url in p_manga_chapter_urls:  # new chapters
-                    index = p_manga_chapter_urls.index(manga.last_chapter.url)
-                    latest_chapter_index = manga.last_chapter.index + 1
-                    new_chapters = []
-                    for chapter in partial_manga.latest_chapters[index + 1:]:
-                        chapter.index = latest_chapter_index
-                        latest_chapter_index += 1
-                        new_chapters.append(chapter)
-                    manga_chapter_updates.append(
-                        ChapterUpdate(
-                            manga.id,
-                            new_chapters,
-                            manga.scanlator,
-                            partial_manga.cover_url,
-                            manga.status,
-                        )
-                    )
-                    if scanlator.json_tree.properties.requires_update_embed:
-                        manga_chapter_updates[-1].extra_kwargs = [
-                            {"embed": scanlator.create_chapter_embed(partial_manga, chapter)}
-                            for chapter in new_chapters
-                        ]
-            else:  # old chapter is not visible in listed chapters (mass released updates)
-                solo_mangas_to_check.append(manga)
+            manga: Manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
+            if not manga:
+                self.logger.error(f"Couldn't find manga {manga_header.id} in the database. "
+                                  f"- It most likely got deleted mid update check.")
+                continue
+            elif manga.last_chapter is None:  # When the manga had no chapters before, and there are updates now.
+                # It's best to just add all the chapters as updates.
+                remaining_manga.append(manga_header)
+                continue
 
-        return manga_chapter_updates, solo_mangas_to_check
+            # unload the manga and the partial manga to account for websites that use dynamic links.
+            unld_m: Manga = (await scanlator.unload_manga([manga]))[0]
+            unld_pm: PartialManga = (await scanlator.unload_manga([partial_manga]))[0]
 
-    async def send_notifications(self, chapter_updates: list[ChapterUpdate]) -> None:
+            partial_urls = {c.url for c in unld_pm.latest_chapters}
+
+            # We will do an individual update check for the manga to make sure we didn't miss any updates.
+            if unld_m.last_chapter.url not in partial_urls:
+                remaining_manga.append(manga_header)
+                continue
+
+            """
+            ---------
+            The headache of a code block of if-statements below is based on the following logic with help from
+            @Raknag77. Thank fuck for you man <3.
+            ---------
+            
+            There are no paid chapters in the db manga.
+                +- All chapters from latest locally+ in the fp are new chapters too.
+            
+            There are paid chapters in the db manga.
+                There is a paid chapter in the fp manga.
+                    First paid chapter in db is also first paid in fp.
+            
+                        +- All chapters from latest locally+ in the fp are new chapters too.
+            
+                    First paid chapter in the db is not the first paid in fp (aka next+ in fp is paid):
+            
+                        +- All chapters from latest locally+ in the fp are new chapters too.
+                        +- All chapters from last free on the front page down up until the last free locally are updates.
+                        
+            
+                There are no paid chapters in the fp manga. wtf is this shit???
+            
+                    +- All chapters from latest locally+ in the fp are new chapters too.
+                    +- All locally paid chapters are now free -> update
+            """
+
+            latest_loc_in_fp_idx = next(
+                i for i, c in enumerate(unld_pm.latest_chapters) if c.url == unld_m.last_chapter.url)
+
+            # no paid chapters in the local manga
+            if not unld_m.last_chapter.is_premium:  # This part of the code has been verified
+                new_chapters = partial_manga.latest_chapters[latest_loc_in_fp_idx + 1:]
+                for i, c in enumerate(new_chapters):
+                    c.index = unld_m.last_chapter.index + i + 1
+            else:  # there are paid chapters in the local manga. (last chapter is paid) == true
+                first_fp_paid_ch: Chapter | None = next((c for c in unld_pm.latest_chapters if c.is_premium), None)
+                first_lc_paid_ch: Chapter = next(c for c in unld_m.chapters if c.is_premium)
+
+                # 2 possibilities:
+                # 1. There is a paid chapter in the fp
+
+                if first_fp_paid_ch is not None:
+                    # There are 2 possibilities:
+                    # 1. The first chapter in the fp that is paid is also the first paid chapter in the local manga.
+                    if first_fp_paid_ch.url == first_lc_paid_ch.url:
+                        # All chapters from fp.latest.urls.index(loc latest)+ are new updates
+                        new_chapters = partial_manga.latest_chapters[latest_loc_in_fp_idx + 1:]
+                        for i, c in enumerate(new_chapters):
+                            c.index = unld_m.last_chapter.index + i + 1
+                    else:  # The first chapter paid in the db is not the first paid chapter in the fp.
+                        if first_fp_paid_ch.index > 0:  # This part of the code has been verified to work.
+                            last_free_fp_ch = unld_pm.latest_chapters[first_fp_paid_ch.index - 1]
+                            loc_last_free_fp_ch = next(
+                                i for i, c in enumerate(unld_m.chapters) if c.url == last_free_fp_ch.url)
+                            new_chapters = partial_manga.latest_chapters[latest_loc_in_fp_idx + 1:]
+                            for i, c in enumerate(new_chapters):
+                                c.index = unld_m.last_chapter.index + i + 1
+
+                            for c in reversed(manga.chapters[:loc_last_free_fp_ch + 1]):
+                                if c.is_premium:
+                                    c.is_premium = False
+                                    c.kwargs["was_premium"] = True
+                                    new_chapters.insert(0, c)
+                        else:
+                            remaining_manga.append(manga_header)
+                            continue
+                else:  # There is no paid chapter in the fp, but there is a paid chapter in the local manga.
+                    new_chapters = partial_manga.latest_chapters[latest_loc_in_fp_idx + 1:]
+                    for i, c in enumerate(new_chapters):
+                        c.index = unld_m.last_chapter.index + i + 1
+                    for c in reversed(manga.chapters):
+                        if c.is_premium:
+                            c.is_premium = False
+                            c.kwargs["was_premium"] = True
+                            new_chapters.insert(0, c)
+
+            # ---------------------------------- headache ended ----------------------------------
+
+            chapter_updates.append(
+                ChapterUpdate(manga.id, new_chapters, scanlator.name, partial_manga.cover_url, manga.status, False)
+            )
+            if scanlator.json_tree.properties.requires_update_embed:
+                chapter_updates[-1].extra_kwargs = [
+                    {"embed": scanlator.create_chapter_embed(partial_manga, chapter)}
+                    for chapter in new_chapters
+                ]
+        individual_update_result: list[ChapterUpdate] = await self.individual_update_check(scanlator, remaining_manga)
+        chapter_updates.extend(individual_update_result)
+
+        return chapter_updates
+
+    async def individual_update_check(self, scanlator: AbstractScanlator, to_check: list[MangaHeader]) -> list[
+        ChapterUpdate]:
         """
-        Summary:
-            Sends notifications for the chapter updates in the servers.
+        Check for updates individually for each manga.
 
         Args:
-            chapter_updates: A list of ChapterUpdate objects.
+            scanlator: AnstractScanlator - The scanlator to check for updates.
+            to_check: list[MangaHeader] - The list of mangas to check for updates.
 
         Returns:
-            None
+            list[ChapterUpdate] - A list of the new updates
+            that need to be sent out as notifications and updated in the database.
         """
-        guilds_to_updates: dict[int, list[tuple[ChapterUpdate, int]]] = defaultdict(list)
-        users_to_update: dict[discord.User, list[ChapterUpdate]] = defaultdict(list)
-        next_update_noti_channels: list[discord.TextChannel | discord.User] = []
-        for update in chapter_updates:
-            if not update.new_chapters:
+        chapter_updates: list[ChapterUpdate] = []
+        _404_in_a_row = 0
+        for manga_header in to_check:
+            manga: Manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
+            if not manga:
+                msg = f"Couldn't find manga {manga_header.id} in the database. - It most likely got deleted mid update check."
+                self.logger.error(msg)
+                await scanlator.report_error(Exception(msg))
                 continue
+            try:
+                update = await scanlator.check_updates(manga)
+                _404_in_a_row = 0
+            except exceptions.HTTPError as e:
+                resp: Response = e.response
+                url = getattr(resp, 'url', manga.url)
+                if e.code == 404:
+                    _404_in_a_row += 1
+                    msg = f"404 Error occurred while checking for updates for {scanlator.name}. Probably an invalid URL was used.\nRequested: {url}"
+                    self.logger.error(msg, exc_info=e)
+                    await scanlator.report_error(e, request_url=url)
+                    if _404_in_a_row >= 5:
+                        msg = f"5 404 Errors occurred in a row for {scanlator.name}. Skipping update check for {scanlator.name} for this cycle."
+                        self.logger.error(msg, exc_info=e)
+                        await scanlator.report_error(e, request_url=url)
+                    continue
+                elif e.code in (429, 403):
+                    msg = f"{e.code} Error occurred while checking for updates for {scanlator.name}. Rate limited.\nRequested: {url}\nCancelling update check for {scanlator.name} for this cycle."
+                    self.logger.error(msg, exc_info=e)
+                    await scanlator.report_error(e, request_url=url)
+                elif e.code >= 500:
+                    msg = f"{e.code} Error occurred while checking for updates for {scanlator.name}. Website is probably down.\nRequested: {url}"
+                    self.logger.error(msg, exc_info=e)
+                    await scanlator.report_error(e, request_url=url)
+                else:
+                    msg = f"A HTTP error occurred while checking for updates for {scanlator.name}.\nRequested: {url}"
+                    self.logger.error(msg, exc_info=e)
+                    await scanlator.report_error(e, request_url=url)
+                break
+            except Exception as e:
+                msg = f"An unknown error occurred while checking for updates for {scanlator.name}."
+                self.logger.error(msg, exc_info=e)
+                await scanlator.report_error(e, request_url=manga.url)
+                break
+            chapter_updates.append(update)
+        return chapter_updates
+
+    async def update_check(self, scanlator: AbstractScanlator) -> None:
+        async with self.locks[scanlator.name]:
+            if await self.bot.db.is_scanlator_disabled(scanlator.name):
+                self._task_iteraction_completed_count["guilds"] += 1
+                self._task_iteraction_completed_count["users"] += 1
+                self.logger.info(f'Scanlator {scanlator.name} is disabled. Skipping update check...')
+                return
+
+            mangas_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update(scanlator.name)
+            if mangas_to_check:
+
+                self.logger.info(f'Checking for updates for {scanlator.name}...')
+                try:
+                    chapter_updates: list[ChapterUpdate] = await self.check_with_fp(scanlator, mangas_to_check)
+                    await self.register_new_updates_in_database(chapter_updates)
+                    await self.send_update_notifications(chapter_updates)
+                except Exception as e:
+                    await self._process_update_check_exception(scanlator, e)
+            else:
+                self.logger.debug(f'No mangas to check for updates for {scanlator.name}.')
+            self._task_iteraction_completed_count["guilds"] += 1
+            self._task_iteraction_completed_count["users"] += 1
+            self.logger.info(f'Finished checking for updates for {scanlator.name}...')
+
+    async def send_update_notifications(self, new_updates: list[ChapterUpdate]) -> None:
+        """
+        Send out the updates to the respective servers and users.
+
+        Args:
+            new_updates: list[ChapterUpdate] - A list of the new updates that need to be sent out as notifications and updated in the database.
+        """
+        guilds_to_update: dict[int, list[tuple[ChapterUpdate, int]]] = defaultdict(list)
+        users_to_update: dict[discord.User, list[ChapterUpdate]] = defaultdict(list)
+
+        # Prepare the data for updates -------------------------------------------------------
+        for update in new_updates:
             guild_ids = await self.bot.db.get_manga_guild_ids(update.manga_id, update.scanlator)
             if not guild_ids:
                 continue
-            # try to fetch a user based on the guild_id.
-            user_objects = list(filter(lambda x: x is not None, [self.bot.get_user(x) for x in guild_ids]))
-
+            users = list(
+                filter(
+                    # The .remove(x.id) is to remove any users that are in the guild_ids list. They have their own list.
+                    lambda x: x is not None and guild_ids.remove(x.id) is None,
+                    [self.bot.get_user(uid) for uid in guild_ids]
+                )
+            )
+            for user in users:
+                users_to_update[user].append(update)
             for guild_id in guild_ids:
-                ping_role_id = await self.bot.db.get_guild_manga_role_id(guild_id, update.manga_id, update.scanlator)
-                guilds_to_updates[guild_id].append((update, ping_role_id))
-            for user_obj in user_objects:
-                users_to_update[user_obj].append(update)
+                ping_role = await self.bot.db.get_guild_manga_role_id(guild_id, update.manga_id, update.scanlator)
+                guilds_to_update[guild_id].append((update, ping_role))
 
-            # remove entries from guilds_to_update that are in the users_to_update
-            guilds_to_updates = defaultdict(list, {
-                k: v for k, v in guilds_to_updates.items() if k not in [x.id for x in user_objects]
-            })
-        # {g_id: [upd1, upd2, upd3, ...], ...}
-        next_update_noti_channels.extend(users_to_update.keys())
+        # Send out the updates ----------------------------------------------------------------
+        await self._send_updates_to_users(users_to_update)
+        await self._send_updates_to_guilds(guilds_to_update)
+        self.logger.info(f"Sent out all updates notifications.")
 
-        for user in users_to_update:
-            user_config = await self.bot.db.get_guild_config(user.id)
+    async def _create_next_update_check_embed(self, guild_id: Optional[int] = None) -> discord.Embed:
+        """
+        Creates the embed sent at the end of every update check to show when the next update check will be.
+        Returns: discord.Embed - The embed to send.
+        """
+        em = discord.Embed(
+            title="🕑 Updates check schedule (max 25 min)",
+            color=discord.Color.green()
+        )
+        em.set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
+        desc = ""
+        disabled_scanlators = await self.bot.db.get_disabled_scanlators()
+        used_scanlators = await self.bot.db.get_guild_tracked_scanlators(guild_id) if guild_id else self.tasks.keys()
+
+        # Sort the tasks alphabetically by key and filter out disabled ones.
+        sorted_tasks = sorted(self.tasks.items(), key=lambda x: x[0])
+        sorted_tasks = [
+            (name, tasks) for name, tasks in sorted_tasks  # noqa
+            if name not in disabled_scanlators and name in used_scanlators
+        ]
+
+        len_tasks = len(sorted_tasks)
+        middle = (len_tasks + 1) // 2  # Left column gets the extra entry if len_tasks is odd.
+
+        for i in range(middle):
+            left_number = i + 1
+            name1, (task1, _) = sorted_tasks[i]
+            left_str = f"`{str(left_number).rjust(2)}. {(name1.title() + ':').ljust(15)}` <t:{int(task1.next_iteration.timestamp())}:R>"
+
+            right_index = i + middle
+            if right_index < len_tasks:
+                right_number = right_index + 1
+                name2, (task2, _) = sorted_tasks[right_index]
+                right_str = f"`{str(right_number).rjust(2)}. {(name2.title() + ':').ljust(15)}` <t:{int(task2.next_iteration.timestamp())}:R>"
+                line = f"{left_str} -- {right_str}\n"
+            else:
+                line = left_str + "\n"
+            desc += line
+
+        em.description = desc
+        return em
+
+    async def _send_updates_to_users(self, users: dict[discord.User, list[ChapterUpdate]]) -> None:
+        """
+        Send out the updates to the users.
+
+        Args:
+            users: dict[discord.User, list[ChapterUpdate]] - A dictionary of users and the updates they need to receive.
+        """
+        channel_notifs_sent: dict[int, int] = defaultdict(int)
+        for user, updates in users.items():
+            config: GuildSettings = await self.bot.db.get_guild_config(user.id)
             try:
-                for update in users_to_update[user]:
-                    manga_title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
+                for update in updates:
+                    manga = await self.bot.db.get_series(update.manga_id, update.scanlator)
                     for i, chapter in enumerate(update.new_chapters):
-                        # if chapter.is_premium and not user_config.paid_chapter_notifs:
-                        #     continue
+                        if chapter.is_premium:
+                            # By default, if a config is not set, don't notify for premium chapters
+                            if not config or config.paid_chapter_notifs is False:
+                                continue
                         view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
                         extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
                         spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
@@ -326,397 +420,226 @@ class UpdateCheckCog(commands.Cog):
                             await user.send(
                                 (
                                     # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
-                                    f"{spoiler_text}**{manga_title} {chapter.name}**"
+                                    f"{spoiler_text}**{manga.title} {chapter.name}**"
                                     f" has been released!\n{chapter.url}"
                                 ),
                                 allowed_mentions=discord.AllowedMentions(roles=True),
                                 **extra_kwargs,
                                 view=view,
                             )
+                            channel_notifs_sent[user.id] += 1
                         except discord.HTTPException as e:
                             self.logger.error(
-                                f"Failed to send update for {manga_title}| {chapter.name} to {user}", exc_info=e
+                                f"Failed to send update for {manga.title}| {chapter.name} to {user}", exc_info=e
                             )
-                next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
-                next_update_em = (
-                    discord.Embed(
-                        description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
-                ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
+                    if update.status_changed:
+                        scanlator_hyperlink = f"[{manga.scanlator.title()}]({scanlators[manga.scanlator].json_tree.properties.base_url})"
+                        description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to "
+                                       f"**'{update.status.lower()}'**")
+                        embed = discord.Embed(
+                            title="Manhwa status has been upadted!", url=manga.url, description=description,
+                            color=discord.Color.green()
+                        )
+                        try:
+                            await user.send(embed=embed)
+                            channel_notifs_sent[user.id] += 1
+                        except discord.HTTPException as e:
+                            self.logger.error(
+                                f"Failed to send status update for {manga.title} to {user}", exc_info=e
+                            )
+                            pass
+            except discord.Forbidden:
+                self.logger.warning(f"Couldn't send updates to {user} - DMs are closed (Forbidden).")
 
-                await user.send(embed=next_update_em, delete_after=25 * 60)  # 25 min
-            except discord.Forbidden:  # DMs are closed
-                self.logger.warning(f"Failed to send update to {user} because DMs are closed!")
+        if self._task_iteraction_completed_count["users"] >= len(self.tasks) - 1:
+            self._task_iteraction_completed_count["users"] = 0
+            for channel in users.keys():
+                # Only send updates to users that have had an update sent to them.
+                if channel_notifs_sent[channel.id] > 0:
+                    try:
+                        await channel.send(
+                            embed=await self._create_next_update_check_embed(channel.id), delete_after=25 * 60
+                        )
+                    except discord.HTTPException as e:
+                        self.logger.error(
+                            f"Failed to send the next update check embed to user {channel}", exc_info=e
+                        )
 
-        for guild_id in guilds_to_updates:
-            guild_config = await self.bot.db.get_guild_config(guild_id)
-            scanlator_associations = await self.bot.db.get_scanlator_channel_associations(guild_id)
-            scanlator_associations = {x.scanlator: x.channel for x in scanlator_associations}
-            updates = guilds_to_updates[guild_id]
-            if not guild_config or not updates or not guild_config.notifications_channel:
+    async def _send_updates_to_guilds(self, guilds: dict[int, list[tuple[ChapterUpdate, int]]]) -> None:
+        """
+        Send out the updates to the guilds.
+
+        Args:
+            guilds: dict[int, list[tuple[ChapterUpdate, int]]] -
+            A dictionary of guilds and the updates they need to receive.
+        """
+        channel_notifs_sent: dict[int, int] = defaultdict(int)
+        next_update_channels: set[discord.TextChannel] = set()
+        for guild_id, updates in guilds.items():
+            config: GuildSettings = await self.bot.db.get_guild_config(guild_id)
+            # scanlator channel associations
+            sca = {
+                x.scanlator: x.channel for x in
+                await self.bot.db.get_scanlator_channel_associations(guild_id)
+            }
+            if not (config and updates and config.notifications_channel):
                 continue
-            if not guild_config.notifications_channel.permissions_for(guild_config.guild.me).send_messages:
-                self.logger.warning(
-                    f"Missing permissions to send messages in {guild_config.notifications_channel} "
-                    f"({guild_id} > {guild_config.notifications_channel.id})"
+            if not config.notifications_channel.permissions_for(config.guild.me).send_messages:
+                self.logger.error(
+                    f"Missing permissions to send messages in {config.notifications_channel} > {config.notifications_channel.id} for guild {config.guild}."
                 )
                 continue
             for update, ping_role_id in updates:
                 if ping_role_id:
-                    ping_role = guild_config.guild.get_role(ping_role_id)
+                    ping_role = config.guild.get_role(ping_role_id)
                 else:
                     ping_role = None
-                pings = list({ping_role, guild_config.default_ping_role})  # remove duplicates
-                pings = [x.mention for x in pings if x]  # apparently role.mentionable doesn't mean you can't mention it
-                formatted_pings = "".join(pings)
-                manga_title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
+                # The set in the comprehension here removes duplicates.
+                ping_str = "".join([x.mention for x in {ping_role, config.default_ping_role} if x])
+                title = await self.bot.db.get_series_title(update.manga_id, update.scanlator)
+                number_of_chapters = len(update.new_chapters)
                 for i, chapter in enumerate(update.new_chapters):
-                    # if chapter.is_premium and not guild_config.paid_chapter_notifs:
-                    #     continue
-                    if guild_config.show_update_buttons:
-                        view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
-                    else:
-                        view = None
+                    # Skip paid chapters if the guild doesn't want them.
+                    if chapter.is_premium and not config.paid_chapter_notifs:
+                        continue
+                    view = None
+                    spoiler_text = ""
                     extra_kwargs = update.extra_kwargs[i] if update.extra_kwargs else {}
-                    spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
-                    if bool(guild_config.show_update_buttons) is False:
-                        spoiler_text = ""
-
-                    noti_channel = scanlator_associations.get(update.scanlator, guild_config.notifications_channel)
-                    if check_missing_perms(  # there are missing perms if this is not empty
-                            noti_channel.permissions_for(noti_channel.guild.me),
-                            discord.Permissions(
-                                send_messages=True, embed_links=True, attach_files=True, use_external_emojis=True)
-                    ):
+                    if config.show_update_buttons:
+                        view = BookmarkChapterView(self.bot, chapter_link=chapter.url)
+                        spoiler_text = f"||{update.manga_id}|{update.scanlator}|{chapter.index}||\n"
+                    channel = sca.get(update.scanlator, config.notifications_channel)
+                    # 313344: send_messages, embed_links, attach_files, external_emojis
+                    if check_missing_perms(channel.permissions_for(channel.guild.me), discord.Permissions(313344)):
+                        self.logger.error(
+                            f"Missing permissions to send messages in {channel} > {channel.id} for guild {config.guild}."
+                        )
                         continue
                     try:
-                        await noti_channel.send(
+                        await channel.send(
                             (
-                                # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
-                                f"{spoiler_text}{formatted_pings}** {manga_title} {chapter.name}**"
+                                f"{spoiler_text}{ping_str}** {title} {chapter.name}**"
                                 f" has been released!\n{chapter.url}"
                             ),
                             allowed_mentions=discord.AllowedMentions(roles=True),
                             **extra_kwargs,
                             view=view,
                         )
+                        if i == number_of_chapters - 1 and update.status_changed:
+                            manga = await self.bot.db.get_series(update.manga_id, update.scanlator)
+                            scanlator_hyperlink = f"[{update.scanlator.title()}]({scanlators[update.scanlator].json_tree.properties.base_url})"
+                            description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to "
+                                           f"**'{update.status.lower()}'**")
+                            embed = discord.Embed(
+                                title="Manhwa status has been upadted!", url=manga.url, description=description,
+                                color=discord.Color.green()
+                            )
+                            await channel.send(ping_str, embed=embed)
+                            channel_notifs_sent[channel.id] += 1
+                        channel_notifs_sent[channel.id] += 1
                     except discord.HTTPException as e:
                         self.logger.error(
-                            f"Failed to send update for {manga_title}| {chapter.name}", exc_info=e
+                            f"Failed to send update for {title}| {chapter.name}", exc_info=e
                         )
                         continue
-                    next_update_noti_channels.append(noti_channel)
+                    next_update_channels.add(channel)
+        if self._task_iteraction_completed_count["guilds"] >= len(self.tasks) - 1:
+            self._task_iteraction_completed_count["guilds"] = 0
+            for channel in next_update_channels:
+                # only send notifs to channels that have had an update sent to them.
+                if channel_notifs_sent[channel.id] > 0:
+                    try:
+                        await channel.send(
+                            embed=await self._create_next_update_check_embed(channel.guild.id), delete_after=25 * 60
+                        )
+                    except discord.HTTPException as e:
+                        self.logger.error(
+                            f"Failed to send the next update check embed to {channel}", exc_info=e
+                        )
 
-        next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
-        for ch in list(set(next_update_noti_channels)):
-            try:
-                await ch.send(
-                    embed=(
-                        discord.Embed(
-                            description=f"The next update check will be <t:{next_update_ts}:R> at <t:{next_update_ts}:T>")
-                    ).set_footer(text=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url),
-                    delete_after=25 * 60  # 25 min
-                )
-            except discord.Forbidden:
-                continue
-
-    async def update_database_entries(self, chapter_updates: list[ChapterUpdate]) -> None:
+    async def register_new_updates_in_database(self, new_updates: list[ChapterUpdate]) -> None:
         """
-        Summary:
-            Updates the database entries for the chapter updates.
+        Register the new updates in the database.
 
         Args:
-            chapter_updates: A list of ChapterUpdate objects.
+            new_updates: list[ChapterUpdate] -
+            A list of the new updates that need to be sent out as notifications and updated in the database.
 
         Returns:
             None
         """
-        total_new_chapters = 0
-        for update in chapter_updates:
+        total_changes = 0
+        for update in new_updates:
             manga = await self.bot.db.get_series(update.manga_id, update.scanlator)
             if not manga:
                 continue
             for chapter in update.new_chapters:
-                total_new_chapters += 1
+                total_changes += 1
                 manga.update(
                     chapter,
                     update.status,
                     update.new_cover_url
                 )
+                if manga.completed:
+                    await self.bot.db.untrack_completed_series(manga.id, manga.scanlator)
+                    self.logger.info(f"Untracked manga {manga.id} from {manga.scanlator} as it is now completed.")
+            if manga.status != update.status:
+                self.logger.info(f"Updating status of {manga.id} from {manga.status} to {update.status}")
             await self.bot.db.update_series(manga)
         self.bot.logger.debug(
-            f"Inserted {total_new_chapters} chapter entries for {len(chapter_updates)} manhwa in the database"
+            f"Inserted {total_changes} chapter entries for {len(new_updates)} manhwa in the database"
         )
 
-    async def check_updates_by_scanlator(self, mangas: list[MangaHeader], scanlator_name: str):
-        if not mangas:
-            self.logger.info(f"[{scanlator_name}] No manhwa to check for updates for!")
-            return  # nothing to update
-        if mangas[0].scanlator not in scanlators:
-            self.logger.error(f"Unknown scanlator {mangas[0].scanlator} or it is disabled!")
-            return
-        scanlator = scanlators.get(mangas[0].scanlator)
-        self.logger.info(f"[{scanlator.name}] Checking for updates for {mangas[0].scanlator}...")
-
-        result: tuple[list[ChapterUpdate], list[MangaHeader]] | str = await self.handle_exception(
-            self.check_with_front_page_scraping(scanlator, mangas), scanlator, scanlator.json_tree.properties.base_url
-        )
-        if isinstance(result, tuple):
-            chapter_updates, mangas_remaining = result
-        else:  # type = str
-            return
-        if mangas_remaining:
-            self.logger.info(
-                f"[{scanlator.name}] Checking individual manhwa for updates for {len(mangas_remaining)} manhwa...")
-            solo_manga_updates = await self.check_each_manga_url(scanlator, mangas_remaining)
-            chapter_updates.extend(solo_manga_updates)
-
-        if not chapter_updates:
-            self.logger.info(f"[{scanlator.name}] Finished checking for updates with no updates!")
-            return
-        await self.update_database_entries(chapter_updates)
-        await self.send_notifications(chapter_updates)
-        self.logger.info(
-            f"[{scanlator.name}] Finished checking for updates with {len(chapter_updates)} manhwa updates!")
-
-    async def check_status_update_by_scanlator(self, mangas: list[MangaHeader]):
-        if mangas and mangas[0].scanlator not in scanlators:
-            self.bot.logger.error(f"Unknown scanlator {mangas[0].scanlator}")
-            return
-
-        self.bot.logger.debug(f"Checking for status updates for {mangas[0].scanlator}...")
-        scanner = scanlators.get(mangas[0].scanlator)
-
-        disabled_scanlators = await self.bot.db.get_disabled_scanlators()
-        if scanner.name in disabled_scanlators:
-            self.bot.logger.debug(f"Scanlator {scanner.name} is disabled... Ignoring update check!")
-            return
-        current_req_url: str | None = None
-        for manga_header in mangas:
-            manga = await self.bot.db.get_series(manga_header.id, manga_header.scanlator)
-            try:
-                await asyncio.sleep(20)  # delay between each request
-                current_req_url = manga.url
-                update_check_result: ChapterUpdate | str = await self.handle_exception(
-                    scanner.check_updates(manga), scanner, manga.url
-                )
-                if isinstance(update_check_result, str):
-                    next_step = update_check_result
-                    match next_step:
-                        case "continue" | "None":
-                            continue
-                        case "return":
-                            return
-                        case unknown_result:
-                            self.logger.warning(f"[{manga.scanlator.title()}] Received '{unknown_result}' result!")
-                            raise Exception(unknown_result)
-                if not update_check_result:
-                    self.bot.logger.warning(f"[{manga.scanlator}] No result returned for {manga.title} status check!")
-                    continue
-
-                elif update_check_result.is_completed == manga.completed:
-                    continue
-                else:
-                    self.logger.debug(
-                        f"[{manga.scanlator.title()}] Updated status for {manga}: "
-                        f"{manga.status} -> {update_check_result.status}"
-                    )
-                    manga.update(status=update_check_result.status)
-                guild_ids = await self.bot.db.get_manga_guild_ids(manga.id, manga.scanlator)
-                guild_configs = await self.bot.db.get_many_guild_config(guild_ids)
-                if guild_configs is None:
-                    guild_configs = []
-                await self.bot.db.update_series(manga)
-                untracked_from_X_guilds: int = 0
-                if manga.completed:
-                    untracked_from_X_guilds = await self.bot.db.untrack_completed_series(manga.id, manga.scanlator)
-
-                for guild_config in guild_configs:
-                    if not guild_config.notifications_channel:
-                        continue
-                    if not guild_config.notifications_channel.permissions_for(guild_config.guild.me).send_messages:
-                        self.bot.logger.warning(
-                            f"Missing permissions to send messages in {guild_config.notifications_channel}"
-                        )
-                        continue
-
-                    ping_role_id = await self.bot.db.get_guild_manga_role_id(
-                        guild_config.guild.id, manga.id, manga.scanlator
-                    )
-
-                    if ping_role_id:
-                        ping_role = guild_config.guild.get_role(ping_role_id)
-                    else:
-                        ping_role = None
-                    pings = list({ping_role, guild_config.default_ping_role})  # remove duplicates
-                    pings = [x.mention for x in pings if
-                             x]  # apparently role.mentionable doesn't mean you can't mention it
-                    formatted_pings = "".join(pings)
-                    scanlator_hyperlink = (
-                        f"[{manga.scanlator.title()}]({scanlators[manga.scanlator].json_tree.properties.base_url})"
-                    )
-                    description = (f"The status of {manga} from {scanlator_hyperlink} has been updated to "
-                                   f"**'{manga.status.lower()}'**")
-                    if untracked_from_X_guilds > 1:
-                        description += f" and has been untracked from {untracked_from_X_guilds} guilds."
-                    await guild_config.notifications_channel.send(
-                        formatted_pings,
-                        embed=discord.Embed(
-                            title="Manhwa status has been upadted!", url=manga.url, description=description,
-                            color=discord.Color.green()
-                        )
-                    )
-                    self.logger.info(f"[{manga.scanlator}] {manga.title} has been marked as {manga.status}!")
-            except Exception as e:
-                self.bot.logger.debug(f"[{mangas[0].scanlator}] Checking for status updates was interrupted!")
-                traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
-                error_as_str = f"[{mangas[0].scanlator}]: URL - {current_req_url}\n{traceback}"
-                self.logger.error(error_as_str)
-                await self.bot.log_to_discord(error_as_str)
-                return
-        self.bot.logger.debug(f"[{mangas[0].scanlator}] Finished checking for status updates!")
-
-    @tasks.loop(minutes=25)
-    async def check_updates_task(self):
-        self.logger.info("Checking for updates...")
-        await self.bot.change_presence(
-            activity=discord.Activity(
-                type=discord.ActivityType.watching,
-                name=f"for updates NOW!"
-            )
-        )
-        try:
-            series_to_update: list[MangaHeader] = await self.bot.db.get_series_to_update()
-            if not series_to_update:
-                return
-            grouped_series_to_update: list[list[MangaHeader]] = group_items_by(series_to_update, ["scanlator"])
-            grouped_series_to_update = list(sorted(grouped_series_to_update, key=lambda x: len(x)))
-            _coros = [
-                self.check_updates_by_scanlator(mangas, mangas[0].scanlator)
-                for mangas in grouped_series_to_update
-            ]
-            chunked_coros = chunked(_coros, 10)
-            for chunk in chunked_coros:
-                await asyncio.gather(*chunk, return_exceptions=True)
-                # await asyncio.sleep(20)  # no need to delay since it requests different websites
-        except Exception as e:
-            self.logger.error("⚠️ Update Check Stopped!\n\nError while checking for updates", exc_info=e)
-            traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
-            await self.bot.log_to_discord(f"Error when checking updates: {traceback}")
-        finally:
-            self.logger.info("Update check finished =================")
-            next_update_ts = int(self.check_updates_task.next_iteration.timestamp())
-            # change the bot's status to show when the next update check will be
-            await self.bot.change_presence(
-                activity=discord.Activity(
-                    type=discord.ActivityType.watching,
-                    name=f"for updates at ▢▢:{datetime.fromtimestamp(next_update_ts):%M}"
-                )
-            )
-
-    @tasks.loop(hours=24.0)
-    async def check_manhwa_status(self):
-
-        self.logger.info("Checking for manga status...")
-        try:
-            series_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update()
-            if not series_to_check:
-                return
-
-            # filter out disabled scanlators
-            disabled_scanlators = await self.bot.db.get_disabled_scanlators()
-            series_to_check = [x for x in series_to_check if x.scanlator not in disabled_scanlators]
-            if disabled_scanlators:
-                self.logger.debug(f"Disabled scanlators: {disabled_scanlators}")
-            grouped_series_to_check: list[list[MangaHeader]] = group_items_by(series_to_check, ["scanlator"])
-            grouped_series_to_check = list(sorted(grouped_series_to_check, key=lambda x: len(x)))
-            _coros = [
-                self.check_status_update_by_scanlator(manga_headers)
-                for manga_headers in grouped_series_to_check
-            ]
-            chunked_coros = chunked(_coros, 10)  # 10 coros at a time = ~10 proxy concurrent connections
-            for chunk in chunked_coros:
-                await asyncio.gather(*chunk)
-
-        except Exception as e:
-            self.logger.error("⚠️ Status Update Check Stopped!\n\nError while checking for status", exc_info=e)
-            traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
-            await self.bot.log_to_discord(f"Error when checking manhwa status: {traceback}")
-        finally:
-            self.logger.info("Status check finished =================")
-
-    @tasks.loop(minutes=10)
-    async def check_patreon_users(self) -> None:
+    async def backup_update_check(self, scanlator: AbstractScanlator) -> None:
         """
-        Summary:
-            Checks for new patreon users and updates the database accordingly.
-
-        Returns:
-            None
+        A backup update check that runs every 4hrs to make sure we don't miss any updates.
+        Note: The time interval is adjustable.
         """
-        self.logger.info("Checking for new patreon users...")
-        patreon_data = self.bot.config.get("patreon", {})
-        ACCESS_TOKEN = patreon_data.get("access-token")
-        CAMPAIGN_ID = patreon_data.get("campaign-id")
-        if not (ACCESS_TOKEN and CAMPAIGN_ID):
-            self.bot.logger.warning("No patreon access token found or campaign ID! Cancelling patreon check...")
-            self.check_patreon_users.cancel()  # no access token, cancel the task
 
-        api_client = patreon.API(ACCESS_TOKEN)
-        # Accessing the JSON data
-        active_patrons: list[Patron] = []
-        all_pledges: list[JSONAPIResource] = []
-        cursor = None
+        async with self.locks[scanlator.name]:
+            if await self.bot.db.is_scanlator_disabled(scanlator.name):
+                self.logger.info(f'Scanlator {scanlator.name} is disabled. Skipping backup update check...')
+                return
 
-        try:
-            while True:
-                pledge_response = await asyncio.to_thread(api_client.fetch_page_of_pledges,
-                                                          CAMPAIGN_ID, 2, cursor, None, None
-                                                          )
-                all_pledges += pledge_response.data()
-                cursor = api_client.extract_cursor(pledge_response)
-                if not cursor:
-                    break
+            mangas_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update(scanlator.name)
 
-            # get the patreon ID of all the current users that have an active pledge
-            for pledge in all_pledges:
-                if (
-                        pledge.type() == "pledge" and
-                        pledge.relationship("patron").type() == "user" and
-                        pledge.attribute("declined_since") is None
-                ):
-                    patreon_relationship = pledge.relationship("patron")
+            if mangas_to_check:
+                self.logger.info(f'Checking for backup updates for {scanlator.name}...')
+                try:
+                    chapter_updates: list[ChapterUpdate] = await self.individual_update_check(scanlator,
+                                                                                              mangas_to_check)
+                    await self.register_new_updates_in_database(chapter_updates)
+                    await self.send_update_notifications(chapter_updates)
+                except Exception as e:
+                    await self._process_update_check_exception(scanlator, e)
+            else:
+                self.logger.debug(f'No mangas to check for backup updates for {scanlator.name}.')
+            self.logger.info(f'Finished checking for backup updates for {scanlator.name}...')
 
-                    active_patrons.append(
-                        Patron(
-                            patreon_relationship.attribute("email"),
-                            (patreon_relationship.attribute("social_connections")["discord"] or {}).get(
-                                "user_id"),
-                            patreon_relationship.attribute("first_name"),
-                            patreon_relationship.attribute("last_name"),
-                        )
-                    )
+    async def _process_update_check_exception(self, scanlator: AbstractScanlator, e: Exception) -> None:
+        skip_error = False
+        if isinstance(e, exceptions.Timeout):
+            msg = (f"Timeout occurred while checking for updates for {scanlator.name}. "
+                   f"Website is probably down!")
+            skip_error = True
+        elif isinstance(e, exceptions.HTTPError):
+            msg = (f"HTTP Error {e.code} occurred while checking for updates for {scanlator.name}. "
+                   f"Website is probably down!")
+            if e.code >= 500:
+                skip_error = True
+            elif e.code == 404:
+                msg = f"404 {e.response}."
+                skip_error = True
+        else:
+            msg = f"Failed to check for updates for {scanlator.name}"
+        await self.bot.log_to_discord(msg, error=e)
+        self.logger.error(msg, exc_info=e if not skip_error else None)
 
-            await self.bot.db.upsert_patreons(active_patrons)
-            await self.bot.db.delete_inactive_patreons(active_patrons)
-            # save data to the database in the 'patreons' table
-
-        except Exception as e:
-            self.logger.error("⚠️ Patreon Check Stopped!\n\nError while checking for new patreon users", exc_info=e)
-            traceback = "".join(tb.format_exception(type(e), e, e.__traceback__))
-            await self.bot.log_to_discord(f"Error when checking patreon users: {traceback}")
-            return
-        finally:
-            self.logger.info("Patreon check finished =================")
-
-    @check_updates_task.before_loop
-    @check_patreon_users.before_loop
-    async def before_check_updates_task(self):
-        await self.bot.wait_until_ready()
-
-    @check_manhwa_status.before_loop
-    async def before_status_check_task(self):
-        await self.bot.wait_until_ready()
-        await asyncio.sleep(300)  # add a 5 min delay
+    @Cog.listener()
+    async def on_ready(self) -> None:
+        # change the bot's status to show that updates happen every 25 minutes.
+        await self.bot.change_presence(activity=discord.Game(name="Updates every 25 minutes."))
+        await self.start_update_check_tasks()
 
 
 async def setup(bot: MangaClient) -> None:

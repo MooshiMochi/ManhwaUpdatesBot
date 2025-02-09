@@ -37,10 +37,6 @@ user-agents:
     epsilonscan: null
 api-keys:
     webshare: null
-    flaresolverr: null
 patreon:
     access-token: null
     campaign-id: null
-flaresolverr:
-    base_url: http://localhost:0000
-    enabled: false

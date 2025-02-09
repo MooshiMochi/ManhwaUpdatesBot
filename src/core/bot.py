@@ -5,16 +5,14 @@ import traceback
 from datetime import datetime
 from typing import Optional, Union
 
-import aiohttp
 import discord
 from discord import Intents
 from discord.ext import commands
 
 from .apis import APIManager
-from .cache import CachedClientSession, CachedCurlCffiSession
+from .cache import CachedCurlCffiSession
 from .database import Database
 from .scanlators import scanlators
-from ..enums import Minutes
 
 
 class MangaClient(commands.Bot):
@@ -37,8 +35,7 @@ class MangaClient(commands.Bot):
         self._logger: logging.Logger = logging.getLogger("bot")
 
         # Placeholder values. These are set in .setup_hook() below
-        self._session: Union[aiohttp.ClientSession, CachedClientSession] = None
-        self.curl_session: CachedCurlCffiSession = None
+        self._session: CachedCurlCffiSession = None
 
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
@@ -60,11 +57,7 @@ class MangaClient(commands.Bot):
 
         self._remove_unavailable_scanlators()
 
-        session_timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)
-        self._session = CachedClientSession(
-            proxy=self.proxy_addr, name="cache.bot", trust_env=True, timeout=session_timeout
-        )
-        self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
+        self._session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
             "http": self.proxy_addr,
             "https": self.proxy_addr
         })
@@ -74,20 +67,11 @@ class MangaClient(commands.Bot):
         self.loop.create_task(self.update_restart_message())  # noqa: No need to await a task
 
         self._apis = APIManager(
-            self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True, timeout=session_timeout)
+            self, CachedCurlCffiSession(impersonate="chrome101", name="cache.apis", proxies={
+                "http": self.proxy_addr,
+                "https": self.proxy_addr
+            })
         )
-        await self._apis.webshare.async_init()
-        if self._apis.webshare.is_available:
-            # use static proxy for flare
-            self._apis.flare.proxy = (await self._apis.webshare.get_proxy()).to_url_dict()
-        await self._apis.flare.async_init()
-        #  test flaresolverr. change scanlators' request_method to 'curl' that use 'flare'
-        if not self._apis.flare.is_available:
-            for scanlator in scanlators.keys():
-                if scanlators[scanlator].json_tree.request_method == "flare":
-                    self.logger.warning(f"[{scanlator}] Changed request method to 'curl' from 'flare' due to "
-                                        f"FlareSolverr being unavailable.")
-                    scanlators[scanlator].json_tree.request_method = "curl"
 
     def _remove_unavailable_scanlators(self):
         for scanlator, user_agent in self._config["user-agents"].items():
@@ -158,22 +142,10 @@ class MangaClient(commands.Bot):
         self.logger.info("Closing database connection...")
         await self.db.conn.close()
         self.logger.info("Database connection closed.")
-        if self.apis.flare.is_available:
-            self.logger.info("[FlareSolverr] > Begin server session cleanup...")
-            await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
-            await self.apis.flare.destroy_all_sessions()  # destroy all active sessions
-            self.logger.info("[FlareSolverr] > Server session cleanup complete.")
-        self.logger.info("Closing aiohttp sessions...")
+        self.logger.info("Closing curl sessions...")
         await self._session.close() if self._session else None
         await self.apis.session.close() if self.apis else None
-        self.logger.info("Aiohttp sessions closed.")
-        if self.curl_session:
-            self.logger.info("Closing curl session...")
-            try:
-                await self.curl_session.close()
-                self.logger.info("Curl session closed.")
-            except TypeError:
-                self.logger.error("Skipping... Curl session already closed.")
+        self.logger.info("Curl sessions closed.")
         self.logger.info("Finalising closing procedure! Goodbye!")
         await super().close()
 
@@ -190,6 +162,7 @@ class MangaClient(commands.Bot):
         channel = self.get_channel(self.log_channel_id)
 
         if not channel:
+            self.logger.error(f"Couldn't find the {self.log_channel_id} discord channel to log the error in...")
             return
         try:
             if error:

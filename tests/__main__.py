@@ -14,17 +14,15 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Coroutine, Dict, Literal, Optional
 
-import aiohttp
 import requests  # noqa
 
 from src.core.apis import APIManager
-from src.core.cache import CachedClientSession, CachedCurlCffiSession
+from src.core.cache import CachedCurlCffiSession
 from src.core.config_loader import ensure_configs, load_config
 from src.core.database import Database
 from src.core.objects import Chapter, Manga
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
-from src.enums import Minutes
 from src.static import Constants
 from src.utils import setup_logging
 
@@ -54,19 +52,16 @@ class Bot:
         self.config: Dict = config
         self.logger = logging.getLogger("test.bot")
         self.proxy_addr = self._fmt_proxy()
-        self.curl_session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
+        self.session = CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={
             "http": self.proxy_addr,
             "https": self.proxy_addr
         })
-        session_timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)  # 5 min
-        self.session = CachedClientSession(
-            proxy=self.proxy_addr, name="cache.bot", trust_env=True, timeout=session_timeout
-        )
         self.db = Database(self)  # noqa
         self.apis: APIManager = APIManager(
-            self, CachedClientSession(  # noqa
-                proxy=self.proxy_addr, name="cache.apis", trust_env=True, timeout=session_timeout
-            )
+            self, CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={  # noqa
+                "http": self.proxy_addr,
+                "https": self.proxy_addr
+            })
         )
         self._all_scanners: dict = scanlators.copy()  # You must not mutate this dict. Mutate SCANLATORS instead.
         self.load_scanlators(scanlators)
@@ -79,16 +74,6 @@ class Bot:
 
     async def async_init(self):
         await self.db.async_init()
-        await self.apis.webshare.async_init()
-        if self.apis.webshare.is_available:
-            self.apis.flare.proxy = (await self.apis.webshare.get_proxy()).to_url_dict()
-        await self.apis.flare.async_init()
-
-        if not self.apis.flare.is_available:
-            self.logger.error("FlareSolverr is not available. Using curl_cffi instead of flare.")
-            for scanner in scanlators.keys():
-                if scanlators[scanner].json_tree.request_method == "flare":
-                    scanlators[scanner].json_tree.request_method = "curl"
 
     async def close(self):
         # await self.cf_scraper.close()
@@ -96,23 +81,10 @@ class Bot:
 
         await self.db.conn.close()
 
-        if self.apis.flare.is_available:
-            self.logger.info("[FlareSolverr] > Begin server session cleanup...")
-            await self.apis.flare.get_active_sessions()  # refresh the session cache just to be safe
-            await self.apis.flare.destroy_all_sessions()  # destroy all active sessions
-            self.logger.info("[FlareSolverr] > Server session cleanup complete.")
-
-        self.logger.info("Closing aiohttp sessions...")
+        self.logger.info("Closing curl sessions...")
         await self.session.close()
         await self.apis.session.close()
-        self.logger.info("Aiohttp sessions closed.")
-        if self.curl_session:
-            self.logger.info("Closing curl session...")
-            try:
-                await self.curl_session.close()
-                self.logger.info("Curl session closed.")
-            except TypeError:
-                self.logger.warning("Skipping curl session close due to TypeError.")
+        self.logger.info("Curl sessions closed.")
         self.logger.info("Finalising closing procedure! Goodbye!")
 
     async def __aenter__(self):
@@ -185,7 +157,7 @@ class ExpectedResult:
             raise ValueError(f"[{scanlator_name}] Expected 3 chapter urls, got {len(self.last_3_chapter_urls)}")
 
     def extract_last_read_chapter(self, manga: Manga) -> Optional[Chapter]:
-        for chapter in manga.available_chapters:
+        for chapter in manga.chapters:
             if chapter.url.removesuffix("/") == self.last_3_chapter_urls[0].removesuffix("/"):
                 return chapter
         return None
@@ -281,7 +253,7 @@ class Test:
         if not last_read_chapter:
             print(f"Expected: {self.expected_result.last_3_chapter_urls[0]}")
             print(
-                f"   ↳ Got: {manga.available_chapters[-3].url.removesuffix('/') if len(manga.available_chapters) >= 3 else None}")  # noqa
+                f"   ↳ Got: {manga.chapters[-3].url.removesuffix('/') if len(manga.chapters) >= 3 else None}")  # noqa
             raise AssertionError("❌ Last 3 chapter urls at index 0 does not match any chapter in the manga object")
         manga._last_chapter = last_read_chapter
         result = await self.test_subject.check_updates(manga)
@@ -489,18 +461,15 @@ class TestCases(dict):
 
 async def main():
     tests_to_ignore = [
-        # Support ended:
-        "epsilonscansoft", "epsilonscan",
 
-        # currently broken, need to fix.
-        "flamecomics",
+        "zeroscans",  # This website just hangs for some reason
+        # Disabled because of 403:
 
-        "resetscans",  # the website added pagination for chapters. need to hard-code custom scanlator class
+        # Changed domain.
+
         "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
-        "demonreader",  # Need to work on figuring out the ID for the chapter. It might need custom implementation
-
         # The website(s) id down at the time of testing:
-        "lscomic",
+
     ]
 
     if os.name != "nt":  # reaperscans doesn't work for git workflow check
@@ -594,7 +563,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("ataraxia"))
+        # asyncio.run(test_single_scanlator("zeroscans"))  # theblank, ravenscans
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(main())
+        asyncio.run(main())

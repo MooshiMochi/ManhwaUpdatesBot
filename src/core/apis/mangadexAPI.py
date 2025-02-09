@@ -4,11 +4,13 @@ import asyncio
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
+from src.core.cache import CachedCurlCffiSession
+
 if TYPE_CHECKING:
     from src.core.apis import APIManager
-import aiohttp
+    from src.static import R_METHOD_LITERAL
 
-from src.core.cache import CachedClientSession
+import aiohttp
 
 
 class MangaDexAPI:
@@ -26,7 +28,7 @@ class MangaDexAPI:
 
     async def __request(
             self,
-            method: str,
+            method: R_METHOD_LITERAL,
             endpoint: str,
             params: Optional[Dict[str, Any]] = None,
             data: Optional[Dict[str, Any]] = None,
@@ -41,27 +43,27 @@ class MangaDexAPI:
             await asyncio.sleep(self.rate_limit_reset)
 
         try:
-            async with self.manager.session.request(
-                    method, url, params=params, json=data, headers=headers, **kwargs
-            ) as response:
-                json_data = await response.json()
-                if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
-                    self.rate_limit_remaining = int(limit_remaining)
-                else:
-                    self.rate_limit_remaining -= 1
+            response = await self.manager.session.request(
+                method, url, params=params, json=data, headers=headers, **kwargs
+            )
+            json_data = response.json()
+            if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
+                self.rate_limit_remaining = int(limit_remaining)
+            else:
+                self.rate_limit_remaining -= 1
 
-                if limit_reset := response.headers.get("X-RateLimit-Reset"):
-                    self.rate_limit_reset = int(limit_reset)
-                else:
-                    if datetime.now().timestamp() > self.rate_limit_reset:
-                        self.rate_limit_reset = datetime.now().timestamp() + 60
-                        self.rate_limit_remaining = 300
+            if limit_reset := response.headers.get("X-RateLimit-Reset"):
+                self.rate_limit_reset = int(limit_reset)
+            else:
+                if datetime.now().timestamp() > self.rate_limit_reset:
+                    self.rate_limit_reset = datetime.now().timestamp() + 60
+                    self.rate_limit_remaining = 300
 
-                if response.status != 200:
-                    raise Exception(
-                        f"Request failed with status {response.status}: {json_data}"
-                    )
-                return json_data
+            if response.status_code != 200:
+                raise Exception(
+                    f"Request failed with status {response.status_code}: {json_data}"
+                )
+            return json_data
         except aiohttp.ServerDisconnectedError:
             if kwargs.get("call_depth", 0) > 3:
                 raise Exception("Server disconnected too many times, aborting request")
@@ -132,7 +134,7 @@ class MangaDexAPI:
         }
         params = {k: v for k, v in params.items() if v is not None}
         kwargs = {}
-        if isinstance(self.manager.session, CachedClientSession):
+        if isinstance(self.manager.session, CachedCurlCffiSession):
             kwargs["cache_time"] = 0
         return await self.__request("GET", endpoint, params=params, **kwargs)
 
@@ -142,3 +144,39 @@ class MangaDexAPI:
         fileName = result["data"]["attributes"]["fileName"]
         cover_url = f"https://uploads.mangadex.org/covers/{manga_id}/{fileName}"
         return cover_url
+
+    async def get_latest_chapters(
+            self,
+            limit: int = 100,
+            offset: int = 0,
+            includes: Optional[List[str]] = None,
+            content_rating: Optional[List[str]] = None,
+            order_readableAt: str = "desc"
+    ) -> Dict[str, Any]:
+        """
+        Fetches the latest chapters from MangaDex based on the given parameters.
+
+        :param limit: Maximum number of chapters to return (default: 100).
+        :param offset: The number of items to skip for pagination (default: 0).
+        :param includes: List of related objects to include. Default: ["user", "scanlation_group", "manga"].
+        :param content_rating: List of content ratings to filter chapters.
+                               Available values: "safe", "suggestive", "erotica", "pornographic".
+                               Default: all available values.
+        :param order_readableAt: Sorting order for the 'readableAt' field ("asc" or "desc"). Default: "desc".
+        :return: A list of chapter objects as JSON.
+        """
+        endpoint = "chapter"
+        params = {
+            "limit": limit,
+            "offset": offset,
+            # The MangaDex API expects the array parameters to be named with the [] suffix.
+            "includes[]": includes if includes is not None else ["user", "scanlation_group", "manga"],
+            "contentRating[]": content_rating if content_rating is not None else ["safe", "suggestive", "erotica",
+                                                                                  "pornographic"],
+            "order[readableAt]": order_readableAt,
+        }
+
+        # Remove any keys with None values.
+        params = {key: value for key, value in params.items() if value is not None}
+
+        return await self.__request("GET", endpoint, params=params, cache_time=0)

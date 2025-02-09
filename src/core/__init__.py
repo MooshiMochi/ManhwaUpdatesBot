@@ -1,6 +1,6 @@
 from . import checks
 from .bot import MangaClient
-from .cache import CachedClientSession, CachedCurlCffiSession
+from .cache import CachedCurlCffiSession
 from .database import Database
 from .errors import *
 from .handlers.command_tree import BotCommandTree

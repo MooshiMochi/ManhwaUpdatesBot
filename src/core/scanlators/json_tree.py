@@ -50,10 +50,30 @@ class _CustomHeaders:
                 self.cookies.set(**cookie)
 
 
+class _NoPremiumChapterURL:
+    def __init__(self, no_premium_chapter_url_dict: dict[str, str]):
+        self.string_selector: str = no_premium_chapter_url_dict["string_selector"]
+        self.regex: re.Pattern = re.compile(no_premium_chapter_url_dict["regex"])
+        self.url_fmt: str = no_premium_chapter_url_dict["url_fmt"]
+
+
+class _ChapterSelectors:
+    def __init__(self, chapter_selectors: dict[str, str]):
+        self.container: str = chapter_selectors["container"]
+        self.name: str = chapter_selectors["name"]
+        self.url: str = chapter_selectors["url"]
+        self.premium_status: str = chapter_selectors.get("premium_status")
+        self.no_premium_chapter_url: Optional[_NoPremiumChapterURL] = (
+            (lambda x: _NoPremiumChapterURL(x) if x else x)(chapter_selectors.get("no_premium_chapter_url"))
+        )
+
+
 class _FrontPageSelectors:
     def __init__(self, **fp_selectors_dict):
         self.container: str = fp_selectors_dict["container"]
-        self.chapters: dict = fp_selectors_dict.get("chapters")
+        self.chapters: Optional[_ChapterSelectors] = (
+            (lambda x: _ChapterSelectors(x) if x else x)(fp_selectors_dict.get("chapters"))
+        )
         self.title: str = fp_selectors_dict["title"]
         self.url: str = fp_selectors_dict["url"]
         self.cover: str = fp_selectors_dict.get("cover")
@@ -64,7 +84,7 @@ class _Selectors:
         self.title: list[str] = selectors_dict["title"]
         self.synopsis: str = selectors_dict["synopsis"]
         self.cover: list[str] = selectors_dict["cover"]
-        self.chapters: dict[str, str] = selectors_dict["chapters"]
+        self.chapters: _ChapterSelectors = _ChapterSelectors(selectors_dict["chapters"])
         self.status: list[str] = selectors_dict["status"]
         self.front_page: _FrontPageSelectors = _FrontPageSelectors(**selectors_dict["front_page"])
         self.search: Optional[_FrontPageSelectors] = None
@@ -94,7 +114,7 @@ class JSONTree:
     def __init__(self, **lookup_map_dict):
         self.properties: _Properties = _Properties(**lookup_map_dict["properties"])
         self.selectors: _Selectors = _Selectors(**lookup_map_dict["selectors"])
-        self.request_method: Literal["http", "curl", "flare"] = lookup_map_dict["request_method"]
+        self.request_method: Literal["curl"] = lookup_map_dict["request_method"]
         self.rx: re.Pattern = re.compile(lookup_map_dict["url_regex"])
 
         self.search: Optional[_SearchProperties] = None

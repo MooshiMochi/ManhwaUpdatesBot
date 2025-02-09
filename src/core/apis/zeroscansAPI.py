@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core.apis import APIManager
+    from src.static import R_METHOD_LITERAL
 
 import aiohttp
 from fuzzywuzzy import fuzz
@@ -30,7 +31,7 @@ class ZeroScansAPI:
 
     async def __request(
             self,
-            method: str,
+            method: R_METHOD_LITERAL,
             endpoint: str,
             params: Optional[Dict[str, Any]] = None,
             data: Optional[Dict[str, Any]] = None,
@@ -45,27 +46,26 @@ class ZeroScansAPI:
             await asyncio.sleep(self.rate_limit_reset)
 
         try:
-            async with self.manager.session.request(
-                    method, url, params=params, json=data, headers=headers, **kwargs
-            ) as response:
-                json_data = await response.json()
-                if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
-                    self.rate_limit_remaining = int(limit_remaining)
-                else:
-                    self.rate_limit_remaining -= 1
+            response = await self.manager.session.request(method, url, params=params, json=data, headers=headers,
+                                                          **kwargs)
+            json_data = response.json()
+            if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
+                self.rate_limit_remaining = int(limit_remaining)
+            else:
+                self.rate_limit_remaining -= 1
 
-                if limit_reset := response.headers.get("X-RateLimit-Reset"):
-                    self.rate_limit_reset = int(limit_reset)
-                else:
-                    if datetime.now().timestamp() > self.rate_limit_reset:
-                        self.rate_limit_reset = datetime.now().timestamp() + 60
-                        self.rate_limit_remaining = 300
+            if limit_reset := response.headers.get("X-RateLimit-Reset"):
+                self.rate_limit_reset = int(limit_reset)
+            else:
+                if datetime.now().timestamp() > self.rate_limit_reset:
+                    self.rate_limit_reset = datetime.now().timestamp() + 60
+                    self.rate_limit_remaining = 300
 
-                if response.status != 200:
-                    raise Exception(
-                        f"Request failed with status {response.status}: {json_data}"
-                    )
-                return json_data
+            if response.status_code != 200:
+                raise Exception(
+                    f"Request failed with status {response.status_code}: {json_data}"
+                )
+            return json_data
         except aiohttp.ServerDisconnectedError:
             if kwargs.get("call_depth", 0) > 3:
                 raise Exception("Server disconnected too many times, aborting request")

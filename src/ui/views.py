@@ -22,7 +22,7 @@ from discord.ext import commands
 from discord.ui import View, Button
 from discord.ext.commands import Context
 
-from src.core.objects import Bookmark, GuildSettings, Manga, ScanlatorChannelAssociation
+from src.core.objects import Bookmark, DMSettings, GuildSettings, Manga, ScanlatorChannelAssociation
 from src.core.errors import GuildNotConfiguredError, MangaCompletedOrDropped, MangaNotFoundError
 
 from src.utils import (
@@ -521,10 +521,8 @@ class SubscribeView(View):
             target_btn.style = ButtonStyle.grey
 
     def __get_response_kwargs(self):
-        if isinstance(self.iter_items[self.page], discord.Embed):
-            return {"embed": self.iter_items[self.page]}
-        else:
-            return {"content": self.iter_items[self.page]}
+        item = self.iter_items[self.page]
+        return {"embed": item} if isinstance(item, discord.Embed) else {"content": item}
 
     def _delete_nav_buttons(self):
         for child in self.children:
@@ -868,7 +866,7 @@ class BookmarkChapterView(View):
             if not manga:
                 raise MangaNotFoundError(manga_id)
 
-        if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
+        if bookmark.last_read_chapter == bookmark.manga.chapters[chapter_index]:
             return await interaction.followup.send(
                 embed=discord.Embed(
                     title="Already Read",
@@ -878,7 +876,7 @@ class BookmarkChapterView(View):
                 ephemeral=True,
             )
 
-        bookmark.last_read_chapter = bookmark.manga.available_chapters[chapter_index]
+        bookmark.last_read_chapter = bookmark.manga.chapters[chapter_index]
         bookmark.last_updated_ts = datetime.now().timestamp()
         await self.bot.db.upsert_bookmark(bookmark)
 
@@ -914,9 +912,9 @@ class BookmarkChapterView(View):
                 ephemeral=True,
             )
 
-        if bookmark.last_read_chapter == bookmark.manga.available_chapters[chapter_index]:
+        if bookmark.last_read_chapter == bookmark.manga.chapters[chapter_index]:
             if chapter_index - 1 >= 0:  # if there is a previous chapter
-                bookmark.last_read_chapter = bookmark.manga.available_chapters[chapter_index - 1]
+                bookmark.last_read_chapter = bookmark.manga.chapters[chapter_index - 1]
                 bookmark.last_updated_ts = datetime.now().timestamp()
                 await self.bot.db.upsert_bookmark(bookmark)
             else:
@@ -928,7 +926,7 @@ class BookmarkChapterView(View):
                 embed=discord.Embed(
                     title="Marked Unread",
                     description=f"Successfully marked chapter "
-                                f"{bookmark.manga.available_chapters[chapter_index]} as unread.",
+                                f"{bookmark.manga.chapters[chapter_index]} as unread.",
                     color=discord.Color.green(),
                 ),
                 ephemeral=True,
@@ -968,7 +966,7 @@ class BookmarkChapterView(View):
             )
 
         last_read_index = bookmark.last_read_chapter.index
-        next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
+        next_chapter = next((x for x in bookmark.manga.chapters if x.index > last_read_index), None)
         next_not_available = "`Wait for updates!`" if not bookmark.manga.completed else "`None, manga is finished!`"
 
         #  Attach a 'view bookmark' button to this message
@@ -1250,17 +1248,33 @@ class SubscribeListPaginatorView(PaginatorView):
 
 
 class SettingsView(BaseView):
-    def __init__(self, bot: MangaClient, interaction: discord.Interaction, guild_config: GuildSettings):
+    def __init__(self, bot: MangaClient, interaction: discord.Interaction, config: GuildSettings | DMSettings):
         super().__init__(bot, interaction, timeout=2 * 24 * 60 * 60)  # 2 days timeout
         self.bot = bot
-        self._init_guild_config: GuildSettings = GuildSettings.from_tuple(self.bot, guild_config.to_tuple())
-        self.guild_config: GuildSettings = guild_config
+        self._init_config: DMSettings | GuildSettings
+        if isinstance(config, GuildSettings):
+            self._init_config = GuildSettings.from_tuple(self.bot, config.to_tuple())
+        else:
+            self._init_config = DMSettings.from_tuple(self.bot, config.to_tuple())
+        self.config: GuildSettings | DMSettings = config
         self.selected_option: str | None = None
+
+        if isinstance(self.config, DMSettings):
+            _dm_options = [
+                discord.SelectOption(label="Show buttons for chapter updates", value="show_update_buttons", emoji="🔘"),
+                discord.SelectOption(label="Notify for Paid Chapter releases", value="paid_chapter_notifs", emoji="💵"),
+            ]
+
+            for _child in self.children:
+                if _child.custom_id == "main_config_options":  # noqa
+                    _child: discord.ui.Select
+                    _child.options = _dm_options
 
         self.child_map: dict[
             int | str, discord.ui.Select | list[discord.ui.Button] | discord.ui.Item[SettingsView]] = {
             child.row: child for child in self.children
         }
+
         self.child_map.pop(4)
 
         self.child_map["default"] = self.child_map.pop(0)
@@ -1275,15 +1289,15 @@ class SettingsView(BaseView):
         self._refresh_components()
 
     def create_embed(self) -> discord.Embed:
-        channel = self.guild_config.notifications_channel
-        ping_role = self.guild_config.default_ping_role
-        bot_manager_role = self.guild_config.bot_manager_role
-        system_channel = self.guild_config.system_channel
-        auto_create_role = self.guild_config.auto_create_role
-        show_update_buttons = self.guild_config.show_update_buttons
-        paid_chapter_notifs = self.guild_config.paid_chapter_notifs
+        channel = getattr(self.config, 'notifications_channel', None)
+        ping_role = getattr(self.config, 'default_ping_role', None)
+        bot_manager_role = getattr(self.config, 'bot_manager_role', None)
+        system_channel = getattr(self.config, 'system_channel', None)
+        auto_create_role = getattr(self.config, 'auto_create_role', None)
+        show_update_buttons = self.config.show_update_buttons
+        paid_chapter_notifs = self.config.paid_chapter_notifs
 
-        text = f"""
+        text = f"""\
         **#️⃣ Updates Channel:** {channel.mention if channel else "Not set."}
         \u200b \u200b \u200b **^** `The channel the bot will send chapter updates to.`
         **🔔 Default Ping Role:** {ping_role.mention if ping_role else "Not set."}
@@ -1298,9 +1312,21 @@ class SettingsView(BaseView):
         \u200b \u200b \u200b **^** `Whether to show buttons for chapter updates.`
         **🗨️ Custom Scanlator Channels**: Select for details.
         \u200b \u200b \u200b **^** `Set custom notification channels for specific scanlators.`
-        **💰 Notify for Paid Chapter releases:** {Emotes.success if paid_chapter_notifs else Emotes.error}
+        **💰 Notify for Paid Chapter Releases:** {Emotes.success if paid_chapter_notifs else Emotes.error}
         \u200b \u200b \u200b **^** `Whether to notify for paid chapter releases.`
         """
+
+        if isinstance(self.config, DMSettings):
+            _setting_to_show = ["Show Update Buttons", "Notify for Paid Chapter Releases"]
+            result = []
+            lines = text.split('\n')
+            for i in range(0, len(lines), 2):
+                for _e in _setting_to_show:
+                    if _e in lines[i]:
+                        result.append(lines[i])
+                        result.append(lines[i + 1])
+            text = "\n".join(result)
+
         desc = f"__Select the setting you want to edit.__"
         if self.delete_mode:
             desc = (f"{Emotes.warning} **DELETE MODE IS ENABLED** {Emotes.warning}\n"
@@ -1337,13 +1363,14 @@ class SettingsView(BaseView):
         max_values=1,
         min_values=1,
         placeholder="Select the option to edit.",
-        row=0
+        row=0,
+        custom_id="main_config_options"
     )
     async def _default_select_callback(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
         if select.values[0] == "custom_scanlator_channels":
-            scanlator_channels_view = ScanlatorChannelAssociationView(self.bot, interaction, self.guild_config)
+            scanlator_channels_view = ScanlatorChannelAssociationView(self.bot, interaction, self.config)
             embed: discord.Embed = await scanlator_channels_view.get_display_embed()
-            if not self.guild_config.notifications_channel:
+            if not self.config.notifications_channel:
                 await interaction.response.send_message(embed=embed, ephemeral=True)  # noqa
             else:
                 await interaction.response.edit_message(embed=embed, view=scanlator_channels_view)  # noqa
@@ -1352,17 +1379,17 @@ class SettingsView(BaseView):
         if self.delete_mode:
             match select.values[0]:
                 case "default_ping_role":
-                    self.guild_config.default_ping_role = None
+                    setattr(self.config, 'default_ping_role', None)
                 case "bot_manager_role":
-                    self.guild_config.bot_manager_role = None
+                    setattr(self.config, 'bot_manager_role', None)
                 case "system_channel":
-                    self.guild_config.system_channel = None
+                    setattr(self.config, 'system_channel', None)
                 case "auto_create_role":
-                    self.guild_config.auto_create_role = False
+                    setattr(self.config, 'auto_create_role', False)
                 case "show_update_buttons":
-                    self.guild_config.show_update_buttons = False
+                    self.config.show_update_buttons = False
                 case "paid_chapter_notifs":
-                    self.guild_config.paid_chapter_notifs = False
+                    self.config.paid_chapter_notifs = False
                 case "channel":
                     return await interaction.response.send_message(  # noqa
                         embed=discord.Embed(
@@ -1390,11 +1417,11 @@ class SettingsView(BaseView):
     )
     async def _bool_select_callback(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
         if self.selected_option == "auto_create_role":
-            self.guild_config.auto_create_role = select.values[0] == "True"
+            setattr(self.config, 'auto_create_role', select.values[0] == "True")
         elif self.selected_option == "show_update_buttons":
-            self.guild_config.show_update_buttons = select.values[0] == "True"
+            self.config.show_update_buttons = select.values[0] == "True"
         elif self.selected_option == "paid_chapter_notifs":
-            self.guild_config.paid_chapter_notifs = select.values[0] == "True"
+            self.config.paid_chapter_notifs = select.values[0] == "True"
         else:
             raise ValueError(f"Invalid value: {self.selected_option}")
         self.selected_option = None
@@ -1449,9 +1476,9 @@ class SettingsView(BaseView):
             )
             return
         if self.selected_option == "system_channel":
-            self.guild_config.system_channel = channel
+            setattr(self.config, 'system_channel', channel)
         else:
-            self.guild_config.notifications_channel = channel
+            setattr(self.config, 'notifications_channel', channel)
         self.selected_option = None
         self._refresh_components()
         embed = self.create_embed()
@@ -1508,10 +1535,10 @@ class SettingsView(BaseView):
             return
 
         if self.selected_option == "default_ping_role":
-            self.guild_config.default_ping_role = role
+            setattr(self.config, 'default_ping_role', role)
 
         elif self.selected_option == "bot_manager_role":
-            self.guild_config.bot_manager_role = role
+            setattr(self.config, 'bot_manager_role', role)
 
         self.selected_option = None
         self._refresh_components()
@@ -1520,7 +1547,7 @@ class SettingsView(BaseView):
 
     @discord.ui.button(label="Save", emoji=Emotes.success, style=discord.ButtonStyle.blurple, row=4)
     async def done_btn_callback(self, interaction: discord.Interaction, _) -> None:
-        if not self.guild_config.notifications_channel:
+        if isinstance(self.config, GuildSettings) and not self.config.notifications_channel:
             await interaction.response.send_message(  # noqa
                 embed=discord.Embed(
                     title="Cannot save changes",
@@ -1532,12 +1559,12 @@ class SettingsView(BaseView):
             )
             return
 
-        if (self._init_guild_config.bot_manager_role is not None and
-                self._init_guild_config.bot_manager_role != self.guild_config.bot_manager_role):
+        bot_manager_role = getattr(self._init_config, 'bot_manager_role', None)
+        if bot_manager_role is not None and bot_manager_role != getattr(self.config, 'bot_manager_role', None):
             missing_perms = check_missing_perms(interaction.permissions, discord.Permissions(manage_guild=True))
-            is_bot_manager = self._init_guild_config.bot_manager_role.id in [role.id for role in interaction.user.roles]
+            is_bot_manager = bot_manager_role.id in [role.id for role in interaction.user.roles]
             if is_bot_manager and missing_perms:
-                self.guild_config.bot_manager_role = self._init_guild_config.bot_manager_role
+                setattr(self.config, 'bot_manager_role', bot_manager_role)
                 self.selected_option = None
                 self._refresh_components()
                 embed = self.create_embed()
@@ -1553,7 +1580,7 @@ class SettingsView(BaseView):
                     ), ephemeral=True
                 )
 
-        await self.bot.db.upsert_config(self.guild_config)
+        await self.bot.db.upsert_config(self.config)
         await interaction.response.edit_message(view=None)  # noqa
         await interaction.followup.send(  # noqa
             embed=discord.Embed(

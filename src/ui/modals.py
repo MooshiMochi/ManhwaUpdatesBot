@@ -138,7 +138,7 @@ class ScanlatorModal(BaseModal, title="Select a scanlator"):
             # try to find scanlator using levenshtein distance
             self.scanlator = max(
                 self._available_options,
-                key=lambda x: _levenshtein_distance(x.lower(), val)
+                key=lambda x: _levenshtein_distance(x.lower(), val) or 0
             )
             if _levenshtein_distance(val, self.scanlator.lower()) < 75:  # <75% similarity
                 self.scanlator = None

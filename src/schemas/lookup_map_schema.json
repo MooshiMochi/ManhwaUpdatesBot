@@ -22,7 +22,6 @@
             "request_method": {
               "type": "string",
               "enum": [
-                "http",
                 "curl",
                 "flare"
               ],
@@ -233,6 +232,26 @@
                     },
                     "premium_status": {
                       "type": "string"
+                    },
+                    "no_premium_chapter_url": {
+                      "type": "object",
+                      "properties": {
+                        "string_selector": {
+                          "type": "string"
+                        },
+                        "regex": {
+                          "type": "string"
+                        },
+                        "url_fmt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "string_selector",
+                        "regex",
+                        "url_fmt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -261,13 +280,77 @@
                           "type": "string"
                         },
                         "name": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "url": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "premium_status": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false,
@@ -290,7 +373,6 @@
                   "additionalProperties": false,
                   "required": [
                     "container",
-                    "chapters",
                     "title",
                     "url",
                     "cover"
@@ -309,13 +391,77 @@
                           "type": "string"
                         },
                         "name": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "url": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "premium_status": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false,
@@ -606,7 +752,6 @@
             "request_method": {
               "type": "string",
               "enum": [
-                "http",
                 "curl",
                 "flare"
               ]
@@ -800,6 +945,26 @@
                     },
                     "premium_status": {
                       "type": "string"
+                    },
+                    "no_premium_chapter_url": {
+                      "type": "object",
+                      "properties": {
+                        "string_selector": {
+                          "type": "string"
+                        },
+                        "regex": {
+                          "type": "string"
+                        },
+                        "url_fmt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "string_selector",
+                        "regex",
+                        "url_fmt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -834,13 +999,16 @@
                               "enum": [
                                 "_container_"
                               ],
+                              "description": "Use the special value '_container_' to reference the container element.",
                               "default": "_container_"
                             },
                             {
                               "type": "string",
-                              "pattern": "^.+$"
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
                             }
-                          ]
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "url": {
                           "anyOf": [
@@ -849,13 +1017,16 @@
                               "enum": [
                                 "_container_"
                               ],
+                              "description": "Use the special value '_container_' to reference the container element.",
                               "default": "_container_"
                             },
                             {
                               "type": "string",
-                              "pattern": "^.+$"
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
                             }
-                          ]
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "premium_status": {
                           "anyOf": [
@@ -864,13 +1035,35 @@
                               "enum": [
                                 "_container_"
                               ],
+                              "description": "Use the special value '_container_' to reference the container element.",
                               "default": "_container_"
                             },
                             {
                               "type": "string",
-                              "pattern": "^.+$"
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
                             }
                           ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false,
@@ -893,7 +1086,6 @@
                   "additionalProperties": false,
                   "required": [
                     "container",
-                    "chapters",
                     "title",
                     "url",
                     "cover"
@@ -918,13 +1110,16 @@
                               "enum": [
                                 "_container_"
                               ],
+                              "description": "Use the special value '_container_' to reference the container element.",
                               "default": "_container_"
                             },
                             {
                               "type": "string",
-                              "pattern": "^.+$"
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
                             }
-                          ]
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "url": {
                           "anyOf": [
@@ -933,13 +1128,16 @@
                               "enum": [
                                 "_container_"
                               ],
+                              "description": "Use the special value '_container_' to reference the container element.",
                               "default": "_container_"
                             },
                             {
                               "type": "string",
-                              "pattern": "^.+$"
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
                             }
-                          ]
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
                         },
                         "premium_status": {
                           "anyOf": [
@@ -948,13 +1146,35 @@
                               "enum": [
                                 "_container_"
                               ],
+                              "description": "Use the special value '_container_' to reference the container element.",
                               "default": "_container_"
                             },
                             {
                               "type": "string",
-                              "pattern": "^.+$"
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
                             }
                           ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false,

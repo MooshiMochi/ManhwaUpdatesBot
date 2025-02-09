@@ -4,14 +4,13 @@ from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
 from ..enums import BookmarkFolderType
-from ..static import Constants
+from ..static import Constants, Emotes
 
 if TYPE_CHECKING:
     from src.core.bot import MangaClient
 
 from datetime import datetime
 from typing import Optional
-import aiohttp
 import discord
 from discord.ext.commands import Paginator as CommandPaginator
 import re
@@ -26,14 +25,17 @@ class ChapterUpdate:
             scanlator: str,
             new_cover_url: Optional[str] = None,
             status: str = "Ongoing",
+            status_changed: bool = False,
             extra_kwargs: list[dict[str, Any]] = None,
+
     ):
         self.manga_id = manga_id
         self.new_chapters = new_chapters
+        self.scanlator = scanlator
         self.new_cover_url = new_cover_url
         self.status = status
+        self.status_changed: bool = status_changed
         self.extra_kwargs = extra_kwargs or []
-        self.scanlator = scanlator
 
     def __repr__(self):
         return (
@@ -50,12 +52,14 @@ class ChapterUpdate:
 
 
 class Chapter:
-    # def __init__(self, url: str, name: str, index: int, is_premium: bool = False):
-    def __init__(self, url: str, name: str, index: int, *args, **kwargs):
+    def __init__(self, url: str, name: str, index: int, is_premium: bool = False, *args, **kwargs):
+        # def __init__(self, url: str, name: str, index: int, *args, **kwargs):
         self.url = url
         self.name = self._fix_chapter_string(name)
         self.index = index
-        # self.is_premium = is_premium
+        self.is_premium = is_premium
+        self.args: tuple[Any, ...] = args
+        self.kwargs: dict[str, Any] = kwargs
 
     @staticmethod
     def _fix_chapter_string(chapter_string: str) -> str:
@@ -68,6 +72,8 @@ class Chapter:
         # return f"Chapter(url={self.url}, name={self.name}, index={self.index})"
 
     def __str__(self):
+        if self.is_premium:
+            return f"[{self.name} {Emotes.lock}]({self.url})"
         return f"[{self.name}]({self.url})"
 
     def to_dict(self):
@@ -75,7 +81,7 @@ class Chapter:
             "url": self.url,
             "name": self.name,
             "index": self.index,
-            # "is_premium": self.is_premium,
+            "is_premium": self.is_premium,
         }
 
     def to_json(self):
@@ -99,7 +105,12 @@ class Chapter:
 
     def __eq__(self, other: Chapter):
         if isinstance(other, Chapter):
-            return self.url == other.url and other.name == self.name and other.index == self.index
+            return (
+                    self.url == other.url and
+                    other.name == self.name and
+                    other.index == self.index and
+                    self.is_premium == other.is_premium
+            )
         return False
 
     def __hash__(self):
@@ -165,7 +176,7 @@ class PartialManga:
             latest_chapters: list[Chapter] = None,
             actual_url: Optional[str] = None,
     ):
-        self._id = manga_id
+        self._id = str(manga_id)
         self._title = title
         self._url = url
         self._scanlator = scanlator
@@ -175,7 +186,7 @@ class PartialManga:
 
     def __repr__(self):
         if self._latest_chapters:
-            latest_chapter_text = [f"{chp.name}" for chp in self._latest_chapters]
+            latest_chapter_text = [f"{('🔒' if chp.is_premium else '') + chp.name}" for chp in self._latest_chapters]
         else:
             latest_chapter_text = "N/A"
         return f"PartialManga({self._title}{{{self.url}}}] - {latest_chapter_text})"
@@ -191,31 +202,31 @@ class PartialManga:
         ) and self.id == other.id and self.scanlator == other.scanlator
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self._title
 
     @property
-    def url(self):
+    def url(self) -> str:
         return self._url
 
     @property
-    def scanlator(self):
+    def scanlator(self) -> str:
         return self._scanlator
 
     @property
-    def cover_url(self):
+    def cover_url(self) -> str:
         return self._cover_url
 
     @property
-    def latest_chapters(self):
+    def latest_chapters(self) -> list[Chapter] | None:
         return self._latest_chapters
 
     @property
-    def actual_url(self):
+    def actual_url(self) -> str:
         return self._actual_url
 
 
@@ -228,7 +239,7 @@ class Manga:
             synopsis: str,
             cover_url: str,
             last_chapter: Chapter,
-            available_chapters: list[Chapter],
+            chapters: list[Chapter],
             status: str,
             scanlator: str,
     ) -> None:
@@ -238,16 +249,16 @@ class Manga:
         self._synopsis: str = synopsis
         self._cover_url: str = cover_url
         self._last_chapter: Chapter = last_chapter
-        self._available_chapters: list[Chapter] = available_chapters
+        self._chapters: list[Chapter] = chapters
         if isinstance(last_chapter, str):
             self._last_chapter: Chapter = Chapter.from_json(last_chapter)
-        if isinstance(available_chapters, list):
-            if len(available_chapters) > 0 and isinstance(available_chapters[0], str):
-                self._available_chapters: list[Chapter] = [
-                    Chapter.from_json(chapter) for chapter in available_chapters
+        if isinstance(chapters, list):
+            if len(chapters) > 0 and isinstance(chapters[0], str):
+                self._chapters: list[Chapter] = [
+                    Chapter.from_json(chapter) for chapter in chapters
                 ]
-        elif isinstance(available_chapters, str):
-            self._available_chapters: list[Chapter] = Chapter.from_many_json(available_chapters)
+        elif isinstance(chapters, str):
+            self._chapters: list[Chapter] = Chapter.from_many_json(chapters)
 
         self._status: str = status
         self._scanlator: str = scanlator
@@ -263,9 +274,18 @@ class Manga:
     ) -> None:
         """Update the manga."""
         if new_latest_chapter is not None:
+            # If the chapter already exists (i.e. the index is within the current list),
+            # update it; otherwise, append it.
+            if new_latest_chapter.index < len(self._chapters):
+                # Only update if the premium status is different
+                if new_latest_chapter.is_premium != self._chapters[new_latest_chapter.index].is_premium:
+                    self._chapters[new_latest_chapter.index] = new_latest_chapter
+            else:
+                self._chapters.append(new_latest_chapter)
+            # Update the last chapter (you might instead want to compute the maximum by index)
             self._last_chapter = new_latest_chapter
-            self._available_chapters.append(new_latest_chapter)
-            self._available_chapters = list(sorted(set(self._available_chapters), key=lambda x: x.index))
+            # Remove duplicates and sort by chapter index
+            self._chapters = list(sorted(set(self._chapters), key=lambda x: x.index))
 
         if status is not None:
             self._status = status
@@ -305,9 +325,9 @@ class Manga:
         return self._last_chapter
 
     @property
-    def available_chapters(self) -> list[Chapter]:
+    def chapters(self) -> list[Chapter]:
         """Get the available chapters of the manga."""
-        return self._available_chapters
+        return self._chapters
 
     @property
     def status(self):
@@ -315,7 +335,7 @@ class Manga:
 
     @property
     def completed(self) -> bool:
-        """Get the status of the manga."""
+        """Returns True if the manga is marked as completed on the website."""
         return self._status.lower() in Constants.completed_status_set
 
     @property
@@ -331,7 +351,9 @@ class Manga:
     @classmethod
     def from_tuple(cls, data: tuple) -> "Manga":
         """Create a Manga object from a tuple."""
-        return cls(*data)
+        obj = cls(*data)
+        obj._check_and_fix_chapters_index()
+        return obj
 
     @classmethod
     def from_tuples(cls, data: list[tuple]) -> list["Manga"]:
@@ -340,6 +362,7 @@ class Manga:
 
     def to_tuple(self) -> tuple:
         """Convert a Manga object to a tuple."""
+        self._check_and_fix_chapters_index()
         return (
             self.id,
             self.title,
@@ -352,9 +375,38 @@ class Manga:
             self.scanlator,
         )
 
+    def _check_and_fix_chapters_index(self) -> None:
+        """
+        This method will check and fix chapter indices given the condition:
+        - last_chapter.index != len(chapters) - 1 or
+        - manga.chapters[-1].index != len(chapters) - one
+        Returns:
+            None
+        """
+        should_fix = False
+        if not self._last_chapter and not self._chapters:
+            return
+        if not self._last_chapter and self._chapters:
+            self._last_chapter = self._chapters[-1]
+            should_fix = True
+        elif self._last_chapter and not self._chapters:
+            self._last_chapter = None
+            return
+        if self._last_chapter.index != len(self._chapters) - 1:
+            should_fix = True
+        elif self._chapters[-1].index != len(self._chapters) - 1:
+            should_fix = True
+
+        if not should_fix:
+            return
+        # Fix the chapters
+        for i, chapter in enumerate(self._chapters):
+            chapter.index = i
+        self._last_chapter = self._chapters[-1]
+
     def chapters_to_text(self) -> str:
         """Convert available_chapters to TEXT (db format)"""
-        return json.dumps([x.to_dict() for x in self.available_chapters] if self.available_chapters else [])
+        return json.dumps([x.to_dict() for x in self.chapters] if self.chapters else [])
 
     def get_display_embed(self, scanlators: dict):
         _scanlator = scanlators[self.scanlator]
@@ -377,10 +429,10 @@ class Manga:
             em.add_field(name="Synopsis:", value=synopsis_text, inline=False)
 
         scanlator_text = f"[{self.scanlator.title()}]({_scanlator.json_tree.properties.base_url})"
-        desc = f"**Num of Chapters:** {len(self.available_chapters)}\n"
+        desc = f"**Num of Chapters:** {len(self.chapters)}\n"
         desc += f"**Status:** {self.status}\n"
-        desc += f"**Latest Chapter:** {(self.available_chapters or 'N/A')[-1]}\n"
-        desc += f"**First Chapter:** {(self.available_chapters or 'N/A')[0]}\n"
+        desc += f"**Latest Chapter:** {(self.chapters or 'N/A')[-1]}\n"
+        desc += f"**First Chapter:** {(self.chapters or 'N/A')[0]}\n"
         desc += f"**Scanlator:** {scanlator_text}"
         em.description = desc
         return em
@@ -432,7 +484,7 @@ class Bookmark:
         # 3 = guild_id
         # 4 = last_updated_ts
         # 5 = folder
-        last_read_chapter: Chapter = data[1].available_chapters[data[2]]
+        last_read_chapter: Chapter = data[1].chapters[data[2]]
         parsed_data = list(data)
         parsed_data[2] = last_read_chapter
         parsed_data[5] = BookmarkFolderType(data[5])
@@ -474,6 +526,55 @@ class Bookmark:
         return f"Bookmark({self.user_id} - {self.manga.title} - {self.manga.id})"
 
 
+class DMSettings:
+    def __init__(
+            self,
+            bot: MangaClient,
+            *args,
+            **kwargs,
+    ) -> None:
+        """
+
+        Args:
+            bot: MangaClient - The bot instance
+            args[0] -> user_id: int - The user ID
+            args[1..4] -> arbitrary values, they aren't considered
+            args[5] -> show_update_buttons: bool - Whether to show the buttons view on a chapter update
+            args[6] -> paid_chapter_notifs: bool - Whether to receive notifications for premium chapters.
+            **kwargs:
+        """
+        self._bot: MangaClient = bot
+        self.user_id: int = args[0]
+        if len(args) >= 6:
+            self.show_update_buttons: bool = bool(args[5])
+        else:
+            self.show_update_buttons: bool = True
+        if len(args) >= 7:
+            self.paid_chapter_notifs: bool = bool(args[6])
+        else:
+            self.paid_chapter_notifs: bool = False
+
+    @classmethod
+    def from_tuple(cls, bot: MangaClient, data: tuple) -> "DMSettings":
+        return cls(bot, data[0], show_update_buttons=data[5], paid_chapter_notifs=data[6])
+
+    @classmethod
+    def from_tuples(cls, bot: MangaClient, data: list[tuple]) -> list["DMSettings"]:
+        return [cls.from_tuple(bot, d) for d in data] if data else []
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.user_id,
+            None,  # notif channel
+            None,  # default ping role
+            0,  # auto create role
+            None,  # system channel
+            self.show_update_buttons,
+            self.paid_chapter_notifs,
+            None  # bot manager role ID
+        )
+
+
 class GuildSettings:
     def __init__(
             self,
@@ -493,7 +594,7 @@ class GuildSettings:
         self.guild: discord.Guild = bot.get_guild(guild_id)
         self.default_ping_role_id = default_ping_role_id
         if self.guild:
-            self.notifications_channel: discord.TextChannel = self.guild.get_channel(notifications_channel_id)
+            self.notifications_channel: Optional[discord.TextChannel] = self.guild.get_channel(notifications_channel_id)
             self.default_ping_role: Optional[discord.Role] = self.guild.get_role(default_ping_role_id)
             self.bot_manager_role: Optional[discord.Role] = self.guild.get_role(bot_manager_role)
             self.system_channel: Optional[discord.TextChannel] = self.guild.get_channel(system_channel)
@@ -531,74 +632,6 @@ class GuildSettings:
             self.bot_manager_role.id if self.bot_manager_role else None,
 
         )
-
-
-class CachedResponse:
-    """
-    A class that patches the response of an aiohttp.ClientResponse to work with
-    the cache system.
-
-    Note: the .apply_patch() method must be called before using the response object.
-
-    Example:
-    >>> async def func():
-    >>>     async with aiohttp.ClientSession() as session:
-    >>>         async with session.get("https://example.com") as response:
-    >>>             cached_response = await CachedResponse(response).apply_patch()
-    >>>             await cached_response.json()
-    """  # noqa
-
-    def __init__(self, response: aiohttp.ClientResponse):
-        self._response = response
-        self._data_dict = {}
-        self._original_methods = {
-            "json": response.json,
-            "text": response.text,
-            "read": response.read,
-        }
-
-    async def try_return(self, key: str):
-        stored = self._data_dict.get(key)
-
-        if stored is None:
-            try:
-                self._data_dict[key] = {"content": await self._original_methods[key](), "type": "data"}
-                stored = self._data_dict[key]
-            except Exception as e:
-                self._data_dict[key] = {"type": "error", "content": e}
-                stored = self._data_dict[key]
-
-        if stored["type"] == "error":
-            raise stored["content"]
-        else:
-            return stored["content"]
-
-    async def json(self):
-        return await self.try_return("json")
-
-    async def text(self):
-        return await self.try_return("text")
-
-    async def read(self):
-        return await self.try_return("read")
-
-    async def _async_init(self):
-        keys = ["json", "text", "read"]
-        for key in keys:
-            try:
-                self._data_dict[key] = {"content": await self._original_methods[key](), "type": "data"}
-            except Exception as e:
-                self._data_dict[key] = {"type": "error", "content": e}
-        return self
-
-    async def apply_patch(self, preload_data: bool = False):
-        if preload_data:
-            await self._async_init()
-
-        attributes = [("_data_dict", self._data_dict), ("text", self.text), ("json", self.json), ("read", self.read)]
-        for attr, value in attributes:
-            setattr(self._response, attr, value)
-        return self._response
 
 
 @dataclass

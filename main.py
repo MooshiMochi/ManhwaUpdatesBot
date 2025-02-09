@@ -6,7 +6,7 @@ from aiohttp import ClientConnectorError
 from discord import Intents
 from discord.errors import LoginFailure
 
-from src.core import BotCommandTree, CachedClientSession, MangaClient
+from src.core import BotCommandTree, MangaClient
 from src.core.cache import CachedCurlCffiSession
 from src.core.config_loader import ensure_configs, load_config
 from src.core.scanlators import scanlators
@@ -72,10 +72,7 @@ async def main():
         ]
     )
 
-    CachedClientSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
     CachedCurlCffiSession.set_default_cache_time(config["constants"]["cache-retention-seconds"])
-    # if flaresolverr_url := config.get("flaresolverr", {}).get("base_url"):
-    #     BaseCacheSessionMixin.ignore_url(flaresolverr_url)
 
     intents = Intents(Intents.default().value, **config["privileged-intents"])
     client = MangaClient(config["prefix"], intents, tree_cls=BotCommandTree)
@@ -111,7 +108,9 @@ if __name__ == "__main__":
     try:
         if os.name == "nt" and sys.version_info >= (3, 8):
             import tracemalloc
+            from asyncio import WindowsSelectorEventLoopPolicy
 
+            asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
             tracemalloc.start()
 
         asyncio.run(main())

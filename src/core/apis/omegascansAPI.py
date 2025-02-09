@@ -4,13 +4,14 @@ import asyncio
 from datetime import datetime
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
+from src.core.cache import CachedCurlCffiSession
+
 if TYPE_CHECKING:
     from src.core.apis import APIManager
+    from src.static import R_METHOD_LITERAL
 
 import aiohttp
 from bs4 import BeautifulSoup
-
-from src.core.cache import CachedClientSession
 
 
 class OmegaScansAPI:
@@ -28,7 +29,7 @@ class OmegaScansAPI:
 
     async def __request(
             self,
-            method: str,
+            method: R_METHOD_LITERAL,
             endpoint: str,
             params: Optional[Dict[str, Any]] = None,
             data: Optional[Dict[str, Any]] = None,
@@ -43,27 +44,27 @@ class OmegaScansAPI:
             await asyncio.sleep(self.rate_limit_reset)
 
         try:
-            async with self.manager.session.request(
-                    method, url, params=params, json=data, headers=headers, **kwargs
-            ) as response:
-                json_data = await response.json()
-                if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
-                    self.rate_limit_remaining = int(limit_remaining)
-                else:
-                    self.rate_limit_remaining -= 1
+            response = await self.manager.session.request(
+                method, url, params=params, json=data, headers=headers, **kwargs
+            )
+            json_data = response.json()
+            if limit_remaining := response.headers.get("X-RateLimit-Remaining"):
+                self.rate_limit_remaining = int(limit_remaining)
+            else:
+                self.rate_limit_remaining -= 1
 
-                if limit_reset := response.headers.get("X-RateLimit-Reset"):
-                    self.rate_limit_reset = int(limit_reset)
-                else:
-                    if datetime.now().timestamp() > self.rate_limit_reset:
-                        self.rate_limit_reset = datetime.now().timestamp() + 60
-                        self.rate_limit_remaining = 300
+            if limit_reset := response.headers.get("X-RateLimit-Reset"):
+                self.rate_limit_reset = int(limit_reset)
+            else:
+                if datetime.now().timestamp() > self.rate_limit_reset:
+                    self.rate_limit_reset = datetime.now().timestamp() + 60
+                    self.rate_limit_remaining = 300
 
-                if response.status != 200:
-                    raise Exception(
-                        f"Request failed with status {response.status}: {json_data}"
-                    )
-                return json_data
+            if response.status_code != 200:
+                raise Exception(
+                    f"Request failed with status {response.status_code}: {json_data}"
+                )
+            return json_data
         except aiohttp.ServerDisconnectedError:
             if kwargs.get("call_depth", 0) > 3:
                 raise Exception("Server disconnected too many times, aborting request")
@@ -108,33 +109,31 @@ class OmegaScansAPI:
         if not metadata.get("total", 0):  # No chapters available
             return []
 
-        data = result.get("data", [])
-        # Filter out any chapters that are for patreon only
-        free_chapters = [x for x in data if x.get("price", 0) == 0]
+        total_chapters = result.get("data", [])
 
         last_page = metadata.get("last_page", 1)
         current_page = metadata.get("current_page", 1)
 
         # Reverse the order of chapters to make it ascending
-        free_chapters = free_chapters[::-1]
+        total_chapters = total_chapters[::-1]
 
         # Check if there are more pages to fetch
-        if current_page < last_page and (limit < 0 or len(free_chapters) < limit):
-            next_limit = limit - len(free_chapters) if limit > 0 else -1
+        if current_page < last_page and (limit < 0 or len(total_chapters) < limit):
+            next_limit = limit - len(total_chapters) if limit > 0 else -1
             next_page_chapters = await self.get_chapters_list(manga_id, page + 1, next_limit)
             # Since both lists are in ascending order, extend in reverse
-            free_chapters = next_page_chapters + free_chapters
+            total_chapters = next_page_chapters + total_chapters
 
         if limit > 0:
-            return free_chapters[:limit]
+            return total_chapters[:limit]
 
-        return free_chapters
+        return total_chapters
 
     async def search(self, title: str, limit: Optional[int] = None) -> list[Any]:
         endpoint = "query"
         params = {"adult": "true", "query_string": title}
         kwargs = {}
-        if isinstance(self.manager.session, CachedClientSession):
+        if isinstance(self.manager.session, CachedCurlCffiSession):
             kwargs["cache_time"] = 0
         response = await self.__request("GET", endpoint, params=params, **kwargs)
         data = response.get("data", [])
