@@ -11,9 +11,11 @@ __all__ = (
     "scanlators",
 )
 
+from ...html_json_parser import Parser
+
 from ...static import Constants
 
-from ...utils import raise_and_report_for_status
+from ...utils import raise_and_report_for_status, find_values_by_key
 
 
 class _OmegaScans(BasicScanlator):
@@ -21,10 +23,22 @@ class _OmegaScans(BasicScanlator):
         super().__init__(name, **kwargs)
 
     async def get_id(self, raw_url: str) -> str | None:
-        async with self.bot.session.get(raw_url) as resp:
-            await raise_and_report_for_status(self.bot, resp)
-            manga_id = re.search(r'\\"series_id\\":(\d+),', await resp.text()).group(1)
-            return manga_id
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        manga_id = re.search(r'\\"series_id\\":(\d+),', resp.text).group(1)
+        return manga_id
+
+    async def get_fp_partial_manga(self) -> list[PartialManga]:
+        fp_mangas: list[PartialManga] = await super().get_fp_partial_manga()
+        fixed_fp_mangas: list[PartialManga] = []
+        for manga in fp_mangas:
+            # Sor the chapters in ascending order based on their url
+            manga._latest_chapters = list(sorted(manga.latest_chapters, key=lambda x: x.url))
+            # Fix the index of the chapters
+            for i, chapter in enumerate(manga.latest_chapters):
+                chapter.index = i
+            fixed_fp_mangas.append(manga)
+        return fixed_fp_mangas
 
     async def get_cover(self, raw_url: str) -> str:
         url_name = await super()._get_url_name(raw_url)
@@ -48,23 +62,28 @@ class _OmegaScans(BasicScanlator):
             cover = item_dict["thumbnail"]
             _id = await self.get_id(url)
 
-            chapter = item_dict["latest_chapter"]
-            base_chapter_url = await self.format_manga_url(url_name=item_dict["series_slug"])
-            chapter_url = base_chapter_url.removesuffix("/") + "/" + chapter["chapter_slug"]
-            chapter_name = chapter["chapter_name"]
-            is_premium_chapter = "price" in chapter.keys() and chapter["price"] > 0
-            if chapter.get("chapter_title") is not None:
-                chapter_name += f" - {chapter['chapter_title']}"
-            last_chapter = Chapter(chapter_url, chapter_name, 987654321, is_premium=is_premium_chapter)
+            chapters: list[Chapter] = []
+            # omega is giving out all the chapters in the search results
+            # so we can just use the chapters from the search results
+            paid_chapters: list[dict] = item_dict["paid_chapters"]
+            free_chapters: list[dict] = item_dict["free_chapters"]
+            num_free_chapters = len(free_chapters)
+            for i, chapter in enumerate(reversed(paid_chapters + free_chapters)):
+                chapter_url = url.removesuffix("/") + "/" + chapter["chapter_slug"]
+                chapter_name = chapter["chapter_name"]
+                is_premium_chapter = i >= num_free_chapters
+                if chapter.get("chapter_title") is not None:
+                    chapter_name += f" - {chapter['chapter_title']}"
+                chapters.append(Chapter(chapter_url, chapter_name, i, is_premium=is_premium_chapter))
 
-            p_manga = PartialManga(_id, title, url, self.name, cover, [last_chapter])
+            p_manga = PartialManga(_id, title, url, self.name, cover, chapters)
             found_manga.append(p_manga)
         if as_em:
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
-        url_name = await self._get_url_name(raw_url)
+        url_name = await self._get_url_name(raw_url)  # noqa: Dupliacted code
         series_id = await self.get_id(raw_url)
         chapters: list[dict] = await self.bot.apis.omegascans.get_chapters_list(series_id)
         found_chapters: list[Chapter] = []
@@ -88,11 +107,58 @@ class _ReaperScans(BasicScanlator):
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
 
+    async def get_fp_partial_manga(self) -> list[PartialManga]:
+        text = await self._get_text(self.json_tree.properties.latest_updates_url)
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+        json_result = Parser.parse_text(str(soup))
+        fp_mangas: list[dict] = find_values_by_key(json_result, "initialValue")
+        found_manga: list[PartialManga] = []
+        for item_dict in fp_mangas:
+            title = item_dict["title"]
+            url = self.json_tree.properties.format_urls.manga.format(url_name=item_dict["series_slug"])
+            cover = item_dict["thumbnail"]
+            _id = item_dict["id"]
+
+            latest_chapters: list[Chapter] = []
+            latest_chapters_resp: list[dict] = item_dict["free_chapters"]
+            latest_paid_chapters: list[dict] = item_dict["paid_chapters"]
+
+            if latest_paid_chapters:
+                # Force the update checker to do a full check for the manhwa.
+                # As of now, reaper does not make paid chapters for manga.
+                # Everything is free.
+                # However, in case they start doing paid chapters for manga,
+                # it looks like their paid chapter is way off from the free chapters.
+                # For example,
+                # Free chapters: [Chapter 157, Chapter 158]
+                # Paid chapters: [Chapter 167, Chapter 168]
+                # To avoid confusion for the bot and missing chapters,
+                # we will just use the highest numbered chapters
+                # as the latest chapters.
+                # This should force the bot to do a full update check.
+                latest_chapters_resp = latest_paid_chapters
+
+            for i, chapter in enumerate(latest_chapters_resp):
+                chapter_url = url.removesuffix("/") + "/" + chapter["chapter_slug"]
+                chapter_name = chapter["chapter_name"]
+                is_premium_chapter = False
+                if chapter.get("chapter_title") is not None:
+                    chapter_name += f" - {chapter['chapter_title']}"
+                latest_chapters.append(
+                    Chapter(chapter_url, chapter_name, 987654321 - i, is_premium=is_premium_chapter)
+                )
+
+            # latest_chapters must be in ascending order in the PartialManga object for consistency’s sake
+            p_manga = PartialManga(_id, title, url, self.name, cover, latest_chapters[::-1])
+            found_manga.append(p_manga)
+        return found_manga
+
     async def get_id(self, raw_url: str) -> str | None:
-        async with self.bot.session.get(raw_url) as resp:
-            await raise_and_report_for_status(self.bot, resp)
-            manga_id = re.search(r'\\"series_id\\":(\d+),', await resp.text()).group(1)
-            return manga_id
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        manga_id = re.search(r'\\"series_id\\":(\d+),', resp.text).group(1)
+        return manga_id
 
     async def get_cover(self, raw_url: str) -> str:
         url_name = await super()._get_url_name(raw_url)
@@ -145,7 +211,7 @@ class _ReaperScans(BasicScanlator):
         return found_manga
 
     async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
-        url_name = await self._get_url_name(raw_url)
+        url_name = await self._get_url_name(raw_url)  # noqa: Duplicated code
         series_id = await self.get_id(raw_url)
         chapters: list[dict] = await self.bot.apis.reaperscans.get_chapters_list(series_id)
         found_chapters: list[Chapter] = []
@@ -238,46 +304,8 @@ class _Bato(_Mangapark):
         return chapters[::-1]  # could sort based on index, but that will require more processing
 
 
-class _Zinmanga(BasicScanlator):
-    def __init__(self, name: str, **kwargs):
-        super().__init__(name, **kwargs)
-
-    async def get_all_chapters(self, raw_url: str, current_page: int = 1, max_page: int | None = None) -> list[Chapter]:
-        url_name = await self._get_url_name(raw_url)
-        _id = await self.get_id(raw_url)
-        is_1st_request = current_page == 1
-        if is_1st_request:
-            req_url = self.json_tree.properties.format_urls.manga.format(url_name=url_name, id=_id)
-        else:
-            req_url = self.json_tree.properties.format_urls.ajax.format(url_name=url_name, id=_id)
-        if url_name is None:
-            req_url = req_url.removesuffix("None" if not req_url.endswith("None/") else "None/")
-
-        req_url = req_url.replace("{page}", str(current_page))
-        text = await self._get_text(req_url, method="GET")  # noqa
-
-        if not is_1st_request:
-            text = json.loads(text)["list_chap"]
-        soup = BeautifulSoup(text, "html.parser")
-        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
-        sel = "ul#nav_list_chapter_id_detail>li:last-child>a,ul#nav_list_chapter_id_detail>li:last-child.active>span"
-        last_page_tag = soup.select_one(sel)
-
-        chapters = self._extract_chapters_from_html(text)
-        if is_1st_request:
-            if not last_page_tag:
-                return chapters
-            else:
-                max_page = int(last_page_tag.get_text(strip=True))
-        if current_page < max_page:
-            chapters[:0] = await self.get_all_chapters(raw_url, current_page + 1, max_page)
-        for i, chap in enumerate(chapters):
-            chap.index = i
-        return chapters
-
-
 class _Flamecomics(BasicScanlator):
-    def _extract_chapters_from_html(self, text: str) -> list[Chapter]:
+    def _extract_chapters_from_html(self, text: str, url_name: str = None) -> list[Chapter]:
         token_rx = re.compile(r"\"token\":\"(?P<id>[a-z\d]+)\"")
         chapter_num_rx = re.compile(r"\"chapter\":\"(?P<num>(?:\d*[.])?\d+)\"")
         series_id_rx = re.compile(r"\"series_id\":(?P<id>\d+)")
@@ -294,6 +322,119 @@ class _Flamecomics(BasicScanlator):
         return found_chapters
 
 
+class _Hivetoon(BasicScanlator):
+    chapters_path = "/api/chapters"
+    search_path = "/api/search"
+
+    def _extract_fp_manga_from_api_response(self, json_list: list[dict]) -> list[PartialManga]:
+        found_manga: list[PartialManga] = []
+        for item_dict in json_list:
+            title = item_dict["postTitle"]
+            url = self.json_tree.properties.format_urls.manga.format(url_name=item_dict["slug"])
+            cover = item_dict["featuredImage"]
+            _id = item_dict["id"]
+
+            latest_chapters: list[Chapter] = []
+            latest_chapters_resp: list[dict] = item_dict["chapters"]
+
+            for i, chapter in enumerate(latest_chapters_resp):
+                chapter_url = url.removesuffix("/") + "/" + chapter["slug"]
+                chapter_name = f"Chapter {chapter['number']}"
+                is_premium = chapter["isLocked"] is True
+                latest_chapters.append(Chapter(chapter_url, chapter_name, i, is_premium))
+
+            p_manga = PartialManga(_id, title, url, self.name, cover, latest_chapters[::-1])
+            found_manga.append(p_manga)
+        return found_manga
+
+    async def get_fp_partial_manga(self) -> list[PartialManga]:
+        text = await self._get_text(self.json_tree.properties.latest_updates_url)
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+        json_result = Parser.parse_text(str(soup))
+        fp_mangas: list[dict] = find_values_by_key(json_result, "initalPosts")
+        found_manga: list[PartialManga] = self._extract_fp_manga_from_api_response(fp_mangas)
+        return found_manga
+
+    async def get_id(self, raw_url: str) -> str:
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        manga_id = re.search(r'\\"postId\\":(\d+)', resp.text).group(1)
+        return manga_id.strip()
+
+    async def get_title(self, raw_url: str) -> str | None:
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        title = re.search(self.json_tree.selectors.title[0], resp.text).group(1)
+        return title.strip()
+
+    async def get_synopsis(self, raw_url: str) -> str | None:
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        synopsis = re.search(self.json_tree.selectors.synopsis, resp.text).group(1)
+        return synopsis.strip()
+
+    async def get_cover(self, raw_url: str) -> str:
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        cover = re.search(self.json_tree.selectors.cover[0], resp.text).group(1)
+        if not cover:  # if the cover is not found, then use the default method
+            return await super().get_cover(raw_url)
+        return cover.strip()
+
+    async def get_status(self, raw_url: str) -> str:
+        resp = await self.bot.session.get(raw_url)
+        await raise_and_report_for_status(self.bot, resp)
+        status = re.search(self.json_tree.selectors.status[0], resp.text).group(1)
+        return status.lower().title().strip()
+
+    async def get_all_chapters(self, raw_url: str, skip: int = 0, series_id: str | None = None) -> list[Chapter]:
+        """
+        Get all chapters of a manga from the given URL
+
+        Args:
+            raw_url: the url to request
+            skip: the number of chapters to skip when fetching them
+            series_id: the series id of the manga passed as a parameter
+                in recursive calls to avoid extra api calls
+
+        Returns:
+            list[Chapter]: a list of Chapter objects
+        """
+
+        if series_id is None:  # do this once on the first call to avoid repetitive api calls for the same info
+            # even though this is not necessary since the first request will be cached, and any later requests
+            # to the same endpoint would just be grabbed from cache
+            series_id = await self.get_id(raw_url)
+
+        # "https://hivetoon.com/api/chapters?postId=15&skip=0&take=50&order=desc"
+        req_params = f"postId={series_id}&skip={skip}&take=50&order=asc"
+        req_url = self.json_tree.properties.base_url + self.chapters_path + '?' + req_params
+        all_chapters: list[Chapter] = []
+
+        resp = await self.bot.session.get(req_url)
+        data = resp.json()
+
+        chapters = data["post"]["chapters"]
+        total_chapters_count = data["totalChapterCount"]
+        for i, chapter in enumerate(chapters):
+            chapter_url = f"{raw_url.removesuffix('/')}/{chapter['slug']}"
+            chapter_name = chapter["title"] or f"Chapter {chapter['number']}"
+            is_premium = chapter["isLocked"] is True
+            all_chapters.append(Chapter(chapter_url, chapter_name, skip + i, is_premium))
+        if skip < total_chapters_count:
+            all_chapters += await self.get_all_chapters(raw_url, skip + 50, series_id)
+        return all_chapters
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        text = await self._search_req(query)
+        search_results = json.loads(text)
+        found_manga: list[PartialManga] = self._extract_fp_manga_from_api_response(search_results.get("posts", []))
+        if as_em:
+            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
+        return found_manga
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
     flamecomics: str = "flamecomics"
@@ -302,6 +443,7 @@ class CustomKeys:
     mangapark: str = "mangapark"
     bato: str = "bato"
     gourmet: str = "gourmet"
+    hivescans: str = "hivescans"
 
 
 keys = CustomKeys()
@@ -313,4 +455,4 @@ scanlators[keys.novelmic] = _NovelMic(keys.novelmic, **scanlators[keys.novelmic]
 scanlators[keys.mangapark] = _Mangapark(keys.mangapark, **scanlators[keys.mangapark])  # noqa: This is a dict
 scanlators[keys.bato] = _Bato(keys.bato, **scanlators[keys.bato])  # noqa: This is a dict
 scanlators[keys.gourmet] = _GourmetScans(keys.gourmet, **scanlators[keys.gourmet])  # noqa: This is a dict
-# scanlators[keys.zinmanga] = _Zinmanga(keys.zinmanga, **scanlators[keys.zinmanga])  # noqa: This is a dict
+scanlators[keys.hivescans] = _Hivetoon(keys.hivescans, **scanlators[keys.hivescans])  # noqa: This is a dict

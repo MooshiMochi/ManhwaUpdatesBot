@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from src.core.apis import APIManager
 import aiohttp
 
-from src.core.cache import CachedClientSession
+from src.core.cache import CachedCurlCffiSession
 
 
 class ComickAppAPI:
@@ -41,8 +41,8 @@ class ComickAppAPI:
         if self.rate_limit_remaining is not None and self.rate_limit_remaining == 0:
             await asyncio.sleep(self.rate_limit_reset)
         try:
-            response = await self.manager.bot.curl_session.request(method, url, params=params, json=data,
-                                                                   headers=headers, **kwargs)
+            response = await self.manager.bot.session.request(method, url, params=params, json=data,
+                                                              headers=headers, **kwargs)
             if response.status_code != 200:
                 raise Exception(
                     f"Request failed with status {response.status_code}\nURL: {response.url}"
@@ -134,20 +134,31 @@ class ComickAppAPI:
         result = [value[0] for value in chapter_dict.values()]
         return result
 
-    async def get_chapters_list(self, manga_id: str, language: str = None, page: int = 1) -> list[Dict[str, Any]]:
-        """Return a list of chapters in ascending order"""
+    async def get_chapters_list(self, manga_id: str, language: str = None, page: int = 1,
+                                page_limit: Optional[int] = None) -> tuple[list[Dict[str, Any]], int]:
+        """Return a list of chapters in ascending order
+        :param manga_id: The manga ID.
+        :param language: The language code.
+        :param page: The page number.
+        :param page_limit: The maximum number of pages to fetch.
+
+        :return: A tuple of a list of chapters in JSON format and the total number of chapters available.
+        """
         if language is None:
             language = "en"
+        if page_limit is None:
+            page_limit = float("inf")
         endpoint = f"comic/{manga_id}/chapters?lang={language}&page={page}"
         # params = {"lang": language, "page": page}
         result = await self.__request("GET", endpoint)
 
-        if result["chapters"]:
-            result["chapters"].extend(await self.get_chapters_list(manga_id, language, page + 1))
+        if result["chapters"] and page < page_limit:
+            result["chapters"].extend((await self.get_chapters_list(manga_id, language, page + 1))[0])
 
         result["chapters"] = self._remove_duplicate_chapters(result["chapters"])
+        total_chapters_available = result["total"]
         result = sorted(result["chapters"], key=lambda _x: float(_x['chap']))
-        return list(result)
+        return list(result), total_chapters_available
 
     async def search(
             self,
@@ -164,14 +175,56 @@ class ComickAppAPI:
         }
         params = {k: v for k, v in params.items() if v is not None}
         kwargs = {}
-        if isinstance(self.manager.session, CachedClientSession):
+        if isinstance(self.manager.session, CachedCurlCffiSession):
             kwargs["cache_time"] = 0
         return await self.__request("GET", endpoint, params=params, **kwargs)
 
-    async def get_cover(self, manga_id: str) -> str | None:
+    async def get_cover_filename(self, manga_id: str) -> str | None:
         data = await self.get_manga(manga_id)
         covers = data["comic"]["md_covers"]
         if not covers:
             return None
         cover_filename = covers[0]["b2key"]
-        return f"https://meo.comick.pictures/{cover_filename}"
+        return cover_filename
+
+    async def get_latest_chapters(
+            self,
+            lang: Optional[List[str]] = None,
+            page: int = 1,
+            gender: Optional[int] = None,
+            order: str = "new",
+            device_memory: Optional[str] = None,
+            tachiyomi: bool = None,
+            content_type: Optional[List[str]] = None,
+            accept_erotic_content: bool = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetches the latest chapters based on the given parameters.
+
+        :param lang: List of locale codes for language filtering.
+        :param page: The page number to fetch (default: 1).
+        :param gender: Gender filter (1 or 2).
+        :param order: Sorting order ('hot' or 'new', default: 'new').
+        :param device_memory: Device memory information (optional).
+        :param tachiyomi: Tachiyomi flag for third-party software (default: True).
+        :param content_type: List of content types to filter (e.g., 'manga', 'manhwa', 'manhua').
+        :param accept_erotic_content: Whether to include erotic content (default: True).
+        :return: A list of chapters in JSON format.
+        """
+        endpoint = "chapter/"
+        params = {
+            "lang": lang,
+            "page": page,
+            "gender": gender,
+            "order": order,
+            "device-memory": device_memory,
+            "tachiyomi": str(tachiyomi).lower() if tachiyomi is not None else None,
+            "type": content_type,
+            "accept_erotic_content": str(accept_erotic_content).lower() if accept_erotic_content is not None else None,
+        }
+
+        # Filter out None values from params
+        params = {key: value for key, value in params.items() if value is not None}
+
+        # Make the API request
+        return await self.__request("GET", endpoint, params=params, cache_time=0)

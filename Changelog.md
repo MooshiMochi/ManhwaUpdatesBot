@@ -2,6 +2,119 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## January 26th 2025
+
+- Replaced all requests to only use the curl_cffi library.
+- Added support for https://hivetoon.com.
+- Fixed https://theblank.net website.
+- Added back support for https://www.gyarelease.it/ as it was removed by accident.
+- Fixed typo in json_map.py that made it impossible for websites to identify whether a chapter was premium or not.
+
+- Added `_Hivescans` custom class in [custom.py](/src/core/scanlators/custom.py).
+- Added a `_ChapterSelectors` class to [json_tree.py](src/core/scanlators/json_tree.py) for better typing.
+- Added `R_METHOD_LITERAL` to [static.py](src/static.py) for the literal typing in request functions that take a method
+  as a parameter.
+- Added `is_premium` property to the `Chapter` class in [objects.py](src/core/objects.py).
+- Added functionality to unload `PartialManga` objects as well in `DynamicURLScanlator` classes.
+- Chapters in `PartialManga` will display a '🔒' when printed if they are premium.
+- Updated `OmegaScansAPI` to use curl-based requests rather than aiohttp-based.
+- Updated `ReaperScansAPI` to use curl-based requests rather than aiohttp-based.
+- Updated `ZeroScansAPI` to use curl-based requests rather than aiohttp-based.
+- Changed the type of the `session` parameter in the `translate` function in [utils.py](src/utils.py) to
+  `CachedCurlCffiSession`.
+- Removed the `CachedResponse` class from [objects.py](src/core/objects.py).
+- Removed `epsilonscan` and `epsilonscansoft` from the bot (specifically
+  from [lookup_map.json](src/core/scanlators/lookup_map.json).)
+- Removed `lscomic` code from the bot (specifically from [lookup_map.json](src/core/scanlators/lookup_map.json).)
+- Removed `CachedClientSession` class from [cache.py](src/core/cache.py) (aiohttp based) and `flaresolverr.py` (
+  webserver based) from the bot.
+- Added a usage for `get_from_cache` method from [cache.py](src/core/cache.py).
+- Added the `search` autocomplete in the [autocomplete.py](src/ui/autocompletes.py) file as it got deleted in the
+  previous update.
+- Removed code for initializing and closing flaresolverrr sessions.
+- Added code to check whether a chapter is premium or not for all areas where chapters are fetchd (i.e., search,
+  front_page, get_all_chapters.)
+- Removed flaresolverr related code from [config_loader.py](src/core/config_loader.py)
+  and [config.yml.example](./config.yml.example).
+- CachedCurlCffiSession now removes cached results if their status_code == 403.
+- Created a Parser class in [html_json_parser.py](/src/html_json_parser.py) that parses any valid JSON from HTML text.
+- Futureproofed Reaper's update check by adding support for paid chapters (I looked at novels for this).
+- As a bonus, reaper now technically supports novel updates as well.
+- Improved the `check_updates` method from Comick. It is now much more efficient.
+- Added `get_fp_partial_manga` method to Comick.
+- Added `get_fp_partial_manga` method to Mangadex.
+- Added support for paid chapters to Comick
+- Added a `searc` autocomplete method to the [autocompletes.py](src/ui/autocompletes.py) file.
+- Added ability to extract cover from the `style` attribute of an HTML tag.
+- The `check_updates` method from `AbstractScanlator` now supports paid chapters.
+- Added `_build_paid_chapter_url` method to `BasicScanlator` class. It's used when the scanlator doesn't give the link
+  to the paid chapter, but we can construct it using the chapter number.
+- Made `json_tree.selectors.front_page.chapters` property optional in the schema file.
+- Added `get_latest_chapters` method to the `ComickAPI` class.
+- Added `get_latest_chapters` method to the `MangadexAPI` class.
+- Modified the `get_all_chapters` method of the `ComickAPI` class to support returing chapters on a specific page.
+- Updated the `/next_update_check` command. Each scanlator will have its own update check schedule.
+- Added a method `extract_manga_by_command_parameter` that extracts manga object based on the command parameter.
+- Added support for the `/settings` command in DMs.
+- Added a warning check for the `default_ping_role` when `/settings` command is run in a server.
+- Updated [config.example.yml](./config.yml.example): Removed flaresolverr related configs.
+- Updated [config_loader.py](src/core/config_loader.py): Removed flaresolverr related code.
+- Updated OmegaScans scanlator. Added its own `get_fp_partial_manga` method.
+    - The search method now supports paid chapters as well
+- Added `get_fp_partial_manga` method to ReaperScans class. It now supports paid chapters and novels too.
+- Removed `ZinManga` custom class from [custom.py](src/core/scanlators/custom.py).
+    - All its functionality can be achieved with the `BasicScanlator` class.
+- Updated the `Database.get_series_to_update` method to only return series for a specific scanlator if needed.
+- Modified the `Database.get_guild_config` method to return either `GuildSettings` or `DMSettings` object based on the
+  new `user` parameter.
+- Added the `get_guild_tracked_scanlators` and `is_scanlator_disabled` methods to the `Database` class.
+- Added a new [html_json_parser.py](src/html_json_parser.py) file to parse JSON from an HTML text.
+- Added a `supports_search` property to the JSON tree and schema file.
+- Added the `_ChapterSelectors` and `_NoPremiumChapterURL` classes to the JSON tree.
+- Removed AGRComics (or anigliscans) from the bot due to 403 errors on 100% of the requests made.
+    - Might create a JavaScript server running Puppeteer, and see if that works.
+- Removed LSComics from the bot.
+- Fixed NightScans lookup map.
+- Fixed ResetScans lookup map.
+- Fixed Zinmanga lookup map.
+- Removed AstraScans from the bot
+- Removed Mangakakalot from the bot. Use manganato instead.
+- Fixed Demonreader lookup map.
+- Removed EpsilonScanSoft from the bot.
+- Removed EpsilonScan from the bot.
+- Added GyaRelease to the bot. It was previously removed by accident.
+- Added `no_premium_chapter_url` to all `chapter` properties in the lookup map schema.
+- Added multiple description tags to the lookup map schema.
+- Added `status_changed` property to `ChapterUpdate` class.
+- Changed the `Manga.available_chapters` to `Manga.chapters`
+- Added a `_check_and_fix_chapters_index` that runs on the `load` and `unload` function calls in the `Manga` class.
+- Added a `DMSettings` class to the `objects.py` file.
+- Deleted the `CachedResponse` class from the `objects.py` file.
+- Added support for paid chapters in the `omegascansAPI.py` file.
+- Added support for paid chapters in the `reaperAPI.py` file.
+- Added a `scrap.py` file in the `tests` folder. This file is used to test random code snippets.
+- Added the `lock` emote in the `Emotes` class in the `static.py` file.
+- Removed `anigliscans`, `epsilonscansoft` and `epsilonscan` from `ScanlatorsRequiringUserAgent` class in the
+  `static.py`
+  file.
+
+- Complete revamp of the update check system.
+    - Each scanlator can have its own update check interaval
+    - Added a backup update check method that runs every 3 hours. It checks each manga for updates.
+
+- Added the `flatten` and `find_values_by_key` method to the `utils.py` file. They are used for the new Parser.
+- Updated `SettingsView` to support the `DMSettings` objects.
+
+### Bug Fixes:
+
+- Fixed bug in `/track` command where it would say the new updates will be sent in the default notifications channel
+  instead of the scanlator association channel if it was set.
+- Fixed bug in the `Database.update_series` method where the database changes weren't being committed.
+
+## January 21st 2025
+
+- Removed support for LSComic
+
 ## January 20th 2024
 
 ### Bug Fixes:
@@ -15,6 +128,17 @@
 
 - Improved the search button from the bookmarks view.
 - Adde rapidfuzz to requirements.txt
+
+## // December 16th 2024
+
+### Bug Fixes:
+
+- Fixed asura selectors.
+
+## // Decemper 11th 2024
+
+- Made the search method for the scanlators optional
+- Added the 'supports_search' property in the schema file
 
 ## // November 25th 2024
 

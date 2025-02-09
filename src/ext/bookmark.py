@@ -74,8 +74,8 @@ class BookmarkCog(commands.Cog):
             )
             if not bookmark:  # not possible since we are using the manga object to create this
                 raise MangaNotFoundError(manga_url_or_id)
-            if bookmark.manga.available_chapters and len(bookmark.manga.available_chapters) > 0:
-                bookmark.last_read_chapter = bookmark.manga.available_chapters[0]
+            if bookmark.manga.chapters and len(bookmark.manga.chapters) > 0:
+                bookmark.last_read_chapter = bookmark.manga.chapters[0]
             else:
                 return await interaction.followup.send(
                     embed=discord.Embed(
@@ -188,7 +188,7 @@ class BookmarkCog(commands.Cog):
             except ValueError:
                 raise ChapterNotFoundError()
             try:
-                new_chapter = bookmark.manga.available_chapters[chapter_index]
+                new_chapter = bookmark.manga.chapters[chapter_index]
             except (IndexError, TypeError):
                 raise ChapterNotFoundError()
 
@@ -200,7 +200,7 @@ class BookmarkCog(commands.Cog):
         user_subscribed: bool = False
         should_track: bool = False
         # no need to worry about available_chapters being empty because it's handled above
-        if bookmark.last_read_chapter == bookmark.manga.available_chapters[-1] and not bookmark.manga.completed:
+        if bookmark.last_read_chapter == bookmark.manga.chapters[-1] and not bookmark.manga.completed:
             # check if the user is subscribed to the manga with manga.id
             # if not, subscribe user
             is_tracked: bool = await self.bot.db.is_manga_tracked(

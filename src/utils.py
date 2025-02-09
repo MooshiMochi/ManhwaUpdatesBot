@@ -14,9 +14,8 @@ import curl_cffi.requests
 import discord
 
 if TYPE_CHECKING:
-    from src.core import MangaClient
-    from src.core.objects import Bookmark
-    from src.core import CachedClientSession
+    from src.core import CachedCurlCffiSession, errors, MangaClient
+    from src.core.objects import Bookmark, Manga
     from src.core.scanlators.classes import AbstractScanlator
 
 import os
@@ -326,9 +325,9 @@ def create_bookmark_embed(bot: MangaClient, bookmark: Bookmark, scanlator_icon_u
         title=f"Bookmark: {bookmark.manga.title}", color=discord.Color.blurple(), url=bookmark.manga.url
     )
     last_read_index = bookmark.last_read_chapter.index
-    next_chapter = next((x for x in bookmark.manga.available_chapters if x.index > last_read_index), None)
-    if bookmark.manga.available_chapters:
-        available_chapters_str = f"{bookmark.manga.available_chapters[-1]} ({len(bookmark.manga.available_chapters)})\n"
+    next_chapter = next((x for x in bookmark.manga.chapters if x.index > last_read_index), None)
+    if bookmark.manga.chapters:
+        available_chapters_str = f"{bookmark.manga.chapters[-1]} ({len(bookmark.manga.chapters)})\n"
     else:
         available_chapters_str = "`Wait for updates`\n"
 
@@ -632,7 +631,7 @@ def dict_remove_keys(d: dict, keys: list[str]) -> dict:
     return {k: v for k, v in d.items() if k not in keys}
 
 
-async def translate(session: CachedClientSession, text: str, from_: str, to_: str) -> tuple[str, str]:
+async def translate(session: CachedCurlCffiSession, text: str, from_: str, to_: str) -> tuple[str, str]:
     """
     Summary:
         Translate text from one language to another.
@@ -642,7 +641,7 @@ async def translate(session: CachedClientSession, text: str, from_: str, to_: st
 
 
     Args:
-        session: CachedClientSession - the session to use to make the request
+        session: CachedCurlCffiSession - the session to use to make the request
         text: Text to translate
         from_: Language to translate from
         to_: Language to translate to
@@ -777,3 +776,85 @@ def check_missing_perms(current_perms: discord.Permissions, target_perms: discor
     """
     missing_perms = target_perms & ~current_perms
     return [perm for perm, value in dict(missing_perms).items() if value]
+
+
+def flatten(nested_list: list[Any]) -> list[Any] | Any:
+    """
+    Recursively flattens a nested list.
+    """
+    flat = []
+    for item in nested_list:
+        if isinstance(item, list):
+            flat.extend(flatten(item))
+        else:
+            flat.append(item)
+    return flat
+
+
+def find_values_by_key(data: dict | list, target_key):
+    """
+    Recursively traverse the dictionary (or list of dictionaries) 'data'
+    and return a list of all values corresponding to 'target_key'.
+
+    Parameters:
+        data (dict or list): The data to search through.
+        target_key (str): The key whose values are to be found.
+
+    Returns:
+        list: A list of values for each occurrence of the target key.
+    """
+    results = []
+
+    if isinstance(data, dict):
+        for key, value in data.items():  # noqa: Scope warning
+            # Check if the current key matches target_key
+            if key == target_key:
+                results.append(value)
+            # If the value is a dict or list, traverse it recursively.
+            if isinstance(value, (dict, list)):
+                results.extend(find_values_by_key(value, target_key))
+
+    elif isinstance(data, list):
+        for item in data:
+            # Recursively search each item in the list.
+            results.extend(find_values_by_key(item, target_key))
+    final_result = flatten(results)
+    return final_result
+
+
+async def extract_manga_by_command_parameter(
+        bot: MangaClient,
+        command_parameter: str,
+        scanlators: dict[str, AbstractScanlator],
+        url_regex: re.Pattern[str],
+        errors_module: "errors"
+) -> Optional[Manga]:
+    """
+    Summary:
+        Extracts the manga from the db based on the command parameter.
+        The commands /info and /chapters implement this function.
+
+    Parameters:
+        bot (MangaClient): The MangaClient instance.
+        command_parameter (str): The command parameter to extract from.
+        scanlators (List[AbstractScanlator]): The list of scanlators to search through.
+        url_regex (re.Pattern[str]): A regex pattern to match URLs.
+        errors_module: The 'errors' module.
+        This is used to access errors without causing a circular import.
+
+    Returns:
+        Optional[Manga]: The manga object if found in the database otherwise None.
+    """
+    # Extract the manga ID and scanlator from the command parameter
+    if url_regex.search(command_parameter):
+        scanlator = get_manga_scanlator_class(scanlators, command_parameter)
+        if scanlator is None:
+            raise errors_module.UnsupportedScanlatorURLFormatError(command_parameter)
+        scanlator_name = scanlator.name
+        manga_id = await scanlator.get_id(command_parameter)
+    else:
+        try:
+            manga_id, scanlator_name = command_parameter.split("|")
+        except ValueError:
+            raise errors_module.MangaNotFoundError(command_parameter)
+    return await bot.db.get_series(manga_id, scanlator_name)

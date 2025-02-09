@@ -42,8 +42,8 @@ class Restricted(commands.Cog):
         self.client.logger.info("Loaded Restricted Cog...")
 
     async def grab_emoji(self, url: str):
-        async with self.client.session.get(url) as r:
-            result = await r.read()
+        r = await self.client.session.get(url)
+        result = r.content
         return result
 
     async def run_process(self, command):

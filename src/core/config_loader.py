@@ -111,24 +111,16 @@ def ensure_configs(
             "password": "em03wrup0hod",  # noqa
         },
         "user-agents": {
-            "anigliscans": None,
             "toonily": None,
             "theblank": None,
-            "epsilonscansoft": None,
-            "epsilonscan": None
         },
         "api-keys": {
-            "flaresolverr": None,
             "webshare": None
         },
         "patreon": {
             "access-token": None,
             "campaign-id": None
         },
-        "flaresolverr": {
-            "base_url": "http://localhost:1234",
-            "enabled": False
-        }
     }
 
     config_edited: bool = False

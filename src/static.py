@@ -1,4 +1,7 @@
 import re
+from typing import Literal
+
+R_METHOD_LITERAL = Literal["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "PATCH"]
 
 
 class Emotes:
@@ -7,6 +10,7 @@ class Emotes:
     success = "<a:check2:1188236008135868487>"
     error = "<a:error_no:1205218470594084954>"
     cancel = error
+    lock = "<:purple_lock:1335845570748616705>"
 
 
 class Constants:
@@ -187,11 +191,8 @@ class ScanlatorsRequiringUserAgent:
     A class that contains a list of scanlators that require a user-agent.
     """
     scanlators = [
-        "anigliscans",
         "toonily",
         "theblank",
-        "epsilonscansoft",
-        "epsilonscan",
     ]
 
 

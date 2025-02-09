@@ -8,7 +8,7 @@ from src.static import Constants, Emotes, RegExpressions
 from src.ui import autocompletes
 
 if TYPE_CHECKING:
-    from src.core import MangaClient
+    from src.core import MangaClient, MangaNotFoundError
     from src.ext.update_check import UpdateCheckCog
 
 from discord import app_commands
@@ -22,7 +22,7 @@ from src.ui.views import BookmarkChapterView, ConfirmView, SubscribeListPaginato
     SupportView
 from src.ui.modals import InputModal
 from src.utils import (
-    group_items_by,
+    extract_manga_by_command_parameter, group_items_by,
     create_embeds,
     modify_embeds,
     get_manga_scanlator_class,
@@ -55,29 +55,24 @@ class CommandsCog(commands.Cog):
     @app_commands.command(
         name="next_update_check", description="Get the time of the next update check."
     )
+    @app_commands.describe(
+        show_all="Whether to show the next update check for all scanlators supported by the bot."
+    )
     @checks.has_premium(dm_only=True)
-    async def next_update_check(self, interaction: discord.Interaction) -> None:
+    async def next_update_check(self, interaction: discord.Interaction, show_all: Optional[bool] = False) -> None:
         # await interaction.response.defer(ephemeral=True, thinking=True)
         updates_cog: UpdateCheckCog | None = self.bot.get_cog("UpdateCheckCog")
         if not updates_cog:
             em = discord.Embed(
-                title="Error",
+                title=f"{Emotes.error} Error",
                 description="The update check cog is not loaded.",
                 color=0xFF0000,
             )
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
             await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
             return
-
-        next_update_ts = int(updates_cog.check_updates_task.next_iteration.timestamp())
-        em = discord.Embed(
-            title="Next Update Check",
-            description=(
-                f"The next update check is scheduled for "
-                f"<t:{next_update_ts}:T> (<t:{next_update_ts}:R>)."
-            ),
-            color=discord.Color.blurple(),
-        )
+        guild_id = (interaction.guild_id or interaction.user.id) if show_all is False else None
+        em = await updates_cog._create_next_update_check_embed(guild_id)  # noqa
         await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
 
     track = app_commands.Group(
@@ -111,7 +106,7 @@ class CommandsCog(commands.Cog):
             manga: Manga | None = await respond_if_limit_reached(
                 scanlator.make_manga_object(manga_url, load_from_db=is_tracked), interaction
             )
-            if manga == "LIMIT_REACHED":
+            if manga == "LIMIT_REACHED":  # noqa
                 return  # Return because we already responded with the respond_if_limit_reached func above
         else:
             try:
@@ -178,7 +173,13 @@ class CommandsCog(commands.Cog):
             else:
                 description = f"Tracking **[{manga.title}]({manga.url})** is successful!"
                 ping_role_id = None
-            description += f"\nNew updates for this manga will be sent in {guild_config.notifications_channel.mention}"
+            notif_channel = guild_config.notifications_channel
+            sc_associations = await self.bot.db.get_scanlator_channel_associations(interaction.guild_id)
+            for asc in sc_associations:
+                if asc.scanlator == manga.scanlator:
+                    notif_channel = interaction.guild.get_channel(asc.channel_id)
+                    break
+            description += f"\nNew updates for this manga will be sent in {notif_channel.mention}"
             description += f"\n\n**Note:** You can change the role to ping with `/track update`."
 
             await self.bot.db.upsert_guild_sub_role(interaction.guild_id, manga.id, manga.scanlator, ping_role_id)
@@ -685,15 +686,13 @@ class CommandsCog(commands.Cog):
     @checks.has_premium(dm_only=True)
     async def chapters(self, interaction: discord.Interaction, manga_id: str):
         await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
-        try:
-            manga_id, scanlator_name = manga_id.split("|")
-        except ValueError:
-            raise errors.MangaNotFoundError(manga_id)
-        manga: Manga = await self.bot.db.get_series(manga_id, scanlator_name)
+        manga = await extract_manga_by_command_parameter(self.bot, manga_id, scanlators, RegExpressions.url, errors)
+        if not manga:
+            raise MangaNotFoundError(manga_id)
 
         embeds = create_embeds(
             "{chapter}",
-            [{"chapter": chapter} for chapter in manga.available_chapters],
+            [{"chapter": chapter} for chapter in manga.chapters],
             per_page=20,
         )
         modify_embeds(
@@ -701,6 +700,7 @@ class CommandsCog(commands.Cog):
             title_kwargs={
                 "title": f"Chapters for {manga.title}",
                 "color": discord.Color.green(),
+                "url": manga.url
             },
             footer_kwargs={
                 "text": self.bot.user.display_name,
@@ -838,11 +838,7 @@ Ensure the bot has these permissions for smooth operation.
             series_id: str,
     ) -> None:
         await interaction.response.defer(ephemeral=True)  # noqa
-        try:
-            series_id, scanlator_name = series_id.split("|")
-        except ValueError:
-            raise errors.MangaNotFoundError(series_id)
-        manga = await self.bot.db.get_series(series_id, scanlator_name)
+        manga = await extract_manga_by_command_parameter(self.bot, series_id, scanlators, RegExpressions.url, errors)
         if not manga:
             raise errors.MangaNotFoundError(series_id)
         em = manga.get_display_embed(scanlators)
@@ -856,7 +852,7 @@ Ensure the bot has these permissions for smooth operation.
     @app_commands.describe(query="The name of the manga.")
     @app_commands.describe(scanlator_website="The website to search on.")
     @app_commands.rename(scanlator_website="scanlator")
-    @app_commands.autocomplete(scanlator_website=autocompletes.scanlator)
+    @app_commands.autocomplete(scanlator_website=autocompletes.search)
     @checks.has_premium(dm_only=True)
     async def search(
             self,
@@ -876,7 +872,7 @@ Ensure the bot has these permissions for smooth operation.
             ephemeral=True,
         )
         cannot_search_em = discord.Embed(
-            title="Error",
+            title=f"{Emotes.warning} Cannot search",
             description=(
                 f"The bot cannot search on that website yet.\n"
                 "Try searching with the manga name instead."
@@ -884,7 +880,7 @@ Ensure the bot has these permissions for smooth operation.
             color=discord.Color.red(),
         )
         no_results_em = discord.Embed(
-            title="Error",
+            title=f"{Emotes.warning} No results",
             description=(
                 f"No results were found for `{query}`.\n"
             ),
@@ -901,7 +897,7 @@ Ensure the bot has these permissions for smooth operation.
                     self.bot.logger.error(f"[{_scanlator.name.title()}] Error when searching: {query}!")
                 else:
                     self.bot.logger.error(f"Error when searching: {query}!")
-                await self.bot.log_to_discord(f"<@!{self.bot.owner_id}> Error when searching", error=_err)
+                await self.bot.log_to_discord(f"<@!{list(self.bot.owner_ids)[-1]}> Error when searching", error=_err)
                 if raise_error:
                     raise errors.CustomError(
                         "An unknown error has occured.\n"
@@ -933,7 +929,7 @@ Ensure the bot has these permissions for smooth operation.
             if not scanlator:
                 await interaction.edit_original_response(
                     embed=discord.Embed(
-                        title="Error",
+                        title=f"{Emotes.warning} Website not found",
                         description=f"Could not find a scanlator with the name `{scanlator_website}`.",
                     )
                     .set_footer(
@@ -941,7 +937,7 @@ Ensure the bot has these permissions for smooth operation.
                     )
                 )
                 return
-            if hasattr(scanlator, "search"):
+            if hasattr(scanlator, "search") and scanlator.json_tree.properties.supports_search:
                 embeds = await _try_request(scanlator.search(query=query, as_em=True), scanlator, True)
                 if not embeds:
                     await interaction.edit_original_response(embed=no_results_em)
@@ -955,7 +951,7 @@ Ensure the bot has these permissions for smooth operation.
             results = await asyncio.gather(*[
                 _try_request(scanlator.search(query=query, as_em=True), scanlator, False)
                 for scanlator in scanlators.values()
-                if hasattr(scanlator, "search")
+                if hasattr(scanlator, "search") and scanlator.json_tree.properties.supports_search
             ])
             results = [x for x in results if x is not None]
             if not results:

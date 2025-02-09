@@ -68,6 +68,16 @@ async def scanlator(_, current: str) -> list[discord.app_commands.Choice[str]]:
            ][:25]
 
 
+@try_except
+async def search(_, current: str) -> list[discord.app_commands.Choice[str]]:
+    return [
+               app_commands.Choice(name=_scanlator.name.title(), value=_scanlator.name) for _scanlator in
+               scanlators.values()
+               if current == "" or _scanlator.name.lower().startswith(current.lower()) and
+                  _scanlator.json_tree.properties.supports_search
+           ][:25]
+
+
 def get_scanlator_from_current_str(current: str) -> tuple[str | None, str | None]:
     """
     Gets the scanlator name and removes it from the current string.

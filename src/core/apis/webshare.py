@@ -9,6 +9,7 @@ import aiohttp
 
 if TYPE_CHECKING:
     from . import APIManager
+    from src.static import R_METHOD_LITERAL
 
 import random
 
@@ -62,22 +63,22 @@ class WebsShare:
             return
         self.manager.bot.logger.info("WebShare wrapper is working...")
 
-    async def _request(self, method: str, endpoint: str, **kwargs) -> dict:
+    async def _request(self, method: R_METHOD_LITERAL, endpoint: str, **kwargs) -> dict:
         await self._rate_limit()
         url = f"{self.base_url}/{endpoint}"
         headers = {"Authorization": f"Token {self.key}"}
         depth = kwargs.pop("depth", 0)
         if depth > 3:
             raise Exception("Max depth reached")
-        async with self.manager.session.request(method, url, headers=headers, **kwargs) as resp:
-            self.request_count += 1
-            if resp.status == 429:
-                # Rate limited. We are requied to wait 60 seconds before trying a new request.
-                await asyncio.sleep(60)
-                kwargs["depth"] = depth + 1
-                return await self._request(method, endpoint, **kwargs)
-            resp.raise_for_status()
-            return await resp.json()
+        resp = await self.manager.session.request(method, url, headers=headers, **kwargs)
+        self.request_count += 1
+        if resp.status_code == 429:
+            # Rate limited. We are requied to wait 60 seconds before trying a new request.
+            await asyncio.sleep(60)
+            kwargs["depth"] = depth + 1
+            return await self._request(method, endpoint, **kwargs)
+        resp.raise_for_status()
+        return resp.json()
 
     async def get_proxy(self) -> Proxy:
         all_proxies = await self.get_proxy_list(per_page=50)

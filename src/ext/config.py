@@ -14,7 +14,7 @@ from discord import app_commands
 from discord.ext.commands import Cog
 from src.core import checks
 
-from src.core.objects import GuildSettings
+from src.core.objects import DMSettings, GuildSettings
 
 
 class ConfigCog(Cog):
@@ -25,15 +25,15 @@ class ConfigCog(Cog):
         self.bot.logger.info("Loaded Config Cog...")
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.guild_id is None:
-            em = discord.Embed(
-                title="Error",
-                description="This command can only be used in a server.",
-                color=0xFF0000,
-            )
-            em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
-            return False
+        # if interaction.guild_id is None:
+        #     em = discord.Embed(
+        #         title="Error",
+        #         description="This command can only be used in a server.",
+        #         color=0xFF0000,
+        #     )
+        #     em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
+        #     await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+        #     return False
         return True
 
     async def check_for_issues(self, interaction: discord.Interaction):
@@ -81,6 +81,15 @@ class ConfigCog(Cog):
                     "warning": f"{Emotes.error} Bot missing critical permissions in this server",
                     "fix": "Give me the {missing_perms} permissions for the server for the bot to work correctly!"
                 }
+            },
+            "default_ping_role": {
+                "notFound": {
+                    "warning": f"{Emotes.warning} Unable to find the Default Ping Role.",
+                    "fixIfIDNotNone": (
+                            "Set a valid Default Ping Role in `/settings` to be able to use ping features or\n" +
+                            "change the permissions for the <@&{ping_role_id}> role."),
+                    "fixIfIDNone": "Set a valid Default Ping Role in `/settings` to be able to use ping features."
+                }
             }
         }
         warnings: list[tuple[str, str]] = []
@@ -91,7 +100,7 @@ class ConfigCog(Cog):
             formatted = "`" + ", ".join(titled) + "`"
             return formatted
 
-        # Check notifications channel and permissions
+        # Check notification channel and permissions
         notifications_channel = getattr(guild_settings, "notifications_channel", None)
         if not notifications_channel:
             warnings.append((warnings_map["notifications_channel"]["missing"]["warning"],
@@ -135,10 +144,27 @@ class ConfigCog(Cog):
                 warnings_map["guild"]["permissions"]["fix"].format(missing_perms=formatted_perms)
             ))
 
+        # Check for default ping role
+        default_ping_role = getattr(guild_settings, "default_ping_role", None)
+        default_ping_role_id = getattr(guild_settings, "default_ping_role_id", None)
+        if not default_ping_role and not default_ping_role_id:
+            if not default_ping_role_id:
+                warnings.append((
+                    warnings_map["default_ping_role"]["notFound"]["warning"],
+                    warnings_map["default_ping_role"]["notFound"]["fixIfIDNone"]
+                ))
+        elif not default_ping_role and default_ping_role_id:
+            warnings.append((
+                warnings_map["default_ping_role"]["notFound"]["warning"],
+                warnings_map["default_ping_role"]["notFound"]["fixIfIDNotNone"].format(
+                    ping_role_id=default_ping_role_id
+                )
+            ))
+
         # Build embed and return
         if warnings:
             embed = discord.Embed(title="System Check",
-                                  description=f"{Emotes.error} {len(warnings)} warning"
+                                  description=f"{Emotes.warning} {len(warnings)} warning"
                                               f"{'s' if len(warnings) > 1 else ''} found.",
                                   color=0xFF5555)
             for warning, solution in warnings:
@@ -149,22 +175,30 @@ class ConfigCog(Cog):
 
     @app_commands.command(
         name="settings",
-        description="View and Edit the server settings."
+        description="View and Edit the server/DM settings."
     )
     @checks.has_permissions(manage_guild=True, is_bot_manager=True)
-    @app_commands.guild_only()
     async def _settings(self, interaction: discord.Interaction):
-        guild_config: GuildSettings = await self.bot.db.get_guild_config(interaction.guild_id)
-        if not guild_config:
-            guild_config = GuildSettings(self.bot, interaction.guild_id, None, None)  # noqa
-        view = SettingsView(self.bot, interaction, guild_config)
+        if interaction.guild_id:
+            _id = interaction.guild_id
+            config = await self.bot.db.get_guild_config(_id)
+            if not config:
+                config = GuildSettings(self.bot, _id, None, None)  # noqa
+        else:
+            _id = interaction.user.id
+            config = await self.bot.db.get_guild_config(_id, user=True)
+            if not config:
+                config = DMSettings(self.bot, _id)
+
+        view = SettingsView(self.bot, interaction, config)
         # noinspection PyProtectedMember
         embed = view.create_embed()
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)  # noqa
 
-        issues_embed: discord.Embed = await self.check_for_issues(interaction)
-        if issues_embed:
-            await interaction.followup.send(ephemeral=True, embed=issues_embed)
+        if interaction.guild_id:  # Warnings should only be displayed for guilds, not DMs
+            issues_embed: discord.Embed = await self.check_for_issues(interaction)
+            if issues_embed:
+                await interaction.followup.send(ephemeral=True, embed=issues_embed)
 
 
 async def setup(bot: MangaClient) -> None:

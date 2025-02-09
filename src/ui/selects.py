@@ -88,7 +88,7 @@ class ViewTypeSelect(Select):
 class ChapterSelect(Select):
     def __init__(self, bookmark: Bookmark, row: int = 3):
 
-        chapter_options = self.create_chapter_options(bookmark.last_read_chapter, bookmark.manga.available_chapters)
+        chapter_options = self.create_chapter_options(bookmark.last_read_chapter, bookmark.manga.chapters)
         options = [
             discord.SelectOption(label=chapter.name, value=str(chapter.index))
             for chapter in chapter_options
@@ -129,7 +129,7 @@ class ChapterSelect(Select):
     async def callback(self, interaction: discord.Interaction):
         try:
             chapter_index: int = int(self.values[0])
-            new_last_read_chapter = self.bookmark.manga.available_chapters[chapter_index]
+            new_last_read_chapter = self.bookmark.manga.chapters[chapter_index]
         except (IndexError, TypeError):
             raise ChapterNotFoundError()
 
@@ -141,7 +141,7 @@ class ChapterSelect(Select):
         bot: MangaClient = self.view.bot
         user_subscribed: bool = False
         should_track: bool = False
-        if self.bookmark.last_read_chapter == self.bookmark.manga.available_chapters[
+        if self.bookmark.last_read_chapter == self.bookmark.manga.chapters[
             -1
         ] and not self.bookmark.manga.completed:
             # check if the user is subscribed to the manga with manga.id

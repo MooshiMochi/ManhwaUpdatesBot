@@ -6,11 +6,7 @@ from typing import Dict, Optional
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.core import (
-    CachedClientSession,
-    CachedCurlCffiSession,
-    Database,
-)
+from src.core import CachedCurlCffiSession, Database
 from src.core.apis import APIManager, ComickAppAPI, MangaDexAPI
 from src.utils import setup_logging, silence_debug_loggers
 
@@ -38,15 +34,24 @@ class Bot:
     proxy_addr: Optional[str] = None
 
     def __init__(self, proxy_url: Optional[str] = None, scanlaors: dict = None):
-        self.session = CachedClientSession(proxy=proxy_url)
         self.db = Database(self, database_name=os.path.join(root_path, "tests", "database.db"))
-        self.mangadex_api = MangaDexAPI(self.session)
-        self.comick_api = ComickAppAPI(self.session)
-        self.curl_session = CachedCurlCffiSession(
+
+        if self.config["proxy"]["enabled"]:
+            if self.config["proxy"]["username"] and self.config["proxy"]["password"]:
+                self.proxy_addr = (
+                    f"http://{self.config['proxy']['username']}:{self.config['proxy']['password']}@"  # noqa
+                    f"{self.config['proxy']['ip']}:{self.config['proxy']['port']}"
+                )
+            else:
+                self.proxy_addr = f"http://{self.config['proxy']['ip']}:{self.config['proxy']['port']}"  # noqa
+
+        self.session = CachedCurlCffiSession(
             impersonate="chrome101",
             name="cache.curl_cffi",
             proxies={"http": proxy_url, "https": proxy_url},
         )
+        self.mangadex_api = MangaDexAPI(self.session)
+        self.comick_api = ComickAppAPI(self.session)
         self.logger = logging.getLogger("bot")
         self.user = User()
         self.apis: APIManager | None = None
@@ -55,12 +60,16 @@ class Bot:
 
     async def close(self):
         await self.db.conn.close()
-        await self.curl_session.close()
         await self.session.close()
 
     async def __aenter__(self):
         await self.db.async_init()
-        self.apis = APIManager(self, CachedClientSession(proxy=self.proxy_addr, name="cache.apis", trust_env=True))
+
+        self.apis = APIManager(self, CachedCurlCffiSession(
+            impersonate="chrome101",
+            name="cache.curl_cffi",
+            proxies={"http": self.proxy_addr, "https": self.proxy_addr},
+        ))
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -122,8 +131,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "ataraxia"
-        url = "https://www.beyondtheataraxia.com/manga/new-game/"
+        key = "zinmanga"
+        url = "https://zinmanga.net/manga/duchess-what-is-identity"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);
@@ -140,7 +149,10 @@ async def main():
         # print("Cover:", cover)
         fp_manga = await scanlator.get_fp_partial_manga();
         # print("FP Manhwa:", fp_manga)
-        search_result = await scanlator.search(query);
+        if scanlator.json_tree.properties.supports_search:
+            search_result = await scanlator.search(query);
+        else:
+            search_result = "Not supported"
         # print("Search:", search_result)
         manga = await scanlator.make_manga_object(url, load_from_db=False)
         # print("Manga obj:", manga)
@@ -148,8 +160,10 @@ async def main():
         # print("Updates result:", updates_result)
 
         results = (
-            f"Title: {title}", f"ID: {_id}", f"URL: {manga.url}", f"All Chapters: {all_chapters}", f"Status: {status}",
-            f"Synopsis: {synopsis}", f"Cover: {cover}", f"FP Manhwa: {fp_manga}", f"Search: {search_result}",
+            f"Title: {title}", f"ID: {_id}", f"URL: {manga.url}", f"All Chapters [{len(all_chapters)}]: {all_chapters}",
+            f"Status: {status}",
+            f"Synopsis: {synopsis}", f"Cover: {cover}", f"FP Manhwa [{len(fp_manga)}]: {fp_manga}",
+            f"Search [{len(search_result)}]: {search_result}",
             f"Manga obj: {manga}", f"Updates result: {updates_result}"
         )
         for result in results:

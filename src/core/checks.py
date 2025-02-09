@@ -21,7 +21,7 @@ def has_permissions(**perms):
 
     async def predicate(interaction: discord.Interaction) -> bool:
         # Check if the user has the required permissions.
-        if not interaction.guild_id:
+        if not interaction.guild_id:  # If the command is executed in DMs, the user has all permissions.
             return True
         member: discord.Member = interaction.guild.get_member(interaction.user.id)
         is_manager_perm = perms.pop("is_bot_manager", None)

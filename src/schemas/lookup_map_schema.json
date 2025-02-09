@@ -16,29 +16,33 @@
               "enum": [
                 "html",
                 null
-              ]
+              ],
+              "description": "If this is set, the bot will assume the website uses ajax API for chapters."
             },
             "request_method": {
               "type": "string",
               "enum": [
-                "http",
                 "curl",
                 "flare"
-              ]
+              ],
+              "description": "This specifies the tool the bot will use to make requests."
             },
             "url_regex": {
-              "type": "string"
+              "type": "string",
+              "description": "The regular expression to match manga URLs for this website."
             },
             "properties": {
               "type": "object",
               "properties": {
                 "base_url": {
                   "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)",
+                  "description": "The base url of the website without the '/' at the end."
                 },
                 "icon_url": {
                   "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)",
+                  "description": "The icon url of the website. This will appear in the embeds as the author image."
                 },
                 "dynamicURL": {
                   "type": "boolean",
@@ -46,18 +50,21 @@
                     true,
                     false
                   ],
-                  "default": false
+                  "default": false,
+                  "description": "Whether the website has IDs in the URLs for manga and chapters."
                 },
                 "format_urls": {
                   "type": "object",
                   "properties": {
                     "ajax": {
                       "type": "string",
-                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)",
+                      "description": "Format url used to build the manga ajax url to scrape chapters."
                     },
                     "manga": {
                       "type": "string",
-                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)",
+                      "description": "Format url used to build the manga url to request for scraping."
                     }
                   },
                   "additionalProperties": false,
@@ -67,19 +74,22 @@
                 },
                 "latest_updates_url": {
                   "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)",
+                  "description": "The url where the latest chapters appear on the website. Usually this is the base url."
                 },
                 "no_status": {
                   "type": "boolean",
                   "enum": [
                     true,
                     false
-                  ]
+                  ],
+                  "description": "This indicates whether the website has a status displayed for the manga on the page."
                 },
                 "time_formats": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Used to calculate the status of the manga based on the last release date of the latest chapter on the manga if there's no status available."
                   }
                 },
                 "requires_update_embed": {
@@ -88,7 +98,8 @@
                     true,
                     false
                   ],
-                  "default": false
+                  "default": false,
+                  "description": "Whether the bot should make a custom updates embed for each chapter or not."
                 },
                 "can_render_cover": {
                   "type": "boolean",
@@ -96,35 +107,46 @@
                     true,
                     false
                   ],
-                  "default": true
+                  "default": true,
+                  "description": "Whether the website allows rendering images on discord or not."
                 },
                 "chapter_regex": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Used to find the ID for chapters if it differs from the manga id. This usually specifies 3 keys: 'before_id', 'id' and 'after_id'"
                 },
                 "missing_id_connector": {
                   "type": "object",
                   "properties": {
                     "char": {
                       "type": "string",
-                      "default": "-"
+                      "default": "-",
+                      "description": "The connecting character that is used to separate the ID from the URL."
                     },
                     "before_id": {
                       "type": "boolean",
-                      "default": false
+                      "default": false,
+                      "description": "Whether the connecting character comes before or after the ID."
                     }
                   },
                   "required": [
                     "char",
                     "before_id"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": false,
+                  "description": "If the chapter or manga uses IDs, then this needs to be defined."
                 },
                 "url_chapter_prefix": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "default": null
+                  "default": null,
+                  "description": "This is the character that will come between the base url + url name and the chapter url (when it's not provided as a whole.)"
+                },
+                "supports_search": {
+                  "type": "boolean",
+                  "description": "Indicates whether the website supports a search feature",
+                  "default": true
                 }
               },
               "allOf": [
@@ -158,7 +180,8 @@
                       "format_urls",
                       "latest_updates_url",
                       "dynamicURL",
-                      "url_chapter_prefix"
+                      "url_chapter_prefix",
+                      "supports_search"
                     ]
                   },
                   "else": {
@@ -169,7 +192,8 @@
                       "latest_updates_url",
                       "dynamicURL",
                       "can_render_cover",
-                      "url_chapter_prefix"
+                      "url_chapter_prefix",
+                      "supports_search"
                     ]
                   }
                 }
@@ -208,6 +232,26 @@
                     },
                     "premium_status": {
                       "type": "string"
+                    },
+                    "no_premium_chapter_url": {
+                      "type": "object",
+                      "properties": {
+                        "string_selector": {
+                          "type": "string"
+                        },
+                        "regex": {
+                          "type": "string"
+                        },
+                        "url_fmt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "string_selector",
+                        "regex",
+                        "url_fmt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -287,6 +331,26 @@
                               "description": "Use the special value '_container_' to reference the container element."
                             }
                           ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false,
@@ -309,7 +373,6 @@
                   "additionalProperties": false,
                   "required": [
                     "container",
-                    "chapters",
                     "title",
                     "url",
                     "cover"
@@ -379,6 +442,26 @@
                               "description": "Use the special value '_container_' to reference the container element."
                             }
                           ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false,
@@ -420,7 +503,6 @@
                 "chapters",
                 "status",
                 "front_page",
-                "search",
                 "unwanted_tags"
               ]
             },
@@ -522,10 +604,6 @@
                           "sub_value"
                         ]
                       },
-                      "required": [
-                        "pattern",
-                        "sub_value"
-                      ],
                       "minItems": 1
                     }
                   },
@@ -559,625 +637,6 @@
                     }
                   },
                   "additionalProperties": false
-                },
-                "extra_params": {
-                  "type": "object",
-                  "description": "The additional required static parameters for the search",
-                  "additionalProperties": {
-                    "type": [
-                      "string",
-                      "null",
-                      "integer",
-                      "boolean"
-                    ]
-                  }
-                },
-                "request_method": {
-                  "type": "string",
-                  "enum": [
-                    "GET",
-                    "POST"
-                  ],
-                  "default": "GET"
-                }
-              },
-              "if": {
-                "properties": {
-                  "as_type": {
-                    "const": "param"
-                  }
-                }
-              },
-              "then": {
-                "required": [
-                  "search_param_name",
-                  "url",
-                  "as_type",
-                  "query_parsing",
-                  "extra_params",
-                  "request_method"
-                ]
-              },
-              "else": {
-                "required": [
-                  "url",
-                  "as_type",
-                  "query_parsing",
-                  "extra_params",
-                  "request_method"
-                ]
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "chapter_ajax",
-            "request_method",
-            "url_regex",
-            "properties",
-            "selectors",
-            "search"
-          ]
-        }
-      }
-    },
-    "custom": {
-      "type": "object",
-      "patternProperties": {
-        "^[a-z]+$": {
-          "type": "object",
-          "properties": {
-            "chapter_ajax": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "enum": [
-                "html",
-                null
-              ]
-            },
-            "request_method": {
-              "type": "string",
-              "enum": [
-                "http",
-                "curl",
-                "flare"
-              ]
-            },
-            "url_regex": {
-              "type": "string"
-            },
-            "properties": {
-              "type": "object",
-              "properties": {
-                "base_url": {
-                  "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
-                },
-                "icon_url": {
-                  "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
-                },
-                "dynamicURL": {
-                  "type": "boolean",
-                  "enum": [
-                    true,
-                    false
-                  ],
-                  "default": false
-                },
-                "format_urls": {
-                  "type": "object",
-                  "properties": {
-                    "ajax": {
-                      "type": "string",
-                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
-                    },
-                    "manga": {
-                      "type": "string",
-                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "manga"
-                  ]
-                },
-                "latest_updates_url": {
-                  "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
-                },
-                "no_status": {
-                  "type": "boolean",
-                  "enum": [
-                    true,
-                    false
-                  ]
-                },
-                "time_formats": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "requires_update_embed": {
-                  "type": "boolean",
-                  "enum": [
-                    true,
-                    false
-                  ],
-                  "default": false
-                },
-                "can_render_cover": {
-                  "type": "boolean",
-                  "enum": [
-                    true,
-                    false
-                  ],
-                  "default": true
-                },
-                "chapter_regex": {
-                  "type": "string"
-                },
-                "missing_id_connector": {
-                  "type": "object",
-                  "properties": {
-                    "char": {
-                      "type": "string",
-                      "default": "-"
-                    },
-                    "before_id": {
-                      "type": "boolean",
-                      "default": false
-                    }
-                  },
-                  "required": [
-                    "char",
-                    "before_id"
-                  ],
-                  "additionalProperties": false
-                },
-                "url_chapter_prefix": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "default": null
-                }
-              },
-              "allOf": [
-                {
-                  "if": {
-                    "properties": {
-                      "dynamicURL": {
-                        "const": true
-                      }
-                    }
-                  },
-                  "then": {
-                    "required": [
-                      "chapter_regex",
-                      "missing_id_connector"
-                    ]
-                  }
-                },
-                {
-                  "if": {
-                    "properties": {
-                      "requires_update_embed": {
-                        "const": null
-                      }
-                    }
-                  },
-                  "then": {
-                    "required": [
-                      "base_url",
-                      "icon_url",
-                      "format_urls",
-                      "latest_updates_url",
-                      "dynamicURL",
-                      "url_chapter_prefix"
-                    ]
-                  },
-                  "else": {
-                    "required": [
-                      "base_url",
-                      "icon_url",
-                      "format_urls",
-                      "latest_updates_url",
-                      "dynamicURL",
-                      "can_render_cover",
-                      "url_chapter_prefix"
-                    ]
-                  }
-                }
-              ],
-              "additionalProperties": false
-            },
-            "selectors": {
-              "type": "object",
-              "properties": {
-                "title": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "synopsis": {
-                  "type": "string"
-                },
-                "cover": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "chapters": {
-                  "type": "object",
-                  "properties": {
-                    "container": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "url": {
-                      "type": "string"
-                    },
-                    "premium_status": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "container",
-                    "name",
-                    "url"
-                  ]
-                },
-                "status": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "front_page": {
-                  "type": "object",
-                  "properties": {
-                    "container": {
-                      "type": "string"
-                    },
-                    "chapters": {
-                      "type": "object",
-                      "properties": {
-                        "container": {
-                          "type": "string"
-                        },
-                        "name": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "_container_"
-                              ],
-                              "description": "Use the special value '_container_' to reference the container element.",
-                              "default": "_container_"
-                            },
-                            {
-                              "type": "string",
-                              "pattern": "^.+$",
-                              "description": "Use the special value '_container_' to reference the container element."
-                            }
-                          ],
-                          "description": "Use the special value '_container_' to reference the container element."
-                        },
-                        "url": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "_container_"
-                              ],
-                              "description": "Use the special value '_container_' to reference the container element.",
-                              "default": "_container_"
-                            },
-                            {
-                              "type": "string",
-                              "pattern": "^.+$",
-                              "description": "Use the special value '_container_' to reference the container element."
-                            }
-                          ],
-                          "description": "Use the special value '_container_' to reference the container element."
-                        },
-                        "premium_status": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "_container_"
-                              ],
-                              "description": "Use the special value '_container_' to reference the container element.",
-                              "default": "_container_"
-                            },
-                            {
-                              "type": "string",
-                              "pattern": "^.+$",
-                              "description": "Use the special value '_container_' to reference the container element."
-                            }
-                          ]
-                        }
-                      },
-                      "additionalProperties": false,
-                      "required": [
-                        "container",
-                        "name",
-                        "url"
-                      ]
-                    },
-                    "title": {
-                      "type": "string"
-                    },
-                    "url": {
-                      "type": "string"
-                    },
-                    "cover": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "container",
-                    "chapters",
-                    "title",
-                    "url",
-                    "cover"
-                  ]
-                },
-                "search": {
-                  "type": "object",
-                  "properties": {
-                    "container": {
-                      "type": "string"
-                    },
-                    "chapters": {
-                      "type": "object",
-                      "properties": {
-                        "container": {
-                          "type": "string"
-                        },
-                        "name": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "_container_"
-                              ],
-                              "description": "Use the special value '_container_' to reference the container element.",
-                              "default": "_container_"
-                            },
-                            {
-                              "type": "string",
-                              "pattern": "^.+$",
-                              "description": "Use the special value '_container_' to reference the container element."
-                            }
-                          ],
-                          "description": "Use the special value '_container_' to reference the container element."
-                        },
-                        "url": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "_container_"
-                              ],
-                              "description": "Use the special value '_container_' to reference the container element.",
-                              "default": "_container_"
-                            },
-                            {
-                              "type": "string",
-                              "pattern": "^.+$",
-                              "description": "Use the special value '_container_' to reference the container element."
-                            }
-                          ],
-                          "description": "Use the special value '_container_' to reference the container element."
-                        },
-                        "premium_status": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "_container_"
-                              ],
-                              "description": "Use the special value '_container_' to reference the container element.",
-                              "default": "_container_"
-                            },
-                            {
-                              "type": "string",
-                              "pattern": "^.+$",
-                              "description": "Use the special value '_container_' to reference the container element."
-                            }
-                          ]
-                        }
-                      },
-                      "additionalProperties": false,
-                      "required": [
-                        "container",
-                        "name",
-                        "url"
-                      ]
-                    },
-                    "title": {
-                      "type": "string"
-                    },
-                    "url": {
-                      "type": "string"
-                    },
-                    "cover": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "container",
-                    "title",
-                    "url"
-                  ]
-                },
-                "unwanted_tags": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "title",
-                "synopsis",
-                "cover",
-                "chapters",
-                "status",
-                "front_page",
-                "search",
-                "unwanted_tags"
-              ]
-            },
-            "custom_headers": {
-              "type": "object",
-              "properties": {
-                "User-Agent": {
-                  "type": "string"
-                },
-                "Referer": {
-                  "type": "string"
-                },
-                "Cookies": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "description": "The name of the cookie."
-                      },
-                      "value": {
-                        "type": [
-                          "string",
-                          "integer",
-                          "boolean"
-                        ],
-                        "description": "The value of the cookie."
-                      },
-                      "domain": {
-                        "type": "string",
-                        "description": "The domain of the cookie."
-                      },
-                      "path": {
-                        "type": "string",
-                        "description": "The path of the cookie."
-                      }
-                    },
-                    "required": [
-                      "name",
-                      "value",
-                      "domain",
-                      "path"
-                    ],
-                    "additionalProperties": true
-                  }
-                }
-              },
-              "additionalItems": true
-            },
-            "search": {
-              "type": "object",
-              "properties": {
-                "url": {
-                  "type": "string",
-                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
-                },
-                "search_param_name": {
-                  "type": "string",
-                  "pattern": "^.+$"
-                },
-                "as_type": {
-                  "type": "string",
-                  "default": "param",
-                  "enum": [
-                    "path",
-                    "param",
-                    "data"
-                  ]
-                },
-                "query_parsing": {
-                  "type": "object",
-                  "properties": {
-                    "encoding": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "enum": [
-                        "raw",
-                        "url",
-                        null
-                      ]
-                    },
-                    "regex": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "pattern": {
-                            "type": "string"
-                          },
-                          "sub_value": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "pattern",
-                          "sub_value"
-                        ]
-                      },
-                      "required": [
-                        "pattern",
-                        "sub_value"
-                      ],
-                      "minItems": 1
-                    }
-                  },
-                  "required": [
-                    "encoding"
-                  ],
-                  "dependencies": {
-                    "encoding": {
-                      "oneOf": [
-                        {
-                          "properties": {
-                            "encoding": {
-                              "const": null
-                            }
-                          },
-                          "required": [
-                            "regex"
-                          ]
-                        },
-                        {
-                          "properties": {
-                            "encoding": {
-                              "enum": [
-                                "raw",
-                                "url"
-                              ]
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  }
                 },
                 "extra_params": {
                   "type": "object",
@@ -1222,14 +681,770 @@
               "additionalProperties": false
             }
           },
-          "additionalProperties": false,
           "required": [
             "chapter_ajax",
             "request_method",
             "url_regex",
             "properties",
-            "selectors",
-            "search"
+            "selectors"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "properties": {
+                    "properties": {
+                      "supports_search": {
+                        "const": true
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selectors": {
+                    "required": [
+                      "search"
+                    ]
+                  }
+                },
+                "required": [
+                  "chapter_ajax",
+                  "request_method",
+                  "url_regex",
+                  "properties",
+                  "selectors",
+                  "search"
+                ]
+              },
+              "else": {
+                "required": [
+                  "chapter_ajax",
+                  "request_method",
+                  "url_regex",
+                  "properties",
+                  "selectors"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "custom": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z]+$": {
+          "type": "object",
+          "properties": {
+            "chapter_ajax": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "html",
+                null
+              ]
+            },
+            "request_method": {
+              "type": "string",
+              "enum": [
+                "curl",
+                "flare"
+              ]
+            },
+            "url_regex": {
+              "type": "string"
+            },
+            "properties": {
+              "type": "object",
+              "properties": {
+                "base_url": {
+                  "type": "string",
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                },
+                "icon_url": {
+                  "type": "string",
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                },
+                "dynamicURL": {
+                  "type": "boolean",
+                  "enum": [
+                    true,
+                    false
+                  ],
+                  "default": false
+                },
+                "format_urls": {
+                  "type": "object",
+                  "properties": {
+                    "ajax": {
+                      "type": "string",
+                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                    },
+                    "manga": {
+                      "type": "string",
+                      "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "manga"
+                  ]
+                },
+                "latest_updates_url": {
+                  "type": "string",
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                },
+                "no_status": {
+                  "type": "boolean",
+                  "enum": [
+                    true,
+                    false
+                  ]
+                },
+                "time_formats": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "requires_update_embed": {
+                  "type": "boolean",
+                  "enum": [
+                    true,
+                    false
+                  ],
+                  "default": false
+                },
+                "can_render_cover": {
+                  "type": "boolean",
+                  "enum": [
+                    true,
+                    false
+                  ],
+                  "default": true
+                },
+                "chapter_regex": {
+                  "type": "string"
+                },
+                "missing_id_connector": {
+                  "type": "object",
+                  "properties": {
+                    "char": {
+                      "type": "string",
+                      "default": "-"
+                    },
+                    "before_id": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "char",
+                    "before_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "url_chapter_prefix": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null
+                },
+                "supports_search": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Indicates whether the website supports a search feature"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "dynamicURL": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "chapter_regex",
+                      "missing_id_connector"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "requires_update_embed": {
+                        "const": null
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "base_url",
+                      "icon_url",
+                      "format_urls",
+                      "latest_updates_url",
+                      "dynamicURL",
+                      "url_chapter_prefix",
+                      "supports_search"
+                    ]
+                  },
+                  "else": {
+                    "required": [
+                      "base_url",
+                      "icon_url",
+                      "format_urls",
+                      "latest_updates_url",
+                      "dynamicURL",
+                      "can_render_cover",
+                      "url_chapter_prefix",
+                      "supports_search"
+                    ]
+                  }
+                }
+              ],
+              "additionalProperties": false
+            },
+            "selectors": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "synopsis": {
+                  "type": "string"
+                },
+                "cover": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "chapters": {
+                  "type": "object",
+                  "properties": {
+                    "container": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "premium_status": {
+                      "type": "string"
+                    },
+                    "no_premium_chapter_url": {
+                      "type": "object",
+                      "properties": {
+                        "string_selector": {
+                          "type": "string"
+                        },
+                        "regex": {
+                          "type": "string"
+                        },
+                        "url_fmt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "string_selector",
+                        "regex",
+                        "url_fmt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "container",
+                    "name",
+                    "url"
+                  ]
+                },
+                "status": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "front_page": {
+                  "type": "object",
+                  "properties": {
+                    "container": {
+                      "type": "string"
+                    },
+                    "chapters": {
+                      "type": "object",
+                      "properties": {
+                        "container": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "url": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "premium_status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "container",
+                        "name",
+                        "url"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "cover": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "container",
+                    "title",
+                    "url",
+                    "cover"
+                  ]
+                },
+                "search": {
+                  "type": "object",
+                  "properties": {
+                    "container": {
+                      "type": "string"
+                    },
+                    "chapters": {
+                      "type": "object",
+                      "properties": {
+                        "container": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "url": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ],
+                          "description": "Use the special value '_container_' to reference the container element."
+                        },
+                        "premium_status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "_container_"
+                              ],
+                              "description": "Use the special value '_container_' to reference the container element.",
+                              "default": "_container_"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^.+$",
+                              "description": "Use the special value '_container_' to reference the container element."
+                            }
+                          ]
+                        },
+                        "no_premium_chapter_url": {
+                          "type": "object",
+                          "properties": {
+                            "string_selector": {
+                              "type": "string"
+                            },
+                            "regex": {
+                              "type": "string"
+                            },
+                            "url_fmt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "string_selector",
+                            "regex",
+                            "url_fmt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "container",
+                        "name",
+                        "url"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "cover": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "container",
+                    "title",
+                    "url"
+                  ]
+                },
+                "unwanted_tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "title",
+                "synopsis",
+                "cover",
+                "chapters",
+                "status",
+                "front_page",
+                "unwanted_tags"
+              ]
+            },
+            "custom_headers": {
+              "type": "object",
+              "properties": {
+                "User-Agent": {
+                  "type": "string"
+                },
+                "Referer": {
+                  "type": "string"
+                },
+                "Cookies": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the cookie."
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "integer",
+                          "boolean"
+                        ],
+                        "description": "The value of the cookie."
+                      },
+                      "domain": {
+                        "type": "string",
+                        "description": "The domain of the cookie."
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "The path of the cookie."
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value",
+                      "domain",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalItems": true
+            },
+            "search": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "pattern": "[^\\s+](https?://)?(www\\.)?(\\w+\\.)*(\\w+/?)*(.*)"
+                },
+                "search_param_name": {
+                  "type": "string",
+                  "pattern": "^.+$"
+                },
+                "as_type": {
+                  "type": "string",
+                  "default": "param",
+                  "enum": [
+                    "path",
+                    "param",
+                    "data"
+                  ]
+                },
+                "query_parsing": {
+                  "type": "object",
+                  "properties": {
+                    "encoding": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "raw",
+                        "url",
+                        null
+                      ]
+                    },
+                    "regex": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pattern": {
+                            "type": "string"
+                          },
+                          "sub_value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "pattern",
+                          "sub_value"
+                        ]
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "required": [
+                    "encoding"
+                  ],
+                  "dependencies": {
+                    "encoding": {
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "encoding": {
+                              "const": null
+                            }
+                          },
+                          "required": [
+                            "regex"
+                          ]
+                        },
+                        {
+                          "properties": {
+                            "encoding": {
+                              "enum": [
+                                "raw",
+                                "url"
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "extra_params": {
+                  "type": "object",
+                  "description": "The additional required static parameters for the search",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "null",
+                      "integer",
+                      "boolean"
+                    ]
+                  }
+                },
+                "request_method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "POST"
+                  ],
+                  "default": "GET"
+                }
+              },
+              "if": {
+                "properties": {
+                  "as_type": {
+                    "const": "param"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "search_param_name"
+                ]
+              },
+              "required": [
+                "url",
+                "as_type",
+                "query_parsing",
+                "extra_params",
+                "request_method"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "chapter_ajax",
+            "request_method",
+            "url_regex",
+            "properties",
+            "selectors"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "properties": {
+                    "properties": {
+                      "supports_search": {
+                        "const": true
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selectors": {
+                    "required": [
+                      "search"
+                    ]
+                  },
+                  "search": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "chapter_ajax",
+                  "request_method",
+                  "url_regex",
+                  "properties",
+                  "selectors",
+                  "search"
+                ]
+              },
+              "else": {
+                "required": [
+                  "chapter_ajax",
+                  "request_method",
+                  "url_regex",
+                  "properties",
+                  "selectors"
+                ]
+              }
+            }
           ]
         }
       }

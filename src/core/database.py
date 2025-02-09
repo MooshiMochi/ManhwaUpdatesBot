@@ -13,7 +13,8 @@ from ..static import Constants
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, ScanlatorChannelAssociation, \
+from src.core.objects import DMSettings, GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, \
+    ScanlatorChannelAssociation, \
     SubscriptionObject
 from src.core.scanlators import scanlators
 from io import BytesIO
@@ -751,15 +752,22 @@ class Database:
                 return list(set([row[0] for row in result]))
             return []
 
-    async def get_series_to_update(self) -> list[MangaHeader] | None:
+    async def get_series_to_update(self, scanlator: Optional[str]) -> Optional[list[MangaHeader]]:
         """
+        Parameters:
+            scanlator (Optional[str]): The scanlator to get mangas for.
+            If None, all scanlators will be considered.
+
         Summary:
             Returns a list of Manga class objects that needs to be updated.
             It needs to be updated when:
-                - the manga is not completed
+                - the manga is not completed AND
+                - the manga is tracked by at least one guild, OR
+                - the manga is subscribed to by at least one user, OR
+                - the manga is bookmarked by at least one user
 
         Returns:
-            list[MangHeader] | None: list of Manga class objects that needs to be updated.
+            Optional[list[MangHeader]]: list of Manga class objects that needs to be updated.
         """
         # only update series that are not completed and are subscribed to by at least one user
         async with self.conn.execute(
@@ -772,6 +780,7 @@ class Database:
                         UNION
                         SELECT series_id, scanlator FROM tracked_guild_series
                     )
+                    {f' AND scanlator = "{scanlator}"' if scanlator is not None else ''}
                     AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = false)
                     AND lower(status) NOT IN ({completed_db_set});
                 """
@@ -932,10 +941,13 @@ class Database:
                 )
             return chapters
 
-    async def get_guild_config(self, guild_id: int) -> GuildSettings | None:
+    async def get_guild_config(self, guild_id: int, user: bool = False) -> Optional[GuildSettings | DMSettings]:
         """
+        Args:
+            guild_id: int - the id of the guild or user to get the config for
+            user: bool - whether to return a DMSetting or GuildSettings object
         Returns:
-             Optional[GuildSettings] object if a config is found for the guild.
+             Optional[GuildSettings | DMSettings] object if a config is found for the guild.
         """
         async with aiosqlite.connect(self.db_name) as db:
             async with self.conn.execute(
@@ -946,6 +958,8 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
+                    if user:
+                        return DMSettings(self.bot, *result)
                     return GuildSettings(self.bot, *result)
 
     async def get_many_guild_config(self, guild_ids: list[int]) -> list[GuildSettings] | None:
@@ -1090,6 +1104,7 @@ class Database:
                 manga.scanlator
             ),
         )
+        await self.conn.commit()
         if result.rowcount < 1:
             raise ValueError(f"No series with ID {manga.id} was found.")
 
@@ -1744,3 +1759,45 @@ class Database:
             """,
             role_id, guild_id
         )
+
+    async def is_scanlator_disabled(self, scanlator: str) -> bool:
+        """
+        Summary:
+            Checks if the scanlator is disabled.
+
+        Args:
+            scanlator: str - The scanlator's name
+
+        Returns:
+            bool: Whether the scanlator is disabled.
+        """
+        cursor = await self.conn.execute(
+            """
+            SELECT enabled FROM scanlators_config WHERE scanlator = $1;
+            """,
+            (scanlator,)
+        )
+        result = await cursor.fetchone()
+        return result is not None and not result[0]
+
+    async def get_guild_tracked_scanlators(self, guild_id: int) -> list[str]:
+        """
+        Summary:
+            Returns a list of scanlator names that are tracked in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            list[str]: A list of scanlator names that are tracked in the guild.
+        """
+        cursor = await self.conn.execute(
+            """
+            SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1;
+            """,
+            (guild_id,)
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [row[0] for row in result]
+        return []
