@@ -2,6 +2,18 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## February 10th 2025
+
+- Added https://whalemanga.com
+- Added https://mangasushi.org
+- Added https://manhuaga.com
+- Added https://www.mgeko.cc
+- Added https://templetoons.com
+- Added https://platinumscans.com
+- Added a new function `sort_key` in [utils.py](src/utils.py).
+    - It returns a score based on the similarity of two strings.
+- Removed `Docker` from the requirements section in the [README.md](./README.md) file.
+
 ## February 9th 2025
 
 - Replaced all requests to only use the curl_cffi library.

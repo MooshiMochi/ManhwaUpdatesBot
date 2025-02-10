@@ -12,6 +12,7 @@ import aiohttp
 import bs4
 import curl_cffi.requests
 import discord
+from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
     from src.core import CachedCurlCffiSession, errors, MangaClient
@@ -858,3 +859,20 @@ async def extract_manga_by_command_parameter(
         except ValueError:
             raise errors_module.MangaNotFoundError(command_parameter)
     return await bot.db.get_series(manga_id, scanlator_name)
+
+
+def sort_key(query: str, title: str) -> tuple[float, str]:
+    # WRatio is often more robust for real-world strings.
+    score = fuzz.WRatio(query.lower(), title.lower())
+
+    # You could still incorporate bonus logic if desired:
+    bonus = 0
+    if title.lower().startswith(query.lower()):
+        bonus += 10
+    elif query.lower() in title.lower():
+        bonus += 5
+
+    # Combine the score with the bonus.
+    composite = score + bonus
+    # For descending order, use -composite.
+    return -composite, title.lower()

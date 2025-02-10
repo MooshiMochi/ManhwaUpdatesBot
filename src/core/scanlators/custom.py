@@ -15,7 +15,7 @@ from ...html_json_parser import Parser
 
 from ...static import Constants
 
-from ...utils import raise_and_report_for_status, find_values_by_key
+from ...utils import raise_and_report_for_status, find_values_by_key, sort_key
 
 
 class _OmegaScans(BasicScanlator):
@@ -437,6 +437,33 @@ class _Hivetoon(BasicScanlator):
         return found_manga
 
 
+class _Templescan(BasicScanlator):
+    async def _search_req(self, query: str) -> list[dict]:
+        search_url = self.json_tree.search.url
+        resp = await self.bot.session.get(search_url)
+        await raise_and_report_for_status(self.bot, resp)
+        return resp.json()
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        search_result: list[dict] = await self._search_req(query)
+        found_manga: list[PartialManga] = []
+
+        for item_dict in search_result:
+            title = item_dict["title"]
+            url = self.json_tree.properties.format_urls.manga.format(url_name=item_dict["series_slug"])
+            cover = item_dict["thumbnail"]
+            _id = await self.get_id(url)
+            # This endpoint does support the latest 2 chapters,
+            # but we can't tell if they're premium, so we won't use them
+            p_manga = PartialManga(_id, title, url, self.name, cover)
+            found_manga.append(p_manga)
+        # sort the manga by closest match of the title to the query
+        found_manga = sorted(found_manga, key=lambda x: sort_key(query, x.title), reverse=False)
+        if as_em:
+            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
+        return found_manga
+
+
 class CustomKeys:
     reaperscans: str = "reaperscans"
     flamecomics: str = "flamecomics"
@@ -446,6 +473,7 @@ class CustomKeys:
     bato: str = "bato"
     gourmet: str = "gourmet"
     hivescans: str = "hivescans"
+    templescan: str = "templescan"
 
 
 keys = CustomKeys()
@@ -458,3 +486,4 @@ scanlators[keys.mangapark] = _Mangapark(keys.mangapark, **scanlators[keys.mangap
 scanlators[keys.bato] = _Bato(keys.bato, **scanlators[keys.bato])  # noqa: This is a dict
 scanlators[keys.gourmet] = _GourmetScans(keys.gourmet, **scanlators[keys.gourmet])  # noqa: This is a dict
 scanlators[keys.hivescans] = _Hivetoon(keys.hivescans, **scanlators[keys.hivescans])  # noqa: This is a dict
+scanlators[keys.templescan] = _Templescan(keys.templescan, **scanlators[keys.templescan])  # noqa: This is a dict

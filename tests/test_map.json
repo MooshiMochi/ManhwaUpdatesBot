@@ -753,5 +753,119 @@
         "https://hivetoon.com/series/tales-of-greed-deep/chapter-23"
       ]
     }
+  },
+  "whalemanga": {
+    "user_input_url": "https://whalemanga.com/manga/your-eternal-lies/",
+    "expected_results": {
+      "scanlator_name": "whalemanga",
+      "manga_url": "https://whalemanga.com/manga/your-eternal-lies/",
+      "completed": true,
+      "title": "Your Eternal Lies",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://whalemanga.com/manga/your-eternal-lies/chapter-75-6/",
+      "first_chapter_url": "https://whalemanga.com/manga/your-eternal-lies/chapter-1/",
+      "cover_image": "https://whalemanga.com/wp-content/uploads/2024/04/manga_4794_image.jpg",
+      "last_3_chapter_urls": [
+        "https://whalemanga.com/manga/your-eternal-lies/chapter-75-4/",
+        "https://whalemanga.com/manga/your-eternal-lies/chapter-75-5/",
+        "https://whalemanga.com/manga/your-eternal-lies/chapter-75-6/"
+      ]
+    }
+  },
+  "mangasushi": {
+    "user_input_url": "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/",
+    "expected_results": {
+      "scanlator_name": "mangasushi",
+      "manga_url": "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/",
+      "completed": true,
+      "title": "The Reincarnation Magician of the Inferior Eyes",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-114/",
+      "first_chapter_url": "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-01/",
+      "cover_image": "https://mangasushi.org/wp-content/uploads/2022/01/a4a523b9-a185-48aa-a3be-d72e1aeab4d3.jpg",
+      "last_3_chapter_urls": [
+        "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-112/",
+        "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-113/",
+        "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-114/"
+      ]
+    }
+  },
+  "manhuaga": {
+    "user_input_url": "https://manhuaga.com/manga/serpent-ancestor/",
+    "expected_results": {
+      "scanlator_name": "manhuaga",
+      "manga_url": "https://manhuaga.com/manga/serpent-ancestor/",
+      "completed": false,
+      "title": "Serpent Ancestor",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://manhuaga.com/serpent-ancestor-chapter-23/",
+      "first_chapter_url": "https://manhuaga.com/serpent-ancestor-chapter-20/",
+      "cover_image": "https://manhuaga.com/wp-content/uploads/2024/12/SA.png",
+      "last_3_chapter_urls": [
+        "https://manhuaga.com/serpent-ancestor-chapter-21/",
+        "https://manhuaga.com/serpent-ancestor-chapter-22/",
+        "https://manhuaga.com/serpent-ancestor-chapter-23/"
+      ]
+    }
+  },
+  "mgeko": {
+    "user_input_url": "https://www.mgeko.cc/manga/solo-leveling-mg1/",
+    "expected_results": {
+      "scanlator_name": "mgeko",
+      "manga_url": "https://www.mgeko.cc/manga/solo-leveling-mg1/",
+      "completed": true,
+      "title": "Solo Leveling",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://www.mgeko.cc/reader/en/solo-leveling-chapter-200-5-eng-li/",
+      "first_chapter_url": "https://www.mgeko.cc/reader/en/solo-leveling-chapter-155-eng-li/",
+      "cover_image": "https://www.mgeko.cc/media/manga_covers/k722631932_2.jpg",
+      "last_3_chapter_urls": [
+        "https://www.mgeko.cc/reader/en/solo-leveling-chapter-199-eng-li/",
+        "https://www.mgeko.cc/reader/en/solo-leveling-chapter-200-side-story-21-the-end-eng-li/",
+        "https://www.mgeko.cc/reader/en/solo-leveling-chapter-200-5-eng-li/"
+      ]
+    }
+  },
+  "platinumscans": {
+    "user_input_url": "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/",
+    "expected_results": {
+      "scanlator_name": "platinumscans",
+      "manga_url": "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/",
+      "completed": true,
+      "title": "My companion is the strongest undead in another world",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/chapter-20/",
+      "first_chapter_url": "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/chapter-1/",
+      "cover_image": "https://platinumscans.com/wp-content/uploads/2022/06/1.jpg",
+      "last_3_chapter_urls": [
+        "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/chapter-18/",
+        "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/chapter-19/",
+        "https://platinumscans.com/manga/my-companion-is-the-strongest-undead-in-another-world/chapter-20/"
+      ]
+    }
+  },
+  "templescan": {
+    "user_input_url": "https://templetoons.com/comic/king-of-the-land",
+    "expected_results": {
+      "scanlator_name": "templescan",
+      "manga_url": "https://templetoons.com/comic/king-of-the-land",
+      "completed": true,
+      "title": "King Of The Land",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://templetoons.com/comic/king-of-the-land/41186-chapter-21",
+      "first_chapter_url": "https://templetoons.com/comic/king-of-the-land/93205-chapter-1",
+      "cover_image": "https://cdn.statically.io/img/imagizer.imageshack.com/img923/1619/VKUUYV.png",
+      "last_3_chapter_urls": [
+        "https://templetoons.com/comic/king-of-the-land/84036-chapter-19",
+        "https://templetoons.com/comic/king-of-the-land/48701-chapter-20",
+        "https://templetoons.com/comic/king-of-the-land/41186-chapter-21"
+      ]
+    }
   }
 }

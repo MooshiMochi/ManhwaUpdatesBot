@@ -27,6 +27,12 @@ This bot currently only supports the following websites:
 - https://theblank.net
 - https://www.zinmanga.net
 - https://www.beyondtheataraxia.com
+- https://whalemanga.com
+- https://mangasushi.org
+- https://manhuaga.com
+- https://www.mgeko.cc
+- https://templetoons.com
+- https://platinumscans.com
 
 > **Warning:** The following websites will not work unless a custom user-agent allowed by the owner is used:
 > - https://toonily.com

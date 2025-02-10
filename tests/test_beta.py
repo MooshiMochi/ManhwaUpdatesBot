@@ -131,8 +131,8 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "zinmanga"
-        url = "https://zinmanga.net/manga/duchess-what-is-identity"
+        key = "templescan"
+        url = "https://templetoons.com/comic/king-of-the-land"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);
