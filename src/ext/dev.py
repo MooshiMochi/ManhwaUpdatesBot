@@ -70,7 +70,7 @@ class Restricted(commands.Cog):
             sys_args = sys.argv
             os.execl(python, python, *sys_args)
         else:
-            os.system("pm2 restart manhwa-bot")
+            os.system("pm2 restart bot")
 
     @staticmethod
     def cleanup_code(content):
