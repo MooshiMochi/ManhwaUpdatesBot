@@ -700,7 +700,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 cover_url = self.extract_cover_link_from_tag(cover_tag, self.json_tree.properties.base_url)
                 # this is mainly bc of asura
                 start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
-                return cover_url[start_idx:]
+                return cover_url[start_idx:].replace(" ", "%20")
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
         text = await self._get_text(self.json_tree.properties.latest_updates_url)

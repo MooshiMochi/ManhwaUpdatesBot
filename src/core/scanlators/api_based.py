@@ -267,7 +267,8 @@ class _Comick(AbstractScanlator):
                         url_name=url_name, chapter_id=chp["hid"]), f'Chapter {chp["chap"]}',
                     i,
                     datetime.fromisoformat(
-                        chp["publish_at"] or "2023-02-01T16:11:46Z"  # using an arbitrary value in the past
+                        (chp["publish_at"] or "2023-02-01T16:11:46").removesuffix("Z")
+                        # using an arbitrary value in the past
                     ).timestamp() > datetime.now().timestamp()
                 )
                 for i, chp in enumerate(chapters)

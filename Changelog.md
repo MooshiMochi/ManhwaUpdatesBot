@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## February 12th 2025
+
+### Bug Fixes:
+
+- Fixed bug where the cover url of a series would contain spaces. Replaced space with '%20' so it doesn't cause errors
+  when it's sent as an embed. (This bug was mainly caused by demonreader)
+- Fixed bug in comick where it failed to read the isoformat date due to 'Z' at the end of the date string.
+
 ## February 10th 2025
 
 - Added https://whalemanga.com
