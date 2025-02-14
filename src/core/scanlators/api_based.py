@@ -211,7 +211,8 @@ class _Comick(AbstractScanlator):
             if ch_to_find is None:
                 new_chapters = newest_chapters[manga.last_chapter.index + 1:]
             else:
-                raise Exception("Tried looking for a chapter but we never found it...")
+                raise Exception(
+                    f"Tried looking for chapter [{ch_to_find.name}]({ch_to_find.url}) but we never found it...")
         else:  # We found (web) last free chapter OR ch_to_find
             # Fix the chapters for newest_chapters
             try:

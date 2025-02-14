@@ -2,6 +2,14 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+## February 14th 2025
+
+### Bug Fixes:
+
+- Fixed bug in the update check where errors were silent causing update check tassk to restart without finishing.
+- Fixed bug where /next_update_check command would throw error if it took longer than 3 seconds to respond
+- Fixed bug where the pagination for /supported_websites would throw error if it took longer than 3 seconds to respond
+
 ## February 12th 2025
 
 ### Bug Fixes:

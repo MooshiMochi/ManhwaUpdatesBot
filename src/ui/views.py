@@ -413,18 +413,18 @@ class PaginatorView(discord.ui.View):
             self, interaction: discord.Interaction, _
     ):
         self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
+        await interaction.edit_original_response(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⬅️", style=discord.ButtonStyle.blurple, row=0)
     async def back(self, interaction: discord.Interaction, _):
         self.page -= 1
         if self.page == -1:
             self.page = len(self.iter_items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
+        await interaction.edit_original_response(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.red, row=0)
     async def _stop(self, interaction: discord.Interaction, _):
-        await interaction.response.edit_message(view=None)  # noqa
+        await interaction.edit_original_response(view=None)  # noqa
         self.stop()
 
     @discord.ui.button(label="➡️", style=discord.ButtonStyle.blurple, row=0)
@@ -432,16 +432,17 @@ class PaginatorView(discord.ui.View):
         self.page += 1
         if self.page == len(self.iter_items):
             self.page = 0
-        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
+        await interaction.edit_original_response(**self.__get_response_kwargs())  # noqa
 
     @discord.ui.button(label=f"⏭️", style=discord.ButtonStyle.blurple, row=0)
     async def _last_page(
             self, interaction: discord.Interaction, _
     ):
         self.page = len(self.iter_items) - 1
-        await interaction.response.edit_message(**self.__get_response_kwargs())  # noqa
+        await interaction.edit_original_response(**self.__get_response_kwargs())  # noqa
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        await interaction.response.defer(ephemeral=True)  # noqa
         if isinstance(self.interaction, discord.Interaction):
             author = self.interaction.user
         else:

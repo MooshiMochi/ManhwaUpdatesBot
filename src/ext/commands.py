@@ -60,7 +60,7 @@ class CommandsCog(commands.Cog):
     )
     @checks.has_premium(dm_only=True)
     async def next_update_check(self, interaction: discord.Interaction, show_all: Optional[bool] = False) -> None:
-        # await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)  # noqa
         updates_cog: UpdateCheckCog | None = self.bot.get_cog("UpdateCheckCog")
         if not updates_cog:
             em = discord.Embed(
@@ -69,11 +69,11 @@ class CommandsCog(commands.Cog):
                 color=0xFF0000,
             )
             em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-            await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+            await interaction.followup.send(embed=em, ephemeral=True)  # noqa
             return
         guild_id = (interaction.guild_id or interaction.user.id) if show_all is False else None
         em = await updates_cog._create_next_update_check_embed(guild_id)  # noqa
-        await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+        await interaction.followup.send(embed=em, ephemeral=True)  # noqa
 
     track = app_commands.Group(
         name="track", description="(Mods) Start tracking a manga for the server to get notifications."
