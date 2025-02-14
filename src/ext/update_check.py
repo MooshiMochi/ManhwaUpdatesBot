@@ -50,10 +50,10 @@ class UpdateCheckCog(Cog):
         for name, scanlator in scanlators.items():
             update_task = tasks.loop(minutes=25, name=name)(partial(self.update_check, scanlator))
             update_task.__name__ = f"update_check_{scanlator.name}"
-            update_task.add_exception_type(Exception)
+            # update_task.add_exception_type(Exception)
             backup_task = tasks.loop(hours=4, name=f'{name}-backup')(partial(self.backup_update_check, scanlator))
             backup_task.__name__ = f"backup_update_check_{scanlator.name}"
-            update_task.add_exception_type(Exception)
+            # update_task.add_exception_type(Exception)
             self.tasks[name] = (update_task, backup_task)
 
         for task, backup_task in self.tasks.values():
@@ -79,6 +79,7 @@ class UpdateCheckCog(Cog):
             list[ChapterUpdate] - A list of the new updates
             that need to be sent out as notifications and updated in the database.
         """
+        url = scanlator.json_tree.properties.latest_updates_url
         try:
             fp_mangas: list[PartialManga] = await scanlator.get_fp_partial_manga()
         except exceptions.HTTPError as e:
@@ -86,14 +87,14 @@ class UpdateCheckCog(Cog):
                 # therefore, any later requests will also fail.
                 msg = f"404 Error occurred while checking for FP updates for {scanlator.name}. URL probably changed."
                 self.logger.error(msg, exc_info=e)
-                await scanlator.report_error(Exception(msg), request_url=scanlator.json_tree.properties.base_url)
+                await scanlator.report_error(Exception(msg), request_url=url)
                 return []
             await scanlator.report_error(e, request_url=getattr(
-                e.response, 'url', scanlator.json_tree.properties.base_url
+                e.response, 'url', url
             ))
             raise e
         except Exception as e:
-            await scanlator.report_error(e, request_url=scanlator.json_tree.properties.base_url)
+            await scanlator.report_error(e, request_url=url)
             raise e
         mangas_on_fp = [m for m in to_check if m in fp_mangas]
         if not mangas_on_fp:  # none of the mangas we track are on the fp ∴ they have no updates yet
@@ -303,28 +304,35 @@ class UpdateCheckCog(Cog):
         return chapter_updates
 
     async def update_check(self, scanlator: AbstractScanlator) -> None:
-        async with self.locks[scanlator.name]:
-            if await self.bot.db.is_scanlator_disabled(scanlator.name):
+        try:
+            async with self.locks[scanlator.name]:
+                if await self.bot.db.is_scanlator_disabled(scanlator.name):
+                    self._task_iteraction_completed_count["guilds"] += 1
+                    self._task_iteraction_completed_count["users"] += 1
+                    self.logger.info(f'Scanlator {scanlator.name} is disabled. Skipping update check...')
+                    return
+
+                mangas_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update(scanlator.name)
+                if mangas_to_check:
+
+                    self.logger.info(f'Checking for updates for {scanlator.name}...')
+                    try:
+                        chapter_updates: list[ChapterUpdate] = await self.check_with_fp(scanlator, mangas_to_check)
+                        await self.register_new_updates_in_database(chapter_updates)
+                        await self.send_update_notifications(chapter_updates)
+                    except Exception as e:
+                        await self._process_update_check_exception(scanlator, e)
+                else:
+                    self.logger.debug(f'No mangas to check for updates for {scanlator.name}.')
                 self._task_iteraction_completed_count["guilds"] += 1
                 self._task_iteraction_completed_count["users"] += 1
-                self.logger.info(f'Scanlator {scanlator.name} is disabled. Skipping update check...')
-                return
-
-            mangas_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update(scanlator.name)
-            if mangas_to_check:
-
-                self.logger.info(f'Checking for updates for {scanlator.name}...')
-                try:
-                    chapter_updates: list[ChapterUpdate] = await self.check_with_fp(scanlator, mangas_to_check)
-                    await self.register_new_updates_in_database(chapter_updates)
-                    await self.send_update_notifications(chapter_updates)
-                except Exception as e:
-                    await self._process_update_check_exception(scanlator, e)
-            else:
-                self.logger.debug(f'No mangas to check for updates for {scanlator.name}.')
-            self._task_iteraction_completed_count["guilds"] += 1
-            self._task_iteraction_completed_count["users"] += 1
-            self.logger.info(f'Finished checking for updates for {scanlator.name}...')
+                self.logger.info(f'Finished checking for updates for {scanlator.name}...')
+        except Exception as e:
+            ping = list(self.bot.owner_ids)[0]
+            await self.bot.log_to_discord(
+                f"<@!{ping}> Critcal error when checking for updates for {scanlator}",
+                error=e
+            )
 
     async def send_update_notifications(self, new_updates: list[ChapterUpdate]) -> None:
         """
@@ -604,26 +612,32 @@ class UpdateCheckCog(Cog):
         A backup update check that runs every 4hrs to make sure we don't miss any updates.
         Note: The time interval is adjustable.
         """
+        try:
+            async with self.locks[scanlator.name]:
+                if await self.bot.db.is_scanlator_disabled(scanlator.name):
+                    self.logger.info(f'Scanlator {scanlator.name} is disabled. Skipping backup update check...')
+                    return
 
-        async with self.locks[scanlator.name]:
-            if await self.bot.db.is_scanlator_disabled(scanlator.name):
-                self.logger.info(f'Scanlator {scanlator.name} is disabled. Skipping backup update check...')
-                return
+                mangas_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update(scanlator.name)
 
-            mangas_to_check: list[MangaHeader] = await self.bot.db.get_series_to_update(scanlator.name)
-
-            if mangas_to_check:
-                self.logger.info(f'Checking for backup updates for {scanlator.name}...')
-                try:
-                    chapter_updates: list[ChapterUpdate] = await self.individual_update_check(scanlator,
-                                                                                              mangas_to_check)
-                    await self.register_new_updates_in_database(chapter_updates)
-                    await self.send_update_notifications(chapter_updates)
-                except Exception as e:
-                    await self._process_update_check_exception(scanlator, e)
-            else:
-                self.logger.debug(f'No mangas to check for backup updates for {scanlator.name}.')
-            self.logger.info(f'Finished checking for backup updates for {scanlator.name}...')
+                if mangas_to_check:
+                    self.logger.info(f'Checking for backup updates for {scanlator.name}...')
+                    try:
+                        chapter_updates: list[ChapterUpdate] = await self.individual_update_check(scanlator,
+                                                                                                  mangas_to_check)
+                        await self.register_new_updates_in_database(chapter_updates)
+                        await self.send_update_notifications(chapter_updates)
+                    except Exception as e:
+                        await self._process_update_check_exception(scanlator, e)
+                else:
+                    self.logger.debug(f'No mangas to check for backup updates for {scanlator.name}.')
+                self.logger.info(f'Finished checking for backup updates for {scanlator.name}...')
+        except Exception as e:
+            ping = list(self.bot.owner_ids)[0]
+            await self.bot.log_to_discord(
+                f"<@!{ping}> Critcal error when checking for updates for {scanlator}",
+                error=e
+            )
 
     async def _process_update_check_exception(self, scanlator: AbstractScanlator, e: Exception) -> None:
         skip_error = False
