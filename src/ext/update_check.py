@@ -32,15 +32,18 @@ class UpdateCheckCog(Cog):
             "users": 0,
             "guilds": 0
         }
+        self._update_check_started: bool = False
 
     async def cog_load(self) -> None:
         self.logger.info('Loaded Updates Check Cog...')
-        await self.bot.wait_until_ready()
-        await self.start_update_check_tasks()
+        if not self._update_check_started and self.bot.is_ready():
+            await self.start_update_check_tasks()
+            self._update_check_started = True
 
     async def cog_unload(self) -> None:
         self.logger.info('Unloaded Updates Check Cog...')
         await self.stop_update_check_tasks()
+        self._update_check_started = False
 
     async def start_update_check_tasks(self) -> None:
         self.logger.info('Starting Update Check Tasks...')
@@ -663,6 +666,9 @@ class UpdateCheckCog(Cog):
     async def on_ready(self) -> None:
         # change the bot's status to show that updates happen every 25 minutes.
         await self.bot.change_presence(activity=discord.Game(name="Updates every 25 minutes."))
+        if not self._update_check_started:
+            await self.start_update_check_tasks()
+            self._update_check_started = True
 
 
 async def setup(bot: MangaClient) -> None:
