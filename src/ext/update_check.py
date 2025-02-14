@@ -35,7 +35,8 @@ class UpdateCheckCog(Cog):
 
     async def cog_load(self) -> None:
         self.logger.info('Loaded Updates Check Cog...')
-        # update check is started in the on_ready event at the bottom of the file.
+        await self.bot.wait_until_ready()
+        await self.start_update_check_tasks()
 
     async def cog_unload(self) -> None:
         self.logger.info('Unloaded Updates Check Cog...')
@@ -662,7 +663,6 @@ class UpdateCheckCog(Cog):
     async def on_ready(self) -> None:
         # change the bot's status to show that updates happen every 25 minutes.
         await self.bot.change_presence(activity=discord.Game(name="Updates every 25 minutes."))
-        await self.start_update_check_tasks()
 
 
 async def setup(bot: MangaClient) -> None:
