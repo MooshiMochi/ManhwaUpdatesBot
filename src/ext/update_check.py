@@ -601,12 +601,12 @@ class UpdateCheckCog(Cog):
                     update.status,
                     update.new_cover_url
                 )
-                if manga.completed:
-                    await self.bot.db.untrack_completed_series(manga.id, manga.scanlator)
-                    self.logger.info(f"Untracked manga {manga.id} from {manga.scanlator} as it is now completed.")
             if manga.status != update.status:
                 self.logger.info(f"Updating status of {manga.id} from {manga.status} to {update.status}")
             await self.bot.db.update_series(manga)
+            if manga.completed:
+                await self.bot.db.untrack_completed_series(manga.id, manga.scanlator)
+                self.logger.info(f"Untracked manga {manga.id} from {manga.scanlator} as it is now completed.")
         self.bot.logger.debug(
             f"Inserted {total_changes} chapter entries for {len(new_updates)} manhwa in the database"
         )

@@ -772,17 +772,28 @@ class Database:
         # only update series that are not completed and are subscribed to by at least one user
         async with self.conn.execute(
                 f"""
-                SELECT id, scanlator FROM series WHERE
-                    (id, scanlator) IN (
-                        SELECT series_id, scanlator FROM user_subs
-                        UNION
-                        SELECT series_id, scanlator FROM bookmarks
-                        UNION
-                        SELECT series_id, scanlator FROM tracked_guild_series
+                SELECT id, scanlator
+                FROM series
+                WHERE (id, scanlator) IN (
+                    SELECT series_id, scanlator FROM user_subs
+                    UNION
+                    SELECT series_id, scanlator FROM bookmarks
+                    UNION
+                    SELECT series_id, scanlator FROM tracked_guild_series
+                )
+                {f' AND scanlator = "{scanlator}"' if scanlator is not None else ''}
+                AND scanlator NOT IN (
+                    SELECT scanlator FROM scanlators_config WHERE enabled = false
+                )
+                AND (
+                    lower(status) NOT IN ({completed_db_set})
+                    OR EXISTS (
+                         SELECT 1 
+                         FROM tracked_guild_series tgs 
+                         WHERE tgs.series_id = series.id
+                           AND tgs.scanlator = series.scanlator
                     )
-                    {f' AND scanlator = "{scanlator}"' if scanlator is not None else ''}
-                    AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = false)
-                    AND lower(status) NOT IN ({completed_db_set});
+                );
                 """
         ) as cursor:
             result = await cursor.fetchall()

@@ -9,6 +9,9 @@
 - Fixed bug in the update check where errors were silent causing update check tassk to restart without finishing.
 - Fixed bug where /next_update_check command would throw error if it took longer than 3 seconds to respond
 - Fixed bug where the pagination for /supported_websites would throw error if it took longer than 3 seconds to respond
+- Updated the `get_series_to_update` method in the Database class to get series from the tracked table regardless of
+  whether they're completed or not.
+    - This will allow the series to be updated to the latest chapters and be removed from tracked series for the user.
 
 ## February 12th 2025
 
