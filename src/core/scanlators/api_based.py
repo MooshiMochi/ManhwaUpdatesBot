@@ -65,7 +65,9 @@ class _Comick(AbstractScanlator):
             url = await self.format_manga_url(url_name=url_name)
             cover = self.cover_url + comic_info["md_covers"][0]["b2key"]
             # ---- Chapter ----
-            publish_ts = datetime.fromisoformat(chp_dict["publish_at"] or "2023-02-01T16:11:46Z").timestamp()
+            publish_ts = datetime.fromisoformat(
+                (chp_dict["publish_at"] or "2023-02-01T16:11:46Z").removesuffix("Z")
+            ).timestamp()
             now_ts = datetime.now().timestamp()
             ch_index = 0  # if _id not in fp_manga else len(fp_manga[_id].latest_chapters)
             ch_name = chp_dict["chap"] or "Unknown"
@@ -114,7 +116,8 @@ class _Comick(AbstractScanlator):
                     self.chp_url_fmt.format(url_name=url_name, chapter_id=chp["hid"]), f'Chapter {chp["chap"]}',
                     i,
                     datetime.fromisoformat(
-                        chp["publish_at"] or "2023-02-01T16:11:46Z").timestamp() > datetime.now().timestamp()
+                        (chp["publish_at"] or "2023-02-01T16:11:46Z").removesuffix("Z")
+                    ).timestamp() > datetime.now().timestamp()
                 )
                 for i, chp in enumerate(chapters)  # noqa
             ]

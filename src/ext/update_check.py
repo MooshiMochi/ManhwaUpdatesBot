@@ -7,7 +7,7 @@ from functools import partial
 from typing import Optional, TYPE_CHECKING
 
 import discord
-from curl_cffi.requests import exceptions, Response
+from curl_cffi.requests import errors, Response
 from discord.ext import tasks
 from discord.ext.commands import Cog
 
@@ -80,10 +80,10 @@ class UpdateCheckCog(Cog):
             list[ChapterUpdate] - A list of the new updates
             that need to be sent out as notifications and updated in the database.
         """
-        url = scanlator.json_tree.properties.latest_updates_url
+        url = getattr(scanlator.json_tree.properties, 'latest_updates_url', "Custom get_fp_partial_manga URL")
         try:
             fp_mangas: list[PartialManga] = await scanlator.get_fp_partial_manga()
-        except exceptions.HTTPError as e:
+        except errors.RequestsError as e:
             if e.code == 404:  # 404 means that the website URL has most likely changed
                 # therefore, any later requests will also fail.
                 msg = f"404 Error occurred while checking for FP updates for {scanlator.name}. URL probably changed."
@@ -270,7 +270,7 @@ class UpdateCheckCog(Cog):
             try:
                 update = await scanlator.check_updates(manga)
                 _404_in_a_row = 0
-            except exceptions.HTTPError as e:
+            except errors.RequestsError as e:
                 resp: Response = e.response
                 url = getattr(resp, 'url', manga.url)
                 if e.code == 404:
@@ -331,7 +331,7 @@ class UpdateCheckCog(Cog):
         except Exception as e:
             ping = list(self.bot.owner_ids)[0]
             await self.bot.log_to_discord(
-                f"<@!{ping}> Critcal error when checking for updates for {scanlator}",
+                f"<@!{ping}> Critical error when checking for updates for {scanlator.name}",
                 error=e
             )
 
@@ -636,17 +636,17 @@ class UpdateCheckCog(Cog):
         except Exception as e:
             ping = list(self.bot.owner_ids)[0]
             await self.bot.log_to_discord(
-                f"<@!{ping}> Critcal error when checking for updates for {scanlator}",
+                f"<@!{ping}> Critical error when checking for backup updates for {scanlator.name}",
                 error=e
             )
 
     async def _process_update_check_exception(self, scanlator: AbstractScanlator, e: Exception) -> None:
         skip_error = False
-        if isinstance(e, exceptions.Timeout):
-            msg = (f"Timeout occurred while checking for updates for {scanlator.name}. "
-                   f"Website is probably down!")
-            skip_error = True
-        elif isinstance(e, exceptions.HTTPError):
+        # if isinstance(e, exceptions.Timeout):
+        #     msg = (f"Timeout occurred while checking for updates for {scanlator.name}. "
+        #            f"Website is probably down!")
+        #     skip_error = True
+        if isinstance(e, errors.RequestsError):
             msg = (f"HTTP Error {e.code} occurred while checking for updates for {scanlator.name}. "
                    f"Website is probably down!")
             if e.code >= 500:
