@@ -75,12 +75,12 @@
     "toonily": {
       "chapter_ajax": null,
       "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?toonily\\.com/webtoon/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "url_regex": "(?:https?://)?(?:www\\.)?toonily\\.com/serie/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://toonily.com",
         "icon_url": "https://toonily.com/wp-content/uploads/2020/01/cropped-toonfavicon-1.png",
         "format_urls": {
-          "manga": "https://toonily.com/webtoon/{url_name}/"
+          "manga": "https://toonily.com/serie/{url_name}/"
         },
         "latest_updates_url": "https://toonily.com/",
         "dynamicURL": false,
@@ -2158,6 +2158,75 @@
       },
       "search": {
         "url": "https://platinumscans.com/",
+        "search_param_name": "s",
+        "extra_params": {
+          "post_type": "wp-manga"
+        },
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET"
+      }
+    },
+    "mgkomik": {
+      "chapter_ajax": null,
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?mgkomik\\.org/komik/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://mgkomik.org",
+        "icon_url": "https://mgkomik.org/wp-content/uploads/2021/04/cropped-Retina-Logo-e1667188792992-1.png",
+        "format_urls": {
+          "manga": "https://mgkomik.org/komik/{url_name}/"
+        },
+        "latest_updates_url": "https://mgkomik.org/",
+        "dynamicURL": false,
+        "url_chapter_prefix": null,
+        "supports_search": true
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1"
+        ],
+        "synopsis": "div.description-summary > div > p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "ul.main > li.wp-manga-chapter",
+          "name": "a",
+          "url": "a"
+        },
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
+        "front_page": {
+          "container": "div.manga_content div.manga",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h5 > a",
+          "url": "h3.h5 > a",
+          "cover": "img.img-responsive"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "url": "https://mgkomik.org/",
         "search_param_name": "s",
         "extra_params": {
           "post_type": "wp-manga"

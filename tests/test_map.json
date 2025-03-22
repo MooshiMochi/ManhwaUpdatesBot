@@ -867,5 +867,24 @@
         "https://templetoons.com/comic/king-of-the-land/41186-chapter-21"
       ]
     }
+  },
+  "mgkomik": {
+    "user_input_url": "https://mgkomik.org/komik/the-great-inheritance/",
+    "expected_results": {
+      "scanlator_name": "mgkomik",
+      "manga_url": "https://mgkomik.org/komik/the-great-inheritance/",
+      "completed": false,
+      "title": "The Great Inheritance",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://mgkomik.org/komik/the-great-inheritance/chapter-50/",
+      "first_chapter_url": "https://mgkomik.org/komik/the-great-inheritance/chapter-01/",
+      "cover_image": "https://mgkomik.org/wp-content/uploads/thumbs/a715901ff4/image-9a5dddb360d885f81262.webp",
+      "last_3_chapter_urls": [
+        "https://mgkomik.org/komik/the-great-inheritance/chapter-48/",
+        "https://mgkomik.org/komik/the-great-inheritance/chapter-49/",
+        "https://mgkomik.org/komik/the-great-inheritance/chapter-50/"
+      ]
+    }
   }
 }
