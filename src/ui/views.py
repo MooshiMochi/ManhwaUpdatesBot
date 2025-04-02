@@ -619,7 +619,7 @@ class SubscribeView(View):
                         color=0xFF0000,
                     )
                     em.set_footer(text="Manhwa Updates", icon_url=self.bot.user.display_avatar.url)
-                    await interaction.response.send_message(embed=em, ephemeral=True)  # noqa
+                    await interaction.followup.send(embed=em, ephemeral=True)  # noqa
                     return
 
                 ping_role: discord.Role | None = None
