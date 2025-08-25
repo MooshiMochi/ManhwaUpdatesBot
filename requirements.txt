@@ -9,10 +9,15 @@ fuzzywuzzy
 python-Levenshtein
 pandas==2.2.1
 openpyxl
-curl_cffi>=0.6.1
+curl_cffi
 tldextract
 brotli
 fastapi
 patreon
+<<<<<<< HEAD
+git+https://github.com/Rapptz/discord.py.git
+=======
 git+https://github.com/Rapptz/discord.py.git
 rapidfuzz
+certifi
+>>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
