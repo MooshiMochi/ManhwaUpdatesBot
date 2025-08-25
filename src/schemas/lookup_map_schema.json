@@ -31,6 +31,11 @@
               "type": "string",
               "description": "The regular expression to match manga URLs for this website."
             },
+            "verify_ssl": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to verify the SSL certificate of the search URL"
+            },
             "properties": {
               "type": "object",
               "properties": {
@@ -758,6 +763,11 @@
             },
             "url_regex": {
               "type": "string"
+            },
+            "verify_ssl": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to verify the SSL certificate of the search URL"
             },
             "properties": {
               "type": "object",

@@ -3,7 +3,9 @@ import logging
 from functools import partialmethod
 from typing import Any, Dict, Optional, Set, Tuple
 
+import certifi
 import curl_cffi.requests
+from curl_cffi import CurlOpt
 from curl_cffi.requests import Response
 
 
@@ -147,15 +149,36 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
             *args,
             name: str = None,
             proxy: str = None,
+            ca_bundle: Optional[str] = None,
             **kwargs
     ) -> None:
         #  The proxies are passed into the "proxies" parameter when this class is initialized
-        BaseCacheSessionMixin.__init__(self, ignored_urls, name=name, proxy=proxy)
+        BaseCacheSessionMixin.__init__(self, ignored_urls, name=name,
+                                       proxy=proxy or kwargs.get("proxies", {}).get("http"))
+
+        ca_path = ca_bundle or certifi.where()
+
+        # Merge any user-provided curl options with our CA settings
+        user_curl_opts = kwargs.pop("curl_options", None) or {}
+        base_curl_opts = {CurlOpt.CAINFO: ca_path}
+
+        # If caller passed proxies and HTTPS proxy is used, ensure proxy CA too
+        proxies = kwargs.get("proxies") or {}
+        https_proxy = proxies.get("https")
+        if https_proxy:
+            base_curl_opts[CurlOpt.PROXY_CAINFO] = ca_path
+
+        merged_curl_opts = {**base_curl_opts, **user_curl_opts}
+        kwargs["curl_options"] = merged_curl_opts
+
+        # Keep verification ON unless caller explicitly set it
+        kwargs.setdefault("verify", True)
+
         super().__init__(*args, **kwargs)
 
     async def request(self, method, url, cache_time: Optional[int] = None, *args, **kwargs) -> Response:
         self.logger.debug("Making request...")
-        
+
         cached_url, response = await self.get_from_cache(url, **kwargs)
         if response is not None:
             return response

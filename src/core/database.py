@@ -41,6 +41,16 @@ class Database:
 
     async def async_init(self) -> None:
         self.conn = await aiosqlite.connect(self.db_name)
+        # Register the levenshtein function once during initialization
+        await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
+
+        # Enable WAL mode for better concurrency and performance
+        await self.conn.execute("PRAGMA journal_mode=WAL;")
+        # Set a larger cache size for better performance
+        await self.conn.execute("PRAGMA cache_size=-10000;")  # ~10MB cache
+        # Enable foreign key constraints
+        await self.conn.execute("PRAGMA foreign_keys=ON;")
+
         await self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS series (
@@ -51,7 +61,7 @@ class Database:
                 series_cover_url TEXT NOT NULL,
                 last_chapter TEXT,
                 available_chapters TEXT,
-                
+
                 status TEXT NOT NULL DEFAULT 'Ongoing',
                 scanlator TEXT NOT NULL DEFAULT 'Unknown',
                 UNIQUE(id, scanlator) ON CONFLICT IGNORE
@@ -65,7 +75,7 @@ class Database:
                 series_id TEXT NOT NULL,
                 guild_id INTEGER NOT NULL,
                 scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                
+
                 FOREIGN KEY (series_id) REFERENCES series (id),
                 FOREIGN KEY (scanlator) REFERENCES series (scanlator),
                 FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
@@ -90,7 +100,7 @@ class Database:
                 last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 scanlator TEXT NOT NULL DEFAULT 'Unknown',
                 folder VARCHAR(10) DEFAULT 'reading',
-                
+
                 FOREIGN KEY (series_id) REFERENCES series (id),
                 FOREIGN KEY (scanlator) REFERENCES series (scanlator),
                 FOREIGN KEY (user_id) REFERENCES user_subs (id),
@@ -174,22 +184,29 @@ class Database:
             """
         )
 
+        # Create indexes for frequently queried columns to improve performance
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_series_title ON series(title);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_series_id_scanlator ON series(id, scanlator);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_user_subs_user_id ON user_subs(id);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_user_subs_series_id_scanlator ON user_subs(series_id, scanlator);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_series_id_scanlator ON bookmarks(series_id, scanlator);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_guild_id ON tracked_guild_series(guild_id);")
+        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_series_id_scanlator ON tracked_guild_series(series_id, scanlator);")
+
         await self.conn.commit()
 
-    async def execute(self, query: str, *args, levenshtein: bool = False) -> Any:
+    async def execute(self, query: str, *args) -> Any:
         """
         Execute an SQL query and return the result.
 
         Args:
             query: The SQL query to execute.
             *args: The arguments to pass to the query.
-            levenshtein: Whether to enable the levenshtein function.
 
         Returns:
             The result of the query.
         """
-        if levenshtein is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
         async with self.conn.execute(query, args) as cursor:
             result = await cursor.fetchall()
             await self.conn.commit()
@@ -383,7 +400,7 @@ class Database:
                 s.available_chapters,
                 s.status,
                 s.scanlator
-                
+
             FROM series AS s
             INNER JOIN tracked_guild_series AS t
             ON s.id = t.series_id AND s.scanlator = t.scanlator
@@ -599,14 +616,13 @@ class Database:
                 s.available_chapters,
                 s.status,
                 s.scanlator
-                
+
             FROM series AS s
             INNER JOIN user_subs AS u
             ON s.id = u.series_id AND s.scanlator = u.scanlator
             WHERE u.id = $1
             """
         if current is not None and bool(current.strip()) is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
             query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
             params = (user_id, current)
         else:
@@ -642,7 +658,6 @@ class Database:
             "id = $2)"
         )
         if autocomplete is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
             is_current: bool = (current or "").strip() != ""
             if scanlator is not None and is_current is True:
                 query = f"{_base} AND scanlator = $3 ORDER BY levenshtein(title, $4) DESC LIMIT 25;"
@@ -682,7 +697,6 @@ class Database:
             )
         """
         if current is not None and bool(current.strip()) is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
             query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
             params = (user_id, current)
         else:
@@ -811,7 +825,7 @@ class Database:
                 b.guild_id,
                 b.last_updated_ts,
                 b.folder,
-                
+
                 s.id,
                 s.title,
                 s.url,
@@ -821,7 +835,7 @@ class Database:
                 s.available_chapters,
                 s.status,
                 s.scanlator
-                            
+
             FROM bookmarks AS b
             INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
             WHERE b.user_id = $1 AND b.series_id = $2 AND b.scanlator = $3;
@@ -865,7 +879,7 @@ class Database:
                 b.guild_id,
                 b.last_updated_ts,
                 b.folder,
-                
+
                 s.id,
                 s.title,
                 s.url,
@@ -875,7 +889,7 @@ class Database:
                 s.available_chapters,
                 s.status,
                 s.scanlator
-                            
+
             FROM bookmarks AS b
             INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
             WHERE b.user_id = $1;
@@ -909,7 +923,6 @@ class Database:
             "WHERE bookmarks.user_id = $1 AND bookmarks.folder != 'hidden'"
         )
         if autocomplete is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
             is_current: bool = (current or "").strip() != ""
             if scanlator is not None and is_current is True:
                 query = f"{_base} AND series.scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
@@ -1043,7 +1056,6 @@ class Database:
         >>> [Manga, ...)]
         """
         if autocomplete is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
             is_current: bool = (current or "").strip() != ""
             if scanlator is not None and is_current is True:
                 query = "SELECT * FROM series WHERE scanlator = $1 ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
@@ -1307,7 +1319,6 @@ class Database:
             "(id, scanlator) IN (SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $1)"
         )
         if autocomplete is True:
-            await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
             is_current: bool = (current or "").strip() != ""
             if scanlator is not None and is_current is True:
                 query = f"{_base} AND scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"

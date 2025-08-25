@@ -9,10 +9,11 @@ fuzzywuzzy
 python-Levenshtein
 pandas==2.2.1
 openpyxl
-curl_cffi>=0.6.1
+curl_cffi
 tldextract
 brotli
 fastapi
 patreon
 git+https://github.com/Rapptz/discord.py.git
 rapidfuzz
+certifi

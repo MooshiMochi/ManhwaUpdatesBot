@@ -530,6 +530,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
         headers = ((self.create_headers() or {}) | provided_headers) or None
         if self.json_tree.request_method == "curl":
+            if self.json_tree.verify_ssl is False:
+                params["verify"] = False
             resp = await self.bot.session.request(
                 method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             )

@@ -14,6 +14,7 @@ from asyncio import iscoroutinefunction
 from dataclasses import dataclass
 from typing import Coroutine, Dict, Literal, Optional
 
+import curl_cffi
 import requests  # noqa
 
 from src.core.apis import APIManager
@@ -335,6 +336,8 @@ class Test:
                 print(e)
             except requests.exceptions.HTTPError as e:
                 print(f"{error_msg}: {e.response.status_code} {e.response.reason}")
+            except curl_cffi.requests.RequestsError as e:
+                print(f"{error_msg}: {e}")
             except Exception as e:
                 print(f"❌ Unexpected error: {e} --- {error_msg}")
                 exc = tb.format_exception(type(e), e, e.__traceback__)
@@ -408,7 +411,7 @@ async def run_single_test(test_case: TestCase, test_method: str = "all"):
 
 
 class TestCases(dict):
-    def __init__(self, tests_to_ignore: list[str] | None = None):
+    def __init__(self, tests_to_ignore: list[str] | None = None, single_scanlator: str | None = None):
         if tests_to_ignore is None:
             self.tests_to_ignore = []
         else:
@@ -421,6 +424,8 @@ class TestCases(dict):
         for scanlator_name, test_data in test_map.items():
             if scanlator_name not in scanlators:
                 print(f"⚠️ Scanlator {scanlator_name} is disabled! No tests will be run.")
+                continue
+            if single_scanlator is not None and scanlator_name != single_scanlator:
                 continue
             expected_resutls = test_data["expected_results"]
             self.testCases[scanlator_name] = TestCase(
@@ -459,19 +464,28 @@ class TestCases(dict):
         await self.test_setup.bot.close()
 
 
+tests_to_ignore = [
+    # Permanently Removed
+    "reaperscans",
+    "nightscans",
+    "novelmic",
+
+    # disabled cos of 521? server issue
+    "drakescans", "gourmet", "manhuaga", "platinumscans", "mgkomic"
+
+                                                          "zeroscans",  # This website just hangs for some reason
+    # Disabled because of 403:
+
+    # Changed domain.
+    "hivescans",
+
+    "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
+    # The website(s) id down at the time of testing:
+
+]
+
+
 async def main():
-    tests_to_ignore = [
-
-        "zeroscans",  # This website just hangs for some reason
-        # Disabled because of 403:
-
-        # Changed domain.
-
-        "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
-        # The website(s) id down at the time of testing:
-
-    ]
-
     if os.name != "nt":  # reaperscans doesn't work for git workflow check
         tests_to_ignore.append("reaperscans")
 
@@ -512,7 +526,7 @@ async def sub_main():
 
 
 async def paused_test():
-    async with TestCases() as testCases:
+    async with TestCases(tests_to_ignore) as testCases:
         for scanner, testCase in testCases.items():
             await run_single_test(testCase)
             input("Press Enter to continue...")
@@ -532,7 +546,7 @@ async def test_single_method(test_method: Literal[
     "show_synopsis",
     "show_front_page_results"
 ], scanlator: str | None = None):
-    async with TestCases() as testCases:
+    async with TestCases(tests_to_ignore) as testCases:
         if scanlator is None:
             for scanlator in scanlators:
                 await run_single_test(testCases[scanlator], test_method=test_method)
@@ -541,13 +555,14 @@ async def test_single_method(test_method: Literal[
 
 
 async def test_single_scanlator(scanlator: str):
-    async with TestCases() as testCases:
+    async with TestCases(tests_to_ignore, single_scanlator=scanlator) as testCases:
         await run_single_test(testCases[scanlator])
 
 
 if __name__ == "__main__":
     import asyncio
     import sys
+    import tracemalloc
 
     if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -558,12 +573,12 @@ if __name__ == "__main__":
     db_filepath: str = os.path.join(root_path, "tests/database.db")
     if os.path.exists(db_filepath):
         os.remove(db_filepath)
-
+    tracemalloc.start()
     if os.name != "nt":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("templescan"))
+        asyncio.run(test_single_scanlator("kunmanga"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

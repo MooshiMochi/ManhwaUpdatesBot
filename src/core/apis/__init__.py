@@ -37,7 +37,7 @@ class APIManager:
         await self._session.close() if self._session is not None else None
         timeout = aiohttp.ClientTimeout(total=Minutes.FIVE.value)  # 5 min
         self._session = CachedCurlCffiSession(
-            impersonate="chrome101",
+            impersonate="random",
             name="cache.curl_cffi",
             proxies={"http": self.bot.proxy_addr, "https": self.bot.proxy_addr},
             timeout=timeout,

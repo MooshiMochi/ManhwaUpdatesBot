@@ -116,6 +116,7 @@ class JSONTree:
         self.selectors: _Selectors = _Selectors(**lookup_map_dict["selectors"])
         self.request_method: Literal["curl"] = lookup_map_dict["request_method"]
         self.rx: re.Pattern = re.compile(lookup_map_dict["url_regex"])
+        self.verify_ssl: bool = lookup_map_dict.get("verify_ssl", True)
 
         self.search: Optional[_SearchProperties] = None
         if self.properties.supports_search:
