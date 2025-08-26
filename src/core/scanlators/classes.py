@@ -45,12 +45,18 @@ __all__ = (
 class _AbstractScanlatorUtilsMixin:
     @staticmethod
     def extract_cover_link_from_tag(tag, base_url: str) -> str | None:
-        for attr in ["data-src", "src", "href", "content", "data-lazy-src"]:
+        for attr in ["data-src", "src", "href", "content", "data-lazy-src", "style"]:
             result = tag.get(attr)
             if result is not None:
                 if result.startswith("/"):  # partial URL, we just need to append base URL to it
                     return base_url + result
                 elif not result.startswith("https://"):
+                    if attr == 'style':
+                        url_rx = re.compile(
+                            r'https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9]{1,6}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)')
+                        result = url_rx.search(result).group()
+                        if result is not None:
+                            return result
                     end_result = result.split(".")[-1]
                     for extension in ["jpg", "png", "jpeg", "webp", "gif", "svg", "apng"]:
                         if end_result.startswith(extension):
@@ -92,6 +98,7 @@ class _AbstractScanlatorUtilsMixin:
 class AbstractScanlator(ABC):
     bot: MangaClient
     json_tree: JSONTree
+    _raw_kwargs: dict
 
     def __init__(self, name: str):  # noqa: Invalid scope warning
         self.name: str = name
@@ -295,22 +302,36 @@ class AbstractScanlator(ABC):
         """
         return mangas
 
-    async def unload_manga(self, mangas: list[Manga]) -> list[Manga]:  # noqa: Other implementations require 'self'
+    # @abstractmethod
+    # async def download_cover(self, raw_url: str) -> BytesIO:
+    #     """
+    #     Downloads the cover image of the manga and save it in a local filestystem on the VPS.
+    #
+    #     Args:
+    #         raw_url: str - The URL of the manga to request
+    #
+    #     Returns:
+    #         BytesIO - The cover image of the manga as a BytesIO object
+    #     """
+
+    async def unload_manga(self, mangas: list[Manga | PartialManga]) -> list[
+        Manga | PartialManga]:  # noqa: Other implementations require 'self'
         """
         *For Dynamic URL Websites*
         Replaces the manga_id and chapter_id in the URLs of the Manga object with a placeholder
 
         Args:
-            mangas: list[Manga] - The manga objects to replace the IDs for
+            mangas: list[Manga | PartialManga] - The manga objects to replace the IDs for
 
         Returns:
-            list[Manga] - The objects with placeholders for IDs set for all URLs
+            list[Manga | PartialManga] - The objects with placeholders for IDs set for all URLs
 
         Notes:
             These properties contain a chapter/manga ID:
             - Manga.url
             - Manga.latest_chapter.url
             - Manga.available_chapters > Chapter.url
+            - Manga.latest_chapters [.url for each chapter] for PartialManga objects
         """
         return mangas
 
@@ -361,8 +382,8 @@ class AbstractScanlator(ABC):
         if manga is None:
             return None
 
-        if manga.available_chapters:
-            last_read_chapter = manga.available_chapters[0]
+        if manga.chapters:
+            last_read_chapter = manga.chapters[0]
         else:
             last_read_chapter = None
 
@@ -397,18 +418,34 @@ class AbstractScanlator(ABC):
         all_chapters = await self.get_all_chapters(manga.url)
         status: str = await self.get_status(manga.url)
         cover_url: str = await self.get_cover(manga.url)
+        status_changed: bool = status != manga.status
         if all_chapters is None:
-            return ChapterUpdate(manga.id, [], manga.scanlator, cover_url, status)
+            return ChapterUpdate(manga.id, [], manga.scanlator, cover_url, status, status_changed)
         if manga.last_chapter:
             new_chapters: list[Chapter] = [
                 chapter for chapter in all_chapters if chapter.index > manga.last_chapter.index
             ]
+            # chapters that were previously premium and are now free.
+            spoiled_chapters = [c for i, c in enumerate(all_chapters) if
+                                not c.is_premium and  # only care about them if they're free on the website
+                                i < len(manga.chapters) and  # only care about chapters that are also in the db.
+                                manga.chapters[i].is_premium  # only care about paid chapters from the db
+                                ]
+            for chapter in spoiled_chapters:
+                # add a flag to the chapter to indicate that it was previously premium.
+                # this is used when notifications for new releases are being sent out.
+                chapter.kwargs["was_premium"] = True
+
+            # below is the same as: new_chapters = spoiled_chapters + new_chapters
+            spoiled_chapters.extend(new_chapters)
+            new_chapters = spoiled_chapters
+
         else:
             new_chapters: list[Chapter] = all_chapters
         return ChapterUpdate(
-            manga.id, new_chapters, manga.scanlator, cover_url, status,
-            [
-                {"embed": self.create_chapter_embed(manga, chapter)}
+            manga.id, new_chapters, manga.scanlator, cover_url, status, status_changed,
+            extra_kwargs=[
+                {"embed": self.create_chapter_embed(manga, chapter, cover_url)}
                 for chapter in new_chapters
             ] if self.json_tree.properties.requires_update_embed else None
         )
@@ -457,9 +494,11 @@ class AbstractScanlator(ABC):
 
 
 class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
+
     def __init__(self, name, **kwargs):  # noqa: Invalid scope warning
         self.name = name
         self.json_tree = JSONTree(**kwargs)
+        self._raw_kwargs = kwargs
         super().__init__(name)
 
     def create_headers(self) -> dict | None:
@@ -490,31 +529,21 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         provided_headers = params.pop("headers", None)
         if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
         headers = ((self.create_headers() or {}) | provided_headers) or None
-<<<<<<< HEAD
-        if self.json_tree.request_method == "http":
-            async with self.bot.session.request(
-                    method, url, headers=headers, **self.get_extra_req_kwargs(), **params
-            ) as resp:
-                await raise_and_report_for_status(self.bot, resp)
-                return await resp.text()
-        elif self.json_tree.request_method == "curl":
-            resp = await self.bot.curl_session.request(
-=======
         if self.json_tree.request_method == "curl":
             if self.json_tree.verify_ssl is False:
                 params["verify"] = False
             resp = await self.bot.session.request(
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
                 method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             )
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
-        elif self.json_tree.request_method == "flare":
-            resp = await self.bot.apis.flare.get(url, headers=headers, **params)
-            await raise_and_report_for_status(self.bot, resp)
-            return (await resp.json()).get("solution", {}).get("response")
         else:
             raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
+
+    # async def download_cover(self, raw_url: str) -> BytesIO:
+    #     cover_url = await self.get_cover(raw_url)
+    #     cover = await self._get_text(cover_url)
+    #     return BytesIO(cover.encode())
 
     async def format_manga_url(
             self, raw_url: Optional[str] = None, url_name: Optional[str] = None, _id: Optional[str] = None,
@@ -562,6 +591,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         if not isinstance(self, DynamicURLScanlator):
             raw_url = await self.format_manga_url(raw_url)
         text = await self._get_text(raw_url)
+
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -579,36 +609,74 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             raw_url = await self.format_manga_url(raw_url, use_ajax_url=True)
         method = "POST" if self.json_tree.uses_ajax else "GET"
         text = await self._get_text(raw_url, method=method)  # noqa
-        return self._extract_chapters_from_html(text)
+        url_name = await self._get_url_name(raw_url)
+        return self._extract_chapters_from_html(text, url_name)
 
-    def _extract_chapters_from_html(self, text: str) -> list[Chapter]:
+    def _build_paid_chapter_url(self, tag: Tag, url_name: str, _tools) -> str:
+        if _tools.string_selector == "_container_":
+            value = tag.get_text()
+        else:
+            value = tag.select_one(_tools.string_selector).get_text()
+        chapter_part_url = _tools.regex.search(value).groupdict().get("num")
+        if chapter_part_url is None:
+            raise ValueError(f"Failed to get premium chapter for {url_name} of {self.name}")
+        fmt_info = {"base_url": self.json_tree.properties.base_url.removesuffix('/'),
+                    "url_name": url_name,
+                    "ch_part": chapter_part_url
+                    }
+        url_result = _tools.url_fmt
+        for sub_key, sub_val in list(fmt_info.items()):
+            if "{" + sub_key + "}" not in url_result:
+                del fmt_info[sub_key]
+        url = _tools.url_fmt.format(**fmt_info)
+        return url
+
+    def _extract_chapters_from_html(self, text: str, url_name: str = None) -> list[Chapter]:
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
         chapter_selector = self.json_tree.selectors.chapters
-        chapters: list[Tag] = soup.select(chapter_selector["container"])
+        chapters: list[Tag] = soup.select(chapter_selector.container)
         found_chapters: list[Chapter] = []
         for i, chapter in enumerate(reversed(chapters)):
-            if chapter_selector["url"] == "_container_":
+            # ------- extracting whether the chapter is premium or not -------
+            premium_selector = self.json_tree.selectors.chapters.premium_status
+            is_premium = False
+            if premium_selector is not None:
+                is_premium = chapter.select_one(premium_selector) is not None
+            # ------- extracting chapter url -------
+            if chapter_selector.url == "_container_":
                 url = chapter.get("href")
             else:
-                url = chapter.select_one(chapter_selector["url"]).get("href")
+                url = chapter.select_one(chapter_selector.url).get("href")
+            if (_tools := self.json_tree.selectors.chapters.no_premium_chapter_url) is not None and is_premium is True:
+                url = self._build_paid_chapter_url(chapter, url_name, _tools)
             if not url.startswith(self.json_tree.properties.base_url):
-                url = self.json_tree.properties.base_url + url
-            if chapter_selector["name"] == "_container_":
-                name = chapter.get_text(strip=True)  # noqa: Invalid scope warning
+                if self.json_tree.properties.url_chapter_prefix is not None:
+                    url = self.json_tree.properties.base_url + self.json_tree.properties.url_chapter_prefix + url
+                else:
+                    if self.json_tree.properties.missing_id_connector.exists:
+                        url = self.json_tree.properties.base_url.removesuffix(
+                            "/") + self.json_tree.properties.missing_id_connector.char + "/" + url.removeprefix("/")
+                    else:
+                        url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
+            # ------- extracting chapter name -------
+            if chapter_selector.name == "_container_":
+                name = chapter.get_text().replace("\n", " ")  # noqa: Invalid scope warning
             else:
-                name = chapter.select_one(chapter_selector["name"]).get_text(strip=True)  # noqa: Invalid scope warning
-            found_chapters.append(Chapter(url, name, i))
+                name = chapter.select_one(chapter_selector.name).get_text().replace("\n",  # noqa: Invalid scope warning
+                                                                                    " ")
+
+            found_chapters.append(Chapter(url, name, i, is_premium))
         return found_chapters
 
-    async def get_status(self, raw_url: str) -> str:
+    async def get_status(self, raw_url: str) -> Optional[str]:
         status_tag = await self._get_status_tag(self, raw_url)
         if status_tag:
             status_text = status_tag.get_text(strip=True)
             return re.sub(r"\W", "", status_text).lower().removeprefix("status").strip().title()
 
-    async def get_synopsis(self, raw_url: str) -> str:
+    async def get_synopsis(self, raw_url: str) -> Optional[str]:
         if not isinstance(self, DynamicURLScanlator):
             raw_url = await self.format_manga_url(raw_url)
         text = await self._get_text(raw_url)
@@ -620,7 +688,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         if synopsis:
             return synopsis.get_text(strip=True, separator="\n")
 
-    async def get_cover(self, raw_url: str) -> str:
+    async def get_cover(self, raw_url: str) -> Optional[str]:
         if not isinstance(self, DynamicURLScanlator):
             raw_url = await self.format_manga_url(raw_url)
         text = await self._get_text(raw_url)
@@ -634,7 +702,7 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 cover_url = self.extract_cover_link_from_tag(cover_tag, self.json_tree.properties.base_url)
                 # this is mainly bc of asura
                 start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
-                return cover_url[start_idx:]
+                return cover_url[start_idx:].replace(" ", "%20")
 
     async def get_fp_partial_manga(self) -> list[PartialManga]:
         text = await self._get_text(self.json_tree.properties.latest_updates_url)
@@ -646,8 +714,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         for manga_tag in manga_tags:
             url = manga_tag.select_one(self.json_tree.selectors.front_page.url).get("href")
             if not url.startswith("https://"):
-                url = self.json_tree.properties.base_url + url
-
+                url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
+            url_name = await self._get_url_name(url)
             _title_selector = self.json_tree.selectors.front_page.title  # noqa: Invalid scope warning
             if _title_selector == "_container_":
                 name = manga_tag.get_text(strip=True)  # noqa: Invalid scope warning
@@ -666,28 +734,62 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
             cover_url = cover_url[start_idx:]
 
-            chapter_tags: list[Tag] = manga_tag.select(self.json_tree.selectors.front_page.chapters["container"])
-            chapters: list[Chapter] = []
+            chapters: Optional[list[Chapter]] = None
+            # The reason we allow optional chapters for FP is that some websites may not have chapters on the FP,
+            # or the website has premium chapters,
+            # but they don't tell us on the front page, so, we make chapters
+            # optional.
+            # That way, if the manga is on the FP, we know it has an update, so it will do an individual check
+            # for the chapters.
+            if self.json_tree.selectors.front_page.chapters is not None:
+                chapter_tags: list[Tag] = manga_tag.select(self.json_tree.selectors.front_page.chapters.container)
+                chapters = []
 
-            for i, ch_tag in enumerate(reversed(chapter_tags)):
-                if self.json_tree.selectors.front_page.chapters["name"] == "_container_":
-                    ch_name = ch_tag.get_text(strip=True)
-                else:
-                    ch_name = ch_tag.select_one(self.json_tree.selectors.front_page.chapters["name"]).get_text(
-                        strip=True
-                    )
-                if self.json_tree.selectors.front_page.chapters["url"] == "_container_":
-                    ch_url = ch_tag.get("href")
-                else:
-                    ch_url = ch_tag.select_one(self.json_tree.selectors.front_page.chapters["url"]).get("href")
-                if not ch_url.startswith(self.json_tree.properties.base_url):
-                    ch_url = self.json_tree.properties.base_url + url
-                chapters.append(Chapter(ch_url, ch_name, i))
+                for i, ch_tag in enumerate(reversed(chapter_tags)):
+                    # ------- extracting chapter name -------
+                    if self.json_tree.selectors.front_page.chapters.name == "_container_":
+                        ch_name = ch_tag.get_text(strip=True)
+                    else:
+                        ch_name = ch_tag.select_one(self.json_tree.selectors.front_page.chapters.name)
+                        if ch_name is not None:
+                            ch_name = ch_name.get_text(strip=True)
+                        else:
+                            continue
+                    # ------- extracting whether the chapter is premium or not -------
+                    premium_selector = self.json_tree.selectors.front_page.chapters.premium_status
+                    is_premium = False
+                    if premium_selector is not None:
+                        is_premium = ch_tag.select_one(premium_selector) is not None
+
+                    # ------- extracting chapter url -------
+                    if self.json_tree.selectors.front_page.chapters.url == "_container_":
+                        ch_url = ch_tag.get("href")
+                    else:
+                        ch_url = ch_tag.select_one(self.json_tree.selectors.front_page.chapters.url).get("href")
+                    if (
+                            is_premium is True and
+                            (_tools := self.json_tree.selectors.front_page.chapters.no_premium_chapter_url) is not None
+                    ):
+                        url = self._build_paid_chapter_url(ch_tag, url_name, _tools)
+                    if not ch_url.startswith(self.json_tree.properties.base_url):
+                        ch_url = self.json_tree.properties.base_url + ch_url
+                    # ------- appending chapter to list -------
+                    chapters.append(Chapter(ch_url, ch_name, i, is_premium))
             manga_id = await self.get_id(url)
             found_manga.append(PartialManga(manga_id, name, url, self.name, cover_url, chapters, actual_url=url))
         return found_manga
 
-    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+    async def _search_req(self, query: str) -> str:
+        """
+        Summar:
+            Performs the search request and returns the text of the response.
+
+        Args:
+            query: The search term
+
+        Returns:
+            str: The webpage text
+        """
         search_url = self.json_tree.search.url
         if self.json_tree.search.query_parsing.encoding == "url":
             query = url_encode(query)
@@ -698,17 +800,31 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                 query = pattern.sub(sub_value, query)
         # if encoding is == "raw" then we do nothing
         extra_params: dict = self.json_tree.search.extra_params
+        request_kwargs = {
+            "url": search_url,
+            "method": self.json_tree.search.request_method
+        }
         if self.json_tree.search.as_type == "path":
             params = "?" + "&".join([f"{k}={v}" for k, v in extra_params.items() if v is not None])
             null_params = {k: v for k, v in extra_params.items() if v is None}
             if null_params:
                 params += "&".join([f"{k}" for k, v in null_params.items()])
             query += params
-            text = await self._get_text(search_url + query, method=self.json_tree.search.request_method)
+            request_kwargs["url"] += query
+
+        elif self.json_tree.search.as_type == "data":
+            params = {self.json_tree.search.search_param_name: query} | extra_params
+            request_kwargs["data"] = params
+
         else:  # as param
             params = {self.json_tree.search.search_param_name: query} | extra_params
-            text = await self._get_text(search_url, params=params, method=self.json_tree.search.request_method)
+            request_kwargs["params"] = params
 
+        text = await self._get_text(**request_kwargs)
+        return text
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        text = await self._search_req(query)
         soup = BeautifulSoup(text, "html.parser")
         self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
 
@@ -722,8 +838,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             else:
                 url = manga_tag.select_one(self.json_tree.selectors.search.url).get("href")
             if not (url.startswith("https://") or url.startswith("http://")):  # noqa
-                url = self.json_tree.properties.base_url + url
-
+                url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
+            url_name = await self._get_url_name(url)
             _title_selector = self.json_tree.selectors.search.title  # noqa: Invalid scope warning
             if _title_selector == "_container_":
                 name = manga_tag.get_text(strip=True)  # noqa: Invalid scope warning
@@ -736,32 +852,46 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
                     name = title_tag.get_text(strip=True)  # noqa: Invalid scope warning
 
             cover_url: str | None = None
-            if self.json_tree.selectors.search.cover is not None:
+            if (selector := self.json_tree.selectors.search.cover) is not None:
                 cover_url = self.extract_cover_link_from_tag(
-                    manga_tag.select_one(self.json_tree.selectors.search.cover),
-                    self.json_tree.properties.base_url
+                    manga_tag.select_one(selector), self.json_tree.properties.base_url
                 )
                 start_idx = max(0, cover_url.rfind(self.json_tree.properties.base_url))
                 cover_url = cover_url[start_idx:]
+                if " " in cover_url:
+                    cover_url = cover_url.replace(" ", "%20")
 
             chapters: list[Chapter] = []
             if (chapters_selector := self.json_tree.selectors.search.chapters) is not None:
-                chapter_tags: list[Tag] = manga_tag.select(chapters_selector["container"])
+                chapter_tags: list[Tag] = manga_tag.select(chapters_selector.container)
 
                 for i, ch_tag in enumerate(reversed(chapter_tags)):
-                    if chapters_selector["name"] == "_container_":
+                    # ------- extracting chapter name -------
+                    if chapters_selector.name == "_container_":
                         ch_name = ch_tag.get_text(strip=True)
                     else:
-                        ch_name = ch_tag.select_one(chapters_selector["name"]).get_text(
+                        ch_name = ch_tag.select_one(chapters_selector.name).get_text(
                             strip=True
                         )
-                    if chapters_selector["url"] == "_container_":
+                    # ------- extracting whether the chapter is premium or not -------
+                    premium_selector = self.json_tree.selectors.chapters.premium_status
+                    is_premium = False
+                    if premium_selector is not None:
+                        is_premium = ch_tag.select_one(premium_selector) is not None
+                    # ------- extracting chapter url -------
+                    if chapters_selector.url == "_container_":
                         ch_url = ch_tag.get("href")
                     else:
-                        ch_url = ch_tag.select_one(chapters_selector["url"]).get("href")
+                        ch_url = ch_tag.select_one(chapters_selector.url).get("href")
+                    if (
+                            (_tools := self.json_tree.selectors.search.chapters.no_premium_chapter_url) is not None and
+                            is_premium is True
+                    ):
+                        url = self._build_paid_chapter_url(ch_tag, url_name, _tools)
                     if not ch_url.startswith(self.json_tree.properties.base_url):
-                        ch_url = self.json_tree.properties.base_url + url
-                    chapters.append(Chapter(ch_url, ch_name, i))
+                        ch_url = self.json_tree.properties.base_url.removesuffix("/") + "/" + url.removeprefix("/")
+
+                    chapters.append(Chapter(ch_url, ch_name, i, is_premium))
             manga_id = await self.get_id(url)
             found_manga.append(PartialManga(manga_id, name, url, self.name, cover_url, chapters))
         if as_em:
@@ -773,10 +903,19 @@ class NoStatusBasicScanlator(BasicScanlator):
     def __init__(self, name: str, **kwargs):  # noqa: Invalid scope warning
         super().__init__(name, **kwargs)
 
-    async def get_status(self, raw_url: str) -> str:
+    async def get_status(self, raw_url: str) -> Optional[str]:
         date_tag = await self._get_status_tag(self, raw_url)
         if date_tag:
             latest_release_date = date_tag.get_text(strip=True)
+
+            # The next line is to check in case the manga does in fact have a status
+            # (i.e., Drakescans - some have status, and some don't)
+            probably_real_status = ":" not in latest_release_date and " " not in latest_release_date and not bool(
+                re.search(r"\d+", latest_release_date))
+            if probably_real_status:
+                return await super().get_status(
+                    raw_url)  # ideally, the request is cached, so this should not be a problem
+
             timestamp = time_string_to_seconds(latest_release_date, formats=self.json_tree.properties.time_formats)
             if (
                     datetime.now().timestamp() - timestamp
@@ -805,7 +944,7 @@ class DynamicURLScanlator(BasicScanlator):
             None
         """
         manga_id_found = chapter_id_found = False
-        # reversed to use old IDs first. Guarantees older series wil work
+        # Reversed to use old IDs first. Guarantees older series will work
         for manga_url, chapter_urls in [(x.url, [y.url for y in x.latest_chapters]) for x in reversed(partial_manhwas)]:
             if chapter_id_found is False:
                 for url in chapter_urls:
@@ -833,34 +972,21 @@ class DynamicURLScanlator(BasicScanlator):
         provided_headers = params.pop("headers", None)
         if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
         headers = ((self.create_headers() or {}) | provided_headers) or None
-        if self.json_tree.request_method == "http":
-            async with self.bot.session.request(
-                    method, url, headers=headers, **self.get_extra_req_kwargs(), **params
-            ) as resp:
-                if resp.status == 404 and self.manga_id is not None:
-                    if self.manga_id in url:
-                        self.bot.logger.warning(f"404 error on {url}. Removing manga_id from URL and trying again.")
-                        url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector_char, "")
-                        return await self._get_text(url, method, **params)
-
-                await raise_and_report_for_status(self.bot, resp)
-                return await resp.text()
-        elif self.json_tree.request_method == "curl":
-            resp = await self.bot.curl_session.request(
+        if self.json_tree.request_method == "curl":
+            resp = await self.bot.session.request(
                 method, url, headers=headers, **self.get_extra_req_kwargs(), **params
             )
             if resp.status_code == 404 and self.manga_id is not None:
                 if self.manga_id in url:
                     self.bot.logger.warning(f"404 error on {url}. Removing manga_id from URL and trying again.")
-                    url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector_char, "")
+                    if self.json_tree.properties.missing_id_connector.before_id:
+                        url = url.replace(self.json_tree.properties.missing_id_connector.char + self.manga_id, "")
+                    else:
+                        url = url.replace(self.manga_id + self.json_tree.properties.missing_id_connector.char, "")
                     return await self._get_text(url, method, **params)
 
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
-        elif self.json_tree.request_method == "flare":
-            resp = await self.bot.apis.flare.get(url, headers=headers, **params)
-            await raise_and_report_for_status(self.bot, resp)
-            return (await resp.json()).get("solution", {}).get("response")
         else:
             raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 
@@ -896,11 +1022,13 @@ class DynamicURLScanlator(BasicScanlator):
             to_replace = self.id_placeholder
             replace_with = self.chapter_id
             if self.chapter_id is None:
-                to_replace = self.id_placeholder + self.json_tree.properties.missing_id_connector_char
+                if self.json_tree.properties.missing_id_connector.before_id:
+                    to_replace = self.json_tree.properties.missing_id_connector.char + self.id_placeholder
+                else:
+                    to_replace = self.id_placeholder + self.json_tree.properties.missing_id_connector.char
                 replace_with = ""
-
             manga._last_chapter.url = manga.last_chapter.url.replace(to_replace, replace_with)
-            for chapter in manga._available_chapters:
+            for chapter in manga._chapters:
                 chapter.url = chapter.url.replace(to_replace, replace_with)
         return mangas
 
@@ -914,24 +1042,31 @@ class DynamicURLScanlator(BasicScanlator):
         chapter_rx = self.json_tree.properties.chapter_regex
         if chapter_rx is not None and (res := chapter_rx.search(url)) is not None:
             groups = res.groupdict()
+            if self.json_tree.properties.missing_id_connector.before_id:
+                id_placeholder_str = self.json_tree.properties.missing_id_connector.char + self.id_placeholder
+            else:
+                id_placeholder_str = self.id_placeholder + self.json_tree.properties.missing_id_connector.char
             return (
-                    groups["before_id"] + self.id_placeholder + self.json_tree.properties.missing_id_connector_char
-                    + groups["after_id"]
+                    groups["before_id"] + id_placeholder_str + groups["after_id"]
             )
         else:
             url_name = await self._get_url_name(url)
             return await self.format_manga_url(url_name=url_name, _id=self.id_placeholder)
 
     # noinspection PyProtectedMember
-    async def unload_manga(self, mangas: list[Manga]) -> list[Manga]:
+    async def unload_manga(self, mangas: list[Manga | PartialManga]) -> list[Manga | PartialManga]:
         unloaded_manga: list[Manga] = []
 
         for actual_manga in mangas:
             manga = deepcopy(actual_manga)  # don't want to mutate the actual loaded manga
             manga._url = await self._insert_id_placeholder(manga.url)
-            manga._last_chapter.url = await self._insert_id_placeholder(manga.last_chapter.url)
-            for chapter in manga._available_chapters:
-                chapter.url = await self._insert_id_placeholder(chapter.url)
+            if isinstance(manga, PartialManga):
+                for chapter in manga._latest_chapters:
+                    chapter.url = await self._insert_id_placeholder(chapter.url)
+            else:
+                manga._last_chapter.url = await self._insert_id_placeholder(manga.last_chapter.url)
+                for chapter in manga._chapters:
+                    chapter.url = await self._insert_id_placeholder(chapter.url)
             unloaded_manga.append(manga)
         return unloaded_manga
 
@@ -966,4 +1101,4 @@ for _type, _map in lookup_map.items():
             scanlators[name] = kwargs
 
 if __name__ == "__main__":
-    raise RuntimeError("This file is not meant to be run directly.")
+    raise RuntimeError("This file is not meant to be run directly. Please start main.py from the root dir instead.")
