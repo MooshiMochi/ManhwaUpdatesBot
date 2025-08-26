@@ -13,7 +13,8 @@ from ..static import Constants
 if TYPE_CHECKING:
     from .bot import MangaClient
 
-from src.core.objects import GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, ScanlatorChannelAssociation, \
+from src.core.objects import DMSettings, GuildSettings, Manga, Bookmark, Chapter, MangaHeader, Patron, \
+    ScanlatorChannelAssociation, \
     SubscriptionObject
 from src.core.scanlators import scanlators
 from io import BytesIO
@@ -32,46 +33,13 @@ class Database:
     def __init__(self, bot: MangaClient, database_name: str = "database.db"):
         self.bot: MangaClient = bot
         self.db_name = database_name
+        self.conn = None
 
         if not os.path.exists(self.db_name):
             with open(self.db_name, "w") as _:
                 ...
 
     async def async_init(self) -> None:
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS series (
-                    id TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    url TEXT NOT NULL,
-                    synopsis TEXT,
-                    series_cover_url TEXT NOT NULL,
-                    last_chapter TEXT,
-                    available_chapters TEXT,
-                    
-                    status TEXT NOT NULL DEFAULT 'Ongoing',
-                    scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                    UNIQUE(id, scanlator) ON CONFLICT IGNORE
-                )
-                """
-            )
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS user_subs (
-                    id INTEGER NOT NULL,
-                    series_id TEXT NOT NULL,
-                    guild_id INTEGER NOT NULL,
-                    scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                    
-                    FOREIGN KEY (series_id) REFERENCES series (id),
-                    FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                    UNIQUE (id, series_id, scanlator, guild_id) ON CONFLICT IGNORE
-                )
-                """
-=======
         self.conn = await aiosqlite.connect(self.db_name)
         # Register the levenshtein function once during initialization
         await self.conn.create_function("levenshtein", 2, _levenshtein_distance)
@@ -112,64 +80,10 @@ class Database:
                 FOREIGN KEY (scanlator) REFERENCES series (scanlator),
                 FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
                 UNIQUE (id, series_id, scanlator, guild_id) ON CONFLICT IGNORE
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
             )
+            """
+        )
 
-<<<<<<< HEAD
-            await db.execute(
-                # user_id: the discord ID of the user the bookmark belongs to
-                # series_id: the ID of the series from the series table
-                # last_read_chapter_index: the last chapter the user read
-                # guild_id: the discord guild the user bookmarked the manga from
-                # last_updated_ts: the timestamp of the last time the bookmark was updated by the user
-                # fold: the folder in which the bookmark is in
-                """
-                CREATE TABLE IF NOT EXISTS bookmarks (
-                    user_id INTEGER NOT NULL,
-                    series_id TEXT NOT NULL,
-                    last_read_chapter_index INTEGER DEFAULT NULL,
-                    guild_id INTEGER NOT NULL,
-                    last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                    folder VARCHAR(10) DEFAULT 'reading',
-                    
-                    FOREIGN KEY (series_id) REFERENCES series (id),
-                    FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                    FOREIGN KEY (user_id) REFERENCES user_subs (id),
-                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                    UNIQUE (user_id, series_id, scanlator) ON CONFLICT IGNORE
-                    );
-                """
-            )
-
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS guild_config (
-                    guild_id INTEGER PRIMARY KEY NOT NULL,             
-                    notifications_channel_id INTEGER,
-                    default_ping_role_id INTEGER DEFAULT NULL,
-                    auto_create_role BOOLEAN NOT NULL DEFAULT false,
-                    system_channel_id INTEGER default null,
-                    show_update_buttons BOOLEAN NOT NULL DEFAULT true,
-                    paid_chapter_notifications BOOLEAN NOT NULL DEFAULT false,
-                    bot_manager_role_id INTEGER DEFAULT NULL,
-                    UNIQUE (guild_id) ON CONFLICT IGNORE
-                )
-                """
-            )
-
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS tracked_guild_series (
-                    guild_id INTEGER NOT NULL,
-                    series_id TEXT NOT NULL,
-                    role_id INTEGER,
-                    scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                    FOREIGN KEY (series_id) REFERENCES series (id),
-                    FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                    UNIQUE (guild_id, series_id, scanlator) ON CONFLICT REPLACE
-=======
         await self.conn.execute(
             # user_id: the discord ID of the user the bookmark belongs to
             # series_id: the ID of the series from the series table
@@ -192,57 +106,84 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES user_subs (id),
                 FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
                 UNIQUE (user_id, series_id, scanlator) ON CONFLICT IGNORE
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
                 );
-                """
-            )
+            """
+        )
 
-            await db.execute(
-                """
-                    CREATE TABLE IF NOT EXISTS scanlators_config (
-                    scanlator TEXT PRIMARY KEY NOT NULL,
-                    enabled BOOLEAN NOT NULL DEFAULT 1
-                );
-                """
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS guild_config (
+                guild_id INTEGER PRIMARY KEY NOT NULL,             
+                notifications_channel_id INTEGER,
+                default_ping_role_id INTEGER DEFAULT NULL,
+                auto_create_role BOOLEAN NOT NULL DEFAULT false,
+                system_channel_id INTEGER default null,
+                show_update_buttons BOOLEAN NOT NULL DEFAULT true,
+                paid_chapter_notifications BOOLEAN NOT NULL DEFAULT false,
+                bot_manager_role_id INTEGER DEFAULT NULL,
+                UNIQUE (guild_id) ON CONFLICT IGNORE
             )
+            """
+        )
 
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS bot_created_roles (
-                    guild_id INTEGER NOT NULL,
-                    role_id INTEGER NOT NULL,
-                    UNIQUE (guild_id, role_id) ON CONFLICT REPLACE
-                );
-                """
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tracked_guild_series (
+                guild_id INTEGER NOT NULL,
+                series_id TEXT NOT NULL,
+                role_id INTEGER,
+                scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
+                FOREIGN KEY (series_id) REFERENCES series (id),
+                FOREIGN KEY (scanlator) REFERENCES series (scanlator),
+                UNIQUE (guild_id, series_id, scanlator) ON CONFLICT REPLACE
+            );
+            """
+        )
+
+        await self.conn.execute(
+            """
+                CREATE TABLE IF NOT EXISTS scanlators_config (
+                scanlator TEXT PRIMARY KEY NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT 1
+            );
+            """
+        )
+
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bot_created_roles (
+                guild_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                UNIQUE (guild_id, role_id) ON CONFLICT REPLACE
+            );
+            """
+        )
+
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS patreons (
+                email TEXT PRIMARY KEY NOT NULL,
+                user_id INTEGER,
+                first_name TEXT NOT NULL,
+                last_name TEXT NOT NULL,
+                UNIQUE (email) ON CONFLICT REPLACE
             )
+            """
+        )
 
-<<<<<<< HEAD
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS patreons (
-                    email TEXT PRIMARY KEY NOT NULL,
-                    user_id INTEGER,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT NOT NULL,
-                    UNIQUE (email) ON CONFLICT REPLACE
-                )
-                """
-            )
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scanlator_channel_associations (
+                guild_id INTEGER NOT NULL,
+                scanlator TEXT NOT NULL,
+                channel_id INTEGER NOT NULL,
+                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
+                UNIQUE (guild_id, scanlator, channel_id) ON CONFLICT REPLACE
+            );
+            """
+        )
 
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS scanlator_channel_associations (
-                    guild_id INTEGER NOT NULL,
-                    scanlator TEXT NOT NULL,
-                    channel_id INTEGER NOT NULL,
-                    FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                    UNIQUE (guild_id, scanlator, channel_id) ON CONFLICT REPLACE
-                );
-                """
-            )
-
-            await db.commit()
-=======
         # Create indexes for frequently queried columns to improve performance
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_series_title ON series(title);")
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_series_id_scanlator ON series(id, scanlator);")
@@ -254,7 +195,6 @@ class Database:
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_series_id_scanlator ON tracked_guild_series(series_id, scanlator);")
 
         await self.conn.commit()
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
     async def execute(self, query: str, *args) -> Any:
         """
@@ -267,20 +207,10 @@ class Database:
         Returns:
             The result of the query.
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            if levenshtein is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-            async with db.execute(query, args) as cursor:
-                result = await cursor.fetchall()
-                await db.commit()
-                return result
-=======
         async with self.conn.execute(query, args) as cursor:
             result = await cursor.fetchall()
             await self.conn.commit()
             return result
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
     def export(self, raw: bool = False) -> BytesIO:
         """As this function carries out non-async operations, it must be run in a thread executor."""
@@ -344,162 +274,120 @@ class Database:
         Returns:
             The number of rows affected.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                f"""
-                    DELETE FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
-                    AND (SELECT status FROM series WHERE id = $1 AND scanlator = $2) IN ({completed_db_set});
-                    """,
-                (series_id, scanlator)
-            )
-            await db.commit()
-            return cursor.rowcount if cursor.rowcount > 0 else 0
+        cursor = await self.conn.execute(
+            f"""
+                DELETE FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
+                AND (SELECT status FROM series WHERE id = $1 AND scanlator = $2) IN ({completed_db_set});
+                """,
+            (series_id, scanlator)
+        )
+        await self.conn.commit()
+        return cursor.rowcount if cursor.rowcount > 0 else 0
 
     async def upsert_patreons(self, patrons: list[Patron]) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            for patron in patrons:
-                await db.execute(
-                    """
-                    INSERT INTO patreons (email, user_id, first_name, last_name)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT(email) DO UPDATE SET user_id = $2, first_name = $3, last_name = $4;
-                    """,
-                    patron.to_tuple(),
-                )
-            await db.commit()
+        for patron in patrons:
+            await self.conn.execute(
+                """
+                INSERT INTO patreons (email, user_id, first_name, last_name)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT(email) DO UPDATE SET user_id = $2, first_name = $3, last_name = $4;
+                """,
+                patron.to_tuple(),
+            )
+        await self.conn.commit()
 
     async def delete_inactive_patreons(self, active_patrons: list[Patron]) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM patreons WHERE email NOT IN ($1);
-                """,
-                (",".join([patron.email for patron in active_patrons]),),
-            )
-            await db.commit()
+        await self.conn.execute(
+            """
+            DELETE FROM patreons WHERE email NOT IN ($1);
+            """,
+            (",".join([patron.email for patron in active_patrons]),),
+        )
+        await self.conn.commit()
 
     async def is_patreon(self, user_id: int) -> bool:
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT * FROM patreons WHERE user_id = $1;
-                """,
-                (user_id,),
-            )
-            result = await cursor.fetchone()
-            return result is not None
+        cursor = await self.conn.execute(
+            """
+            SELECT * FROM patreons WHERE user_id = $1;
+            """,
+            (user_id,),
+        )
+        result = await cursor.fetchone()
+        return result is not None
 
     async def subscribe_user_to_tracked_series(self, sub_objects: list[SubscriptionObject]) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.executemany(
-                """
-                INSERT INTO user_subs VALUES ($1, $2, $3, $4);
-                """,
-                map(lambda x: x.to_tuple(), sub_objects)
-            )
-            await db.commit()
+        await self.conn.executemany(
+            """
+            INSERT INTO user_subs VALUES ($1, $2, $3, $4);
+            """,
+            map(lambda x: x.to_tuple(), sub_objects)
+        )
+        await self.conn.commit()
 
     async def unsubscribe_user_to_tracked_series(self, sub_objects: list[SubscriptionObject]) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.executemany(
-                """
-                DELETE FROM user_subs WHERE id = $1 AND series_id = $2 AND guild_id = $3 AND scanlator = $4;
-                """,
-                map(lambda x: x.to_tuple(), sub_objects)
-            )
-            await db.commit()
+        await self.conn.executemany(
+            """
+            DELETE FROM user_subs WHERE id = $1 AND series_id = $2 AND guild_id = $3 AND scanlator = $4;
+            """,
+            map(lambda x: x.to_tuple(), sub_objects)
+        )
+        await self.conn.commit()
 
     async def get_all_user_unsubbed_tracked_series(
             self, guild_id: int, user_id: int, guild: discord.Guild) -> list[SubscriptionObject] | list[Any]:
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT
-                    s.id,
-                    s.scanlator,
-                    t.role_id
-                FROM series AS s
-                INNER JOIN tracked_guild_series AS t
-                ON s.id = t.series_id AND s.scanlator = t.scanlator
-                WHERE t.guild_id = $1
-                AND (s.id, s.scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND id = $2
-                );
-                """,
-                (guild_id, user_id),
-            )
-            result = await cursor.fetchall()
-            if result:
-                return [SubscriptionObject(user_id, guild_id, x[0], x[1], guild.get_role(x[2])) for x in result]
-            return []
+        cursor = await self.conn.execute(
+            """
+            SELECT
+                s.id,
+                s.scanlator,
+                t.role_id
+            FROM series AS s
+            INNER JOIN tracked_guild_series AS t
+            ON s.id = t.series_id AND s.scanlator = t.scanlator
+            WHERE t.guild_id = $1
+            AND (s.id, s.scanlator) NOT IN (
+                SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND id = $2
+            );
+            """,
+            (guild_id, user_id),
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [SubscriptionObject(user_id, guild_id, x[0], x[1], guild.get_role(x[2])) for x in result]
+        return []
 
     async def get_all_user_subbed_series(
             self, guild_id: int, user_id: int, guild: discord.Guild) -> list[SubscriptionObject] | list[Any]:
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT
-                    s.id,
-                    s.scanlator,
-                    t.role_id
-                FROM series AS s
-                INNER JOIN user_subs AS u
-                ON s.id = u.series_id AND s.scanlator = u.scanlator
-                LEFT JOIN tracked_guild_series AS t
-                ON s.id = t.series_id AND s.scanlator = t.scanlator AND t.guild_id = u.guild_id
-                WHERE u.guild_id = $1 AND u.id = $2;
-                """,
-                (guild_id, user_id),
-            )
-            result = await cursor.fetchall()
-            if result:
-                return [SubscriptionObject(user_id, guild_id, x[0], x[1], guild.get_role(x[2])) for x in result]
-            return []
+        cursor = await self.conn.execute(
+            """
+            SELECT
+                s.id,
+                s.scanlator,
+                t.role_id
+            FROM series AS s
+            INNER JOIN user_subs AS u
+            ON s.id = u.series_id AND s.scanlator = u.scanlator
+            LEFT JOIN tracked_guild_series AS t
+            ON s.id = t.series_id AND s.scanlator = t.scanlator AND t.guild_id = u.guild_id
+            WHERE u.guild_id = $1 AND u.id = $2;
+            """,
+            (guild_id, user_id),
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [SubscriptionObject(user_id, guild_id, x[0], x[1], guild.get_role(x[2])) for x in result]
+        return []
 
     async def delete_role_from_db(self, role_id: int) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.executemany(
-                """
-                UPDATE tracked_guild_series SET role_id = NULL WHERE role_id = $1;
-                DELETE FROM bot_created_roles WHERE role_id = $1;
-                """,
-                role_id
-            )
+        await self.conn.execute(
+            """
+            UPDATE tracked_guild_series SET role_id = NULL WHERE role_id = $1;
+            DELETE FROM bot_created_roles WHERE role_id = $1;
+            """,
+            role_id
+        )
 
     async def subscribe_user_to_all_tracked_series(self, user_id: int, guild_id: int) -> int:
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT
-                    s.id,
-                    s.title,
-                    s.url,
-                    s.synopsis,
-                    s.series_cover_url,
-                    s.last_chapter,
-                    s.available_chapters,
-                    s.status,
-                    s.scanlator
-                    
-                FROM series AS s
-                INNER JOIN tracked_guild_series AS t
-                ON s.id = t.series_id AND s.scanlator = t.scanlator
-                WHERE t.guild_id = $1
-                AND (s.id, s.scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1
-                );
-                """,
-                (guild_id,),
-            )
-            result = await cursor.fetchall()
-            if result:
-                mangas = Manga.from_tuples(result)
-                for manga in mangas:
-                    await self.subscribe_user(user_id, guild_id, manga.id, manga.scanlator)
-                return len(mangas)
-            return 0
-=======
         cursor = await self.conn.execute(
             """
             SELECT
@@ -530,7 +418,6 @@ class Database:
                 await self.subscribe_user(user_id, guild_id, manga.id, manga.scanlator)
             return len(mangas)
         return 0
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
     async def toggle_scanlator(self, scanlator: str) -> None:
         """
@@ -542,103 +429,98 @@ class Database:
         Returns:
             (bool): Whether the scanlator was enabled or disabled.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 0)
-                ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled;
-                """,
-                # as scanlators are enabled by default, we will insert 0 when first toggling
-                (scanlator,),
-            )
-            cursor = await db.execute(
-                """
-                SELECT enabled FROM scanlators_config WHERE scanlator = $1;
-                """,
-                (scanlator,),
-            )
-            result = await cursor.fetchone()
-            await db.commit()
-            return result[0]
+        await self.conn.execute(
+            """
+            INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 0)
+            ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled;
+            """,
+            # as scanlators are enabled by default, we will insert 0 when first toggling
+            (scanlator,),
+        )
+        cursor = await self.conn.execute(
+            """
+            SELECT enabled FROM scanlators_config WHERE scanlator = $1;
+            """,
+            (scanlator,),
+        )
+        result = await cursor.fetchone()
+        await self.conn.commit()
+        return result[0]
 
     async def get_disabled_scanlators(self) -> List[str]:
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT scanlator FROM scanlators_config WHERE enabled = 0;
-                """
-            )
-            result = await cursor.fetchall()
-            await db.commit()
-            return [row[0] for row in result]
+        cursor = await self.conn.execute(
+            """
+            SELECT scanlator FROM scanlators_config WHERE enabled = 0;
+            """
+        )
+        result = await cursor.fetchall()
+        await self.conn.commit()
+        return [row[0] for row in result]
 
     async def add_series(self, manga_obj: Manga) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            if manga_obj.scanlator in scanlators:
-                await db.execute(
-                    """
-                INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
-                status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
-                    """,
-                    ((await scanlators[manga_obj.scanlator].unload_manga([manga_obj]))[0].to_tuple()),
-                )
+        if manga_obj.scanlator in scanlators:
+            await self.conn.execute(
+                """
+            INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
+            status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
+                """,
+                ((await scanlators[manga_obj.scanlator].unload_manga([manga_obj]))[0].to_tuple()),
+            )
 
-                await db.commit()
-            else:
-                raise CustomError(
-                    f"This action cannot be completed at this time because {manga_obj.scanlator.title()} is currently "
-                    f"disabled."
-                )
+            await self.conn.commit()
+        else:
+            raise CustomError(
+                f"This action cannot be completed at this time because {manga_obj.scanlator.title()} is currently "
+                f"disabled."
+            )
 
     async def upsert_bookmark(self, bookmark: Bookmark) -> bool:
-        async with aiosqlite.connect(self.db_name) as db:
-            if bookmark.manga.scanlator in scanlators:
-                await db.execute(
-                    """
-                INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
-                status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
-                    """,
-                    ((await scanlators[bookmark.manga.scanlator].unload_manga([bookmark.manga]))[0].to_tuple()),
-                )
-            else:
-                raise CustomError(
-                    f"This action cannot be completed at this time because {bookmark.manga.scanlator.title()} is "
-                    f"currently disabled."
-                )
-
-            await db.execute(
+        if bookmark.manga.scanlator in scanlators:
+            await self.conn.execute(
                 """
-                INSERT INTO bookmarks (
-                    user_id,
-                    series_id,
-                    last_read_chapter_index,
-                    guild_id,
-                    last_updated_ts,
-                    scanlator,
-                    folder
-                    ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT(user_id, series_id, scanlator) DO 
-                UPDATE SET last_read_chapter_index=$3, last_updated_ts=$5, folder=$7;
+            INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
+            status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
                 """,
-                (bookmark.to_tuple()),
+                ((await scanlators[bookmark.manga.scanlator].unload_manga([bookmark.manga]))[0].to_tuple()),
             )
-            await db.commit()
-            return True
+        else:
+            raise CustomError(
+                f"This action cannot be completed at this time because {bookmark.manga.scanlator.title()} is "
+                f"currently disabled."
+            )
+
+        await self.conn.execute(
+            """
+            INSERT INTO bookmarks (
+                user_id,
+                series_id,
+                last_read_chapter_index,
+                guild_id,
+                last_updated_ts,
+                scanlator,
+                folder
+                ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT(user_id, series_id, scanlator) DO 
+            UPDATE SET last_read_chapter_index=$3, last_updated_ts=$5, folder=$7;
+            """,
+            (bookmark.to_tuple()),
+        )
+        await self.conn.commit()
+        return True
 
     async def subscribe_user(self, user_id: int, guild_id: int, series_id: str, scanlator: str) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            # INSERT OR IGNORE INTO user_subs (id, series_id, guild_id) VALUES ($1, $2, $3);
-            await db.execute(
-                """
-                INSERT INTO user_subs (id, series_id, guild_id, scanlator) 
-                VALUES ($1, $2, $3, $4) 
-                ON CONFLICT (id, series_id, guild_id, scanlator) DO NOTHING;
-                """,
-                (user_id, series_id, guild_id, scanlator),
-            )
+        # INSERT OR IGNORE INTO user_subs (id, series_id, guild_id) VALUES ($1, $2, $3);
+        await self.conn.execute(
+            """
+            INSERT INTO user_subs (id, series_id, guild_id, scanlator) 
+            VALUES ($1, $2, $3, $4) 
+            ON CONFLICT (id, series_id, guild_id, scanlator) DO NOTHING;
+            """,
+            (user_id, series_id, guild_id, scanlator),
+        )
 
-            await db.commit()
+        await self.conn.commit()
 
     async def is_user_subscribed(self, user_id: int, manga_id: Any, scanlator: str) -> bool:
         """
@@ -652,15 +534,14 @@ class Database:
         Returns:
             (bool): Whether the user is subscribed to the manga.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT * FROM user_subs WHERE id = $1 AND series_id = $2 AND scanlator = $3;
-                """,
-                (user_id, manga_id, scanlator),
-            )
-            result = await cursor.fetchone()
-            return result is not None
+        cursor = await self.conn.execute(
+            """
+            SELECT * FROM user_subs WHERE id = $1 AND series_id = $2 AND scanlator = $3;
+            """,
+            (user_id, manga_id, scanlator),
+        )
+        result = await cursor.fetchone()
+        return result is not None
 
     async def mark_chapter_read(self, user_id: int, guild_id: int, manga: Manga, chapter: Chapter) -> bool:
         """
@@ -675,44 +556,42 @@ class Database:
         Returns:
             (bool): Whether the chapter was marked as read.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            result = await db.execute(
-                """
-                INSERT INTO bookmarks (
-                    user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, scanlator, folder
-                    ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7) 
-                ON CONFLICT(user_id, series_id, scanlator) 
-                DO UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
-                """,
-                (user_id, manga.id, chapter.to_json(), guild_id, datetime.now(), manga.scanlator),
-            )
-            if result.rowcount < 1:
-                raise DatabaseError("Failed to mark chapter as read.")
-            await db.commit()
-            return True
+        result = await self.conn.execute(
+            """
+            INSERT INTO bookmarks (
+                user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, scanlator, folder
+                ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) 
+            ON CONFLICT(user_id, series_id, scanlator) 
+            DO UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
+            """,
+            (user_id, manga.id, chapter.to_json(), guild_id, datetime.now(), manga.scanlator),
+        )
+        if result.rowcount < 1:
+            raise DatabaseError("Failed to mark chapter as read.")
+        await self.conn.commit()
+        return True
 
     async def upsert_config(self, settings: GuildSettings) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                INSERT INTO guild_config (
-                    guild_id, notifications_channel_id, default_ping_role_id, 
-                    auto_create_role, system_channel_id, show_update_buttons, 
-                    paid_chapter_notifications, bot_manager_role_id
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                ON CONFLICT(guild_id)
-                DO UPDATE SET 
-                    notifications_channel_id = $2, default_ping_role_id = $3, 
-                    auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6, 
-                    paid_chapter_notifications = $7, bot_manager_role_id = $8
-                WHERE guild_id = $1;
-                """,
-                settings.to_tuple(),
+        await self.conn.execute(
+            """
+            INSERT INTO guild_config (
+                guild_id, notifications_channel_id, default_ping_role_id, 
+                auto_create_role, system_channel_id, show_update_buttons, 
+                paid_chapter_notifications, bot_manager_role_id
             )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT(guild_id)
+            DO UPDATE SET 
+                notifications_channel_id = $2, default_ping_role_id = $3, 
+                auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6, 
+                paid_chapter_notifications = $7, bot_manager_role_id = $8
+            WHERE guild_id = $1;
+            """,
+            settings.to_tuple(),
+        )
 
-            await db.commit()
+        await self.conn.commit()
 
     async def get_all_user_subs(self, user_id: int, current: str | None) -> list[Manga]:
         """
@@ -726,41 +605,6 @@ class Database:
             List[Manga] if manga are found.
             None if no manga are found.
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            query = """
-                SELECT
-                    s.id,
-                    s.title,
-                    s.url,
-                    s.synopsis,
-                    s.series_cover_url,
-                    s.last_chapter,
-                    s.available_chapters,
-                    s.status,
-                    s.scanlator
-                    
-                FROM series AS s
-                INNER JOIN user_subs AS u
-                ON s.id = u.series_id AND s.scanlator = u.scanlator
-                WHERE u.id = $1
-                """
-            if current is not None and bool(current.strip()) is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-                query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
-                params = (user_id, current)
-            else:
-                query += ";"
-                params = (user_id,)
-            cursor = await db.execute(
-                query,
-                params,
-            )
-            result = await cursor.fetchall()
-            if result:
-                return Manga.from_tuples(result)  # noqa
-            return []
-=======
         query = """
             SELECT
                 s.id,
@@ -792,7 +636,6 @@ class Database:
         if result:
             return Manga.from_tuples(result)  # noqa
         return []
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
     # noinspection PyUnresolvedReferences
     async def get_user_guild_subs(
@@ -808,32 +651,6 @@ class Database:
         >>> [Manga, ...]
         >>> None if no manga is found.
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            _base = (
-                "SELECT * FROM series "
-                "WHERE (series.id, series.scanlator) IN "
-                "(SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND "
-                "id = $2)"
-            )
-            if autocomplete is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-                is_current: bool = (current or "").strip() != ""
-                if scanlator is not None and is_current is True:
-                    query = f"{_base} AND scanlator = $3 ORDER BY levenshtein(title, $4) DESC LIMIT 25;"
-                    params = (guild_id, user_id, scanlator, current)
-                elif scanlator is not None and is_current is False:
-                    query = f"{_base} AND scanlator = $3 LIMIT 25;"
-                    params = (guild_id, user_id, scanlator)
-                elif is_current is True:
-                    query = f"{_base} ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
-                    params = (guild_id, user_id, current)
-                else:  # current False, scanlator None
-                    query = f"{_base} LIMIT 25;"
-                    params = (guild_id, user_id)
-            else:
-                query = f"{_base};"
-=======
         _base = (
             "SELECT * FROM series "
             "WHERE (series.id, series.scanlator) IN "
@@ -853,17 +670,19 @@ class Database:
                 params = (guild_id, user_id, current)
             else:  # current False, scanlator None
                 query = f"{_base} LIMIT 25;"
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
                 params = (guild_id, user_id)
-            async with db.execute(query, params) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    objects = Manga.from_tuples(result)
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
-                return []
+        else:
+            query = f"{_base};"
+            params = (guild_id, user_id)
+        async with self.conn.execute(query, params) as cursor:
+            result = await cursor.fetchall()
+            if result:
+                objects = Manga.from_tuples(result)
+                return [
+                    (await scanlators[x.scanlator].load_manga([x]))[0]
+                    for x in objects if x.scanlator in scanlators
+                ]
+            return []
 
     async def get_user_subs(self, user_id: int, current: str = None) -> list[Manga]:
         """
@@ -871,31 +690,6 @@ class Database:
         >>> [Manga, ...]
         >>> None # if no manga is found.
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            query = """
-            SELECT * FROM series 
-            WHERE (series.id, series.scanlator) IN (
-                SELECT series_id, scanlator FROM user_subs WHERE id = $1
-                )
-            """
-            if current is not None and bool(current.strip()) is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-                query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
-                params = (user_id, current)
-            else:
-                query += ";"
-                params = (user_id,)
-            async with db.execute(query, params) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    objects = Manga.from_tuples(result)
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
-                return []
-=======
         query = """
         SELECT * FROM series 
         WHERE (series.id, series.scanlator) IN (
@@ -917,7 +711,6 @@ class Database:
                     for x in objects if x.scanlator in scanlators
                 ]
             return []
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
     async def get_series_to_delete(self) -> list[Manga] | None:
         """
@@ -930,26 +723,25 @@ class Database:
         Returns:
             list[Manga] | None: list of Manga class objects that needs to be deleted.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT * FROM series
-                    WHERE (series.id, series.scanlator) NOT IN (
-                        SELECT series_id, scanlator FROM user_subs
-                    )
-                    AND (series.id, series.scanlator) NOT IN (
-                        SELECT series_id, scanlator FROM bookmarks
-                    );
-                    """
-            ) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    objects = Manga.from_tuples(result)
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
-                return None
+        async with self.conn.execute(
+                """
+                SELECT * FROM series
+                WHERE (series.id, series.scanlator) NOT IN (
+                    SELECT series_id, scanlator FROM user_subs
+                )
+                AND (series.id, series.scanlator) NOT IN (
+                    SELECT series_id, scanlator FROM bookmarks
+                );
+                """
+        ) as cursor:
+            result = await cursor.fetchall()
+            if result:
+                objects = Manga.from_tuples(result)
+                return [
+                    (await scanlators[x.scanlator].load_manga([x]))[0]
+                    for x in objects if x.scanlator in scanlators
+                ]
+            return None
 
     async def get_manga_guild_ids(self, manga_id: str | int, scanlator: str) -> list[int]:
         """
@@ -963,83 +755,67 @@ class Database:
         Returns:
             list[int]: list of guild ids that has subscribed to the manga.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT guild_id FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
-                    """,
-                    (manga_id, scanlator),
-            ) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    return list(set([row[0] for row in result]))
-                return []
+        async with self.conn.execute(
+                """
+                SELECT guild_id FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
+                """,
+                (manga_id, scanlator),
+        ) as cursor:
+            result = await cursor.fetchall()
+            if result:
+                return list(set([row[0] for row in result]))
+            return []
 
-    async def get_series_to_update(self) -> list[MangaHeader] | None:
+    async def get_series_to_update(self, scanlator: Optional[str]) -> Optional[list[MangaHeader]]:
         """
+        Parameters:
+            scanlator (Optional[str]): The scanlator to get mangas for.
+            If None, all scanlators will be considered.
+
         Summary:
             Returns a list of Manga class objects that needs to be updated.
             It needs to be updated when:
-                - the manga is not completed
+                - the manga is not completed AND
+                - the manga is tracked by at least one guild, OR
+                - the manga is subscribed to by at least one user, OR
+                - the manga is bookmarked by at least one user
 
         Returns:
-            list[MangHeader] | None: list of Manga class objects that needs to be updated.
+            Optional[list[MangHeader]]: list of Manga class objects that needs to be updated.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            # only update series that are not completed and are subscribed to by at least one user
-            async with db.execute(
-                    f"""
-                    SELECT id, scanlator FROM series WHERE
-                        (id, scanlator) IN (
-                            SELECT series_id, scanlator FROM user_subs
-                            UNION
-                            SELECT series_id, scanlator FROM bookmarks
-                            UNION
-                            SELECT series_id, scanlator FROM tracked_guild_series
-                        )
-                        AND scanlator NOT IN (SELECT scanlator FROM scanlators_config WHERE enabled = false)
-                        AND lower(status) NOT IN ({completed_db_set});
-                    """
-            ) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    return [MangaHeader(*row) for row in result]
-                return None
+        # only update series that are not completed and are subscribed to by at least one user
+        async with self.conn.execute(
+                f"""
+                SELECT id, scanlator
+                FROM series
+                WHERE (id, scanlator) IN (
+                    SELECT series_id, scanlator FROM user_subs
+                    UNION
+                    SELECT series_id, scanlator FROM bookmarks
+                    UNION
+                    SELECT series_id, scanlator FROM tracked_guild_series
+                )
+                {f' AND scanlator = "{scanlator}"' if scanlator is not None else ''}
+                AND scanlator NOT IN (
+                    SELECT scanlator FROM scanlators_config WHERE enabled = false
+                )
+                AND (
+                    lower(status) NOT IN ({completed_db_set})
+                    OR EXISTS (
+                         SELECT 1 
+                         FROM tracked_guild_series tgs 
+                         WHERE tgs.series_id = series.id
+                           AND tgs.scanlator = series.scanlator
+                    )
+                );
+                """
+        ) as cursor:
+            result = await cursor.fetchall()
+            if result:
+                return [MangaHeader(*row) for row in result]
+            return None
 
     async def get_user_bookmark(self, user_id: int, series_id: str, scanlator: str) -> Bookmark | None:
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT
-                    b.user_id,
-                    b.series_id,
-                    b.last_read_chapter_index,
-                    b.guild_id,
-                    b.last_updated_ts,
-                    b.folder,
-                    
-                    s.id,
-                    s.title,
-                    s.url,
-                    s.synopsis,
-                    s.series_cover_url,
-                    s.last_chapter,
-                    s.available_chapters,
-                    s.status,
-                    s.scanlator
-                                
-                FROM bookmarks AS b
-                INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
-                WHERE b.user_id = $1 AND b.series_id = $2 AND b.scanlator = $3;
-                """,
-                (user_id, series_id, scanlator),
-            )
-            result = await cursor.fetchone()
-            if result is not None:
-                result = list(result)
-                bookmark_params, manga_params = result[:-9], tuple(result[-9:])
-=======
         cursor = await self.conn.execute(
             """
             SELECT
@@ -1070,18 +846,17 @@ class Database:
         if result is not None:
             result = list(result)
             bookmark_params, manga_params = result[:-9], tuple(result[-9:])
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
-                manga = Manga.from_tuple(manga_params)
-                if manga.scanlator not in scanlators:
-                    raise CustomError(
-                        f"This action cannot be completed at this time because {manga.scanlator.title()} is currently "
-                        f"disabled."
-                    )
-                manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
-                # replace series_id with a manga object
-                bookmark_params[1] = manga
-                return Bookmark.from_tuple(tuple(bookmark_params))
+            manga = Manga.from_tuple(manga_params)
+            if manga.scanlator not in scanlators:
+                raise CustomError(
+                    f"This action cannot be completed at this time because {manga.scanlator.title()} is currently "
+                    f"disabled."
+                )
+            manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
+            # replace series_id with a manga object
+            bookmark_params[1] = manga
+            return Bookmark.from_tuple(tuple(bookmark_params))
 
     async def get_user_bookmarks(self, user_id: int) -> list[Bookmark] | None:
         """
@@ -1095,35 +870,6 @@ class Database:
             List[Bookmark] if bookmarks are found.
             None if no bookmarks are found.
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT
-                    b.user_id,
-                    b.series_id,
-                    b.last_read_chapter_index,
-                    b.guild_id,
-                    b.last_updated_ts,
-                    b.folder,
-                    
-                    s.id,
-                    s.title,
-                    s.url,
-                    s.synopsis,
-                    s.series_cover_url,
-                    s.last_chapter,
-                    s.available_chapters,
-                    s.status,
-                    s.scanlator
-                                
-                FROM bookmarks AS b
-                INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
-                WHERE b.user_id = $1;
-                """,
-                (user_id,),
-            )
-=======
         cursor = await self.conn.execute(
             """
             SELECT
@@ -1150,52 +896,27 @@ class Database:
             """,
             (user_id,),
         )
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
 
-            result = await cursor.fetchall()
-            if result:
-                # change all the series_id to manga objects
-                new_result: list = []
-                for result_tup in list(result):
-                    manga_params = result_tup[-9:]
-                    manga = Manga.from_tuple(manga_params)
-                    if manga.scanlator not in scanlators:
-                        continue
-                    manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
+        result = await cursor.fetchall()
+        if result:
+            # change all the series_id to manga objects
+            new_result: list = []
+            for result_tup in list(result):
+                manga_params = result_tup[-9:]
+                manga = Manga.from_tuple(manga_params)
+                if manga.scanlator not in scanlators:
+                    continue
+                manga = (await scanlators[manga.scanlator].load_manga([manga]))[0]
 
-                    bookmark_params = result_tup[:-9]
-                    bookmark_params = list(bookmark_params)
-                    bookmark_params[1] = manga
-                    new_result.append(tuple(bookmark_params))
-                return Bookmark.from_tuples(new_result)
+                bookmark_params = result_tup[:-9]
+                bookmark_params = list(bookmark_params)
+                bookmark_params[1] = manga
+                new_result.append(tuple(bookmark_params))
+            return Bookmark.from_tuples(new_result)
 
     async def get_user_bookmarks_autocomplete(
             self, user_id: int, current: str = None, autocomplete: bool = False, scanlator: str | None = None
     ) -> list[tuple[int, str]]:
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            _base = (
-                "SELECT series.id, series.title, series.scanlator FROM series "
-                "JOIN bookmarks ON series.id = bookmarks.series_id AND series.scanlator = bookmarks.scanlator "
-                "WHERE bookmarks.user_id = $1 AND bookmarks.folder != 'hidden'"
-            )
-            if autocomplete is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-                is_current: bool = (current or "").strip() != ""
-                if scanlator is not None and is_current is True:
-                    query = f"{_base} AND series.scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
-                    params = (user_id, scanlator, current)
-                elif scanlator is not None and is_current is False:
-                    query = f"{_base} AND series.scanlator = $2 LIMIT 25;"
-                    params = (user_id, scanlator)
-                elif is_current is True:
-                    query = f"{_base} ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
-                    params = (user_id, current)
-                else:
-                    query = f"{_base} LIMIT 25;"
-                    params = (user_id,)
-                cursor = await db.execute(query, params)
-=======
         _base = (
             "SELECT series.id, series.title, series.scanlator FROM series "
             "JOIN bookmarks ON series.id = bookmarks.series_id AND series.scanlator = bookmarks.scanlator "
@@ -1212,43 +933,48 @@ class Database:
             elif is_current is True:
                 query = f"{_base} ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
                 params = (user_id, current)
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
             else:
-                cursor = await db.execute(f"{_base};", (user_id,))
-            result = await cursor.fetchall()
-            if result:
-                return [tuple(result) for result in result]
+                query = f"{_base} LIMIT 25;"
+                params = (user_id,)
+            cursor = await self.conn.execute(query, params)
+        else:
+            cursor = await self.conn.execute(f"{_base};", (user_id,))
+        result = await cursor.fetchall()
+        if result:
+            return [tuple(result) for result in result]
 
     async def get_series_chapters(
             self, series_id: str, scanlator: str, current: str = None
     ) -> list[Chapter]:
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT available_chapters FROM series
-                WHERE id = $1 and scanlator = $2;
-                """,
-                (series_id, scanlator),
-            )
-            result = await cursor.fetchone()
-            if result:
-                result = result[0]
-                chapters = Chapter.from_many_json(result)
-                if current is not None and bool(current.strip()) is True:
-                    return list(
-                        sorted(
-                            chapters, key=lambda x: _levenshtein_distance(x.name, current), reverse=True
-                        )
+        cursor = await self.conn.execute(
+            """
+            SELECT available_chapters FROM series
+            WHERE id = $1 and scanlator = $2;
+            """,
+            (series_id, scanlator),
+        )
+        result = await cursor.fetchone()
+        if result:
+            result = result[0]
+            chapters = Chapter.from_many_json(result)
+            if current is not None and bool(current.strip()) is True:
+                return list(
+                    sorted(
+                        chapters, key=lambda x: _levenshtein_distance(x.name, current), reverse=True
                     )
-                return chapters
+                )
+            return chapters
 
-    async def get_guild_config(self, guild_id: int) -> GuildSettings | None:
+    async def get_guild_config(self, guild_id: int, user: bool = False) -> Optional[GuildSettings | DMSettings]:
         """
+        Args:
+            guild_id: int - the id of the guild or user to get the config for
+            user: bool - whether to return a DMSetting or GuildSettings object
         Returns:
-             Optional[GuildSettings] object if a config is found for the guild.
+             Optional[GuildSettings | DMSettings] object if a config is found for the guild.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
+            async with self.conn.execute(
                     """
                     SELECT * FROM guild_config WHERE guild_id = $1;
                     """,
@@ -1256,6 +982,8 @@ class Database:
             ) as cursor:
                 result = await cursor.fetchone()
                 if result:
+                    if user:
+                        return DMSettings(self.bot, *result)
                     return GuildSettings(self.bot, *result)
 
     async def get_many_guild_config(self, guild_ids: list[int]) -> list[GuildSettings] | None:
@@ -1271,7 +999,7 @@ class Database:
             None if no guilds are found.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
+            async with self.conn.execute(
                     """
                     SELECT * FROM guild_config WHERE guild_id IN ({});
                     """.format(
@@ -1284,18 +1012,17 @@ class Database:
                     return [GuildSettings(self.bot, *guild) for guild in result]
 
     async def get_series(self, series_id: str, scanlator: str) -> Manga | None:
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT * FROM series WHERE id = $1 AND scanlator = $2;
-                    """,
-                    (series_id, scanlator),
-            ) as cursor:
-                result = await cursor.fetchone()
-                if result:
-                    manga_obj = Manga.from_tuple(result)
-                    if manga_obj.scanlator in scanlators:
-                        return (await scanlators[manga_obj.scanlator].load_manga([manga_obj]))[0]
+        async with self.conn.execute(
+                """
+                SELECT * FROM series WHERE id = $1 AND scanlator = $2;
+                """,
+                (series_id, scanlator),
+        ) as cursor:
+            result = await cursor.fetchone()
+            if result:
+                manga_obj = Manga.from_tuple(result)
+                if manga_obj.scanlator in scanlators:
+                    return (await scanlators[manga_obj.scanlator].load_manga([manga_obj]))[0]
 
     async def get_series_title(self, series_id: str, scanlator: str) -> str | None:
         """
@@ -1310,7 +1037,7 @@ class Database:
             str | None: The title of the series.
         """
         async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
+            async with self.conn.execute(
                     """
                     SELECT title FROM series WHERE id = $1 and scanlator = $2;
                     """,
@@ -1320,6 +1047,7 @@ class Database:
                 if result:
                     return result[0]
 
+    # noinspection SqlResolve
     async def get_all_series(
             self, current: str = None, *, autocomplete: bool = False, scanlator: str = None
     ) -> list[Manga] | None:
@@ -1327,27 +1055,6 @@ class Database:
         Returns a list of Manga objects containing all series in the database.
         >>> [Manga, ...)]
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            if autocomplete is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-                is_current: bool = (current or "").strip() != ""
-                if scanlator is not None and is_current is True:
-                    query = "SELECT * FROM series WHERE scanlator = $1 ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
-                    params = (scanlator, current)
-                elif scanlator is not None and is_current is False:
-                    query = "SELECT * FROM series WHERE scanlator = $1 LIMIT 25;"
-                    params = (scanlator,)
-                elif is_current is True:
-                    query = "SELECT * FROM series ORDER BY levenshtein(title, $1) DESC LIMIT 25;"
-                    params = (current,)
-                else:
-                    query = "SELECT * FROM series LIMIT 25;"
-                    params = None
-                async with db.execute(query, params) as cursor:
-                    if result := await cursor.fetchall():
-                        return [x for x in Manga.from_tuples(result) if not x.completed]
-=======
         if autocomplete is True:
             is_current: bool = (current or "").strip() != ""
             if scanlator is not None and is_current is True:
@@ -1359,38 +1066,42 @@ class Database:
             elif is_current is True:
                 query = "SELECT * FROM series ORDER BY levenshtein(title, $1) DESC LIMIT 25;"
                 params = (current,)
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
             else:
-                async with db.execute("SELECT * FROM series;") as cursor:
-                    if result := await cursor.fetchall():
-                        objects = Manga.from_tuples(result)
-                        return [
-                            (await scanlators[x.scanlator].load_manga([x]))[0]
-                            for x in objects if x.scanlator in scanlators
-                        ]
+                query = "SELECT * FROM series LIMIT 25;"
+                params = None
+            async with self.conn.execute(query, params) as cursor:
+                if result := await cursor.fetchall():
+                    return [x for x in Manga.from_tuples(result) if not x.completed]
+        else:
+            async with self.conn.execute("SELECT * FROM series;") as cursor:
+                if result := await cursor.fetchall():
+                    objects = Manga.from_tuples(result)
+                    return [
+                        (await scanlators[x.scanlator].load_manga([x]))[0]
+                        for x in objects if x.scanlator in scanlators
+                    ]
 
     async def get_all_subscribed_series(self) -> list[Manga]:
         """
         Returns a list of tuples containing all series that are subscribed to by at least one user.
         >>> [Manga, ...)]
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    SELECT * FROM series WHERE (series.id, series.scanlator) IN (
-                        SELECT series_id, scanlator FROM user_subs
-                    );
-                    """
-            ) as cursor:
-                result = await cursor.fetchall()
-                if not result:
-                    return []
-                else:
-                    objects = Manga.from_tuples(result)
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
+        async with self.conn.execute(
+                """
+                SELECT * FROM series WHERE (series.id, series.scanlator) IN (
+                    SELECT series_id, scanlator FROM user_subs
+                );
+                """
+        ) as cursor:
+            result = await cursor.fetchall()
+            if not result:
+                return []
+            else:
+                objects = Manga.from_tuples(result)
+                return [
+                    (await scanlators[x.scanlator].load_manga([x]))[0]
+                    for x in objects if x.scanlator in scanlators
+                ]
 
     async def update_series(self, manga: Manga) -> None:
         # since the update_series is only called in the update check, we don't need to worry about whether the
@@ -1400,62 +1111,59 @@ class Database:
                 f"This action cannot be completed at this time because {manga.scanlator.title()} is currently disabled."
             )
         manga = (await scanlators[manga.scanlator].unload_manga([manga]))[0]
-        async with aiosqlite.connect(self.db_name) as db:
-            result = await db.execute(
-                """
-                    UPDATE series 
-                    SET last_chapter = $1, series_cover_url = $2, available_chapters = $3, status = $4 
-                    WHERE id = $5 AND scanlator = $6;
-                """,
-                (
-                    manga.last_chapter.to_json() if manga.last_chapter is not None else None,
-                    manga.cover_url,
-                    manga.chapters_to_text(),
-                    manga.status,
-                    manga.id,
-                    manga.scanlator
-                ),
-            )
-            if result.rowcount < 1:
-                raise ValueError(f"No series with ID {manga.id} was found.")
-            await db.commit()
+        result = await self.conn.execute(
+            """
+                UPDATE series 
+                SET last_chapter = ?, series_cover_url = ?, available_chapters = ?, status = ?, url = ? 
+                WHERE id = ? AND scanlator = ?;
+            """,
+            (
+                manga.last_chapter.to_json() if manga.last_chapter is not None else None,
+                manga.cover_url,
+                manga.chapters_to_text(),
+                manga.status,
+                manga.url,
+                manga.id,
+                manga.scanlator
+            ),
+        )
+        await self.conn.commit()
+        if result.rowcount < 1:
+            raise ValueError(f"No series with ID {manga.id} was found.")
 
     async def update_last_read_chapter_index(
             self, user_id: int, series_id: str, scanlator: str, last_read_chapter_index: int
     ) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                    UPDATE bookmarks 
-                    SET last_read_chapter_index = $1, last_updated_ts = $2 
-                    WHERE user_id = $3 AND series_id = $4 AND scanlator = $5;
-                """,
-                (last_read_chapter_index, datetime.now().timestamp(), user_id, series_id, scanlator),
-            )
-            await db.commit()
+        await self.conn.execute(
+            """
+                UPDATE bookmarks 
+                SET last_read_chapter_index = $1, last_updated_ts = $2 
+                WHERE user_id = $3 AND series_id = $4 AND scanlator = $5;
+            """,
+            (last_read_chapter_index, datetime.now().timestamp(), user_id, series_id, scanlator),
+        )
+        await self.conn.commit()
 
     async def update_bookmark_folder(self, bookmark: Bookmark) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                UPDATE bookmarks
-                SET folder = $1
-                WHERE user_id = $2 AND series_id = $3 AND scanlator = $4;
-                """,
-                (bookmark.folder.value, bookmark.user_id, bookmark.manga.id, bookmark.manga.scanlator)
-            )
-            await db.commit()
+        await self.conn.execute(
+            """
+            UPDATE bookmarks
+            SET folder = $1
+            WHERE user_id = $2 AND series_id = $3 AND scanlator = $4;
+            """,
+            (bookmark.folder.value, bookmark.user_id, bookmark.manga.id, bookmark.manga.scanlator)
+        )
+        await self.conn.commit()
 
     async def delete_series(self, series_id: str, scanlator: str) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM series WHERE id = $1 AND scanlator = $2;
-                """,
-                (series_id, scanlator),
-            )
+        await self.conn.execute(
+            """
+            DELETE FROM series WHERE id = $1 AND scanlator = $2;
+            """,
+            (series_id, scanlator),
+        )
 
-            await db.commit()
+        await self.conn.commit()
 
     async def delete_bookmark(self, user_id: int, series_id: str, scanlator: str) -> bool:
         """
@@ -1470,58 +1178,54 @@ class Database:
         Returns:
             True if the bookmark was deleted successfully, False otherwise.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            success = await db.execute(
-                """
-                DELETE FROM bookmarks WHERE user_id = $1 and series_id = $2 and scanlator = $3;
-                """,
-                (user_id, series_id, scanlator),
-            )
-            await db.execute(
-                """
-                DELETE FROM series WHERE id = $1 AND scanlator = $2 AND (id, scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM user_subs
-                );
-                """,
-                (series_id, scanlator),
-            )
-            await db.commit()
-            return success.rowcount > 0
+        success = await self.conn.execute(
+            """
+            DELETE FROM bookmarks WHERE user_id = $1 and series_id = $2 and scanlator = $3;
+            """,
+            (user_id, series_id, scanlator),
+        )
+        await self.conn.execute(
+            """
+            DELETE FROM series WHERE id = $1 AND scanlator = $2 AND (id, scanlator) NOT IN (
+                SELECT series_id, scanlator FROM user_subs
+            );
+            """,
+            (series_id, scanlator),
+        )
+        await self.conn.commit()
+        return success.rowcount > 0
 
     async def unsub_user(self, user_id: int, series_id: str, scanlator: str) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM user_subs WHERE id = $1 and series_id = $2 and scanlator = $3;
-                """,
-                (user_id, series_id, scanlator),
-            )
+        await self.conn.execute(
+            """
+            DELETE FROM user_subs WHERE id = $1 and series_id = $2 and scanlator = $3;
+            """,
+            (user_id, series_id, scanlator),
+        )
 
-            await db.commit()
+        await self.conn.commit()
 
     async def delete_config(self, guild_id: int) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM guild_config WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
+        await self.conn.execute(
+            """
+            DELETE FROM guild_config WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
 
-            await db.commit()
+        await self.conn.commit()
 
     async def bulk_delete_series(
             self, series_ids_and_scanlators: Iterable[tuple[str, str]]
     ) -> None:
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.cursor() as cursor:
-                for _id, scanlator_str in series_ids_and_scanlators:
-                    await cursor.execute(
-                        """
-                        DELETE FROM series WHERE id = $1 AND scanlator = $2;
-                        """, (_id, scanlator_str)
-                    )
-                await db.commit()
+        async with self.conn.cursor() as cursor:
+            for _id, scanlator_str in series_ids_and_scanlators:
+                await cursor.execute(
+                    """
+                    DELETE FROM series WHERE id = $1 AND scanlator = $2;
+                    """, (_id, scanlator_str)
+                )
+            await self.conn.commit()
 
     async def get_guild_manga_role_id(self, guild_id: int, manga_id: str, scanlator: str) -> int | None:
         """
@@ -1536,18 +1240,17 @@ class Database:
         Returns:
             int | None: The role ID to ping for the manga set in the guild's config.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT role_id FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3 AND
-                role_id IS NOT (SELECT default_ping_role_id FROM guild_config WHERE guild_id = $1);
-                """,
-                (guild_id, manga_id, scanlator),
-            )
-            result = await cursor.fetchone()
-            if result:
-                return result[0]
-            return None
+        cursor = await self.conn.execute(
+            """
+            SELECT role_id FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3 AND
+            role_id IS NOT (SELECT default_ping_role_id FROM guild_config WHERE guild_id = $1);
+            """,
+            (guild_id, manga_id, scanlator),
+        )
+        result = await cursor.fetchone()
+        if result:
+            return result[0]
+        return None
 
     async def upsert_guild_sub_role(
             self, guild_id: int, manga_id: str, scanlator: str, ping_role_id: int | discord.Role
@@ -1611,30 +1314,6 @@ class Database:
         Returns:
             list[Manga]: A list of Manga class objects that are tracked in the guild.
         """
-<<<<<<< HEAD
-        async with aiosqlite.connect(self.db_name) as db:
-            _base = (
-                "SELECT * FROM series WHERE "
-                "(id, scanlator) IN (SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $1)"
-            )
-            if autocomplete is True:
-                await db.create_function("levenshtein", 2, _levenshtein_distance)
-                is_current: bool = (current or "").strip() != ""
-                if scanlator is not None and is_current is True:
-                    query = f"{_base} AND scanlator = $2 ORDER BY levenshtein(title, $3) DESC LIMIT 25;"
-                    params = (guild_id, scanlator, current)
-                elif scanlator is not None and is_current is False:
-                    query = f"{_base} AND scanlator = $2 LIMIT 25;"
-                    params = (guild_id, scanlator)
-                elif is_current is True:
-                    query = f"{_base} ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
-                    params = (guild_id, current)
-                else:  # current False, scanlator None
-                    query = f"{_base} LIMIT 25;"
-                    params = (guild_id,)
-            else:
-                query = f"{_base};"
-=======
         _base = (
             "SELECT * FROM series WHERE "
             "(id, scanlator) IN (SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $1)"
@@ -1652,17 +1331,19 @@ class Database:
                 params = (guild_id, current)
             else:  # current False, scanlator None
                 query = f"{_base} LIMIT 25;"
->>>>>>> f4ba471 (fixed a few websites, added "verify_ssl" option to websites. need to find fix for the database content to keep it in line with the new website links)
                 params = (guild_id,)
-            async with db.execute(query, params) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    objects = Manga.from_tuples(result)
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
-                return []
+        else:
+            query = f"{_base};"
+            params = (guild_id,)
+        async with self.conn.execute(query, params) as cursor:
+            result = await cursor.fetchall()
+            if result:
+                objects = Manga.from_tuples(result)
+                return [
+                    (await scanlators[x.scanlator].load_manga([x]))[0]
+                    for x in objects if x.scanlator in scanlators
+                ]
+            return []
 
     async def is_manga_tracked(self, manga_id: str, scanlator: str, guild_id: Optional[int] = None) -> bool:
         """
@@ -1677,20 +1358,19 @@ class Database:
         Returns:
             bool: Whether the manga is tracked in the guild if the guild_id is provided or globally.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            if guild_id is not None:
-                query = """
-                SELECT * FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3;
-                """
-                params = (guild_id, manga_id, scanlator)
-            else:
-                query = """
-                SELECT * FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
-                """
-                params = (manga_id, scanlator)
-            cursor = await db.execute(query, params)
-            result = await cursor.fetchone()
-            return result is not None
+        if guild_id is not None:
+            query = """
+            SELECT * FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3;
+            """
+            params = (guild_id, manga_id, scanlator)
+        else:
+            query = """
+            SELECT * FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
+            """
+            params = (manga_id, scanlator)
+        cursor = await self.conn.execute(query, params)
+        result = await cursor.fetchone()
+        return result is not None
 
     async def is_tracked_in_any_mutual_guild(self, header: MangaHeader, user_id: int) -> int:
         """
@@ -1703,21 +1383,20 @@ class Database:
         Returns:
             The number of mutual servers the series is tracked in.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            user: discord.User = self.bot.get_user(user_id)
-            if not user:
-                return 0
-            mutual_guild_ids = [f"{x.id}" for x in user.mutual_guilds] + [user_id]
-            cursor = await self.execute(
-                """
-                SELECT COUNT(*) FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
-                AND guild_id IN ({})
-                """.format(
-                    ','.join(map(str, mutual_guild_ids))
-                ),
-                header.id, header.scanlator
-            )
-            return cursor.rowcount
+        user: discord.User = self.bot.get_user(user_id)
+        if not user:
+            return 0
+        mutual_guild_ids = [f"{x.id}" for x in user.mutual_guilds] + [user_id]
+        result = await self.execute(
+            """
+            SELECT COUNT(*) FROM tracked_guild_series WHERE series_id = $1 AND scanlator = $2
+            AND guild_id IN ({})
+            """.format(
+                ','.join(map(str, mutual_guild_ids))
+            ),
+            header.id, header.scanlator
+        )
+        return result[0][0] if result else 0
 
     async def delete_guild_user_subs(self, guild_id: int) -> int:
         """
@@ -1730,15 +1409,14 @@ class Database:
         Returns:
             int: The number of rows deleted.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                DELETE FROM user_subs WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
-            await db.commit()
-            return cursor.rowcount
+        cursor = await self.conn.execute(
+            """
+            DELETE FROM user_subs WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
+        await self.conn.commit()
+        return cursor.rowcount
 
     async def delete_guild_tracked_series(self, guild_id: int) -> int:
         """
@@ -1751,15 +1429,14 @@ class Database:
         Returns:
             int: The number of rows deleted.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                DELETE FROM tracked_guild_series WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
-            await db.commit()
-            return cursor.rowcount
+        cursor = await self.conn.execute(
+            """
+            DELETE FROM tracked_guild_series WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
+        await self.conn.commit()
+        return cursor.rowcount
 
     async def get_user_untracked_subs(self, user_id: int, guild_id: int | None = None) -> list[Manga]:
         """
@@ -1775,37 +1452,36 @@ class Database:
             list[Manga]:
             A list of Manga class objects that are subscribed to by the user but not tracked in the guild.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            global_query = """
-            SELECT * FROM series WHERE (id, scanlator) IN (
-                SELECT series_id, scanlator FROM user_subs WHERE id = $1
-            ) AND (id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM tracked_guild_series
-            );
-            """
-            guild_specific_query = """
-            SELECT * FROM series WHERE (id, scanlator) IN (
-                SELECT series_id, scanlator FROM user_subs WHERE id = $1 AND guild_id = $2
-            ) AND (id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
-            );
-            """
-            if guild_id is not None:
-                query = guild_specific_query
-                params = (user_id, guild_id,)
-            else:
-                query = global_query
-                params = (user_id,)
+        global_query = """
+        SELECT * FROM series WHERE (id, scanlator) IN (
+            SELECT series_id, scanlator FROM user_subs WHERE id = $1
+        ) AND (id, scanlator) NOT IN (
+            SELECT series_id, scanlator FROM tracked_guild_series
+        );
+        """
+        guild_specific_query = """
+        SELECT * FROM series WHERE (id, scanlator) IN (
+            SELECT series_id, scanlator FROM user_subs WHERE id = $1 AND guild_id = $2
+        ) AND (id, scanlator) NOT IN (
+            SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
+        );
+        """
+        if guild_id is not None:
+            query = guild_specific_query
+            params = (user_id, guild_id,)
+        else:
+            query = global_query
+            params = (user_id,)
 
-            async with db.execute(query, params) as cursor:
-                result = await cursor.fetchall()
-                if result:
-                    objects = Manga.from_tuples(result)
-                    return [
-                        (await scanlators[x.scanlator].load_manga([x]))[0]
-                        for x in objects if x.scanlator in scanlators
-                    ]
-                return []
+        async with self.conn.execute(query, params) as cursor:
+            result = await cursor.fetchall()
+            if result:
+                objects = Manga.from_tuples(result)
+                return [
+                    (await scanlators[x.scanlator].load_manga([x]))[0]
+                    for x in objects if x.scanlator in scanlators
+                ]
+            return []
 
     async def has_untracked_subbed_manga(self, user_id: int, guild_id: int | None = None) -> bool:
         """
@@ -1818,24 +1494,23 @@ class Database:
         Returns:
             bool: Whether the user has subscribed to any manga that is not tracked in the guild.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            query = """
-            SELECT * FROM series 
-                WHERE (id, scanlator) IN (
-                    SELECT series_id, scanlator FROM user_subs WHERE id = $1
-                )
-                AND (id, scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM tracked_guild_series
-            """  # ) is completed below
-            if guild_id is not None:
-                query += " WHERE guild_id = $2) LIMIT 1;"
-                params = (user_id, guild_id)
-            else:
-                query += ") LIMIT 1;"
-                params = (user_id,)
-            cursor = await db.execute(query, params)
-            result = await cursor.fetchone()
-            return result is not None
+        query = """
+        SELECT * FROM series 
+            WHERE (id, scanlator) IN (
+                SELECT series_id, scanlator FROM user_subs WHERE id = $1
+            )
+            AND (id, scanlator) NOT IN (
+                SELECT series_id, scanlator FROM tracked_guild_series
+        """  # ) is completed below
+        if guild_id is not None:
+            query += " WHERE guild_id = $2) LIMIT 1;"
+            params = (user_id, guild_id)
+        else:
+            query += ") LIMIT 1;"
+            params = (user_id,)
+        cursor = await self.conn.execute(query, params)
+        result = await cursor.fetchone()
+        return result is not None
 
     async def unsubscribe_user_from_all_untracked(self, user_id: int, guild_id: int | None = None) -> int:
         """
@@ -1850,23 +1525,22 @@ class Database:
         Returns:
             int: The number of rows deleted.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            if guild_id is not None:
-                query = """
-                DELETE FROM user_subs WHERE id = $1 AND guild_id = $2 AND (series_id, scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
-                );
-                """
-                params = (user_id, guild_id)
-            else:
-                query = """
-                DELETE FROM user_subs WHERE id = $1 AND (series_id, scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM tracked_guild_series
-                );"""
-                params = (user_id,)
-            cursor = await db.execute(query, params)
-            await db.commit()
-            return cursor.rowcount
+        if guild_id is not None:
+            query = """
+            DELETE FROM user_subs WHERE id = $1 AND guild_id = $2 AND (series_id, scanlator) NOT IN (
+                SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
+            );
+            """
+            params = (user_id, guild_id)
+        else:
+            query = """
+            DELETE FROM user_subs WHERE id = $1 AND (series_id, scanlator) NOT IN (
+                SELECT series_id, scanlator FROM tracked_guild_series
+            );"""
+            params = (user_id,)
+        cursor = await self.conn.execute(query, params)
+        await self.conn.commit()
+        return cursor.rowcount
 
     async def get_guild_tracked_role_ids(self, guild_id: int) -> list[int] | None:
         """
@@ -1879,17 +1553,16 @@ class Database:
         Returns:
             list[int] | None: A list of role IDs that are tracked in the guild.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT role_id FROM tracked_guild_series WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
-            result = await cursor.fetchall()
-            if result:
-                return [row[0] for row in result]
-            return None
+        cursor = await self.conn.execute(
+            """
+            SELECT role_id FROM tracked_guild_series WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [row[0] for row in result]
+        return None
 
     async def add_bot_created_role(self, guild_id: int, role_id: int) -> None:
         """
@@ -1937,17 +1610,16 @@ class Database:
         Returns:
             list[int]: A list of bot-created role IDs in the guild.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT role_id FROM bot_created_roles WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
-            result = await cursor.fetchall()
-            if result:
-                return [row[0] for row in result]
-            return []
+        cursor = await self.conn.execute(
+            """
+            SELECT role_id FROM bot_created_roles WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [row[0] for row in result]
+        return []
 
     async def delete_all_guild_created_roles(self, guild_id: int) -> None:
         """
@@ -1959,15 +1631,14 @@ class Database:
         Returns:
             None
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute(
-                    """
-                    DELETE FROM bot_created_roles WHERE guild_id = $1;
-                    """,
-                    (guild_id,)
-            ) as cursor:
-                await db.commit()
-                return cursor.rowcount
+        async with self.conn.execute(
+                """
+                DELETE FROM bot_created_roles WHERE guild_id = $1;
+                """,
+                (guild_id,)
+        ) as cursor:
+            await self.conn.commit()
+            return cursor.rowcount
 
     async def get_used_scanlator_names(self, guild_id: int) -> list[str]:
         """
@@ -1980,17 +1651,16 @@ class Database:
         Returns:
             list[str]: A list of scanlator names that are used in the guild.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1
-                """,
-                (guild_id,),
-            )
-            result = await cursor.fetchall()
-            if result:
-                return [row[0] for row in result]
-            return []
+        cursor = await self.conn.execute(
+            """
+            SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1
+            """,
+            (guild_id,),
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [row[0] for row in result]
+        return []
 
     async def get_scanlator_channel_associations(self, guild_id: int) -> list[ScanlatorChannelAssociation]:
         """
@@ -2003,17 +1673,16 @@ class Database:
         Returns:
             list[ScanlatorChannelAssociation]: A list of ScanlatorChannelAssociation objects for the guild.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT * FROM scanlator_channel_associations WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
-            result = await cursor.fetchall()
-            if result:
-                return ScanlatorChannelAssociation.from_tuples(self.bot, result)
-            return []
+        cursor = await self.conn.execute(
+            """
+            SELECT * FROM scanlator_channel_associations WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
+        result = await cursor.fetchall()
+        if result:
+            return ScanlatorChannelAssociation.from_tuples(self.bot, result)
+        return []
 
     async def upsert_scanlator_channel_associations(self, associations: list[ScanlatorChannelAssociation]) -> None:
         """
@@ -2026,16 +1695,15 @@ class Database:
         Returns:
             None
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            for association in associations:
-                await db.execute(
-                    """
-                    INSERT INTO scanlator_channel_associations (guild_id, scanlator, channel_id) 
-                    VALUES ($1, $2, $3) ON CONFLICT (guild_id, scanlator, channel_id) DO UPDATE SET channel_id = $3;
-                    """,
-                    association.to_tuple()
-                )
-            await db.commit()
+        for association in associations:
+            await self.conn.execute(
+                """
+                INSERT INTO scanlator_channel_associations (guild_id, scanlator, channel_id) 
+                VALUES ($1, $2, $3) ON CONFLICT (guild_id, scanlator, channel_id) DO UPDATE SET channel_id = $3;
+                """,
+                association.to_tuple()
+            )
+        await self.conn.commit()
 
     async def delete_scanlator_channel_association(self, guild_id: int, scanlator: str) -> None:
         """
@@ -2048,14 +1716,13 @@ class Database:
         Returns:
             None
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM scanlator_channel_associations WHERE guild_id = $1 AND scanlator = $2;
-                """,
-                (guild_id, scanlator)
-            )
-            await db.commit()
+        await self.conn.execute(
+            """
+            DELETE FROM scanlator_channel_associations WHERE guild_id = $1 AND scanlator = $2;
+            """,
+            (guild_id, scanlator)
+        )
+        await self.conn.commit()
 
     async def delete_all_scanlator_channel_associations(self, guild_id: int) -> None:
         """
@@ -2067,14 +1734,13 @@ class Database:
         Returns:
             None
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            await db.execute(
-                """
-                DELETE FROM scanlator_channel_associations WHERE guild_id = $1;
-                """,
-                (guild_id,)
-            )
-            await db.commit()
+        await self.conn.execute(
+            """
+            DELETE FROM scanlator_channel_associations WHERE guild_id = $1;
+            """,
+            (guild_id,)
+        )
+        await self.conn.commit()
 
     async def get_guild_manager_role(self, guild_id: int) -> int | None:
         """
@@ -2087,16 +1753,15 @@ class Database:
         Returns:
             int | None: The guild's manager role ID.
         """
-        async with aiosqlite.connect(self.db_name) as db:
-            cursor = await db.execute(
-                """
-                SELECT bot_manager_role_id FROM guild_config WHERE guild_id = $1;
-                """,
-                (guild_id,),
-            )
-            result = await cursor.fetchone()
-            if result:
-                return result[0]
+        cursor = await self.conn.execute(
+            """
+            SELECT bot_manager_role_id FROM guild_config WHERE guild_id = $1;
+            """,
+            (guild_id,),
+        )
+        result = await cursor.fetchone()
+        if result:
+            return result[0]
 
     async def set_guild_manager_role(self, guild_id: int, role_id: int) -> None:
         """
@@ -2116,3 +1781,45 @@ class Database:
             """,
             role_id, guild_id
         )
+
+    async def is_scanlator_disabled(self, scanlator: str) -> bool:
+        """
+        Summary:
+            Checks if the scanlator is disabled.
+
+        Args:
+            scanlator: str - The scanlator's name
+
+        Returns:
+            bool: Whether the scanlator is disabled.
+        """
+        cursor = await self.conn.execute(
+            """
+            SELECT enabled FROM scanlators_config WHERE scanlator = $1;
+            """,
+            (scanlator,)
+        )
+        result = await cursor.fetchone()
+        return result is not None and not result[0]
+
+    async def get_guild_tracked_scanlators(self, guild_id: int) -> list[str]:
+        """
+        Summary:
+            Returns a list of scanlator names that are tracked in the guild.
+
+        Args:
+            guild_id: int - The guild's ID
+
+        Returns:
+            list[str]: A list of scanlator names that are tracked in the guild.
+        """
+        cursor = await self.conn.execute(
+            """
+            SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1;
+            """,
+            (guild_id,)
+        )
+        result = await cursor.fetchall()
+        if result:
+            return [row[0] for row in result]
+        return []
