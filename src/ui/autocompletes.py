@@ -98,7 +98,6 @@ def debounce_autocomplete(delay: float = 0.5):
         @wraps(func)
         async def wrapper(interaction: discord.Interaction, current: str, *args, **kwargs):
             # Start the cache cleanup task if it's not already running
-            global _cache_cleanup_task_running
             if not _cache_cleanup_task_running:
                 asyncio.create_task(_cleanup_cache())
 
