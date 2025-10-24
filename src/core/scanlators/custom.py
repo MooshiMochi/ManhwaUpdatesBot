@@ -194,6 +194,29 @@ class _Flamecomics(BasicScanlator):
             found_chapters.append(Chapter(url, name, i))
         return found_chapters
 
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        text = await self._search_req(query)
+        soup = BeautifulSoup(text, "html.parser")
+        self.remove_unwanted_tags(soup, self.json_tree.selectors.unwanted_tags)
+
+        manga_tags = soup.select(self.json_tree.selectors.search.container)
+        found_manga: list[PartialManga | discord.Embed] = []
+        for manga_tag in manga_tags:
+            title = manga_tag.select_one(self.json_tree.selectors.search.title).get_text(strip=True)
+            url = (self.json_tree.properties.base_url.removesuffix("/") +
+                   manga_tag.select_one(self.json_tree.selectors.search.url).get("href"))
+            cover = manga_tag.select_one(self.json_tree.selectors.search.cover).get("src")
+            _id = await self.get_id(url)
+
+            found_manga.append(PartialManga(_id, title, url, self.name, cover))
+
+        # sort the manga by the closest match of the title to the query
+        found_manga = sorted(found_manga, key=lambda x: sort_key(query, x.title), reverse=False)
+        if len(found_manga) >= 10:
+            found_manga = found_manga[:10]
+        if as_em:
+            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
+        return found_manga
 
 class _Hivetoon(BasicScanlator):
 

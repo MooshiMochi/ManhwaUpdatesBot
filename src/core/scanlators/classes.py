@@ -807,7 +807,8 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             null_params = {k: v for k, v in extra_params.items() if v is None}
             if null_params:
                 params += "&".join([f"{k}" for k, v in null_params.items()])
-            query += params
+            if extra_params:
+                query += params
             request_kwargs["url"] += query
 
         elif self.json_tree.search.as_type == "data":

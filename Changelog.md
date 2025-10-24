@@ -2,18 +2,22 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
-### October 24th 2025
+### October 24th, 2025
 
-- Partially added a command to export tracked/subscribed/bookmarked manga from websites that are no longer supported.
++ Partially added a command to export tracked/subscribed/bookmarked manga from websites that are no longer supported.
     - Command (TBC): `/get_lost_manga`
-    - The export will be in markdown format and will be sent as a file.
+    - The export will be in Markdown format and will be sent as a file.
     - Note: The export will only include manga from unsupported websites.
 
-- Added https://genzupdates.com — however, it will be disabled until a 403 bypass is found (this replaced suryatoon)
-- Modified the error message for 'BotMissingPermissions'
++ Added a test method to test the search feature of supported websites as well. With this, all aspects of websites should be tested.
+  + found a few wesbites that had faulty search methods which have been fixed
+  - a few websites have their search feature disabled until a 403 bypass is found
+- Removed the version constraint from the pandas dependency in requirements.txt
++ Added https://genzupdates.com — however, it will be disabled until a 403 bypass is found (this replaced suryatoon)
+-+ Modified the error message for 'BotMissingPermissions'
 - Updated the html_json_parser to be able to extract a single JSON object from HTML text based on JSON start key.
-- Added back https://id.mgkomik.cc/
-- Added https://vortexscans.org/
++ Added back https://id.mgkomik.cc/
++ Added https://vortexscans.org/
 
 - Removed https://manhuaga.com as the scanlator merged into drakecomick now.
 - Removed https://reaperscans.com as the scanlator is down indefinitely.
@@ -30,7 +34,7 @@
 - Fixed demonreader fp conainer selector (it just ignores any ads that they decided to ad)
 - Fixed flamecomics fp container selector (they changed the structure of the fp page)
 
-## February 14th 2025
+## February 14th, 2025
 
 ### Bug Fixes:
 
