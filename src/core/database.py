@@ -53,34 +53,104 @@ class Database:
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS series (
-                id TEXT NOT NULL,
-                title TEXT NOT NULL,
-                url TEXT NOT NULL,
-                synopsis TEXT,
-                series_cover_url TEXT NOT NULL,
-                last_chapter TEXT,
-                available_chapters TEXT,
+            CREATE TABLE IF NOT EXISTS series
+            (
+                id
+                TEXT
+                NOT
+                NULL,
+                title
+                TEXT
+                NOT
+                NULL,
+                url
+                TEXT
+                NOT
+                NULL,
+                synopsis
+                TEXT,
+                series_cover_url
+                TEXT
+                NOT
+                NULL,
+                last_chapter
+                TEXT,
+                available_chapters
+                TEXT,
 
-                status TEXT NOT NULL DEFAULT 'Ongoing',
-                scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                UNIQUE(id, scanlator) ON CONFLICT IGNORE
-            )
+                status
+                TEXT
+                NOT
+                NULL
+                DEFAULT
+                'Ongoing',
+                scanlator
+                TEXT
+                NOT
+                NULL
+                DEFAULT
+                'Unknown',
+                UNIQUE
+            (
+                id,
+                scanlator
+            ) ON CONFLICT IGNORE
+                )
             """
         )
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS user_subs (
-                id INTEGER NOT NULL,
-                series_id TEXT NOT NULL,
-                guild_id INTEGER NOT NULL,
-                scanlator TEXT NOT NULL DEFAULT 'Unknown',
+            CREATE TABLE IF NOT EXISTS user_subs
+            (
+                id
+                INTEGER
+                NOT
+                NULL,
+                series_id
+                TEXT
+                NOT
+                NULL,
+                guild_id
+                INTEGER
+                NOT
+                NULL,
+                scanlator
+                TEXT
+                NOT
+                NULL
+                DEFAULT
+                'Unknown',
 
-                FOREIGN KEY (series_id) REFERENCES series (id),
-                FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                UNIQUE (id, series_id, scanlator, guild_id) ON CONFLICT IGNORE
-            )
+                FOREIGN
+                KEY
+            (
+                series_id
+            ) REFERENCES series
+            (
+                id
+            ),
+                FOREIGN KEY
+            (
+                scanlator
+            ) REFERENCES series
+            (
+                scanlator
+            ),
+                FOREIGN KEY
+            (
+                guild_id
+            ) REFERENCES guild_config
+            (
+                guild_id
+            ),
+                UNIQUE
+            (
+                id,
+                series_id,
+                scanlator,
+                guild_id
+            ) ON CONFLICT IGNORE
+                )
             """
         )
 
@@ -92,95 +162,279 @@ class Database:
             # last_updated_ts: the timestamp of the last time the bookmark was updated by the user
             # fold: the folder in which the bookmark is in
             """
-            CREATE TABLE IF NOT EXISTS bookmarks (
-                user_id INTEGER NOT NULL,
-                series_id TEXT NOT NULL,
-                last_read_chapter_index INTEGER DEFAULT NULL,
-                guild_id INTEGER NOT NULL,
-                last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                folder VARCHAR(10) DEFAULT 'reading',
-
-                FOREIGN KEY (series_id) REFERENCES series (id),
-                FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                FOREIGN KEY (user_id) REFERENCES user_subs (id),
-                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                UNIQUE (user_id, series_id, scanlator) ON CONFLICT IGNORE
+            CREATE TABLE IF NOT EXISTS bookmarks
+            (
+                user_id
+                INTEGER
+                NOT
+                NULL,
+                series_id
+                TEXT
+                NOT
+                NULL,
+                last_read_chapter_index
+                INTEGER
+                DEFAULT
+                NULL,
+                guild_id
+                INTEGER
+                NOT
+                NULL,
+                last_updated_ts
+                TIMESTAMP
+                DEFAULT
+                CURRENT_TIMESTAMP,
+                scanlator
+                TEXT
+                NOT
+                NULL
+                DEFAULT
+                'Unknown',
+                folder
+                VARCHAR
+            (
+                10
+            ) DEFAULT 'reading',
+                FOREIGN KEY
+            (
+                series_id
+            ) REFERENCES series
+            (
+                id
+            ),
+                FOREIGN KEY
+            (
+                scanlator
+            ) REFERENCES series
+            (
+                scanlator
+            ),
+                FOREIGN KEY
+            (
+                user_id
+            ) REFERENCES user_subs
+            (
+                id
+            ),
+                FOREIGN KEY
+            (
+                guild_id
+            ) REFERENCES guild_config
+            (
+                guild_id
+            ),
+                UNIQUE
+            (
+                user_id,
+                series_id,
+                scanlator
+            ) ON CONFLICT IGNORE
                 );
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS guild_config (
-                guild_id INTEGER PRIMARY KEY NOT NULL,             
-                notifications_channel_id INTEGER,
-                default_ping_role_id INTEGER DEFAULT NULL,
-                auto_create_role BOOLEAN NOT NULL DEFAULT false,
-                system_channel_id INTEGER default null,
-                show_update_buttons BOOLEAN NOT NULL DEFAULT true,
-                paid_chapter_notifications BOOLEAN NOT NULL DEFAULT false,
-                bot_manager_role_id INTEGER DEFAULT NULL,
-                UNIQUE (guild_id) ON CONFLICT IGNORE
-            )
+            CREATE TABLE IF NOT EXISTS guild_config
+            (
+                guild_id
+                INTEGER
+                PRIMARY
+                KEY
+                NOT
+                NULL,
+                notifications_channel_id
+                INTEGER,
+                default_ping_role_id
+                INTEGER
+                DEFAULT
+                NULL,
+                auto_create_role
+                BOOLEAN
+                NOT
+                NULL
+                DEFAULT
+                false,
+                system_channel_id
+                INTEGER
+                default
+                null,
+                show_update_buttons
+                BOOLEAN
+                NOT
+                NULL
+                DEFAULT
+                true,
+                paid_chapter_notifications
+                BOOLEAN
+                NOT
+                NULL
+                DEFAULT
+                false,
+                bot_manager_role_id
+                INTEGER
+                DEFAULT
+                NULL,
+                UNIQUE
+            (
+                guild_id
+            ) ON CONFLICT IGNORE
+                )
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS tracked_guild_series (
-                guild_id INTEGER NOT NULL,
-                series_id TEXT NOT NULL,
-                role_id INTEGER,
-                scanlator TEXT NOT NULL DEFAULT 'Unknown',
-                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                FOREIGN KEY (series_id) REFERENCES series (id),
-                FOREIGN KEY (scanlator) REFERENCES series (scanlator),
-                UNIQUE (guild_id, series_id, scanlator) ON CONFLICT REPLACE
+            CREATE TABLE IF NOT EXISTS tracked_guild_series
+            (
+                guild_id
+                INTEGER
+                NOT
+                NULL,
+                series_id
+                TEXT
+                NOT
+                NULL,
+                role_id
+                INTEGER,
+                scanlator
+                TEXT
+                NOT
+                NULL
+                DEFAULT
+                'Unknown',
+                FOREIGN
+                KEY
+            (
+                guild_id
+            ) REFERENCES guild_config
+            (
+                guild_id
+            ),
+                FOREIGN KEY
+            (
+                series_id
+            ) REFERENCES series
+            (
+                id
+            ),
+                FOREIGN KEY
+            (
+                scanlator
+            ) REFERENCES series
+            (
+                scanlator
+            ),
+                UNIQUE
+            (
+                guild_id,
+                series_id,
+                scanlator
+            ) ON CONFLICT REPLACE
+                );
+            """
+        )
+
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scanlators_config
+            (
+                scanlator
+                TEXT
+                PRIMARY
+                KEY
+                NOT
+                NULL,
+                enabled
+                BOOLEAN
+                NOT
+                NULL
+                DEFAULT
+                1
             );
             """
         )
 
         await self.conn.execute(
             """
-                CREATE TABLE IF NOT EXISTS scanlators_config (
-                scanlator TEXT PRIMARY KEY NOT NULL,
-                enabled BOOLEAN NOT NULL DEFAULT 1
-            );
+            CREATE TABLE IF NOT EXISTS bot_created_roles
+            (
+                guild_id
+                INTEGER
+                NOT
+                NULL,
+                role_id
+                INTEGER
+                NOT
+                NULL,
+                UNIQUE
+            (
+                guild_id,
+                role_id
+            ) ON CONFLICT REPLACE
+                );
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS bot_created_roles (
-                guild_id INTEGER NOT NULL,
-                role_id INTEGER NOT NULL,
-                UNIQUE (guild_id, role_id) ON CONFLICT REPLACE
-            );
+            CREATE TABLE IF NOT EXISTS patreons
+            (
+                email
+                TEXT
+                PRIMARY
+                KEY
+                NOT
+                NULL,
+                user_id
+                INTEGER,
+                first_name
+                TEXT
+                NOT
+                NULL,
+                last_name
+                TEXT
+                NOT
+                NULL,
+                UNIQUE
+            (
+                email
+            ) ON CONFLICT REPLACE
+                )
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS patreons (
-                email TEXT PRIMARY KEY NOT NULL,
-                user_id INTEGER,
-                first_name TEXT NOT NULL,
-                last_name TEXT NOT NULL,
-                UNIQUE (email) ON CONFLICT REPLACE
-            )
-            """
-        )
-
-        await self.conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS scanlator_channel_associations (
-                guild_id INTEGER NOT NULL,
-                scanlator TEXT NOT NULL,
-                channel_id INTEGER NOT NULL,
-                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
-                UNIQUE (guild_id, scanlator, channel_id) ON CONFLICT REPLACE
-            );
+            CREATE TABLE IF NOT EXISTS scanlator_channel_associations
+            (
+                guild_id
+                INTEGER
+                NOT
+                NULL,
+                scanlator
+                TEXT
+                NOT
+                NULL,
+                channel_id
+                INTEGER
+                NOT
+                NULL,
+                FOREIGN
+                KEY
+            (
+                guild_id
+            ) REFERENCES guild_config
+            (
+                guild_id
+            ),
+                UNIQUE
+            (
+                guild_id,
+                scanlator,
+                channel_id
+            ) ON CONFLICT REPLACE
+                );
             """
         )
 
@@ -188,11 +442,15 @@ class Database:
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_series_title ON series(title);")
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_series_id_scanlator ON series(id, scanlator);")
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_user_subs_user_id ON user_subs(id);")
-        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_user_subs_series_id_scanlator ON user_subs(series_id, scanlator);")
+        await self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_user_subs_series_id_scanlator ON user_subs(series_id, scanlator);")
         await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);")
-        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_series_id_scanlator ON bookmarks(series_id, scanlator);")
-        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_guild_id ON tracked_guild_series(guild_id);")
-        await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_series_id_scanlator ON tracked_guild_series(series_id, scanlator);")
+        await self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_bookmarks_series_id_scanlator ON bookmarks(series_id, scanlator);")
+        await self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_guild_id ON tracked_guild_series(guild_id);")
+        await self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tracked_guild_series_series_id_scanlator ON tracked_guild_series(series_id, scanlator);")
 
         await self.conn.commit()
 
@@ -289,8 +547,8 @@ class Database:
             await self.conn.execute(
                 """
                 INSERT INTO patreons (email, user_id, first_name, last_name)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT(email) DO UPDATE SET user_id = $2, first_name = $3, last_name = $4;
+                VALUES ($1, $2, $3, $4) ON CONFLICT(email) DO
+                UPDATE SET user_id = $2, first_name = $3, last_name = $4;
                 """,
                 patron.to_tuple(),
             )
@@ -299,7 +557,9 @@ class Database:
     async def delete_inactive_patreons(self, active_patrons: list[Patron]) -> None:
         await self.conn.execute(
             """
-            DELETE FROM patreons WHERE email NOT IN ($1);
+            DELETE
+            FROM patreons
+            WHERE email NOT IN ($1);
             """,
             (",".join([patron.email for patron in active_patrons]),),
         )
@@ -308,7 +568,9 @@ class Database:
     async def is_patreon(self, user_id: int) -> bool:
         cursor = await self.conn.execute(
             """
-            SELECT * FROM patreons WHERE user_id = $1;
+            SELECT *
+            FROM patreons
+            WHERE user_id = $1;
             """,
             (user_id,),
         )
@@ -318,7 +580,8 @@ class Database:
     async def subscribe_user_to_tracked_series(self, sub_objects: list[SubscriptionObject]) -> None:
         await self.conn.executemany(
             """
-            INSERT INTO user_subs VALUES ($1, $2, $3, $4);
+            INSERT INTO user_subs
+            VALUES ($1, $2, $3, $4);
             """,
             map(lambda x: x.to_tuple(), sub_objects)
         )
@@ -327,7 +590,12 @@ class Database:
     async def unsubscribe_user_to_tracked_series(self, sub_objects: list[SubscriptionObject]) -> None:
         await self.conn.executemany(
             """
-            DELETE FROM user_subs WHERE id = $1 AND series_id = $2 AND guild_id = $3 AND scanlator = $4;
+            DELETE
+            FROM user_subs
+            WHERE id = $1
+              AND series_id = $2
+              AND guild_id = $3
+              AND scanlator = $4;
             """,
             map(lambda x: x.to_tuple(), sub_objects)
         )
@@ -337,17 +605,17 @@ class Database:
             self, guild_id: int, user_id: int, guild: discord.Guild) -> list[SubscriptionObject] | list[Any]:
         cursor = await self.conn.execute(
             """
-            SELECT
-                s.id,
-                s.scanlator,
-                t.role_id
+            SELECT s.id,
+                   s.scanlator,
+                   t.role_id
             FROM series AS s
-            INNER JOIN tracked_guild_series AS t
-            ON s.id = t.series_id AND s.scanlator = t.scanlator
+                     INNER JOIN tracked_guild_series AS t
+                                ON s.id = t.series_id AND s.scanlator = t.scanlator
             WHERE t.guild_id = $1
-            AND (s.id, s.scanlator) NOT IN (
-                SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1 AND id = $2
-            );
+              AND (s.id, s.scanlator) NOT IN (SELECT series_id, scanlator
+                                              FROM user_subs
+                                              WHERE guild_id = $1
+                                                AND id = $2);
             """,
             (guild_id, user_id),
         )
@@ -360,16 +628,16 @@ class Database:
             self, guild_id: int, user_id: int, guild: discord.Guild) -> list[SubscriptionObject] | list[Any]:
         cursor = await self.conn.execute(
             """
-            SELECT
-                s.id,
-                s.scanlator,
-                t.role_id
+            SELECT s.id,
+                   s.scanlator,
+                   t.role_id
             FROM series AS s
-            INNER JOIN user_subs AS u
-            ON s.id = u.series_id AND s.scanlator = u.scanlator
-            LEFT JOIN tracked_guild_series AS t
-            ON s.id = t.series_id AND s.scanlator = t.scanlator AND t.guild_id = u.guild_id
-            WHERE u.guild_id = $1 AND u.id = $2;
+                     INNER JOIN user_subs AS u
+                                ON s.id = u.series_id AND s.scanlator = u.scanlator
+                     LEFT JOIN tracked_guild_series AS t
+                               ON s.id = t.series_id AND s.scanlator = t.scanlator AND t.guild_id = u.guild_id
+            WHERE u.guild_id = $1
+              AND u.id = $2;
             """,
             (guild_id, user_id),
         )
@@ -381,8 +649,12 @@ class Database:
     async def delete_role_from_db(self, role_id: int) -> None:
         await self.conn.execute(
             """
-            UPDATE tracked_guild_series SET role_id = NULL WHERE role_id = $1;
-            DELETE FROM bot_created_roles WHERE role_id = $1;
+            UPDATE tracked_guild_series
+            SET role_id = NULL
+            WHERE role_id = $1;
+            DELETE
+            FROM bot_created_roles
+            WHERE role_id = $1;
             """,
             role_id
         )
@@ -390,24 +662,23 @@ class Database:
     async def subscribe_user_to_all_tracked_series(self, user_id: int, guild_id: int) -> int:
         cursor = await self.conn.execute(
             """
-            SELECT
-                s.id,
-                s.title,
-                s.url,
-                s.synopsis,
-                s.series_cover_url,
-                s.last_chapter,
-                s.available_chapters,
-                s.status,
-                s.scanlator
+            SELECT s.id,
+                   s.title,
+                   s.url,
+                   s.synopsis,
+                   s.series_cover_url,
+                   s.last_chapter,
+                   s.available_chapters,
+                   s.status,
+                   s.scanlator
 
             FROM series AS s
-            INNER JOIN tracked_guild_series AS t
-            ON s.id = t.series_id AND s.scanlator = t.scanlator
+                     INNER JOIN tracked_guild_series AS t
+                                ON s.id = t.series_id AND s.scanlator = t.scanlator
             WHERE t.guild_id = $1
-            AND (s.id, s.scanlator) NOT IN (
-                SELECT series_id, scanlator FROM user_subs WHERE guild_id = $1
-            );
+              AND (s.id, s.scanlator) NOT IN (SELECT series_id, scanlator
+                                              FROM user_subs
+                                              WHERE guild_id = $1);
             """,
             (guild_id,),
         )
@@ -431,15 +702,18 @@ class Database:
         """
         await self.conn.execute(
             """
-            INSERT INTO scanlators_config (scanlator, enabled) VALUES ($1, 0)
-            ON CONFLICT(scanlator) DO UPDATE SET enabled = NOT enabled;
+            INSERT INTO scanlators_config (scanlator, enabled)
+            VALUES ($1, 0) ON CONFLICT(scanlator) DO
+            UPDATE SET enabled = NOT enabled;
             """,
             # as scanlators are enabled by default, we will insert 0 when first toggling
             (scanlator,),
         )
         cursor = await self.conn.execute(
             """
-            SELECT enabled FROM scanlators_config WHERE scanlator = $1;
+            SELECT enabled
+            FROM scanlators_config
+            WHERE scanlator = $1;
             """,
             (scanlator,),
         )
@@ -450,7 +724,9 @@ class Database:
     async def get_disabled_scanlators(self) -> List[str]:
         cursor = await self.conn.execute(
             """
-            SELECT scanlator FROM scanlators_config WHERE enabled = 0;
+            SELECT scanlator
+            FROM scanlators_config
+            WHERE enabled = 0;
             """
         )
         result = await cursor.fetchall()
@@ -461,8 +737,9 @@ class Database:
         if manga_obj.scanlator in scanlators:
             await self.conn.execute(
                 """
-            INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
-            status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
+                INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters,
+                                    status, scanlator)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
                 """,
                 ((await scanlators[manga_obj.scanlator].unload_manga([manga_obj]))[0].to_tuple()),
             )
@@ -478,8 +755,9 @@ class Database:
         if bookmark.manga.scanlator in scanlators:
             await self.conn.execute(
                 """
-            INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters, 
-            status, scanlator) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
+                INSERT INTO series (id, title, url, synopsis, series_cover_url, last_chapter, available_chapters,
+                                    status, scanlator)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id, scanlator) DO NOTHING;
                 """,
                 ((await scanlators[bookmark.manga.scanlator].unload_manga([bookmark.manga]))[0].to_tuple()),
             )
@@ -491,17 +769,14 @@ class Database:
 
         await self.conn.execute(
             """
-            INSERT INTO bookmarks (
-                user_id,
-                series_id,
-                last_read_chapter_index,
-                guild_id,
-                last_updated_ts,
-                scanlator,
-                folder
-                ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT(user_id, series_id, scanlator) DO 
+            INSERT INTO bookmarks (user_id,
+                                   series_id,
+                                   last_read_chapter_index,
+                                   guild_id,
+                                   last_updated_ts,
+                                   scanlator,
+                                   folder)
+            VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(user_id, series_id, scanlator) DO
             UPDATE SET last_read_chapter_index=$3, last_updated_ts=$5, folder=$7;
             """,
             (bookmark.to_tuple()),
@@ -513,9 +788,8 @@ class Database:
         # INSERT OR IGNORE INTO user_subs (id, series_id, guild_id) VALUES ($1, $2, $3);
         await self.conn.execute(
             """
-            INSERT INTO user_subs (id, series_id, guild_id, scanlator) 
-            VALUES ($1, $2, $3, $4) 
-            ON CONFLICT (id, series_id, guild_id, scanlator) DO NOTHING;
+            INSERT INTO user_subs (id, series_id, guild_id, scanlator)
+            VALUES ($1, $2, $3, $4) ON CONFLICT (id, series_id, guild_id, scanlator) DO NOTHING;
             """,
             (user_id, series_id, guild_id, scanlator),
         )
@@ -536,7 +810,11 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT * FROM user_subs WHERE id = $1 AND series_id = $2 AND scanlator = $3;
+            SELECT *
+            FROM user_subs
+            WHERE id = $1
+              AND series_id = $2
+              AND scanlator = $3;
             """,
             (user_id, manga_id, scanlator),
         )
@@ -558,12 +836,11 @@ class Database:
         """
         result = await self.conn.execute(
             """
-            INSERT INTO bookmarks (
-                user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, scanlator, folder
-                ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7) 
-            ON CONFLICT(user_id, series_id, scanlator) 
-            DO UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
+            INSERT INTO bookmarks (user_id, series_id, last_read_chapter_index, guild_id, last_updated_ts, scanlator,
+                                   folder)
+            VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(user_id, series_id, scanlator) 
+            DO
+            UPDATE SET last_read_chapter_index = $3, last_updated_ts = $5;
             """,
             (user_id, manga.id, chapter.to_json(), guild_id, datetime.now(), manga.scanlator),
         )
@@ -575,16 +852,14 @@ class Database:
     async def upsert_config(self, settings: GuildSettings) -> None:
         await self.conn.execute(
             """
-            INSERT INTO guild_config (
-                guild_id, notifications_channel_id, default_ping_role_id, 
-                auto_create_role, system_channel_id, show_update_buttons, 
-                paid_chapter_notifications, bot_manager_role_id
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT(guild_id)
-            DO UPDATE SET 
-                notifications_channel_id = $2, default_ping_role_id = $3, 
-                auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6, 
+            INSERT INTO guild_config (guild_id, notifications_channel_id, default_ping_role_id,
+                                      auto_create_role, system_channel_id, show_update_buttons,
+                                      paid_chapter_notifications, bot_manager_role_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(guild_id)
+            DO
+            UPDATE SET
+                notifications_channel_id = $2, default_ping_role_id = $3,
+                auto_create_role = $4, system_channel_id = $5, show_update_buttons = $6,
                 paid_chapter_notifications = $7, bot_manager_role_id = $8
             WHERE guild_id = $1;
             """,
@@ -606,22 +881,21 @@ class Database:
             None if no manga are found.
         """
         query = """
-            SELECT
-                s.id,
-                s.title,
-                s.url,
-                s.synopsis,
-                s.series_cover_url,
-                s.last_chapter,
-                s.available_chapters,
-                s.status,
-                s.scanlator
+                SELECT s.id,
+                       s.title,
+                       s.url,
+                       s.synopsis,
+                       s.series_cover_url,
+                       s.last_chapter,
+                       s.available_chapters,
+                       s.status,
+                       s.scanlator
 
-            FROM series AS s
-            INNER JOIN user_subs AS u
-            ON s.id = u.series_id AND s.scanlator = u.scanlator
-            WHERE u.id = $1
-            """
+                FROM series AS s
+                         INNER JOIN user_subs AS u
+                                    ON s.id = u.series_id AND s.scanlator = u.scanlator
+                WHERE u.id = $1 \
+                """
         if current is not None and bool(current.strip()) is True:
             query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
             params = (user_id, current)
@@ -691,11 +965,12 @@ class Database:
         >>> None # if no manga is found.
         """
         query = """
-        SELECT * FROM series 
-        WHERE (series.id, series.scanlator) IN (
-            SELECT series_id, scanlator FROM user_subs WHERE id = $1
-            )
-        """
+                SELECT *
+                FROM series
+                WHERE (series.id, series.scanlator) IN (SELECT series_id, scanlator
+                                                        FROM user_subs
+                                                        WHERE id = $1) \
+                """
         if current is not None and bool(current.strip()) is True:
             query += " ORDER BY levenshtein(title, $2) DESC LIMIT 25;"
             params = (user_id, current)
@@ -725,13 +1000,12 @@ class Database:
         """
         async with self.conn.execute(
                 """
-                SELECT * FROM series
-                WHERE (series.id, series.scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM user_subs
-                )
-                AND (series.id, series.scanlator) NOT IN (
-                    SELECT series_id, scanlator FROM bookmarks
-                );
+                SELECT *
+                FROM series
+                WHERE (series.id, series.scanlator) NOT IN (SELECT series_id, scanlator
+                                                            FROM user_subs)
+                  AND (series.id, series.scanlator) NOT IN (SELECT series_id, scanlator
+                                                            FROM bookmarks);
                 """
         ) as cursor:
             result = await cursor.fetchall()
@@ -757,7 +1031,10 @@ class Database:
         """
         async with self.conn.execute(
                 """
-                SELECT guild_id FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
+                SELECT guild_id
+                FROM tracked_guild_series
+                WHERE series_id = $1
+                  and scanlator = $2;
                 """,
                 (manga_id, scanlator),
         ) as cursor:
@@ -818,27 +1095,28 @@ class Database:
     async def get_user_bookmark(self, user_id: int, series_id: str, scanlator: str) -> Bookmark | None:
         cursor = await self.conn.execute(
             """
-            SELECT
-                b.user_id,
-                b.series_id,
-                b.last_read_chapter_index,
-                b.guild_id,
-                b.last_updated_ts,
-                b.folder,
+            SELECT b.user_id,
+                   b.series_id,
+                   b.last_read_chapter_index,
+                   b.guild_id,
+                   b.last_updated_ts,
+                   b.folder,
 
-                s.id,
-                s.title,
-                s.url,
-                s.synopsis,
-                s.series_cover_url,
-                s.last_chapter,
-                s.available_chapters,
-                s.status,
-                s.scanlator
+                   s.id,
+                   s.title,
+                   s.url,
+                   s.synopsis,
+                   s.series_cover_url,
+                   s.last_chapter,
+                   s.available_chapters,
+                   s.status,
+                   s.scanlator
 
             FROM bookmarks AS b
-            INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
-            WHERE b.user_id = $1 AND b.series_id = $2 AND b.scanlator = $3;
+                     INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
+            WHERE b.user_id = $1
+              AND b.series_id = $2
+              AND b.scanlator = $3;
             """,
             (user_id, series_id, scanlator),
         )
@@ -872,26 +1150,25 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT
-                b.user_id,
-                b.series_id,
-                b.last_read_chapter_index,
-                b.guild_id,
-                b.last_updated_ts,
-                b.folder,
+            SELECT b.user_id,
+                   b.series_id,
+                   b.last_read_chapter_index,
+                   b.guild_id,
+                   b.last_updated_ts,
+                   b.folder,
 
-                s.id,
-                s.title,
-                s.url,
-                s.synopsis,
-                s.series_cover_url,
-                s.last_chapter,
-                s.available_chapters,
-                s.status,
-                s.scanlator
+                   s.id,
+                   s.title,
+                   s.url,
+                   s.synopsis,
+                   s.series_cover_url,
+                   s.last_chapter,
+                   s.available_chapters,
+                   s.status,
+                   s.scanlator
 
             FROM bookmarks AS b
-            INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
+                     INNER JOIN series AS s ON (b.series_id = s.id AND b.scanlator = s.scanlator)
             WHERE b.user_id = $1;
             """,
             (user_id,),
@@ -948,8 +1225,10 @@ class Database:
     ) -> list[Chapter]:
         cursor = await self.conn.execute(
             """
-            SELECT available_chapters FROM series
-            WHERE id = $1 and scanlator = $2;
+            SELECT available_chapters
+            FROM series
+            WHERE id = $1
+              and scanlator = $2;
             """,
             (series_id, scanlator),
         )
@@ -976,7 +1255,9 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with self.conn.execute(
                     """
-                    SELECT * FROM guild_config WHERE guild_id = $1;
+                    SELECT *
+                    FROM guild_config
+                    WHERE guild_id = $1;
                     """,
                     (guild_id,),
             ) as cursor:
@@ -1014,7 +1295,10 @@ class Database:
     async def get_series(self, series_id: str, scanlator: str) -> Manga | None:
         async with self.conn.execute(
                 """
-                SELECT * FROM series WHERE id = $1 AND scanlator = $2;
+                SELECT *
+                FROM series
+                WHERE id = $1
+                  AND scanlator = $2;
                 """,
                 (series_id, scanlator),
         ) as cursor:
@@ -1039,7 +1323,10 @@ class Database:
         async with aiosqlite.connect(self.db_name) as db:
             async with self.conn.execute(
                     """
-                    SELECT title FROM series WHERE id = $1 and scanlator = $2;
+                    SELECT title
+                    FROM series
+                    WHERE id = $1
+                      and scanlator = $2;
                     """,
                     (series_id, scanlator)
             ) as cursor:
@@ -1088,9 +1375,10 @@ class Database:
         """
         async with self.conn.execute(
                 """
-                SELECT * FROM series WHERE (series.id, series.scanlator) IN (
-                    SELECT series_id, scanlator FROM user_subs
-                );
+                SELECT *
+                FROM series
+                WHERE (series.id, series.scanlator) IN (SELECT series_id, scanlator
+                                                        FROM user_subs);
                 """
         ) as cursor:
             result = await cursor.fetchall()
@@ -1113,9 +1401,14 @@ class Database:
         manga = (await scanlators[manga.scanlator].unload_manga([manga]))[0]
         result = await self.conn.execute(
             """
-                UPDATE series 
-                SET last_chapter = ?, series_cover_url = ?, available_chapters = ?, status = ?, url = ? 
-                WHERE id = ? AND scanlator = ?;
+            UPDATE series
+            SET last_chapter       = ?,
+                series_cover_url   = ?,
+                available_chapters = ?,
+                status             = ?,
+                url                = ?
+            WHERE id = ?
+              AND scanlator = ?;
             """,
             (
                 manga.last_chapter.to_json() if manga.last_chapter is not None else None,
@@ -1136,9 +1429,12 @@ class Database:
     ) -> None:
         await self.conn.execute(
             """
-                UPDATE bookmarks 
-                SET last_read_chapter_index = $1, last_updated_ts = $2 
-                WHERE user_id = $3 AND series_id = $4 AND scanlator = $5;
+            UPDATE bookmarks
+            SET last_read_chapter_index = $1,
+                last_updated_ts         = $2
+            WHERE user_id = $3
+              AND series_id = $4
+              AND scanlator = $5;
             """,
             (last_read_chapter_index, datetime.now().timestamp(), user_id, series_id, scanlator),
         )
@@ -1149,7 +1445,9 @@ class Database:
             """
             UPDATE bookmarks
             SET folder = $1
-            WHERE user_id = $2 AND series_id = $3 AND scanlator = $4;
+            WHERE user_id = $2
+              AND series_id = $3
+              AND scanlator = $4;
             """,
             (bookmark.folder.value, bookmark.user_id, bookmark.manga.id, bookmark.manga.scanlator)
         )
@@ -1158,7 +1456,10 @@ class Database:
     async def delete_series(self, series_id: str, scanlator: str) -> None:
         await self.conn.execute(
             """
-            DELETE FROM series WHERE id = $1 AND scanlator = $2;
+            DELETE
+            FROM series
+            WHERE id = $1
+              AND scanlator = $2;
             """,
             (series_id, scanlator),
         )
@@ -1180,15 +1481,22 @@ class Database:
         """
         success = await self.conn.execute(
             """
-            DELETE FROM bookmarks WHERE user_id = $1 and series_id = $2 and scanlator = $3;
+            DELETE
+            FROM bookmarks
+            WHERE user_id = $1
+              and series_id = $2
+              and scanlator = $3;
             """,
             (user_id, series_id, scanlator),
         )
         await self.conn.execute(
             """
-            DELETE FROM series WHERE id = $1 AND scanlator = $2 AND (id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM user_subs
-            );
+            DELETE
+            FROM series
+            WHERE id = $1
+              AND scanlator = $2
+              AND (id, scanlator) NOT IN (SELECT series_id, scanlator
+                                          FROM user_subs);
             """,
             (series_id, scanlator),
         )
@@ -1198,7 +1506,11 @@ class Database:
     async def unsub_user(self, user_id: int, series_id: str, scanlator: str) -> None:
         await self.conn.execute(
             """
-            DELETE FROM user_subs WHERE id = $1 and series_id = $2 and scanlator = $3;
+            DELETE
+            FROM user_subs
+            WHERE id = $1
+              and series_id = $2
+              and scanlator = $3;
             """,
             (user_id, series_id, scanlator),
         )
@@ -1208,7 +1520,9 @@ class Database:
     async def delete_config(self, guild_id: int) -> None:
         await self.conn.execute(
             """
-            DELETE FROM guild_config WHERE guild_id = $1;
+            DELETE
+            FROM guild_config
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1222,7 +1536,10 @@ class Database:
             for _id, scanlator_str in series_ids_and_scanlators:
                 await cursor.execute(
                     """
-                    DELETE FROM series WHERE id = $1 AND scanlator = $2;
+                    DELETE
+                    FROM series
+                    WHERE id = $1
+                      AND scanlator = $2;
                     """, (_id, scanlator_str)
                 )
             await self.conn.commit()
@@ -1242,8 +1559,12 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT role_id FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3 AND
-            role_id IS NOT (SELECT default_ping_role_id FROM guild_config WHERE guild_id = $1);
+            SELECT role_id
+            FROM tracked_guild_series
+            WHERE guild_id = $1
+              AND series_id = $2
+              and scanlator = $3
+              AND role_id IS NOT (SELECT default_ping_role_id FROM guild_config WHERE guild_id = $1);
             """,
             (guild_id, manga_id, scanlator),
         )
@@ -1272,8 +1593,9 @@ class Database:
             ping_role_id = ping_role_id.id
         await self.execute(
             """
-            INSERT INTO tracked_guild_series (guild_id, series_id, role_id, scanlator) VALUES ($1, $2, $3, $4)
-            ON CONFLICT (guild_id, series_id, scanlator) DO UPDATE SET role_id = $3;
+            INSERT INTO tracked_guild_series (guild_id, series_id, role_id, scanlator)
+            VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, series_id, scanlator) DO
+            UPDATE SET role_id = $3;
             """,
             guild_id, manga_id, ping_role_id, scanlator
         )
@@ -1293,7 +1615,11 @@ class Database:
         """
         await self.execute(
             """
-            DELETE FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 AND scanlator = $3
+            DELETE
+            FROM tracked_guild_series
+            WHERE guild_id = $1
+              AND series_id = $2
+              AND scanlator = $3
             """,
             guild_id, manga_id, scanlator
         )
@@ -1360,13 +1686,20 @@ class Database:
         """
         if guild_id is not None:
             query = """
-            SELECT * FROM tracked_guild_series WHERE guild_id = $1 AND series_id = $2 and scanlator = $3;
-            """
+                    SELECT *
+                    FROM tracked_guild_series
+                    WHERE guild_id = $1
+                      AND series_id = $2
+                      and scanlator = $3; \
+                    """
             params = (guild_id, manga_id, scanlator)
         else:
             query = """
-            SELECT * FROM tracked_guild_series WHERE series_id = $1 and scanlator = $2;
-            """
+                    SELECT *
+                    FROM tracked_guild_series
+                    WHERE series_id = $1
+                      and scanlator = $2; \
+                    """
             params = (manga_id, scanlator)
         cursor = await self.conn.execute(query, params)
         result = await cursor.fetchone()
@@ -1411,7 +1744,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            DELETE FROM user_subs WHERE guild_id = $1;
+            DELETE
+            FROM user_subs
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1431,7 +1766,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            DELETE FROM tracked_guild_series WHERE guild_id = $1;
+            DELETE
+            FROM tracked_guild_series
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1453,19 +1790,25 @@ class Database:
             A list of Manga class objects that are subscribed to by the user but not tracked in the guild.
         """
         global_query = """
-        SELECT * FROM series WHERE (id, scanlator) IN (
-            SELECT series_id, scanlator FROM user_subs WHERE id = $1
-        ) AND (id, scanlator) NOT IN (
-            SELECT series_id, scanlator FROM tracked_guild_series
-        );
-        """
+                       SELECT *
+                       FROM series
+                       WHERE (id, scanlator) IN (SELECT series_id, scanlator
+                                                 FROM user_subs
+                                                 WHERE id = $1)
+                         AND (id, scanlator) NOT IN (SELECT series_id, scanlator
+                                                     FROM tracked_guild_series); \
+                       """
         guild_specific_query = """
-        SELECT * FROM series WHERE (id, scanlator) IN (
-            SELECT series_id, scanlator FROM user_subs WHERE id = $1 AND guild_id = $2
-        ) AND (id, scanlator) NOT IN (
-            SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
-        );
-        """
+                               SELECT *
+                               FROM series
+                               WHERE (id, scanlator) IN (SELECT series_id, scanlator
+                                                         FROM user_subs
+                                                         WHERE id = $1
+                                                           AND guild_id = $2)
+                                 AND (id, scanlator) NOT IN (SELECT series_id, scanlator
+                                                             FROM tracked_guild_series
+                                                             WHERE guild_id = $2); \
+                               """
         if guild_id is not None:
             query = guild_specific_query
             params = (user_id, guild_id,)
@@ -1495,13 +1838,14 @@ class Database:
             bool: Whether the user has subscribed to any manga that is not tracked in the guild.
         """
         query = """
-        SELECT * FROM series 
-            WHERE (id, scanlator) IN (
-                SELECT series_id, scanlator FROM user_subs WHERE id = $1
-            )
-            AND (id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM tracked_guild_series
-        """  # ) is completed below
+                SELECT *
+                FROM series
+                WHERE (id, scanlator) IN (SELECT series_id, scanlator
+                                          FROM user_subs
+                                          WHERE id = $1)
+                  AND (id, scanlator) NOT IN (SELECT series_id, scanlator
+                                              FROM tracked_guild_series \
+                """  # ) is completed below
         if guild_id is not None:
             query += " WHERE guild_id = $2) LIMIT 1;"
             params = (user_id, guild_id)
@@ -1527,16 +1871,22 @@ class Database:
         """
         if guild_id is not None:
             query = """
-            DELETE FROM user_subs WHERE id = $1 AND guild_id = $2 AND (series_id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM tracked_guild_series WHERE guild_id = $2
-            );
-            """
+                    DELETE
+                    FROM user_subs
+                    WHERE id = $1
+                      AND guild_id = $2
+                      AND (series_id, scanlator) NOT IN (SELECT series_id, scanlator
+                                                         FROM tracked_guild_series
+                                                         WHERE guild_id = $2); \
+                    """
             params = (user_id, guild_id)
         else:
             query = """
-            DELETE FROM user_subs WHERE id = $1 AND (series_id, scanlator) NOT IN (
-                SELECT series_id, scanlator FROM tracked_guild_series
-            );"""
+                    DELETE
+                    FROM user_subs
+                    WHERE id = $1
+                      AND (series_id, scanlator) NOT IN (SELECT series_id, scanlator
+                                                         FROM tracked_guild_series);"""
             params = (user_id,)
         cursor = await self.conn.execute(query, params)
         await self.conn.commit()
@@ -1555,7 +1905,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT role_id FROM tracked_guild_series WHERE guild_id = $1;
+            SELECT role_id
+            FROM tracked_guild_series
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1577,7 +1929,8 @@ class Database:
         """
         await self.execute(
             """
-            INSERT INTO bot_created_roles (guild_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;
+            INSERT INTO bot_created_roles (guild_id, role_id)
+            VALUES ($1, $2) ON CONFLICT DO NOTHING;
             """,
             guild_id, role_id
         )
@@ -1595,7 +1948,10 @@ class Database:
         """
         await self.execute(
             """
-            DELETE FROM bot_created_roles WHERE guild_id = $1 AND role_id = $2;
+            DELETE
+            FROM bot_created_roles
+            WHERE guild_id = $1
+              AND role_id = $2;
             """,
             guild_id, role_id
         )
@@ -1612,7 +1968,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT role_id FROM bot_created_roles WHERE guild_id = $1;
+            SELECT role_id
+            FROM bot_created_roles
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1633,7 +1991,9 @@ class Database:
         """
         async with self.conn.execute(
                 """
-                DELETE FROM bot_created_roles WHERE guild_id = $1;
+                DELETE
+                FROM bot_created_roles
+                WHERE guild_id = $1;
                 """,
                 (guild_id,)
         ) as cursor:
@@ -1653,7 +2013,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1
+            SELECT DISTINCT scanlator
+            FROM tracked_guild_series
+            WHERE guild_id = $1
             """,
             (guild_id,),
         )
@@ -1675,7 +2037,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT * FROM scanlator_channel_associations WHERE guild_id = $1;
+            SELECT *
+            FROM scanlator_channel_associations
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1698,8 +2062,10 @@ class Database:
         for association in associations:
             await self.conn.execute(
                 """
-                INSERT INTO scanlator_channel_associations (guild_id, scanlator, channel_id) 
-                VALUES ($1, $2, $3) ON CONFLICT (guild_id, scanlator, channel_id) DO UPDATE SET channel_id = $3;
+                INSERT INTO scanlator_channel_associations (guild_id, scanlator, channel_id)
+                VALUES ($1, $2, $3) ON CONFLICT (guild_id, scanlator, channel_id) DO
+                UPDATE
+                    SET channel_id = $3;
                 """,
                 association.to_tuple()
             )
@@ -1718,7 +2084,10 @@ class Database:
         """
         await self.conn.execute(
             """
-            DELETE FROM scanlator_channel_associations WHERE guild_id = $1 AND scanlator = $2;
+            DELETE
+            FROM scanlator_channel_associations
+            WHERE guild_id = $1
+              AND scanlator = $2;
             """,
             (guild_id, scanlator)
         )
@@ -1736,7 +2105,9 @@ class Database:
         """
         await self.conn.execute(
             """
-            DELETE FROM scanlator_channel_associations WHERE guild_id = $1;
+            DELETE
+            FROM scanlator_channel_associations
+            WHERE guild_id = $1;
             """,
             (guild_id,)
         )
@@ -1755,7 +2126,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT bot_manager_role_id FROM guild_config WHERE guild_id = $1;
+            SELECT bot_manager_role_id
+            FROM guild_config
+            WHERE guild_id = $1;
             """,
             (guild_id,),
         )
@@ -1777,7 +2150,9 @@ class Database:
         """
         await self.execute(
             """
-            UPDATE guild_config SET bot_manager_role_id = $1 WHERE guild_id = $2;
+            UPDATE guild_config
+            SET bot_manager_role_id = $1
+            WHERE guild_id = $2;
             """,
             role_id, guild_id
         )
@@ -1795,7 +2170,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT enabled FROM scanlators_config WHERE scanlator = $1;
+            SELECT enabled
+            FROM scanlators_config
+            WHERE scanlator = $1;
             """,
             (scanlator,)
         )
@@ -1815,7 +2192,9 @@ class Database:
         """
         cursor = await self.conn.execute(
             """
-            SELECT DISTINCT scanlator FROM tracked_guild_series WHERE guild_id = $1;
+            SELECT DISTINCT scanlator
+            FROM tracked_guild_series
+            WHERE guild_id = $1;
             """,
             (guild_id,)
         )
@@ -1823,3 +2202,14 @@ class Database:
         if result:
             return [row[0] for row in result]
         return []
+
+    async def get_lost_manga(self, user_id: int) -> dict:
+        """
+        Summary:
+            Returns a dictionary of lost manga for the user.
+
+        Args:
+            user_id: int - The user's ID
+        Returns:
+            dict: A dictionary of lost manga for the user.
+        """

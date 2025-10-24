@@ -24,7 +24,7 @@
     "expected_results": {
       "scanlator_name": "manganato",
       "manga_url": "https://www.manganato.gg/manga/god-of-blackfield",
-      "completed": true,
+      "completed": false,
       "title": "God Of Blackfield",
       "manga_id": "https://www.manganato.gg/manga/god-of-blackfield",
       "curr_chapter_url": "https://www.manganato.gg/manga/god-of-blackfield/chapter-263",
@@ -119,41 +119,21 @@
       "has_fp_manhwa": true
     }
   },
-  "reaperscans": {
-    "user_input_url": "https://reaperscans.com/series/the-legendary-mechanic",
-    "expected_results": {
-      "scanlator_name": "reaperscans",
-      "manga_url": "https://reaperscans.com/series/the-legendary-mechanic",
-      "completed": true,
-      "title": "The Legendary Mechanic",
-      "manga_id": "https://reaperscans.com/series/the-legendary-mechanic",
-      "curr_chapter_url": "https://reaperscans.com/series/the-legendary-mechanic/chapter-10",
-      "first_chapter_url": "https://reaperscans.com/series/the-legendary-mechanic/chapter-0",
-      "cover_image": "https://media.reaperscans.com/file/4SRBHm/comics/167d3d48-6d3a-4af3-9e04-183c28938df8/NnJgo5uCLKDisl2OSBtbBKDbZYdqUeeeGjH8qoh2.jpg",
-      "last_3_chapter_urls": [
-        "https://reaperscans.com/series/the-legendary-mechanic/chapter-8",
-        "https://reaperscans.com/series/the-legendary-mechanic/chapter-9",
-        "https://reaperscans.com/series/the-legendary-mechanic/chapter-10"
-      ],
-      "use_default_id_function": true,
-      "has_fp_manhwa": true
-    }
-  },
   "comick": {
-    "user_input_url": "https://comick.io/comic/00-solo-leveling",
+    "user_input_url": "https://comick.dev/comic/00-solo-leveling",
     "expected_results": {
       "scanlator_name": "comick",
-      "manga_url": "https://comick.io/comic/00-solo-leveling?lang=en",
+      "manga_url": "https://comick.dev/comic/00-solo-leveling?lang=en",
       "completed": true,
       "title": "Solo Leveling",
       "manga_id": "71gMd0vF",
-      "curr_chapter_url": "https://comick.io/comic/00-solo-leveling/5N_wGCXG",
-      "first_chapter_url": "https://comick.io/comic/00-solo-leveling/P_ysNE3VbnLbwN",
+      "curr_chapter_url": "https://comick.dev/comic/00-solo-leveling/5N_wGCXG",
+      "first_chapter_url": "https://comick.dev/comic/00-solo-leveling/P_ysNE3VbnLbwN",
       "cover_image": "https://meo.comick.pictures/0GRgd.jpg",
       "last_3_chapter_urls": [
-        "https://comick.io/comic/00-solo-leveling/JaFXXmsI",
-        "https://comick.io/comic/00-solo-leveling/GMhAHmIL",
-        "https://comick.io/comic/00-solo-leveling/5N_wGCXG"
+        "https://comick.dev/comic/00-solo-leveling/JaFXXmsI",
+        "https://comick.dev/comic/00-solo-leveling/GMhAHmIL",
+        "https://comick.dev/comic/00-solo-leveling/5N_wGCXG"
       ],
       "use_default_id_function": false,
       "has_fp_manhwa": false
@@ -279,42 +259,22 @@
       "has_fp_manhwa": true
     }
   },
-  "suryatoon": {
-    "user_input_url": "https://suryatoon.com/manga/modern-dude-in-the-murim/",
-    "expected_results": {
-      "completed": false,
-      "cover_image": "https://suryatoon.com/wp-content/uploads/2022/12/moden-guy-murim.webp",
-      "curr_chapter_url": "https://suryatoon.com/modern-dude-in-the-murim-chapter-22/",
-      "first_chapter_url": "https://suryatoon.com/modern-dude-in-the-murim-chapter-1/",
-      "last_3_chapter_urls": [
-        "https://suryatoon.com/modern-dude-in-the-murim-chapter-20/",
-        "https://suryatoon.com/modern-dude-in-the-murim-chapter-21/",
-        "https://suryatoon.com/modern-dude-in-the-murim-chapter-22/"
-      ],
-      "manga_id": "https://suryatoon.com/manga/modern-dude-in-the-murim",
-      "manga_url": "https://suryatoon.com/manga/modern-dude-in-the-murim",
-      "scanlator_name": "suryatoon",
-      "title": "Modern Dude in the Murim",
-      "use_default_id_function": true,
-      "has_fp_manhwa": true
-    }
-  },
   "arcanescans": {
-    "user_input_url": "https://arcanescans.com/manga/global-ghosts-warden-i-have-100-million-contracted-ghosts/",
+    "user_input_url": "https://arcanescans.org/manga/return-of-the-banished-archmage/",
     "expected_results": {
       "scanlator_name": "arcanescans",
-      "manga_url": "https://arcanescans.com/manga/global-ghosts-warden-i-have-100-million-contracted-ghosts/",
+      "manga_url": "https://arcanescans.org/manga/return-of-the-banished-archmage/",
       "completed": false,
-      "title": "Global Ghosts Warden: I have 100 million Contracted Ghosts",
+      "title": "Return of the Banished Archmage",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://arcanescans.com/global-ghosts-warden-i-have-100-million-contracted-ghosts-chapter-75/",
-      "first_chapter_url": "https://arcanescans.com/global-ghosts-warden-i-have-100-million-contracted-ghosts-chapter-1/",
-      "cover_image": "https://i0.wp.com/arcanescans.com/wp-content/uploads/2025/04/1744187715-5437-0a8a8acda0618df5361d903446ef42e8-225x300.jpg",
+      "curr_chapter_url": "https://arcanescans.org/return-of-the-banished-archmage-chapter-13/",
+      "first_chapter_url": "https://arcanescans.org/return-of-the-banished-archmage-chapter-1/",
+      "cover_image": "https://i3.wp.com/arcanescans.org/wp-content/uploads/2025/10/c0be106e-0707-4586-87d5-382e3b139d3d.jpg",
       "last_3_chapter_urls": [
-        "https://arcanescans.com/global-ghosts-warden-i-have-100-million-contracted-ghosts-chapter-73/",
-        "https://arcanescans.com/global-ghosts-warden-i-have-100-million-contracted-ghosts-chapter-74/",
-        "https://arcanescans.com/global-ghosts-warden-i-have-100-million-contracted-ghosts-chapter-75/"
+        "https://arcanescans.org/return-of-the-banished-archmage-chapter-11/",
+        "https://arcanescans.org/return-of-the-banished-archmage-chapter-12/",
+        "https://arcanescans.org/return-of-the-banished-archmage-chapter-13/"
       ],
       "has_fp_manhwa": true
     }
@@ -520,21 +480,21 @@
     }
   },
   "vortexscans": {
-    "user_input_url": "https://vortexscans.com/series/would-you-like-to-sign-the-contract/",
+    "user_input_url": "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q",
     "expected_results": {
       "scanlator_name": "vortexscans",
-      "manga_url": "https://vortexscans.com/series/would-you-like-to-sign-the-contract/",
-      "completed": false,
-      "title": "Would You Like to Sign The Contract?",
+      "manga_url": "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q",
+      "completed": true,
+      "title": "The Legend of the Northern Blade",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-37/",
-      "first_chapter_url": "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-1/",
-      "cover_image": "https://vortexscans.com/wp-content/uploads/2023/09/Would-You-Like-to-Sign-The-Contract-1.webp",
+      "curr_chapter_url": "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q/chapter-202.2",
+      "first_chapter_url": "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q/chapter-1",
+      "cover_image": "https://storage.vexmanga.com/public/upload/2024/09/17/cover_1726572240714.webp",
       "last_3_chapter_urls": [
-        "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-35/",
-        "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-36/",
-        "https://vortexscans.com/would-you-like-to-sign-the-contract-chapter-37/"
+        "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q/chapter-201",
+        "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q/chapter-202",
+        "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q/chapter-202.2"
       ],
       "has_fp_manhwa": true
     }
@@ -610,7 +570,7 @@
       "use_default_id_function": false,
       "curr_chapter_url": "https://mangafire.to/read/hellsingg.y8x/en/chapter-88",
       "first_chapter_url": "https://mangafire.to/read/hellsingg.y8x/en/chapter-1",
-      "cover_image": "https://static.mangafire.to/3da8/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
+      "cover_image": "https://static.mfcdn.cc/3872/i/d/de/de9031d2a969cba6dbb3b6685ead31f2.jpg",
       "last_3_chapter_urls": [
         "https://mangafire.to/read/hellsingg.y8x/en/chapter-86",
         "https://mangafire.to/read/hellsingg.y8x/en/chapter-87",
@@ -742,11 +702,11 @@
       "manga_url": "https://hivetoons.org/series/tales-of-greed-deep",
       "completed": false,
       "title": "Tales Of Greed Deep",
-      "manga_id": "38",
-      "use_default_id_function": false,
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
       "curr_chapter_url": "https://hivetoons.org/series/tales-of-greed-deep/chapter-23",
       "first_chapter_url": "https://hivetoons.org/series/tales-of-greed-deep/chapter-1",
-      "cover_image": "https://storage.hivetoons.org/public//upload/2024/11/20/cover_1732135034321.webp",
+      "cover_image": "https://storage.hivetoon.com/public//upload/2024/11/20/cover_1732135034321.webp",
       "last_3_chapter_urls": [
         "https://hivetoons.org/series/tales-of-greed-deep/chapter-21",
         "https://hivetoons.org/series/tales-of-greed-deep/chapter-22",
@@ -789,25 +749,6 @@
         "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-112/",
         "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-113/",
         "https://mangasushi.org/manga/the-reincarnation-magician-of-the-inferior-eyes/chapter-114/"
-      ]
-    }
-  },
-  "manhuaga": {
-    "user_input_url": "https://manhuaga.com/manga/serpent-ancestor/",
-    "expected_results": {
-      "scanlator_name": "manhuaga",
-      "manga_url": "https://manhuaga.com/manga/serpent-ancestor/",
-      "completed": false,
-      "title": "Serpent Ancestor",
-      "manga_id": "default_id_function",
-      "use_default_id_function": true,
-      "curr_chapter_url": "https://manhuaga.com/serpent-ancestor-chapter-23/",
-      "first_chapter_url": "https://manhuaga.com/serpent-ancestor-chapter-20/",
-      "cover_image": "https://manhuaga.com/wp-content/uploads/2024/12/SA.png",
-      "last_3_chapter_urls": [
-        "https://manhuaga.com/serpent-ancestor-chapter-21/",
-        "https://manhuaga.com/serpent-ancestor-chapter-22/",
-        "https://manhuaga.com/serpent-ancestor-chapter-23/"
       ]
     }
   },
@@ -865,6 +806,44 @@
         "https://templetoons.com/comic/king-of-the-land/84036-chapter-19",
         "https://templetoons.com/comic/king-of-the-land/48701-chapter-20",
         "https://templetoons.com/comic/king-of-the-land/41186-chapter-21"
+      ]
+    }
+  },
+  "mgkomic": {
+    "user_input_url": "https://id.mgkomik.cc/komik/the-great-inheritance/",
+    "expected_results": {
+      "scanlator_name": "mgkomic",
+      "manga_url": "https://id.mgkomik.cc/komik/the-great-inheritance/",
+      "completed": true,
+      "title": "The Great Inheritance",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://id.mgkomik.cc/komik/the-great-inheritance/chapter-50/",
+      "first_chapter_url": "https://id.mgkomik.cc/komik/the-great-inheritance/chapter-01/",
+      "cover_image": "https://id.mgkomik.cc/wp-content/uploads/thumbs/a715901ff4/image-9a5dddb360d885f81262.webp",
+      "last_3_chapter_urls": [
+        "https://id.mgkomik.cc/komik/the-great-inheritance/chapter-48/",
+        "https://id.mgkomik.cc/komik/the-great-inheritance/chapter-49/",
+        "https://id.mgkomik.cc/komik/the-great-inheritance/chapter-50/"
+      ]
+    }
+  },
+  "genzupdates": {
+    "user_input_url": "https://genzupdates.com/series/6292a7b82df/",
+    "expected_results": {
+      "scanlator_name": "genzupdates",
+      "manga_url": "https://genzupdates.com/series/6292a7b82df/",
+      "completed": true,
+      "title": "Academy's Reincarnated Hero",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://genzupdates.com/chapter/6292a7b82df-63621208ee3/",
+      "first_chapter_url": "https://genzupdates.com/chapter/6292a7b82df-6292cc2b272/",
+      "cover_image": "https://wsrv.nl/?url=cdn.meowing.org/uploads/GmiNmtq2uI_",
+      "last_3_chapter_urls": [
+        "https://genzupdates.com/chapter/6292a7b82df-6334bac70e3/",
+        "https://genzupdates.com/chapter/6292a7b82df-6334bab499d/",
+        "https://genzupdates.com/chapter/6292a7b82df-63621208ee3/"
       ]
     }
   }

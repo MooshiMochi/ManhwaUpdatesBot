@@ -193,7 +193,17 @@ class Test:
         result = await self.test_subject.format_manga_url(self.test_data.manga_url)
         result = result.removesuffix("/")
         self.fmt_url = result
-        evaluated: bool = result.removesuffix("/") == self.expected_result.manga_url
+        if getattr(self.test_subject.json_tree.properties, 'dynamic_url', False):
+            # remove the ID from the result when evaluating
+            # we're doing this because we will always have to update the test case to keep up with the current ID
+            result_dynamic_id = self.test_subject.json_tree.rx.search(result).groupdict().get("id")
+            expected_dynamic_id = self.test_subject.json_tree.rx.search(self.expected_result.manga_url).groupdict().get(
+                "id")
+            cleaned_result = result.replace(result_dynamic_id, "{dynamic_id}")
+            cleaned_expected_result = self.expected_result.manga_url.replace(expected_dynamic_id, "{dynamic_id}")
+            evaluated: bool = cleaned_result.removesuffix("/") == cleaned_expected_result
+        else:
+            evaluated: bool = result.removesuffix("/") == self.expected_result.manga_url
         if not evaluated:
             print(f"Expected: {self.expected_result.manga_url}")
             print(f"   ↳ Got: {result}")
@@ -227,11 +237,37 @@ class Test:
 
     async def first_chapter_url(self) -> bool:
         result = await self.test_subject.get_all_chapters(self.fmt_url)
-        evaluated: bool = (
-                result is not None and result[0].url.removesuffix(
-            "/"  # noqa
-        ) == self.expected_result.first_chapter_url.removesuffix("/")
-        )
+        if getattr(self.test_subject.json_tree.properties, 'dynamic_url', False):
+            # remove the ID from the result when evaluating
+            # we're doing this because we will always have to update the test case to keep up with the current ID
+
+            # redact the dynamic ID from all the chapter URLs from the request result
+            for chapter in result:
+                if chapter_regex := self.test_subject.json_tree.properties.chapter_regex:
+                    result_dynamic_id = chapter_regex.search(chapter.url).groupdict().get("id")
+                else:
+                    result_dynamic_id = self.test_subject.json_tree.rx.search(chapter.url).groupdict().get("id")
+                chapter.url = chapter.url.replace(result_dynamic_id, "{dynamic_id}")
+
+            # redact the dynamic ID from the expected first chapter URL
+            if chapter_regex := self.test_subject.json_tree.properties.chapter_regex:
+                expected_dynamic_id = chapter_regex.search(self.expected_result.first_chapter_url).groupdict().get("id")
+            else:
+                expected_dynamic_id = self.test_subject.json_tree.rx.search(
+                    self.expected_result.first_chapter_url
+                ).groupdict().get("id")
+            cleaned_expected_result = self.expected_result.first_chapter_url.replace(expected_dynamic_id,
+                                                                                     "{dynamic_id}")
+            evaluated: bool = (
+                    result is not None and result[0].url.removesuffix("/") == cleaned_expected_result.removesuffix("/")
+            )
+
+        else:
+            evaluated: bool = (
+                    result is not None and result[0].url.removesuffix(
+                "/"  # noqa
+            ) == self.expected_result.first_chapter_url.removesuffix("/")
+            )
         if not evaluated:
             print(f"Expected: {self.expected_result.first_chapter_url.removesuffix('/')}")
             print(f"   ↳ Got: {result[0].url.removesuffix('/')}")
@@ -249,6 +285,29 @@ class Test:
     async def check_updates(self) -> bool:
         # As long as the previous tests pass, the make_manga_object method should automatically pass
         manga = await self.test_subject.make_manga_object(self.fmt_url)
+
+        if getattr(self.test_subject.json_tree.properties, 'dynamic_url', False):
+            # remove the dynamic IDs from teh chapters in both the request result and the expected result
+            for chapter in manga.chapters:
+                if chapter_regex := self.test_subject.json_tree.properties.chapter_regex:
+                    result_dynamic_id = chapter_regex.search(chapter.url).groupdict().get("id")
+                else:
+                    result_dynamic_id = self.test_subject.json_tree.rx.search(chapter.url).groupdict().get("id")
+                chapter.url = chapter.url.replace(result_dynamic_id, "{dynamic_id}")
+
+            for i in range(3):
+                if chapter_regex := self.test_subject.json_tree.properties.chapter_regex:
+                    expected_dynamic_id = chapter_regex.search(
+                        self.expected_result.last_3_chapter_urls[i]
+                    ).groupdict().get("id")
+                else:
+                    expected_dynamic_id = self.test_subject.json_tree.rx.search(
+                        self.expected_result.last_3_chapter_urls[i]
+                    ).groupdict().get("id")
+                self.expected_result.last_3_chapter_urls[i] = self.expected_result.last_3_chapter_urls[i].replace(
+                    expected_dynamic_id, "{dynamic_id}"
+                )
+
         # get the last read chapter where the url == last_3_chapter_urls[0]
         last_read_chapter = self.expected_result.extract_last_read_chapter(manga)
         if not last_read_chapter:
@@ -258,6 +317,16 @@ class Test:
             raise AssertionError("❌ Last 3 chapter urls at index 0 does not match any chapter in the manga object")
         manga._last_chapter = last_read_chapter
         result = await self.test_subject.check_updates(manga)
+
+        if getattr(self.test_subject.json_tree.properties, 'dynamic_url', False):
+            # redact the dynamic ID from all the chapter URLs from the request result
+            for chapter in result.new_chapters:
+                if chapter_regex := self.test_subject.json_tree.properties.chapter_regex:
+                    result_dynamic_id = chapter_regex.search(chapter.url).groupdict().get("id")
+                else:
+                    result_dynamic_id = self.test_subject.json_tree.rx.search(chapter.url).groupdict().get("id")
+                chapter.url = chapter.url.replace(result_dynamic_id, "{dynamic_id}")
+
         evaluated: bool = all(
             [
                 result.new_chapters[i].url.rstrip("/") == (self.expected_result.last_3_chapter_urls[-2:][i].rstrip("/"))
@@ -422,7 +491,7 @@ class TestCases(dict):
             test_map = json.load(f)
         self.testCases: dict[str, TestCase] = {}
         for scanlator_name, test_data in test_map.items():
-            if scanlator_name not in scanlators:
+            if scanlator_name not in scanlators or scanlator_name in self.tests_to_ignore:
                 print(f"⚠️ Scanlator {scanlator_name} is disabled! No tests will be run.")
                 continue
             if single_scanlator is not None and scanlator_name != single_scanlator:
@@ -467,21 +536,25 @@ class TestCases(dict):
 tests_to_ignore = [
     # Permanently Removed
     "reaperscans",
-    "nightscans",
     "novelmic",
 
-    # disabled cos of 521? server issue
-    "drakescans", "gourmet", "manhuaga", "platinumscans", "mgkomic"
+    "nightscans",  # changed to qiscans.org... still geting 403
 
-                                                          "zeroscans",  # This website just hangs for some reason
-    # Disabled because of 403:
+    # disabled cos of 521? server issue
+    "platinumscans",
+    "kaiscans",
+
+    "zeroscans",  # This website just hangs for some reason
+    # Disabled because of 403:`
+    "drakescans",
+    "kunmanga",  # TODO: maybe remove the manga all together if the website is dead
+    "genzupdates",
+    # "mangabuddy",
 
     # Changed domain.
-    "hivescans",
 
     "suryatoon",  # renamed to genztoons.com, will add as new scanlator if no dataabse entries from it exist
     # The website(s) id down at the time of testing:
-
 ]
 
 
@@ -578,7 +651,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("kunmanga"))
+        asyncio.run(test_single_scanlator("drakescans"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

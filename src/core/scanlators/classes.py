@@ -45,7 +45,7 @@ __all__ = (
 class _AbstractScanlatorUtilsMixin:
     @staticmethod
     def extract_cover_link_from_tag(tag, base_url: str) -> str | None:
-        for attr in ["data-src", "src", "href", "content", "data-lazy-src", "style"]:
+        for attr in ["data-src", "src", "style", "href", "content", "data-lazy-src"]:
             result = tag.get(attr)
             if result is not None:
                 if result.startswith("/"):  # partial URL, we just need to append base URL to it
@@ -57,6 +57,8 @@ class _AbstractScanlatorUtilsMixin:
                         result = url_rx.search(result).group()
                         if result is not None:
                             return result
+                        else:
+                            continue
                     end_result = result.split(".")[-1]
                     for extension in ["jpg", "png", "jpeg", "webp", "gif", "svg", "apng"]:
                         if end_result.startswith(extension):
@@ -522,10 +524,6 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return extra_kwargs
 
     async def _get_text(self, url: str, method: Literal["GET", "POST"] = "GET", **params) -> str:
-        # one thing to note:
-        # headers are only really required to let websites that gave us special access to identify us.
-        # so, realistically, we can ignore headers in the flare request, as it's intended to be used for websites that
-        # block us.
         provided_headers = params.pop("headers", None)
         if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
         headers = ((self.create_headers() or {}) | provided_headers) or None

@@ -76,3 +76,78 @@ class Parser:
         tag = cls._get_longest_tag(text)
         json_objects = cls._extract_and_parse_json(tag.text)
         return json_objects
+
+    @staticmethod
+    def extract_balanced_json(text, start_key='"post":{'):
+        """Return the JSON text for the object that starts right after start_key."""
+        start = text.find(start_key)
+        if start == -1:
+            raise ValueError("Couldn't find the post object start")
+        i = start + len(start_key) - 1  # position on the opening '{'
+        depth = 0
+        arr_depth = 0
+        in_str = False
+        esc = False
+        for j in range(i, len(text)):
+            ch = text[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == '\\':
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+            else:
+                if ch == '"':
+                    in_str = True
+                elif ch == '{':
+                    depth += 1
+                elif ch == '[':
+                    arr_depth += 1
+                elif ch == ']':
+                    arr_depth -= 1
+                elif ch == '}':
+                    depth -= 1
+
+                if depth == 0 and arr_depth == 0:
+                    # slice includes the outer braces
+                    return text[i:j + 1]
+        raise ValueError("Unbalanced braces while extracting JSON")
+
+    @staticmethod
+    def repair_mojibake(s: str) -> str:
+        """
+        Try to reverse the classic 'UTF-8 decoded as cp1252' mojibake:
+          e.g., 'donâ€™t' -> "don’t", 'â€œHelloâ€�' -> “Hello”
+        Only runs when telltale patterns exist, otherwise returns s unchanged.
+        """
+        if not isinstance(s, str) or not s:
+            return s
+
+        # Fast bail-out if nothing suggests mojibake
+        if not re.search(r'[ÂÃâ][\u0080-\u00BF]', s) and 'â' not in s and 'Â' not in s and 'Ã' not in s:
+            return s
+
+        # 1) Try the canonical reversal path: cp1252 -> utf-8
+        try:
+            return s.encode('cp1252', errors='strict').decode('utf-8', errors='strict')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            # 2) Best-effort: allow lossy encode on the cp1252 path
+            try:
+                fixed = s.encode('cp1252', errors='replace').decode('utf-8', errors='replace')
+                return fixed
+            except Exception:
+                pass
+
+        # 3) Last resort: targeted replacements for the most common triples
+        replacements = {
+            'â€™': '’', 'â€˜': '‘',
+            'â€œ': '“', 'â€�': '”',
+            'â€“': '–', 'â€”': '—',
+            'â€¦': '…',
+            'Â ': ' ', 'Â': '',  # stray non-breaking-space artifacts
+        }
+        fixed = s
+        for bad, good in replacements.items():
+            fixed = fixed.replace(bad, good)
+        return fixed

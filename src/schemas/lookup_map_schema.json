@@ -239,6 +239,7 @@
                       "type": "string"
                     },
                     "no_premium_chapter_url": {
+                      "description": "When premium chapters don't have an actual URL set (e.g. the url is just '#'), this can be used to build a URL for those chapters based on the chapter title.",
                       "type": "object",
                       "properties": {
                         "string_selector": {

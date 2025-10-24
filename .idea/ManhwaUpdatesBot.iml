@@ -7,7 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/browser_data" />
       <excludeFolder url="file://$MODULE_DIR$/local" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.13 (ManhwaUpdatesBot)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.13 (ManhwaUpdatesBot) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">

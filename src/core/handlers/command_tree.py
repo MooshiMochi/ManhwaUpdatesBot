@@ -229,15 +229,16 @@ class BotCommandTree(discord.app_commands.CommandTree):
             )
 
         elif isinstance(error, app_commands.errors.BotMissingPermissions):
-            perms = ", ".join(error.missing_permissions)  # noqa
+            perms = ", ".join(map(error.missing_permissions, lambda x: x.title().replace("_", " ")))  # noqa
             if "send_messages" in perms:
                 return
             embed = discord.Embed(
                 title=f"{Emotes.warning} I can't do that.",
                 color=0xFF0000,
-                description=f"Sorry, I require the permission(s) `{perms}` to "
-                            + "execute that command. Please contact a server "
-                            + "administrator to fix this issue.",
+                # description=f"Sorry, I require the permission(s) `{perms}` to "
+                #             + "execute that command. Please contact a server "
+                #             + "administrator to fix this issue.",
+                description=f"Nuh uh... I need the `{perms}` permission(s) to do that. Contact a server admin to address this."
             )
 
         elif isinstance(error, app_commands.errors.CommandOnCooldown):

@@ -18,8 +18,8 @@ __all__ = (
 
 class _Comick(AbstractScanlator):
     rx: re.Pattern = RegExpressions.comick_url
-    icon_url = "https://comick.io/static/icons/unicorn-256_maskable.png"
-    base_url = "https://comick.io"
+    icon_url = "https://comick.dev/static/icons/unicorn-256_maskable.png"
+    base_url = "https://comick.dev"
     cover_url = "https://meo.comick.pictures/"
     fmt_url = base_url + "/comic/{url_name}?lang=en"
     chp_url_fmt = base_url + "/comic/{url_name}/{chapter_id}"

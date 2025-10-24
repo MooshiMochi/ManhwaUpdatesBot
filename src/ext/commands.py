@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 from typing import Any, Coroutine, Optional, TYPE_CHECKING
 
 from src.core.scanlators.classes import AbstractScanlator
@@ -846,6 +847,40 @@ Ensure the bot has these permissions for smooth operation.
         await interaction.followup.send(embed=em, view=view)
 
     @app_commands.command(
+        name='get_lost_manga',
+        description='Export a list of tracked/bookmarked manga from removed websites.'
+    )
+    async def get_lost_manga(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)  # noqa
+        lost_manga = await self.bot.db.get_lost_manga(interaction.guild_id or interaction.user.id)
+        if not lost_manga:
+            em = discord.Embed(
+                title=f"{Emotes.warning} No lost manga found",
+                description="You have no tracked or bookmarked manga from removed websites.",
+                color=discord.Color.green()
+            )
+            return await interaction.followup.send(embed=em, ephemeral=True)
+
+        content = "Manga ID | Scanlator | Title | URL\n"
+        content += "\n".join([
+            f"{manga.id} | {manga.scanlator} | {manga.title} | {manga.url}"
+            for manga in lost_manga
+        ])
+        file = discord.File(
+            io.BytesIO(content.encode('utf-8')),
+            filename="lost_manga.txt"
+        )
+        em = discord.Embed(
+            title="Lost Manga Export",
+            description=(
+                f"Found **{len(lost_manga)}** tracked/bookmarked manga from removed websites.\n"
+                "Please find the exported list attached."
+            ),
+            color=discord.Color.green()
+        )
+        await interaction.followup.send(embed=em, file=file, ephemeral=True)
+
+    @app_commands.command(
         name="search",
         description="Search for a manga on on all/one scanlator of choice.",
     )
@@ -1081,11 +1116,12 @@ Ensure the bot has these permissions for smooth operation.
         guilds_count = len(self.bot.guilds)
         (users_count,), = await self.bot.db.execute(
             """
-            SELECT COUNT(user_identifier) AS unique_users FROM (
-                SELECT user_id AS user_identifier FROM bookmarks
-                UNION
-                SELECT id AS user_identifier FROM user_subs
-            );
+            SELECT COUNT(user_identifier) AS unique_users
+            FROM (SELECT user_id AS user_identifier
+                  FROM bookmarks
+                  UNION
+                  SELECT id AS user_identifier
+                  FROM user_subs);
             """
         )
 

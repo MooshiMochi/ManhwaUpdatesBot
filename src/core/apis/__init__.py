@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 from .comickAPI import ComickAppAPI
 from .mangadexAPI import MangaDexAPI
 from .omegascansAPI import OmegaScansAPI
-from .reaperAPI import ReaperScansAPI
 from .zeroscansAPI import ZeroScansAPI
 from .webshare import WebsShare
 
@@ -26,7 +25,6 @@ class APIManager:
         self.mangadex = MangaDexAPI(self)
         self.omegascans = OmegaScansAPI(self)
         self.zeroscans = ZeroScansAPI(self)
-        self.reaperscans = ReaperScansAPI(self)
         # self.webshare = WebsShare(self, bot.config.get("api-keys", {}).get("webshare"))
 
     @property

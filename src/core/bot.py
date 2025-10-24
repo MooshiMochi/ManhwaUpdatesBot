@@ -47,7 +47,7 @@ class MangaClient(commands.Bot):
 
     async def setup_hook(self):
         if self._config["proxy"]["enabled"]:
-            if self.config["proxy"]["username"] and self.config["proxy"]["password"]:
+            if self._config["proxy"]["username"] and self._config["proxy"]["password"]:
                 self.proxy_addr = (
                     f"http://{self._config['proxy']['username']}:{self._config['proxy']['password']}@"
                     f"{self._config['proxy']['ip']}:{self._config['proxy']['port']}"

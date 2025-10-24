@@ -2,6 +2,34 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+### October 24th 2025
+
+- Partially added a command to export tracked/subscribed/bookmarked manga from websites that are no longer supported.
+    - Command (TBC): `/get_lost_manga`
+    - The export will be in markdown format and will be sent as a file.
+    - Note: The export will only include manga from unsupported websites.
+
+- Added https://genzupdates.com — however, it will be disabled until a 403 bypass is found (this replaced suryatoon)
+- Modified the error message for 'BotMissingPermissions'
+- Updated the html_json_parser to be able to extract a single JSON object from HTML text based on JSON start key.
+- Added back https://id.mgkomik.cc/
+- Added https://vortexscans.org/
+
+- Removed https://manhuaga.com as the scanlator merged into drakecomick now.
+- Removed https://reaperscans.com as the scanlator is down indefinitely.
+
+- Removed all associated ReaperScans code from the bot. That includes the API file and the custom scanlator class.
+
+### Bug Fixes:
+
+- Fixed arcanescans (changed tld from .com to .org)
+- Fixed error in setup_hook in MangaClient.py (was accessing .config, however ._config is correct)
+- Fixed comick (updated tld from .cc to .dev)
+- Fixed Hivetoon (re-wrote custom implementation to keep up with the website changes)
+- Fixed potential bug in method that extracts cover URL from HTML tag.
+- Fixed demonreader fp conainer selector (it just ignores any ads that they decided to ad)
+- Fixed flamecomics fp container selector (they changed the structure of the fp page)
+
 ## February 14th 2025
 
 ### Bug Fixes:

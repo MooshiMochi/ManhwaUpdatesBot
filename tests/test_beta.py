@@ -131,8 +131,10 @@ async def main():
 
     async with Bot(proxy_url=proxy_url) as bot:
         init_scanlators(bot, scanlators)
-        key = "templescan"
-        url = "https://templetoons.com/comic/king-of-the-land"
+        # for s in scanlators.values():
+        #     print(s.name)
+        key = "vortexscans"
+        url = "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);
@@ -162,8 +164,8 @@ async def main():
         results = (
             f"Title: {title}", f"ID: {_id}", f"URL: {manga.url}", f"All Chapters [{len(all_chapters)}]: {all_chapters}",
             f"Status: {status}",
-            f"Synopsis: {synopsis}", f"Cover: {cover}", f"FP Manhwa [{len(fp_manga)}]: {fp_manga}",
-            f"Search [{len(search_result)}]: {search_result}",
+            f"Synopsis: {synopsis}", f"Cover: {cover}", f"FP Manhwa [{len(fp_manga or [])}]: {fp_manga}",
+            f"Search [{len(search_result or [])}]: {search_result}",
             f"Manga obj: {manga}", f"Updates result: {updates_result}"
         )
         for result in results:
