@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Iterable, Optional, TYPE_CHECKING, Union
 
 from discord.app_commands import AppCommandError
@@ -990,7 +991,10 @@ class BookmarkChapterView(View):
     def _extract_keys(
             interaction: discord.Interaction, _: Button, /,
     ) -> tuple[str, str, int]:
-        key_message: str = interaction.message.content.split("||")[1]
+        content = re.search(r"\|\|(?P<content>.+?)\|\|", interaction.message.content)
+        if not content:
+            raise ValueError("Could not extract keys from the message content.")
+        key_message: str = content.group("content")
         manga_id, scanlator, chapter_index = key_message.split("|")
         return manga_id.strip(), scanlator.strip(), int(chapter_index.strip())
 

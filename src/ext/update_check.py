@@ -438,8 +438,8 @@ class UpdateCheckCog(Cog):
                             await user.send(
                                 (
                                     # f"||<Manga ID: {update.manga_id} | Chapter Index: {chapter.index}>||\n"
-                                    f"{spoiler_text}**{manga.title} {chapter.name}**"
-                                    f" has been released!\n{chapter.url}"
+                                    f"**{manga.title} {chapter.name}** has been released!\n{chapter.url}\n"
+                                    f"{spoiler_text}"
                                 ),
                                 allowed_mentions=discord.AllowedMentions(roles=True),
                                 **extra_kwargs,
@@ -537,8 +537,8 @@ class UpdateCheckCog(Cog):
                     try:
                         await channel.send(
                             (
-                                f"{spoiler_text}{ping_str}** {title} {chapter.name}**"
-                                f" has been released!\n{chapter.url}"
+                                f"**{title} {chapter.name}**"
+                                f" has been released! {ping_str}\n{chapter.url}\n{spoiler_text}"
                             ),
                             allowed_mentions=discord.AllowedMentions(roles=True),
                             **extra_kwargs,
