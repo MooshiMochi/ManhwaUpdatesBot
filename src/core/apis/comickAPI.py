@@ -148,7 +148,7 @@ class ComickAppAPI:
             language = "en"
         if page_limit is None:
             page_limit = float("inf")
-        endpoint = f"comic/{manga_id}/chapters?lang={language}&page={page}"
+        endpoint = f"v1.0/comic/{manga_id}/chapters?lang={language}&page={page}&limit=60"
         # params = {"lang": language, "page": page}
         result = await self.__request("GET", endpoint)
 
@@ -171,7 +171,7 @@ class ComickAppAPI:
             "q": query,
             "limit": limit,
             "page": 1 if page is None else page,
-            "t": "true"
+            "t": "false"
         }
         params = {k: v for k, v in params.items() if v is not None}
         kwargs = {}

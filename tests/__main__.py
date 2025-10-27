@@ -12,7 +12,7 @@ import sys
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
-from typing import Coroutine, Dict, Literal, Optional
+from typing import Any, Coroutine, Dict, Literal, Optional, Callable
 
 import curl_cffi
 import requests  # noqa
@@ -348,6 +348,12 @@ class Test:
         result = await self.test_subject.get_fp_partial_manga()
         return not self.expected_result.has_fp_manhwa or (result is not None and len(result) > 0)
 
+    async def show_search_results(self) -> bool:
+        if not self.test_subject.json_tree.properties.supports_search: return True
+
+        result = await self.test_subject.search("he")
+        return result is not None and len(result) > 0
+
     def scanlator_name(self) -> bool:
         evaluated: bool = self.test_subject.name == self.expected_result.scanlator_name
         if not evaluated:
@@ -358,7 +364,7 @@ class Test:
     async def begin(self, test_method: str = "all") -> str:
         checks_passed: int = 0
         print(f"🔎 [{self.expected_result.scanlator_name}] Running tests...")
-        checks_to_run: list[tuple[callable, str]] = [
+        checks_to_run: list[tuple[Callable[[], Coroutine[Any, Any, bool]], str]] = [
             (self.get_manga_id, "❌ Failed to get manga id"),
             (self.fmt_manga_url, "❌ Failed to format manga url"),
             (self.is_completed, "❌ Failed to get completed status"),
@@ -368,6 +374,7 @@ class Test:
             (self.check_updates, "❌ Failed to check for updates"),
             (self.scanlator_name, "❌ Failed to match scanlator name to expected name"),
             (self.show_front_page_results, "❌ Failed to get front page results"),
+            (self.show_search_results, "❌ Failed to get search results"),
         ]
         if not self.id_first:
             checks_to_run[0], checks_to_run[1] = checks_to_run[1], checks_to_run[0]
@@ -437,10 +444,11 @@ class TestCase:
             return await self.test.begin(test_method)
 
 
-async def default_id_func(manga_url: str) -> str:
+async def default_id_func(manga_url: str) -> str | None:
     for scan in scanlators.values():
         if scan.check_ownership(manga_url):
             return await scan.get_id(manga_url)
+    return None
 
 
 async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None):
@@ -480,11 +488,11 @@ async def run_single_test(test_case: TestCase, test_method: str = "all"):
 
 
 class TestCases(dict):
-    def __init__(self, tests_to_ignore: list[str] | None = None, single_scanlator: str | None = None):
+    def __init__(self, to_ignore: list[str] | None = None, single_scanlator: str | None = None):
         if tests_to_ignore is None:
             self.tests_to_ignore = []
         else:
-            self.tests_to_ignore = tests_to_ignore
+            self.tests_to_ignore = to_ignore
         self.test_setup = SetupTest()
 
         with open(os.path.join(root_path, "tests/test_map.json"), "r", encoding="utf-8") as f:
@@ -549,7 +557,10 @@ tests_to_ignore = [
     "drakescans",
     "kunmanga",  # TODO: maybe remove the manga all together if the website is dead
     "genzupdates",
+
+    # disabled cos tested when using VPN:
     # "mangabuddy",
+    # "toonily",
 
     # Changed domain.
 
@@ -651,7 +662,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("drakescans"))
+        # asyncio.run(test_single_scanlator("comick"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(main())
+        asyncio.run(main())
