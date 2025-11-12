@@ -1,4 +1,5 @@
 debug: false
+token: YOUR_DISCORD_BOT_TOKEN
 constants:
   log-channel-id: 1076211859302129726
   command-log-channel-id: 1136301113218437311
@@ -37,6 +38,7 @@ user-agents:
     epsilonscan: null
 api-keys:
     webshare: null
+    local-botright-server: example-token
 patreon:
     access-token: null
     campaign-id: null

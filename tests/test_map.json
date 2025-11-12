@@ -846,5 +846,43 @@
         "https://genzupdates.com/chapter/6292a7b82df-63621208ee3/"
       ]
     }
+  },
+  "manhwabuddy": {
+    "user_input_url": "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/",
+    "expected_results": {
+      "scanlator_name": "manhwabuddy",
+      "manga_url": "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/",
+      "completed": true,
+      "title": "The Great Mage Returns After 4000 Years",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/chapter-229/",
+      "first_chapter_url": "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/chapter-1/",
+      "cover_image": "https://manhwabuddy.com/uploads/the-great-mage-returns-after-4000-years-738.jpg",
+      "last_3_chapter_urls": [
+        "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/chapter-227/",
+        "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/chapter-228/",
+        "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/chapter-229/"
+      ]
+    }
+  },
+  "arvencomics": {
+    "user_input_url": "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/",
+    "expected_results": {
+      "scanlator_name": "arvencomics",
+      "manga_url": "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/",
+      "completed": false,
+      "title": "The Delusional hunter in another world",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/chapter-63/",
+      "first_chapter_url": "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/chapter-0/",
+      "cover_image": "https://arvencomics.com/wp-content/uploads/2025/08/image-1.jpg",
+      "last_3_chapter_urls": [
+        "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/chapter-61/",
+        "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/chapter-62/",
+        "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/chapter-63/"
+      ]
+    }
   }
 }

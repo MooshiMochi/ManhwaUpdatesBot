@@ -12,7 +12,7 @@ import sys
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
-from typing import Any, Coroutine, Dict, Literal, Optional, Callable
+from typing import Any, Callable, Coroutine, Dict, Literal, Optional
 
 import curl_cffi
 import requests  # noqa
@@ -551,12 +551,15 @@ tests_to_ignore = [
     # disabled cos of 521? server issue
     "platinumscans",
     "kaiscans",
+    "nitroscans",
+    "gourmet",
 
     "zeroscans",  # This website just hangs for some reason
     # Disabled because of 403:`
     "drakescans",
     "kunmanga",  # TODO: maybe remove the manga all together if the website is dead
     "genzupdates",
+    "mangapark",
 
     # disabled cos tested when using VPN:
     # "mangabuddy",
@@ -662,7 +665,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        # asyncio.run(test_single_scanlator("comick"))
+        asyncio.run(test_single_scanlator("toonily"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

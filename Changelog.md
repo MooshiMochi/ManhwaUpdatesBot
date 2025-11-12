@@ -2,6 +2,11 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+### November 2nd, 2025
+
++ Added new website: https://manhwabuddy.com (18+)
++ Added new website: https://arvencomics.com
+
 ### October 27th, 2025
 
 = Modified the order in which the update message is sent. (The hidden text is displayed at the end now)

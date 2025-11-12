@@ -133,8 +133,8 @@ async def main():
         init_scanlators(bot, scanlators)
         # for s in scanlators.values():
         #     print(s.name)
-        key = "vortexscans"
-        url = "https://vortexscans.org/series/the-legend-of-the-northern-blade-fqe4tt3q"
+        key = "arvencomics"
+        url = "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/"
         query = "he"
         scanlator = scanlators[key]
         title = await scanlator.get_title(url);

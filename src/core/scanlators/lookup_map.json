@@ -2166,6 +2166,161 @@
         },
         "request_method": "GET"
       }
+    },
+    "manhwabuddy": {
+      "chapter_ajax": null,
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?manhwabuddy\\.com/manhwa/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://manhwabuddy.com",
+        "icon_url": "https://manhwabuddy.com/images/192x192.jpg",
+        "format_urls": {
+          "manga": "https://manhwabuddy.com/manhwa/{url_name}/"
+        },
+        "latest_updates_url": "https://manhwabuddy.com",
+        "dynamicURL": false,
+        "url_chapter_prefix": null,
+        "supports_search": true
+      },
+      "selectors": {
+        "title": [
+          "h1.main-info-title"
+        ],
+        "synopsis": "div.short-desc-content",
+        "cover": [
+          "[property=og\\:image]",
+          "img.img-cover"
+        ],
+        "chapters": {
+          "container": "ul.chapter-list > li.myfut",
+          "name": "span.chapter-name",
+          "url": "a"
+        },
+        "status": [
+          "ul.main-info-list > li > h5:-soup-contains(\"Status\") + span"
+        ],
+        "front_page": {
+          "container": "div.latest-item",
+          "chapters": {
+            "container": "ul > li",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h4.title-smaller",
+          "url": "div > a[title]:has(img)",
+          "cover": "img[class]"
+        },
+        "unwanted_tags": [
+        ],
+        "search": {
+          "container": "div.latest-item",
+          "chapters": {
+            "container": "ul > li",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h4.title-smaller",
+          "url": "div > a[title]:has(img)",
+          "cover": "img[class]"
+        }
+      },
+      "search": {
+        "search_param_name": "s",
+        "url": "https://manhwabuddy.com/search",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
+      }
+    },
+    "arvencomics": {
+      "chapter_ajax": "html",
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?arvencomics\\.com/comic/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://arvencomics.com",
+        "icon_url": "https://arvencomics.com/wp-content/uploads/2025/08/cropped-LOGO-ARVENCOMICS-03.png",
+        "format_urls": {
+          "manga": "https://arvencomics.com/comic/{url_name}/",
+          "ajax": "https://arvencomics.com/comic/{url_name}/ajax/chapters/?t=1"
+        },
+        "latest_updates_url": "https://arvencomics.com/",
+        "dynamicURL": false,
+        "url_chapter_prefix": null,
+        "supports_search": true
+      },
+      "selectors": {
+        "title": [
+          "div.post-title > h1"
+        ],
+        "synopsis": "div.description-summary > div > p",
+        "cover": [
+          "[property=og\\:image]",
+          "div.summary_image > a > img"
+        ],
+        "chapters": {
+          "container": "ul.main > li.wp-manga-chapter",
+          "name": "a",
+          "url": "a",
+          "premium_status": "i.fa-lock",
+          "no_premium_chapter_url": {
+            "string_selector": "a",
+            "regex": "Chapter\\s+(?P<num>\\d+)",
+            "url_fmt": "{base_url}/comic/{url_name}/chapter-{ch_part}/"
+          }
+        },
+        "status": [
+          "div.summary-heading:-soup-contains(\"Status\") + div"
+        ],
+        "front_page": {
+          "container": "div.manga_content div.manga",
+          "chapters": {
+            "container": "div.chapter-item > span.chapter",
+            "name": "a",
+            "url": "a",
+            "premium_status": "i.fa-lock",
+            "no_premium_chapter_url": {
+              "string_selector": "a",
+              "regex": "Chapter\\s+(?P<num>\\d+)",
+              "url_fmt": "{base_url}/comic/{url_name}/chapter-{ch_part}/"
+            }
+          },
+          "title": "h3.h5 > a",
+          "url": "h3.h5 > a",
+          "cover": "img.img-responsive"
+        },
+        "unwanted_tags": [],
+        "search": {
+          "container": "div.row.c-tabs-item__content",
+          "chapters": {
+            "container": "span.chapter",
+            "name": "a",
+            "url": "a"
+          },
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "url": "https://arvencomics.com/",
+        "search_param_name": "s",
+        "extra_params": {
+          "post_type": "wp-manga",
+          "op": null,
+          "author": null,
+          "artist": null,
+          "release": null,
+          "adult": null
+        },
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "request_method": "GET"
+      }
     }
   },
   "custom": {
