@@ -260,9 +260,14 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
                                        proxy=proxy or kwargs.get("proxies", {}).get("http"))
 
 
-        proxy_server = "http://" + self._proxy.split("@")[1]
-        proxy_username = self._proxy.split("@")[0].split(":")[1].split("//")[1]
-        proxy_password = self._proxy.split("@")[0].split(":")[2]
+        if self._proxy:
+            proxy_dict = {
+                "server": "http://" + self._proxy.split("@")[1],
+                "username": self._proxy.split("@")[0].split(":")[1].split("//")[1],
+                "password": self._proxy.split("@")[0].split(":")[2]
+            }
+        else:
+            proxy_dict = None
 
         self.camoufox = AsyncCamoufox(
             geoip=True,
@@ -276,11 +281,7 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
             addons=[os.path.abspath(ADDON_PATH)],
 
             enable_cache=True,
-            proxy={
-                "server":  proxy_server,
-                "username": proxy_username,
-                "password": proxy_password
-            },
+            proxy=proxy_dict,
             headless="virtual" if os.name == "posix" else False,
             window=(1280, 720)
         )

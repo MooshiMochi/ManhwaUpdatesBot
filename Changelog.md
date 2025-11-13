@@ -3,6 +3,7 @@
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
 ### November 13th, 2025
+
 > Note: Additions relating to `camoufox` package in this update are currently a WIP and will be finalized in a later update.
 + Added new class `CachedCamoufoxSession` to [cache.py](/src/core/cache.py) 
   - this is an actively maintaned version of an auotmated browser based on the `geckodriver` from firefox.
@@ -19,6 +20,9 @@
   - playwright_captcha.solvers.base_solve
 + Added playwright_solver to [requirements.txt](./requirements.txt) to solve cloudflare challenges
 + Updated the silence_debug_logger method to only work when the `debug` option in config.yml is set to false.
+
+### Bug Fixes:
++ Modified the way proxy is prepared to be passed as a dict argument to the CamouFox instance to avoid errors when no proxy is provided.
 
 ### November 2nd, 2025
 
