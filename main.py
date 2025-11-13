@@ -60,6 +60,7 @@ async def main():
 
     silence_debug_loggers(
         _logger,
+        config.get("debug", False),
         [
             "websockets.client",
             "aiosqlite",
@@ -69,6 +70,10 @@ async def main():
             "discord.webhook.async_",
             "discord.state",
             "filelock",
+            "playwright_captcha.solvers.click.common.shadow_root",
+            "playwright_captcha.solvers.click.cloudflare.solve_by_click",
+            "playwright_captcha.solvers.click.cloudflare.utils.dom_helpers",
+            "playwright_captcha.solvers.base_solve",
         ]
     )
 

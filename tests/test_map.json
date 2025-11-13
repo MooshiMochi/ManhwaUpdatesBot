@@ -140,21 +140,21 @@
     }
   },
   "drakescans": {
-    "user_input_url": "https://drakecomic.org/manga/i-get-stronger-by-doing-nothing/",
+    "user_input_url": "https://drakecomic.org/manga/catastrophic-priest/",
     "expected_results": {
       "completed": false,
-      "cover_image": "https://drakecomic.org/wp-content/uploads/2023/02/01.jpeg",
-      "curr_chapter_url": "https://drakecomic.org/i-get-stronger-by-doing-nothing-chapter-43/",
-      "first_chapter_url": "https://drakecomic.org/i-get-stronger-by-doing-nothing-chapter-0/",
+      "cover_image": "https://drakecomic.org/wp-content/uploads/2025/09/O8b2ge-m.jpg",
+      "curr_chapter_url": "https://drakecomic.org/catastrophic-priest-chapter-39/",
+      "first_chapter_url": "https://drakecomic.org/catastrophic-priest-chapter-1/",
       "last_3_chapter_urls": [
-        "https://drakecomic.org/i-get-stronger-by-doing-nothing-chapter-41/",
-        "https://drakecomic.org/i-get-stronger-by-doing-nothing-chapter-42/",
-        "https://drakecomic.org/i-get-stronger-by-doing-nothing-chapter-43/"
+        "https://drakecomic.org/catastrophic-priest-chapter-37/",
+        "https://drakecomic.org/catastrophic-priest-chapter-38/",
+        "https://drakecomic.org/catastrophic-priest-chapter-39/"
       ],
-      "manga_id": "https://drakecomic.org/manga/i-get-stronger-by-doing-nothing",
-      "manga_url": "https://drakecomic.org/manga/i-get-stronger-by-doing-nothing/",
+      "manga_id": "https://drakecomic.org/manga/catastrophic-priest/",
+      "manga_url": "https://drakecomic.org/manga/catastrophic-priest/",
       "scanlator_name": "drakescans",
-      "title": "I Get Stronger By Doing Nothing",
+      "title": "Catastrophic Priest",
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
@@ -852,7 +852,7 @@
     "expected_results": {
       "scanlator_name": "manhwabuddy",
       "manga_url": "https://manhwabuddy.com/manhwa/the-great-mage-returns-after-4000-years/",
-      "completed": true,
+      "completed": false,
       "title": "The Great Mage Returns After 4000 Years",
       "manga_id": "default_id_function",
       "use_default_id_function": true,

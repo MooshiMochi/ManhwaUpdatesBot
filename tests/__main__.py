@@ -18,19 +18,20 @@ import curl_cffi
 import requests  # noqa
 
 from src.core.apis import APIManager
-from src.core.cache import CachedCurlCffiSession
+from src.core.cache import CachedCamoufoxSession, CachedCurlCffiSession
 from src.core.config_loader import ensure_configs, load_config
 from src.core.database import Database
 from src.core.objects import Chapter, Manga
 from src.core.scanlators import scanlators
 from src.core.scanlators.classes import AbstractScanlator
 from src.static import Constants
-from src.utils import setup_logging
+from src.utils import setup_logging, silence_debug_loggers
 
 logger: logging.Logger = logging.getLogger("test")
 
 root_path = [x for x in sys.path if x.removesuffix("/").endswith("ManhwaUpdatesBot")][0]
 
+config: dict = {}
 
 # noinspection PyTypeChecker
 
@@ -57,6 +58,10 @@ class Bot:
             "http": self.proxy_addr,
             "https": self.proxy_addr
         })
+        self.fox_session = CachedCamoufoxSession(name="cache.fox", proxies={
+            "http": self.proxy_addr,
+            "https": self.proxy_addr
+            } )
         self.db = Database(self)  # noqa
         self.apis: APIManager = APIManager(
             self, CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={  # noqa
@@ -75,6 +80,7 @@ class Bot:
 
     async def async_init(self):
         await self.db.async_init()
+        await self.fox_session.start()
 
     async def close(self):
         # await self.cf_scraper.close()
@@ -84,6 +90,7 @@ class Bot:
 
         self.logger.info("Closing curl sessions...")
         await self.session.close()
+        await self.fox_session.close()
         await self.apis.session.close()
         self.logger.info("Curl sessions closed.")
         self.logger.info("Finalising closing procedure! Goodbye!")
@@ -125,7 +132,9 @@ class SetupTest:
 
     @staticmethod
     def load_config() -> Dict:
-        config = load_config(logger, auto_exit=False, filepath=os.path.join(root_path, "tests/config.yml"))
+        global config
+        if config == {}:
+            config = load_config(logger, auto_exit=False, filepath=os.path.join(root_path, "tests/config.yml"))
         return ensure_configs(logger, config, scanlators, auto_exit=False)
 
 
@@ -552,18 +561,17 @@ tests_to_ignore = [
     "platinumscans",
     "kaiscans",
     "nitroscans",
-    "gourmet",
 
     "zeroscans",  # This website just hangs for some reason
+
     # Disabled because of 403:`
-    "drakescans",
-    "kunmanga",  # TODO: maybe remove the manga all together if the website is dead
-    "genzupdates",
-    "mangapark",
+    # "drakescans",
+    # "kunmanga",  # TODO: maybe remove the manga all together if the website is dead
+    # "genzupdates",
+    # "mangapark",
 
     # disabled cos tested when using VPN:
     # "mangabuddy",
-    # "toonily",
 
     # Changed domain.
 
@@ -631,7 +639,8 @@ async def test_single_method(test_method: Literal[
     "check_updates",
     "scanlator_name",
     "show_synopsis",
-    "show_front_page_results"
+    "show_front_page_results",
+    "show_search_results"
 ], scanlator: str | None = None):
     async with TestCases(tests_to_ignore) as testCases:
         if scanlator is None:
@@ -652,9 +661,21 @@ if __name__ == "__main__":
     import tracemalloc
 
     if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-    setup_logging(level=logging.INFO)
+    config = SetupTest.load_config()
+
+    setup_logging(level=logging.DEBUG if config.get("debug", False) else logging.INFO)
+
+    silence_debug_loggers(logger, False, [
+        "aiosqlite",
+        "aiosqlite",
+        "playwright_captcha.solvers.base_solver",
+        "playwright_captcha.solvers.click.common.shadow_root",
+        "playwright_captcha.solvers.click.cloudflare.solve_by_click",
+        "playwright_captcha.solvers.click.cloudflare.utils.dom_helpers",
+        "urllib3.connectionpool",
+    ])
 
     # delete the database file in the ./tests file before proceeding with the tests
     db_filepath: str = os.path.join(root_path, "tests/database.db")
@@ -664,8 +685,8 @@ if __name__ == "__main__":
     if os.name != "nt":
         asyncio.run(main())
     else:
-        # asyncio.run(test_single_method("show_front_page_results", "epsilonscans"))
-        asyncio.run(test_single_scanlator("toonily"))
+        # asyncio.run(test_single_method("show_search_results", "kunmanga"))
+        # asyncio.run(test_single_scanlator("kunmanga"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        # asyncio.run(main())
+        asyncio.run(main())

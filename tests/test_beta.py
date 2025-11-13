@@ -13,6 +13,8 @@ from src.utils import setup_logging, silence_debug_loggers
 root_path = [x for x in sys.path if x.endswith("ManhwaUpdatesBot")][0]
 logger = logging.getLogger()
 
+CONFIG: dict = {}
+
 
 class _ThirdProperties:
     url = ""
@@ -30,7 +32,7 @@ class User:
 
 # noinspection PyTypeChecker
 class Bot:
-    config: dict = None
+    config: dict = {}
     proxy_addr: Optional[str] = None
 
     def __init__(self, proxy_url: Optional[str] = None, scanlaors: dict = None):
@@ -118,12 +120,14 @@ def init_scanlators(bot, scanlators: dict) -> None:
 
 
 async def main():
-    config = load_config()
+
+    if not CONFIG:
+        raise Exception("Config not loaded!")
     proxy_url = fmt_proxy(
-        config["proxy"]["username"], config["proxy"]["password"], config["proxy"]["ip"], config["proxy"]["port"]
+        CONFIG["proxy"]["username"], CONFIG["proxy"]["password"], CONFIG["proxy"]["ip"], CONFIG["proxy"]["port"]
     )
 
-    Bot.config = config
+    Bot.config = CONFIG
     Bot.proxy_addr = proxy_url
 
     # noinspection PyProtectedMember
@@ -182,8 +186,10 @@ if __name__ == "__main__":
     if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     setup_logging(level=logging.DEBUG)
+    CONFIG = load_config()
     silence_debug_loggers(
         logger,
+        CONFIG.get("debug", False),
         [
             "websockets.client",
             "aiosqlite",

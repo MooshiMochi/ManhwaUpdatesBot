@@ -10,7 +10,7 @@ from discord import Intents
 from discord.ext import commands
 
 from .apis import APIManager
-from .cache import CachedCurlCffiSession
+from .cache import CachedCamoufoxSession, CachedCurlCffiSession
 from .database import Database
 from .scanlators import scanlators
 
@@ -36,6 +36,7 @@ class MangaClient(commands.Bot):
 
         # Placeholder values. These are set in .setup_hook() below
         self._session: CachedCurlCffiSession = None
+        self._fox_session: CachedCamoufoxSession = None
 
         self.log_channel_id: Optional[int] = None
         self._debug_mode: bool = False
@@ -61,6 +62,11 @@ class MangaClient(commands.Bot):
             "http": self.proxy_addr,
             "https": self.proxy_addr
         })
+        self._fox_session = CachedCamoufoxSession(name="cache.fox", proxies={
+            "http": self.proxy_addr,
+            "https": self.proxy_addr
+        })
+        await self._fox_session.start()
 
         if self._config["constants"]["first_bot_startup"] or self._config["constants"]["autosync"]:
             self.loop.create_task(self.sync_commands())  # noqa: No need to await a task
@@ -102,6 +108,7 @@ class MangaClient(commands.Bot):
             em = msg.embeds[0]
             em.description = f"✅ `Bot is now online.`"
             return await msg.edit(embed=em)
+        return None
 
     async def sync_commands(self):
         await self.wait_until_ready()
@@ -144,8 +151,10 @@ class MangaClient(commands.Bot):
         self.logger.info("Database connection closed.")
         self.logger.info("Closing curl sessions...")
         await self._session.close() if self._session else None
+        await self._fox_session.close() if self._fox_session else None
         await self.apis.session.close() if self.apis else None
         self.logger.info("Curl sessions closed.")
+        self.logger.info("Camoufox sessions closed.")
         self.logger.info("Finalising closing procedure! Goodbye!")
         await super().close()
 
@@ -249,6 +258,10 @@ class MangaClient(commands.Bot):
     @property
     def session(self):
         return self._session
+
+    @property
+    def fox_session(self):
+        return self._fox_session
 
     @property
     def logger(self):

@@ -13,7 +13,7 @@ def exit_bot() -> None:
     exit(1)
 
 
-def load_config(logger: logging.Logger, *, auto_exit: bool = True, filepath: str = "config.yml") -> Optional[dict]:
+def load_config(logger: logging.Logger, *, auto_exit: bool = True, filepath: str = "config.yml") -> dict:
     root_path = [x for x in sys.path if x.endswith("ManhwaUpdatesBot")][0]
     filepath = os.path.join(root_path, filepath)
     if not os.path.exists(filepath):
@@ -21,7 +21,8 @@ def load_config(logger: logging.Logger, *, auto_exit: bool = True, filepath: str
             "   - config.yml file not found. Please follow the instructions listed in the README.md file."
         )
         if auto_exit:
-            return exit_bot()
+            exit_bot() # this line exits the code, so the line below never runs
+            return {}  # this is here to avoid type warnings
 
         logger.critical(
             "   - Creating a new config.yml file..."
@@ -44,7 +45,7 @@ def load_config(logger: logging.Logger, *, auto_exit: bool = True, filepath: str
 
 
 def ensure_configs(
-        logger, config: dict, scanlators: dict[str, AbstractScanlator], *, auto_exit: bool = True) -> Optional[dict]:
+        logger, config: dict, scanlators: dict[str, AbstractScanlator], *, auto_exit: bool = True) -> dict:
     required_keys = ["token"]
     if not config:
         logger.critical(

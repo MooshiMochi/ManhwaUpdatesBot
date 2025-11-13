@@ -23,12 +23,3 @@ else
     echo "token: $BOT_TOKEN" > $CONFIG_FILE_NAME
   fi
 fi
-
-
-# check if the flaresolverr docker image exists
-if [ -z "$(docker images -q ghcr.io/flaresolverr/flaresolverr:latest)" ]; then
-  # pull docker image for flaresolverr
-  docker pull ghcr.io/flaresolverr/flaresolverr:latest
-  # run the docker image
-  docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
-fi

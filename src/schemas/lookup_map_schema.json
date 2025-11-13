@@ -23,7 +23,7 @@
               "type": "string",
               "enum": [
                 "curl",
-                "flare"
+                "fox"
               ],
               "description": "This specifies the tool the bot will use to make requests."
             },
@@ -759,7 +759,7 @@
               "type": "string",
               "enum": [
                 "curl",
-                "flare"
+                "fox"
               ]
             },
             "url_regex": {

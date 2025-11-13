@@ -535,6 +535,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             )
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
+        elif self.json_tree.request_method == "fox":
+            resp = await self.bot.fox_session.get(url, headers=headers, **params)
+            await raise_and_report_for_status(self.bot, resp)
+            return resp.text
         else:
             raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 
@@ -818,7 +822,6 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         else:  # as param
             params = {self.json_tree.search.search_param_name: query} | extra_params
             request_kwargs["params"] = params
-
         text = await self._get_text(**request_kwargs)
         return text
 
@@ -986,6 +989,7 @@ class DynamicURLScanlator(BasicScanlator):
 
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
+
         else:
             raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
 

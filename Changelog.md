@@ -2,10 +2,33 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+### November 13th, 2025
+> Note: Additions relating to `camoufox` package in this update are currently a WIP and will be finalized in a later update.
++ Added new class `CachedCamoufoxSession` to [cache.py](/src/core/cache.py) 
+  - this is an actively maintaned version of an auotmated browser based on the `geckodriver` from firefox.
++ Added `MangaClient.fox_session` property to [MangaClient](/src/core/bot.py) class
++ Added a `CachedResponse` dataclass to represent a response from the new `CachedCamoufoxSession` class.
++ Updated some typehints in [config_loader.py](/src/core/config_loader.py) to prevent warnings.
++ Updated websites that normally return 403 Forbidden to use `fox_session` instead of `curl_session`.
++ Updated [lookup_map_schema.json](/src/schemas/lookup_map_schema.json) to support the use of `fox` request method as an alterative to `curl_cffi`.
+  - Note: As camoufox is a browser, there's no need to define the `ajax` properties in [lookup_map.json](/src/core/scanlators/lookup_map.json) for websites that use `ajax`.
++ Added the following loggers to be silenced in [main.py](./main.py):
+  - playwright_captcha.solvers.click.common.shadow_root
+  - playwright_captcha.solvers.click.cloudflare.solve_by_click
+  - playwright_captcha.solvers.click.cloudflare.utils.dom_helpers
+  - playwright_captcha.solvers.base_solve
++ Added playwright_solver to [requirements.txt](./requirements.txt) to solve cloudflare challenges
++ Updated the silence_debug_logger method to only work when the `debug` option in config.yml is set to false.
+
 ### November 2nd, 2025
 
 + Added new website: https://manhwabuddy.com (18+)
 + Added new website: https://arvencomics.com
+
+### October 29th, 2025
+
+- Removed old docker code from setup.bat/sh files.
+- Added instruction to fetch and install the camoufox browser in setup.bat/sh files.
 
 ### October 27th, 2025
 

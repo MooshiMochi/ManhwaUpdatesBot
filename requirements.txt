@@ -18,3 +18,4 @@ git+https://github.com/Rapptz/discord.py.git
 rapidfuzz
 certifi
 camoufox[geoip]
+playwright-captcha

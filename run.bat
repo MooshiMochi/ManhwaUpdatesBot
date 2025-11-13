@@ -46,7 +46,8 @@ if not exist %VENV_NAME% (
 
 rem Upgrade pip and install requirements
 %VENV_NAME%\Scripts\python -m pip install --upgrade pip
-%VENV_NAME%\Scripts\python -m pip install -r requirements.txt
+%VENV_NAME%\Scripts\python -m pip install -r requirements.txt --upgrade
+%VENV_NAME%\Scripts\python -m camoufox fetch
 
 REM Check if token key exists in config.yml file
 findstr /B "token:" %CONFIG_FILE_NAME% >nul

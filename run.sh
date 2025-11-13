@@ -70,8 +70,10 @@ source $VENV_FOLDER/bin/activate
 pip3 install --upgrade pip
 
 # Install necessary packages
-pip3 install -r requirements.txt
+pip3 install -r requirements.txt --upgrade
 
+# Fetch and install the camoufox browser
+$PYTHON_EXE -m camoufox fetch
 
 # Check if token key exists in config.yml file
 if grep -q "^token:" "$CONFIG_FILE_NAME"; then

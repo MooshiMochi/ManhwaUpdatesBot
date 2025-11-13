@@ -310,7 +310,7 @@
     },
     "drakescans": {
       "chapter_ajax": null,
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?drakecomic\\.org/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://drakecomic.org",
@@ -353,7 +353,7 @@
           },
           "title": "div.tt > a",
           "url": "div.tt > a",
-          "cover": "img[alt=\"Post Thumbnail\"]"
+          "cover": "img.wp-post-image"
         },
         "unwanted_tags": [],
         "search": {
@@ -377,7 +377,7 @@
     },
     "nitroscans": {
       "chapter_ajax": "html",
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?nitroscans\\.net/series/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://nitroscans.net",
@@ -449,7 +449,7 @@
     },
     "genzupdates": {
       "chapter_ajax": null,
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?genzupdates\\.com/series/(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://genzupdates.com",
@@ -1007,7 +1007,7 @@
     },
     "kaiscans": {
       "chapter_ajax": null,
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?kaiscans\\.org/(?:manga/)?(?:(?P<id>\\d+)-)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
       "properties": {
         "base_url": "https://kaiscans.org",
@@ -1343,14 +1343,13 @@
       }
     },
     "kunmanga": {
-      "chapter_ajax": "html",
-      "request_method": "curl",
+      "chapter_ajax": null,
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?kunmanga\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://kunmanga.com",
         "icon_url": "https://kunmanga.com/wp-content/uploads/2021/06/kun-favicon.png",
         "format_urls": {
-          "ajax": "https://kunmanga.com/manga/{url_name}/ajax/chapters",
           "manga": "https://kunmanga.com/manga/{url_name}/"
         },
         "latest_updates_url": "https://kunmanga.com/",
@@ -2030,7 +2029,7 @@
     },
     "platinumscans": {
       "chapter_ajax": "html",
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?platinumscans\\.com/manga/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://platinumscans.com",
@@ -2308,12 +2307,7 @@
         "url": "https://arvencomics.com/",
         "search_param_name": "s",
         "extra_params": {
-          "post_type": "wp-manga",
-          "op": null,
-          "author": null,
-          "artist": null,
-          "release": null,
-          "adult": null
+          "post_type": "wp-manga"
         },
         "as_type": "param",
         "query_parsing": {
@@ -2535,7 +2529,7 @@
     },
     "mangapark": {
       "chapter_ajax": null,
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?mangapark\\.net/title/(?P<id>\\d+)-(?P<url_name>[\\w-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://mangapark.net",

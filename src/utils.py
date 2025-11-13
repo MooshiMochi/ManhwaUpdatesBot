@@ -188,7 +188,11 @@ async def ensure_environment(bot, logger) -> None:
         exit_bot()
 
 
-def silence_debug_loggers(main_logger: logging.Logger, logger_names: list) -> None:
+def silence_debug_loggers(main_logger: logging.Logger, in_debug_mode: bool, logger_names: list) -> None:
+    if in_debug_mode:
+        for logger_name in logger_names:
+            main_logger.warning(f"Cannot silence logging for: {logger_name} because debug mode is enabled.")
+        return
     for logger_name in logger_names:
         logging.getLogger(logger_name).setLevel(logging.CRITICAL)
         main_logger.warning(f"Silenced debug logger: {logger_name}")
