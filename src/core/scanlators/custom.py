@@ -6,7 +6,7 @@ import discord
 from bs4 import BeautifulSoup
 
 from src.core.objects import Chapter, PartialManga
-from .classes import BasicScanlator, scanlators
+from .classes import BasicScanlator, NoStatusBasicScanlator, scanlators
 
 __all__ = (
     "scanlators",
@@ -342,6 +342,9 @@ class _Templescan(BasicScanlator):
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
 
+class _QiScans(NoStatusBasicScanlator):
+    ...
+
 
 class CustomKeys:
     flamecomics: str = "flamecomics"
@@ -353,6 +356,7 @@ class CustomKeys:
     hivescans: str = "hivescans"
     templescan: str = "templescan"
     vortexscans: str = "vortexscans"
+    qiscans: str = "qiscans"
 
 
 keys = CustomKeys()
@@ -366,3 +370,5 @@ scanlators[keys.gourmet] = _GourmetScans(keys.gourmet, **scanlators[keys.gourmet
 scanlators[keys.hivescans] = _Hivetoon(keys.hivescans, **scanlators[keys.hivescans])  # noqa: This is a dict
 scanlators[keys.templescan] = _Templescan(keys.templescan, **scanlators[keys.templescan])  # noqa: This is a dict
 scanlators[keys.vortexscans] = _VortexScans(keys.vortexscans, **scanlators[keys.vortexscans])  # noqa: This is a dict
+scanlators[keys.qiscans] = _QiScans(keys.qiscans, **scanlators[keys.qiscans])  # noqa: This is a dict
+

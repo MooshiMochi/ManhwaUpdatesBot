@@ -239,7 +239,7 @@
       "has_fp_manhwa": true
     }
   },
-  "nightscans": {
+  "qiscans": {
     "user_input_url": "https://nightsup.net/series/4190634673-all-attributes-in-martial-arts/",
     "expected_results": {
       "completed": true,
@@ -253,7 +253,7 @@
       ],
       "manga_id": "https://nightsup.net/series/all-attributes-in-martial-arts",
       "manga_url": "https://nightsup.net/series/4190634673-all-attributes-in-martial-arts",
-      "scanlator_name": "nightscans",
+      "scanlator_name": "qiscans",
       "title": "All-Attributes in Martial Arts",
       "use_default_id_function": true,
       "has_fp_manhwa": true
@@ -380,21 +380,21 @@
     }
   },
   "zeroscans": {
-    "user_input_url": "https://zscans.com/comics/bowblade-spirit/",
+    "user_input_url": "https://zscans.com/comics/terlalu-tampan",
     "expected_results": {
       "scanlator_name": "zeroscans",
-      "manga_url": "https://zscans.com/comics/bowblade-spirit",
+      "manga_url": "https://zscans.com/comics/terlalu-tampan",
       "completed": true,
-      "title": "Bowblade Spirit",
+      "title": "Terlalu Tampan",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://zscans.com/comics/bowblade-spirit/4815",
-      "first_chapter_url": "https://zscans.com/comics/bowblade-spirit/1338",
-      "cover_image": "https://api.zscans.com/storage/76102/conversions/9087f1f9e26a9a99e19280c57dab060d-full.webp",
+      "curr_chapter_url": "https://zscans.com/comics/terlalu-tampan/3830",
+      "first_chapter_url": "https://zscans.com/comics/terlalu-tampan/3823",
+      "cover_image": "https://api.zscans.com/storage/76169/conversions/210ee0d8e626985e5658c94c3e174041-full.webp",
       "last_3_chapter_urls": [
-        "https://zscans.com/comics/bowblade-spirit/4813",
-        "https://zscans.com/comics/bowblade-spirit/4814",
-        "https://zscans.com/comics/bowblade-spirit/4815"
+        "https://zscans.com/comics/terlalu-tampan/3828",
+        "https://zscans.com/comics/terlalu-tampan/3829",
+        "https://zscans.com/comics/terlalu-tampan/3830"
       ],
       "has_fp_manhwa": true
     }

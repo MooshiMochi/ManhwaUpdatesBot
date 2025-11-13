@@ -503,75 +503,6 @@
         "request_method": "GET"
       }
     },
-    "nightscans": {
-      "chapter_ajax": null,
-      "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?nightsup\\.net/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
-      "properties": {
-        "base_url": "https://nightsup.net",
-        "icon_url": "https://qiscans.org/favicon.ico",
-        "format_urls": {
-          "manga": "https://nightsup.net/series/{url_name}/"
-        },
-        "latest_updates_url": "https://nightsup.net",
-        "dynamicURL": false,
-        "url_chapter_prefix": null,
-        "supports_search": true
-      },
-      "selectors": {
-        "title": [
-          "div#titlemove > h1.entry-title"
-        ],
-        "synopsis": "div.entry-content",
-        "cover": [
-          "div.thumb > img",
-          "[property=og\\:image]"
-        ],
-        "chapters": {
-          "container": "div#chapterlist > ul > li",
-          "name": "a > span.chapternum",
-          "url": "a",
-          "premium_status": "span.text-gold",
-          "no_premium_chapter_url": {
-            "string_selector": "a > span.chapternum",
-            "regex": "Chapter\\s+(?P<num>\\d+)",
-            "url_fmt": "{base_url}/{url_name}-chapter-{ch_part}/"
-          }
-        },
-        "status": [
-          "div.imptdt:-soup-contains(\"Status\") > i"
-        ],
-        "front_page": {
-          "container": "div.postbody > div.bixbox > div.listupd > div > div.bsx",
-          "chapters": {
-            "container": "ul.chfiv > li",
-            "name": "span.fivchap",
-            "url": "a",
-            "premium_status": "i.fa-coins"
-          },
-          "title": "div.bigor > div > a",
-          "url": "div.bigor > div > a",
-          "cover": "img.ts-post-image, picture.ts-post-image > img"
-        },
-        "unwanted_tags": [],
-        "search": {
-          "container": "div.bsx",
-          "title": "div.tt",
-          "url": "a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "search_param_name": "s",
-        "url": "https://nightsup.net",
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "extra_params": {},
-        "request_method": "GET"
-      }
-    },
     "mangapill": {
       "chapter_ajax": null,
       "request_method": "curl",
@@ -2953,6 +2884,82 @@
         },
         "extra_params": {},
         "as_type": "path"
+      }
+    },
+    "qiscans": {
+      "chapter_ajax": null,
+      "request_method": "fox",
+      "url_regex": "(?:https?://)?(?:www\\.)?qiscans\\.org/(?:series/)?(?P<url_name>\\w[\\w-]*?)(?:-chapter-[\\d.-]+(?:(-\\w+)?))?/?(?:/.*)?$",
+      "properties": {
+        "base_url": "https://qiscans.org",
+        "icon_url": "https://qiscans.org/favicon.ico",
+        "format_urls": {
+          "manga": "https://qiscans.org/series/{url_name}/"
+        },
+        "latest_updates_url": "https://qiscans.org",
+        "dynamicURL": false,
+        "url_chapter_prefix": null,
+        "supports_search": true,
+        "no_status": true,
+        "time_formats": [
+
+        ]
+      },
+      "selectors": {
+        "title": [
+          "div.hidden > div > h1.text-white"
+        ],
+        "synopsis": "[property=\"og:description\"]",
+        "cover": [
+          "[property=og\\:image]",
+          "div.sticky > div.relative > img"
+        ],
+        "chapters": {
+          "container": "body > script:has(+div)",
+          "name": "a > span.chapternum",
+          "url": "a",
+          "premium_status": "span.text-gold",
+          "no_premium_chapter_url": {
+            "string_selector": "a > span.chapternum",
+            "regex": "Chapter\\s+(?P<num>\\d+)",
+            "url_fmt": "{base_url}/{url_name}-chapter-{ch_part}/"
+          }
+        },
+        "status": [
+          "ul.grid > li:first-child span.block",
+          "div.flex.flex-col > span:-soup-contains(\"Title Status\") + span:has(>img)"
+        ],
+        "front_page": {
+          "container": "div.w-full > div:has(a[href=\"/latest\"]) > div.grid  div.w-full > div.flex",
+          "chapters": {
+            "container": "a.text-foreground",
+            "name": "span.font-normal",
+            "url": "_container_",
+            "premium_status": "svg"
+          },
+          "title": "a[href] > p",
+          "url": "a:has(p)",
+          "cover": "img.object-cover"
+        },
+        "unwanted_tags": [
+          "div.w-full > div:has(a[href=\"/latest\"]) > div.grid  div.w-full > div.flex a.text-foreground span.border"
+        ],
+        "search": {
+          "container": "div.flex > div.grid > a",
+          "title": "h1",
+          "url": "_container_",
+          "cover": "div.absolute > img"
+        }
+      },
+      "search": {
+        "search_param_name": "searchTerm",
+        "url": "https://qiscans.org/series",
+        "as_type": "param",
+        "query_parsing": {
+          "encoding": "url"
+        },
+        "extra_params": {},
+        "request_method": "GET"
       }
     }
   }
