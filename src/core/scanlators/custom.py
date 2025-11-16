@@ -4,9 +4,10 @@ from typing import Optional
 
 import discord
 from bs4 import BeautifulSoup
+from discord import Embed
 
 from src.core.objects import Chapter, PartialManga
-from .classes import BasicScanlator, NoStatusBasicScanlator, scanlators
+from .classes import BasicScanlator, scanlators
 
 __all__ = (
     "scanlators",
@@ -218,6 +219,7 @@ class _Flamecomics(BasicScanlator):
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
 
+
 class _Hivetoon(BasicScanlator):
 
     @staticmethod
@@ -252,9 +254,9 @@ class _Hivetoon(BasicScanlator):
             text = text.replace(start_key, "remove_start_key", 1)
             all_results.extend(json.loads(json_result))
 
-        return await self._extract_partial_manwa_from_json_list(all_results)
+        return await self._extract_partial_manga_from_json_list(all_results)
 
-    async def _extract_partial_manwa_from_json_list(self, json_list: list[dict]) -> list[PartialManga]:
+    async def _extract_partial_manga_from_json_list(self, json_list: list[dict]) -> list[PartialManga]:
         found_manga: list[PartialManga] = []
         for item_dict in json_list:
             title = item_dict["postTitle"]
@@ -305,7 +307,7 @@ class _Hivetoon(BasicScanlator):
     async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
         text = await self._search_req(query)
         search_results = json.loads(text)
-        found_manga: list[PartialManga] = await self._extract_partial_manwa_from_json_list(
+        found_manga: list[PartialManga] = await self._extract_partial_manga_from_json_list(
             search_results.get("posts", []))
         if as_em:
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
@@ -314,6 +316,17 @@ class _Hivetoon(BasicScanlator):
 
 class _VortexScans(_Hivetoon):
     pass
+
+
+class _QiScans(_Hivetoon):
+    @staticmethod
+    def _parse_text_to_json(text: str) -> dict:
+        raw_json_data = Parser.extract_balanced_json(text, start_key=r'\"series\":{')
+        json_data = json.loads(raw_json_data)
+        return json_data
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[Embed]:
+        return await super(_Hivetoon, self).search(query, as_em)
 
 
 class _Templescan(BasicScanlator):
@@ -342,9 +355,6 @@ class _Templescan(BasicScanlator):
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
 
-class _QiScans(NoStatusBasicScanlator):
-    ...
-
 
 class CustomKeys:
     flamecomics: str = "flamecomics"
@@ -371,4 +381,3 @@ scanlators[keys.hivescans] = _Hivetoon(keys.hivescans, **scanlators[keys.hivesca
 scanlators[keys.templescan] = _Templescan(keys.templescan, **scanlators[keys.templescan])  # noqa: This is a dict
 scanlators[keys.vortexscans] = _VortexScans(keys.vortexscans, **scanlators[keys.vortexscans])  # noqa: This is a dict
 scanlators[keys.qiscans] = _QiScans(keys.qiscans, **scanlators[keys.qiscans])  # noqa: This is a dict
-

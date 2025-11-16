@@ -2900,34 +2900,26 @@
         "dynamicURL": false,
         "url_chapter_prefix": null,
         "supports_search": true,
-        "no_status": true,
-        "time_formats": [
-
-        ]
+        "no_status": true
       },
       "selectors": {
         "title": [
-          "div.hidden > div > h1.text-white"
+          "\"postTitle\\\":\\\"(.*?)\\\""
         ],
-        "synopsis": "[property=\"og:description\"]",
+        "synopsis": "\"postContent\\\":\\\"(.*?)\\\"",
         "cover": [
-          "[property=og\\:image]",
-          "div.sticky > div.relative > img"
+          "\"featuredImage\\\":\\\"(.*?)\\\"",
+          "div[itemprop=image] > img",
+          "[property=og\\:image]"
         ],
         "chapters": {
-          "container": "body > script:has(+div)",
-          "name": "a > span.chapternum",
-          "url": "a",
-          "premium_status": "span.text-gold",
-          "no_premium_chapter_url": {
-            "string_selector": "a > span.chapternum",
-            "regex": "Chapter\\s+(?P<num>\\d+)",
-            "url_fmt": "{base_url}/{url_name}-chapter-{ch_part}/"
-          }
+          "container": "arbitraryValue",
+          "name": "arbitraryValue",
+          "url": "arbitraryValue",
+          "premium_status": "arbitraryValue"
         },
         "status": [
-          "ul.grid > li:first-child span.block",
-          "div.flex.flex-col > span:-soup-contains(\"Title Status\") + span:has(>img)"
+          "\"seriesStatus\\\":\\\"(\\w+)\\\""
         ],
         "front_page": {
           "container": "div.w-full > div:has(a[href=\"/latest\"]) > div.grid  div.w-full > div.flex",

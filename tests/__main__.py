@@ -33,6 +33,7 @@ root_path = [x for x in sys.path if x.removesuffix("/").endswith("ManhwaUpdatesB
 
 config: dict = {}
 
+
 # noinspection PyTypeChecker
 
 class _ThirdProperties:
@@ -61,7 +62,7 @@ class Bot:
         self.fox_session = CachedCamoufoxSession(name="cache.fox", proxies={
             "http": self.proxy_addr,
             "https": self.proxy_addr
-            } )
+        })
         self.db = Database(self)  # noqa
         self.apis: APIManager = APIManager(
             self, CachedCurlCffiSession(impersonate="chrome101", name="cache.curl_cffi", proxies={  # noqa
@@ -686,7 +687,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_search_results", "kunmanga"))
-        # asyncio.run(test_single_scanlator("kunmanga"))
+        asyncio.run(test_single_scanlator("comick"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
-        asyncio.run(main())
+        # asyncio.run(main())

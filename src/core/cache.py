@@ -6,18 +6,17 @@ import urllib
 from dataclasses import dataclass, field
 from functools import partialmethod
 from typing import Any, Dict, Optional, Set, Tuple
+from urllib import parse
 
 import certifi
 import curl_cffi.requests
 from aiohttp import ClientResponseError, RequestInfo
-from curl_cffi import CurlOpt, Response
-from curl_cffi.requests import Response
-
 from camoufox.async_api import AsyncCamoufox
+from curl_cffi import CurlOpt
+from curl_cffi.requests import Response
+from playwright._impl._errors import Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
+from playwright_captcha import CaptchaType, ClickSolver, FrameworkType
 from playwright_captcha.utils.camoufox_add_init_script.add_init_script import get_addon_path
-from playwright_captcha import CaptchaType, FrameworkType, ClickSolver
-from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
-from urllib import parse
 
 ADDON_PATH = get_addon_path()
 
@@ -217,6 +216,7 @@ class CachedCurlCffiSession(curl_cffi.requests.AsyncSession, BaseCacheSessionMix
     patch = partialmethod(request, "PATCH")
     delete = partialmethod(request, "DELETE")
 
+
 @dataclass
 class CachedResponse:
     """
@@ -258,7 +258,6 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
     def __init__(self, ignored_urls: Optional[Set[str]] = None, *, name: str = None, proxy: str = None, **kwargs):
         BaseCacheSessionMixin.__init__(self, ignored_urls, name=name or "camoufox",
                                        proxy=proxy or kwargs.get("proxies", {}).get("http"))
-
 
         if self._proxy:
             proxy_dict = {
@@ -379,7 +378,8 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
 
                             try:
                                 # check if we are requesting with bad IP
-                                unable_to_access = page.locator('div.cf-alert + div span[data-translate="unable_to_access"]')
+                                unable_to_access = page.locator(
+                                    'div.cf-alert + div span[data-translate="unable_to_access"]')
                                 await unable_to_access.wait_for(timeout=5000)
                                 if await unable_to_access.count() > 0:
                                     self.logger.warning("Requested with bad IP. Retrying...")
@@ -389,14 +389,6 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
                             break
                         except PlaywrightError as e:  # due to slow internet, the webpage may not have fully loaded yet
                             continue
-
-                    # # this is a fail-safe to be 100% sure that the cloudflare page is loaded if present
-                    # try:
-                    #     turnstile_container = page.locator("div.main-content > div:not([class]):nth-child(3)")
-                    #     await turnstile_container.wait_for(timeout=5000)
-                    # except PlaywrightTimeoutError:
-                    #     # not loaded, either the network is very slow or no bypass necessary
-                    #     pass
 
                     try:
                         await solver.solve_captcha(

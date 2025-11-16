@@ -22,6 +22,9 @@ class ComickAppAPI:
             # "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
+        if nonce := self.manager.bot.config.get("comick_nonce"):
+            a, b = list(nonce.items())
+            self.headers[a[0]] = b[0]
         self.rate_limit_remaining = None
         self.rate_limit_reset = None
 
@@ -148,7 +151,7 @@ class ComickAppAPI:
             language = "en"
         if page_limit is None:
             page_limit = float("inf")
-        endpoint = f"v1.0/comic/{manga_id}/chapters?lang={language}&page={page}&limit=60"
+        endpoint = f"/comic/{manga_id}/chapters?lang={language}&page={page}&limit=60"
         # params = {"lang": language, "page": page}
         result = await self.__request("GET", endpoint)
 

@@ -240,21 +240,21 @@
     }
   },
   "qiscans": {
-    "user_input_url": "https://nightsup.net/series/4190634673-all-attributes-in-martial-arts/",
+    "user_input_url": "https://qiscans.org/series/4190634673-sword-breaker",
     "expected_results": {
       "completed": true,
-      "cover_image": "https://nightsup.net/wp-content/uploads/2023/03/AAAMAcover_result.webp",
-      "curr_chapter_url": "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-70/",
-      "first_chapter_url": "https://nightsup.net/8781815493-all-attribute-martial-arts-00/",
+      "cover_image": "https://storage.qiscans.com/upload/series/4190634673-sword-breaker/wp-featured-65136/featured.webp",
+      "curr_chapter_url": "https://qiscans.org/series/4190634673-sword-breaker/sword-breaker-chapter-55",
+      "first_chapter_url": "https://qiscans.org/series/4190634673-sword-breaker/8781815493-sword-breaker-chapter-01",
       "last_3_chapter_urls": [
-        "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-68/",
-        "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-69/",
-        "https://nightsup.net/8781815493-all-attribute-in-martial-arts-chapter-70/"
+        "https://qiscans.org/series/4190634673-sword-breaker/sword-breaker-chapter-53",
+        "https://qiscans.org/series/4190634673-sword-breaker/sword-breaker-chapter-54",
+        "https://qiscans.org/series/4190634673-sword-breaker/sword-breaker-chapter-55"
       ],
-      "manga_id": "https://nightsup.net/series/all-attributes-in-martial-arts",
-      "manga_url": "https://nightsup.net/series/4190634673-all-attributes-in-martial-arts",
+      "manga_id": "https://qiscans.org/series/4190634673-sword-breaker",
+      "manga_url": "https://qiscans.org/series/4190634673-sword-breaker",
       "scanlator_name": "qiscans",
-      "title": "All-Attributes in Martial Arts",
+      "title": "Sword Breaker",
       "use_default_id_function": true,
       "has_fp_manhwa": true
     }
