@@ -11,6 +11,7 @@ from urllib import parse
 import certifi
 import curl_cffi.requests
 from aiohttp import ClientResponseError, RequestInfo
+from bs4 import BeautifulSoup
 from camoufox.async_api import AsyncCamoufox
 from curl_cffi import CurlOpt
 from curl_cffi.requests import Response
@@ -233,9 +234,16 @@ class CachedResponse:
     def __post_init__(self):
         self.status_code = self.status
 
-    def json(self, **kwargs) -> Any:
+    def json(self, selector: str = None, **kwargs) -> Any:
         """Returns the response body as JSON."""
-        return json.loads(self.text, **kwargs)
+        if not selector:
+            return json.loads(self.text, **kwargs)
+
+        soup = BeautifulSoup(self.text, "html.parser")
+        raw_json = soup.select_one(selector)
+        if not raw_json:
+            return None
+        return json.loads(raw_json.text, **kwargs)
 
     def raise_for_status(self):
         """Raises an exception for 4xx/5xx responses."""
@@ -391,10 +399,13 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
                             continue
 
                     try:
+                        expected_content_selector = "html > body:not(:has(.ray-id))"
+                        if kwargs.get("success_selector") is not None:
+                            expected_content_selector = kwargs["success_selector"]
                         await solver.solve_captcha(
                             captcha_container=page,
                             captcha_type=CaptchaType.CLOUDFLARE_TURNSTILE,
-                            expected_content_selector="html > body:not(:has(.ray-id))"
+                            expected_content_selector=expected_content_selector
                         )
                         status_code = 200
                     except Exception as e:

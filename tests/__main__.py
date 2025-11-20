@@ -33,7 +33,6 @@ root_path = [x for x in sys.path if x.removesuffix("/").endswith("ManhwaUpdatesB
 
 config: dict = {}
 
-
 # noinspection PyTypeChecker
 
 class _ThirdProperties:
