@@ -52,11 +52,17 @@ class Bot:
             name="cache.curl_cffi",
             proxies={"http": proxy_url, "https": proxy_url},
         )
-        self.mangadex_api = MangaDexAPI(self.session)
-        self.comick_api = ComickAppAPI(self.session)
+
+        self.apis = APIManager(self, CachedCurlCffiSession(
+            impersonate="chrome101",
+            name="cache.curl_cffi",
+            proxies={"http": self.proxy_addr, "https": self.proxy_addr},
+        ))
+
+        self.mangadex_api = MangaDexAPI(self.apis)
+        self.comick_api = ComickAppAPI(self.apis)
         self.logger = logging.getLogger("bot")
         self.user = User()
-        self.apis: APIManager | None = None
         if scanlaors:
             self.load_scanlators(scanlaors)
 
@@ -66,12 +72,6 @@ class Bot:
 
     async def __aenter__(self):
         await self.db.async_init()
-
-        self.apis = APIManager(self, CachedCurlCffiSession(
-            impersonate="chrome101",
-            name="cache.curl_cffi",
-            proxies={"http": self.proxy_addr, "https": self.proxy_addr},
-        ))
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -120,7 +120,6 @@ def init_scanlators(bot, scanlators: dict) -> None:
 
 
 async def main():
-
     if not CONFIG:
         raise Exception("Config not loaded!")
     proxy_url = fmt_proxy(
