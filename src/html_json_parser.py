@@ -77,15 +77,6 @@ class Parser:
         json_objects = cls._extract_and_parse_json(tag.text)
         return json_objects
 
-    @classmethod
-    def extract_balanced_json_v2(cls, text, start_key='"post":{'):
-        start = text.find(start_key)
-        if start == -1:
-            raise ValueError("Couldn't find the post object start")
-        i = start + len(start_key) - 1  # position on the opening '{
-        json_data = cls._extract_json_string(text[i:])
-        return json_data
-
     @staticmethod
     def extract_balanced_json(text, start_key='"post":{'):
         """Return the JSON text for the object that starts right after start_key."""
@@ -97,10 +88,8 @@ class Parser:
         arr_depth = 0
         in_str = False
         esc = False
-        _debug_so_far = ""
         for j in range(i, len(text)):
             ch = text[j]
-            _debug_so_far += ch
             if in_str:
                 if esc:
                     esc = False
@@ -123,7 +112,6 @@ class Parser:
                 if depth == 0 and arr_depth == 0:
                     # slice includes the outer braces
                     return text[i:j + 1]
-        print("{}\ndepth: {}, arr_depth: {}".format(_debug_so_far, depth, arr_depth))
         raise ValueError("Unbalanced braces while extracting JSON")
 
     @staticmethod

@@ -2,6 +2,13 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+### November 20th, 2025
+- Removed test method from [html_json_parser.py](./src/html_json_parser.py).
++ Updated [ComickAPI](./src/core/apis/comickAPI.py) to use fox_session instead of curl_session.
++ Modified fox session to accept a selector to detect when cloudflare is bypassed.
++ Fixed the format of the database schema SQL statements.
++ Changed the test case for comick in [test_map.json](./tests/test_map.json)
+
 ### November 13th, 2025
 
 > Note: Additions relating to `camoufox` package in this update are currently a WIP and will be finalized in a later update.

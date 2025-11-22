@@ -113,9 +113,9 @@ if __name__ == "__main__":
     try:
         if os.name == "nt" and sys.version_info >= (3, 8):
             import tracemalloc
-            from asyncio import WindowsSelectorEventLoopPolicy
+            from asyncio import WindowsSelectorEventLoopPolicy, WindowsProactorEventLoopPolicy
 
-            asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+            asyncio.set_event_loop_policy(WindowsProactorEventLoopPolicy())
             tracemalloc.start()
 
         asyncio.run(main())

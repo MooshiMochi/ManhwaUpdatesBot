@@ -53,104 +53,33 @@ class Database:
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS series
-            (
-                id
-                TEXT
-                NOT
-                NULL,
-                title
-                TEXT
-                NOT
-                NULL,
-                url
-                TEXT
-                NOT
-                NULL,
-                synopsis
-                TEXT,
-                series_cover_url
-                TEXT
-                NOT
-                NULL,
-                last_chapter
-                TEXT,
-                available_chapters
-                TEXT,
-
-                status
-                TEXT
-                NOT
-                NULL
-                DEFAULT
-                'Ongoing',
-                scanlator
-                TEXT
-                NOT
-                NULL
-                DEFAULT
-                'Unknown',
-                UNIQUE
-            (
-                id,
-                scanlator
-            ) ON CONFLICT IGNORE
-                )
+            CREATE TABLE IF NOT EXISTS series (
+                id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                url TEXT NOT NULL,
+                synopsis TEXT,
+                series_cover_url TEXT NOT NULL,
+                last_chapter TEXT,
+                available_chapters TEXT,
+                status TEXT NOT NULL DEFAULT 'Ongoing',
+                scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                UNIQUE (id, scanlator) ON CONFLICT IGNORE
+            );
             """
         )
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS user_subs
-            (
-                id
-                INTEGER
-                NOT
-                NULL,
-                series_id
-                TEXT
-                NOT
-                NULL,
-                guild_id
-                INTEGER
-                NOT
-                NULL,
-                scanlator
-                TEXT
-                NOT
-                NULL
-                DEFAULT
-                'Unknown',
-
-                FOREIGN
-                KEY
-            (
-                series_id
-            ) REFERENCES series
-            (
-                id
-            ),
-                FOREIGN KEY
-            (
-                scanlator
-            ) REFERENCES series
-            (
-                scanlator
-            ),
-                FOREIGN KEY
-            (
-                guild_id
-            ) REFERENCES guild_config
-            (
-                guild_id
-            ),
-                UNIQUE
-            (
-                id,
-                series_id,
-                scanlator,
-                guild_id
-            ) ON CONFLICT IGNORE
-                )
+            CREATE TABLE IF NOT EXISTS user_subs (
+                id INTEGER NOT NULL,
+                series_id TEXT NOT NULL,
+                guild_id INTEGER NOT NULL,
+                scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                
+                FOREIGN KEY (series_id) REFERENCES series(id),
+                FOREIGN KEY (scanlator) REFERENCES series (scanlator),
+                FOREIGN KEY (guild_id) REFERENCES guild_config (guild_id),
+                UNIQUE (id, series_id, scanlator, guild_id) ON CONFLICT IGNORE
+            );
             """
         )
 
@@ -162,279 +91,94 @@ class Database:
             # last_updated_ts: the timestamp of the last time the bookmark was updated by the user
             # fold: the folder in which the bookmark is in
             """
-            CREATE TABLE IF NOT EXISTS bookmarks
-            (
-                user_id
-                INTEGER
-                NOT
-                NULL,
-                series_id
-                TEXT
-                NOT
-                NULL,
-                last_read_chapter_index
-                INTEGER
-                DEFAULT
-                NULL,
-                guild_id
-                INTEGER
-                NOT
-                NULL,
-                last_updated_ts
-                TIMESTAMP
-                DEFAULT
-                CURRENT_TIMESTAMP,
-                scanlator
-                TEXT
-                NOT
-                NULL
-                DEFAULT
-                'Unknown',
-                folder
-                VARCHAR
-            (
-                10
-            ) DEFAULT 'reading',
-                FOREIGN KEY
-            (
-                series_id
-            ) REFERENCES series
-            (
-                id
-            ),
-                FOREIGN KEY
-            (
-                scanlator
-            ) REFERENCES series
-            (
-                scanlator
-            ),
-                FOREIGN KEY
-            (
-                user_id
-            ) REFERENCES user_subs
-            (
-                id
-            ),
-                FOREIGN KEY
-            (
-                guild_id
-            ) REFERENCES guild_config
-            (
-                guild_id
-            ),
-                UNIQUE
-            (
-                user_id,
-                series_id,
-                scanlator
-            ) ON CONFLICT IGNORE
-                );
-            """
-        )
-
-        await self.conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS guild_config
-            (
-                guild_id
-                INTEGER
-                PRIMARY
-                KEY
-                NOT
-                NULL,
-                notifications_channel_id
-                INTEGER,
-                default_ping_role_id
-                INTEGER
-                DEFAULT
-                NULL,
-                auto_create_role
-                BOOLEAN
-                NOT
-                NULL
-                DEFAULT
-                false,
-                system_channel_id
-                INTEGER
-                default
-                null,
-                show_update_buttons
-                BOOLEAN
-                NOT
-                NULL
-                DEFAULT
-                true,
-                paid_chapter_notifications
-                BOOLEAN
-                NOT
-                NULL
-                DEFAULT
-                false,
-                bot_manager_role_id
-                INTEGER
-                DEFAULT
-                NULL,
-                UNIQUE
-            (
-                guild_id
-            ) ON CONFLICT IGNORE
-                )
-            """
-        )
-
-        await self.conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS tracked_guild_series
-            (
-                guild_id
-                INTEGER
-                NOT
-                NULL,
-                series_id
-                TEXT
-                NOT
-                NULL,
-                role_id
-                INTEGER,
-                scanlator
-                TEXT
-                NOT
-                NULL
-                DEFAULT
-                'Unknown',
-                FOREIGN
-                KEY
-            (
-                guild_id
-            ) REFERENCES guild_config
-            (
-                guild_id
-            ),
-                FOREIGN KEY
-            (
-                series_id
-            ) REFERENCES series
-            (
-                id
-            ),
-                FOREIGN KEY
-            (
-                scanlator
-            ) REFERENCES series
-            (
-                scanlator
-            ),
-                UNIQUE
-            (
-                guild_id,
-                series_id,
-                scanlator
-            ) ON CONFLICT REPLACE
-                );
-            """
-        )
-
-        await self.conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS scanlators_config
-            (
-                scanlator
-                TEXT
-                PRIMARY
-                KEY
-                NOT
-                NULL,
-                enabled
-                BOOLEAN
-                NOT
-                NULL
-                DEFAULT
-                1
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                user_id INTEGER NOT NULL,
+                series_id TEXT NOT NULL,
+                last_read_chapter_index INTEGER DEFAULT NULL,
+                guild_id INTEGER NOT NULL,
+                last_updated_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                folder VARCHAR(10) DEFAULT 'reading',
+                FOREIGN KEY (series_id) REFERENCES series(id),
+                FOREIGN KEY (scanlator) REFERENCES series(scanlator),
+                FOREIGN KEY (user_id) REFERENCES user_subs(id),
+                FOREIGN KEY (guild_id) REFERENCES guild_config(guild_id),
+                UNIQUE (user_id, series_id, scanlator) ON CONFLICT IGNORE
             );
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS bot_created_roles
-            (
-                guild_id
-                INTEGER
-                NOT
-                NULL,
-                role_id
-                INTEGER
-                NOT
-                NULL,
-                UNIQUE
-            (
-                guild_id,
-                role_id
-            ) ON CONFLICT REPLACE
-                );
+            CREATE TABLE IF NOT EXISTS guild_config (
+                guild_id INTEGER PRIMARY KEY NOT NULL,
+                notifications_channel_id INTEGER,
+                default_ping_role_id INTEGER DEFAULT NULL,
+                auto_create_role BOOLEAN NOT NULL DEFAULT false,
+                system_channel_id INTEGER default null,
+                show_update_buttons BOOLEAN NOT NULL DEFAULT true,
+                paid_chapter_notifications BOOLEAN NOT NULL DEFAULT false,
+                bot_manager_role_id INTEGER DEFAULT NULL,
+                UNIQUE (guild_id) ON CONFLICT IGNORE
+            );
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS patreons
-            (
-                email
-                TEXT
-                PRIMARY
-                KEY
-                NOT
-                NULL,
-                user_id
-                INTEGER,
-                first_name
-                TEXT
-                NOT
-                NULL,
-                last_name
-                TEXT
-                NOT
-                NULL,
-                UNIQUE
-            (
-                email
-            ) ON CONFLICT REPLACE
-                )
+            CREATE TABLE IF NOT EXISTS tracked_guild_series (
+                guild_id INTEGER NOT NULL,
+                series_id TEXT NOT NULL,
+                role_id INTEGER,
+                scanlator TEXT NOT NULL DEFAULT 'Unknown',
+                FOREIGN KEY (guild_id) REFERENCES guild_config(guild_id),
+                FOREIGN KEY (series_id) REFERENCES series(id),
+                FOREIGN KEY (scanlator) REFERENCES series(scanlator),
+                UNIQUE (guild_id, series_id, scanlator) ON CONFLICT REPLACE
+            );
             """
         )
 
         await self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS scanlator_channel_associations
-            (
-                guild_id
-                INTEGER
-                NOT
-                NULL,
-                scanlator
-                TEXT
-                NOT
-                NULL,
-                channel_id
-                INTEGER
-                NOT
-                NULL,
-                FOREIGN
-                KEY
-            (
-                guild_id
-            ) REFERENCES guild_config
-            (
-                guild_id
-            ),
-                UNIQUE
-            (
-                guild_id,
-                scanlator,
-                channel_id
-            ) ON CONFLICT REPLACE
-                );
+            CREATE TABLE IF NOT EXISTS scanlators_config (
+                scanlator TEXT PRIMARY KEY NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT 1
+            );
+            """
+        )
+
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bot_created_roles (
+                guild_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                UNIQUE (guild_id, role_id) ON CONFLICT REPLACE
+            );
+            """
+        )
+
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS patreons (
+                email TEXT PRIMARY KEY NOT NULL,
+                user_id INTEGER,
+                first_name TEXT NOT NULL,
+                last_name TEXT NOT NULL,
+                UNIQUE (email) ON CONFLICT REPLACE
+            );
+            """
+        )
+
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scanlator_channel_associations (
+                guild_id INTEGER NOT NULL,
+                scanlator TEXT NOT NULL,
+                channel_id INTEGER NOT NULL,
+                FOREIGN KEY (guild_id) REFERENCES guild_config(guild_id),
+                UNIQUE (guild_id, scanlator, channel_id) ON CONFLICT REPLACE
+            );
             """
         )
 
@@ -1844,7 +1588,7 @@ class Database:
                                           FROM user_subs
                                           WHERE id = $1)
                   AND (id, scanlator) NOT IN (SELECT series_id, scanlator
-                                              FROM tracked_guild_series \
+                                              FROM tracked_guild_series
                 """  # ) is completed below
         if guild_id is not None:
             query += " WHERE guild_id = $2) LIMIT 1;"

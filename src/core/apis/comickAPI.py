@@ -22,11 +22,17 @@ class ComickAppAPI:
             # "User-Agent": "github.com/MooshiMochi/ManhwaUpdatesBot",
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
-        if nonce := self.manager.bot.config.get("comick_nonce"):
-            a, b = list(nonce.items())
-            self.headers[a[0]] = b[0]
+        self._nonce_key = None
+        if nonce := self._get_comick_nonce():
+            self.headers |= nonce
+            self.nonce = list(nonce.keys())[0]
+            # (a, b), = list(nonce.items())
+            # self.headers[a[0]] = b[0]
         self.rate_limit_remaining = None
         self.rate_limit_reset = None
+
+    def _get_comick_nonce(self):
+        return self.manager.bot.config.get("comick_nonce")
 
     async def __request(
             self,
@@ -40,17 +46,25 @@ class ComickAppAPI:
         url = f"{self.api_url}/{endpoint}"
         if not headers:
             headers = self.headers
+        else:
+            if self._nonce_key:
+                headers |= {self._nonce_key: self.headers[self._nonce_key]}
 
         if self.rate_limit_remaining is not None and self.rate_limit_remaining == 0:
             await asyncio.sleep(self.rate_limit_reset)
         try:
-            response = await self.manager.bot.session.request(method, url, params=params, json=data,
-                                                              headers=headers, **kwargs)
+            response = await self.manager.bot.fox_session.request(
+                method,
+                url,
+                params=params,
+                json=data,
+                headers=headers, **kwargs | {"success_selector": "body > pre"}
+            )
             if response.status_code != 200:
                 raise Exception(
                     f"Request failed with status {response.status_code}\nURL: {response.url}"
                 )
-            json_data = response.json()
+            json_data = response.json(selector="body > pre")
             self.rate_limit_remaining = int(
                 response.headers.get("X-RateLimit-Remaining", "-1")
             )
@@ -151,7 +165,7 @@ class ComickAppAPI:
             language = "en"
         if page_limit is None:
             page_limit = float("inf")
-        endpoint = f"/comic/{manga_id}/chapters?lang={language}&page={page}&limit=60"
+        endpoint = f"comic/{manga_id}/chapters?lang={language}&page={page}&limit=60"
         # params = {"lang": language, "page": page}
         result = await self.__request("GET", endpoint)
 

@@ -120,23 +120,23 @@
     }
   },
   "comick": {
-    "user_input_url": "https://comick.dev/comic/00-solo-leveling",
+    "user_input_url": "https://comick.dev/comic/busamen-gachi-fighter-sss",
     "expected_results": {
       "scanlator_name": "comick",
-      "manga_url": "https://comick.dev/comic/00-solo-leveling?lang=en",
+      "manga_url": "https://comick.dev/comic/busamen-gachi-fighter-sss?lang=en",
       "completed": true,
-      "title": "Solo Leveling",
-      "manga_id": "71gMd0vF",
-      "curr_chapter_url": "https://comick.dev/comic/00-solo-leveling/5N_wGCXG",
-      "first_chapter_url": "https://comick.dev/comic/00-solo-leveling/P_ysNE3VbnLbwN",
-      "cover_image": "https://meo.comick.pictures/0GRgd.jpg",
+      "title": "Busamen Gachi Fighter SSS",
+      "manga_id": "hCfsNG8J",
+      "curr_chapter_url": "https://comick.dev/comic/busamen-gachi-fighter-sss/zKzAlNia",
+      "first_chapter_url": "https://comick.dev/comic/busamen-gachi-fighter-sss/6f7axQyp",
+      "cover_image": "https://meo.comick.pictures/Nrk5Kw.jpg",
       "last_3_chapter_urls": [
-        "https://comick.dev/comic/00-solo-leveling/JaFXXmsI",
-        "https://comick.dev/comic/00-solo-leveling/GMhAHmIL",
-        "https://comick.dev/comic/00-solo-leveling/5N_wGCXG"
+        "https://comick.dev/comic/busamen-gachi-fighter-sss/1qfZFqCV",
+        "https://comick.dev/comic/busamen-gachi-fighter-sss/KHJDHTbO",
+        "https://comick.dev/comic/busamen-gachi-fighter-sss/zKzAlNia"
       ],
       "use_default_id_function": false,
-      "has_fp_manhwa": false
+      "has_fp_manhwa": true
     }
   },
   "drakescans": {
