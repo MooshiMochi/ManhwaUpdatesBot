@@ -46,6 +46,8 @@ class Bot:
                 )
             else:
                 self.proxy_addr = f"http://{self.config['proxy']['ip']}:{self.config['proxy']['port']}"  # noqa
+        else:
+            self.proxy_addr = None
 
         self.session = CachedCurlCffiSession(
             impersonate="chrome101",
@@ -122,9 +124,12 @@ def init_scanlators(bot, scanlators: dict) -> None:
 async def main():
     if not CONFIG:
         raise Exception("Config not loaded!")
-    proxy_url = fmt_proxy(
-        CONFIG["proxy"]["username"], CONFIG["proxy"]["password"], CONFIG["proxy"]["ip"], CONFIG["proxy"]["port"]
-    )
+    if CONFIG["proxy"]["enabled"]:
+        proxy_url = fmt_proxy(
+            CONFIG["proxy"]["username"], CONFIG["proxy"]["password"], CONFIG["proxy"]["ip"], CONFIG["proxy"]["port"]
+        )
+    else:
+        proxy_url = None
 
     Bot.config = CONFIG
     Bot.proxy_addr = proxy_url
