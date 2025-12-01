@@ -1,10 +1,12 @@
 import json
 import re
+from types import SimpleNamespace
 from typing import Optional
 
 import discord
 from bs4 import BeautifulSoup
 from discord import Embed
+from pandas.io.sas.sas_constants import page_data_type
 
 from src.core.objects import Chapter, PartialManga
 from .classes import BasicScanlator, scanlators
@@ -355,6 +357,142 @@ class _Templescan(BasicScanlator):
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
 
+class _TheBlank(BasicScanlator):
+
+    @staticmethod
+    def _html_to_json(html_content: str) -> dict:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        app_div = soup.select_one('div#app')
+        pre_data = soup.select_one('pre')
+
+        if not app_div and not pre_data:
+            raise ValueError("Could not find div#app or pre in the HTML content")
+
+        if not pre_data and not app_div.has_attr('data-page'):
+            raise ValueError("Could not find the 'data-page' attribute in div#app")
+
+        if app_div:
+            to_load = app_div['data-page']
+        else:
+            to_load = pre_data.get_text()
+
+        page_data = json.loads(to_load)
+        return page_data
+
+    def _parse_serie_info(self, html_content: str, base_series_url: str) -> SimpleNamespace:
+        """
+        Parses HTML content to extract serie information from the embedded Inertia.js JSON.
+
+        Args:
+            html_content (str): The raw HTML string of the page.
+
+        Returns:
+            SimpleNamespace: An object containing title, image_url, synopsis, and status.
+        """
+        page_data = self._html_to_json(html_content)
+
+        props = page_data.get('props', {})
+        serie = props.get('serie', {})
+        site_config = props.get('site', {})
+
+        title = serie.get('name')
+        base_url = site_config.get('url', self.json_tree.properties.base_url)
+        relative_image = serie.get('cover_image', '')
+        image_url = f"{base_url}{relative_image}" if relative_image.startswith('/') else f"{base_url}/{relative_image}"
+
+        synopsis = serie.get('description')
+        status = serie.get('status')
+
+        chapters: list[Chapter] = []
+
+        for i, chapter in enumerate(serie.get("chapters", [])):
+            chapter_url = base_series_url + "chapter/" + chapter.get('slug')
+            chapter_name = chapter.get('title', f"Chapter {chapter.get('chapterNumber', i+1)}")
+            chapters.append(Chapter(chapter_url, chapter_name, i))
+
+        return SimpleNamespace(
+            title=title,
+            image_url=image_url,
+            synopsis=synopsis,
+            status=status,
+            chapters=chapters
+        )
+
+    async def get_title(self, raw_url: str) -> str | None:
+        text = await self._get_text(raw_url)
+        base_series_url = await self.format_manga_url(raw_url)
+        info = self._parse_serie_info(text, base_series_url)
+        return info.title
+
+    async def get_cover(self, raw_url: str) -> str:
+        text = await self._get_text(raw_url)
+        base_series_url = await self.format_manga_url(raw_url)
+        info = self._parse_serie_info(text, base_series_url)
+        return info.image_url
+
+    async def get_synopsis(self, raw_url: str) -> str:
+        text = await self._get_text(raw_url)
+        base_series_url = await self.format_manga_url(raw_url)
+        info = self._parse_serie_info(text, base_series_url)
+        return info.synopsis
+
+    async def get_status(self, raw_url: str) -> Optional[str]:
+        text = await self._get_text(raw_url)
+        base_series_url = await self.format_manga_url(raw_url)
+        info = self._parse_serie_info(text, base_series_url)
+        return info.status
+
+    async def get_all_chapters(self, raw_url: str) -> list[Chapter]:
+        text = await self._get_text(raw_url)
+        base_series_url = await self.format_manga_url(raw_url)
+        info = self._parse_serie_info(text, base_series_url)
+        return info.chapters
+
+    async def get_fp_partial_manga(self) -> list[PartialManga]:
+        text = await self._get_text(self.json_tree.properties.latest_updates_url)
+        page_data = self._html_to_json(text)
+
+        props = page_data.get('props', {})
+        latest_series = props.get('latestChapters', {}).get('data', [])
+
+        found_manga: list[PartialManga] = []
+        for item_dict in latest_series:
+            title = item_dict["title"]
+            url = self.json_tree.properties.format_urls.manga.format(url_name=item_dict["slug"])
+            cover = self.json_tree.properties.base_url + item_dict["image"]
+            _id = await self.get_id(url)
+
+            latest_chapters: list[Chapter] = []
+            latest_chapters_resp: list[dict] = item_dict["chapters"]
+            for i, chapter in enumerate(latest_chapters_resp):
+                if i >= 3:  # only get the latest 3 chapters
+                    break
+                chapter_url = url.removesuffix("/") + "/chapter/" + chapter["slug"]
+                chapter_name = chapter["title"] or f"Chapter {chapter['chapterNumber']}"
+                latest_chapters.append(Chapter(chapter_url, chapter_name, 3 - i))
+
+            p_manga = PartialManga(_id, title, url, self.name, cover, latest_chapters[::-1])
+            found_manga.append(p_manga)
+        return found_manga
+
+    async def search(self, query: str, as_em: bool = False) -> list[PartialManga] | list[discord.Embed]:
+        text = await self._search_req(query)
+        search_result = self._html_to_json(text)
+        found_manga: list[PartialManga] = []
+
+        for item_dict in search_result:
+            title = item_dict["title"]
+            url = self.json_tree.properties.format_urls.manga.format(url_name=item_dict["slug"])
+            cover = self.json_tree.properties.base_url + item_dict["cover_image"]
+            _id = await self.get_id(url)
+
+            p_manga = PartialManga(_id, title, url, self.name, cover)
+            found_manga.append(p_manga)
+        # sort the manga by closest match of the title to the query
+        found_manga = sorted(found_manga, key=lambda x: sort_key(query, x.title), reverse=False)
+        if as_em:
+            found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
+        return found_manga
 
 class CustomKeys:
     flamecomics: str = "flamecomics"
@@ -367,6 +505,7 @@ class CustomKeys:
     templescan: str = "templescan"
     vortexscans: str = "vortexscans"
     qiscans: str = "qiscans"
+    theblank: str = "theblank"
 
 
 keys = CustomKeys()
@@ -381,3 +520,4 @@ scanlators[keys.hivescans] = _Hivetoon(keys.hivescans, **scanlators[keys.hivesca
 scanlators[keys.templescan] = _Templescan(keys.templescan, **scanlators[keys.templescan])  # noqa: This is a dict
 scanlators[keys.vortexscans] = _VortexScans(keys.vortexscans, **scanlators[keys.vortexscans])  # noqa: This is a dict
 scanlators[keys.qiscans] = _QiScans(keys.qiscans, **scanlators[keys.qiscans])  # noqa: This is a dict
+scanlators[keys.theblank] = _TheBlank(keys.theblank, **scanlators[keys.theblank])  # noqa: This is a dict

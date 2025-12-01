@@ -580,21 +580,21 @@
     }
   },
   "theblank": {
-    "user_input_url": "https://theblank.net/manga/scan-here/",
+    "user_input_url": "https://beta.theblank.net/serie/scan-here/",
     "expected_results": {
       "scanlator_name": "theblank",
-      "manga_url": "https://theblank.net/manga/scan-here/",
+      "manga_url": "https://beta.theblank.net/serie/scan-here/",
       "completed": true,
       "title": "Scan Here!",
       "manga_id": "default_id_function",
       "use_default_id_function": true,
-      "curr_chapter_url": "https://theblank.net/manga/scan-here/chapter-50/",
-      "first_chapter_url": "https://theblank.net/manga/scan-here/chapter-1/",
-      "cover_image": "https://theblank.net/wp-content/uploads/2025/01/Scan-Here.jpg",
+      "curr_chapter_url": "https://beta.theblank.net/serie/scan-here/chapter/WTgEmn6Seoj6-chapter-50-the-end",
+      "first_chapter_url": "https://beta.theblank.net/serie/scan-here/chapter/61LoQzSB7ezY-chapter-1",
+      "cover_image": "https://beta.theblank.net/storage/series/covers/F3HDFpaiAxtA.jpg",
       "last_3_chapter_urls": [
-        "https://theblank.net/manga/scan-here/chapter-48/",
-        "https://theblank.net/manga/scan-here/chapter-49/",
-        "https://theblank.net/manga/scan-here/chapter-50/"
+        "https://beta.theblank.net/serie/scan-here/chapter/eb26G8PisIpy-chapter-48",
+        "https://beta.theblank.net/serie/scan-here/chapter/Rj5iFSFVyxVe-chapter-49",
+        "https://beta.theblank.net/serie/scan-here/chapter/WTgEmn6Seoj6-chapter-50-the-end"
       ],
       "has_fp_manhwa": true
     }

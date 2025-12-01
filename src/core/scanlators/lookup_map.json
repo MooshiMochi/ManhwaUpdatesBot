@@ -1417,85 +1417,6 @@
         }
       }
     },
-    "theblank": {
-      "chapter_ajax": "html",
-      "request_method": "curl",
-      "url_regex": "(?:https?://)?(?:www\\.)?theblank\\.net/manga/(?P<url_name>[\\w-]+)(?:/.*)?",
-      "properties": {
-        "base_url": "https://theblank.net",
-        "icon_url": "https://theblank.net/wp-content/uploads/2023/09/Logo_type_2.png",
-        "format_urls": {
-          "manga": "https://theblank.net/manga/{url_name}/",
-          "ajax": "https://theblank.net/manga/{url_name}/ajax/chapters"
-        },
-        "latest_updates_url": "https://theblank.net/",
-        "dynamicURL": false,
-        "url_chapter_prefix": null,
-        "supports_search": true
-      },
-      "custom_headers": {
-        "Cookies": [
-          {
-            "name": "cf_clearance",
-            "value": "random ahh value",
-            "domain": "theblank.net",
-            "path": "/"
-          }
-        ]
-      },
-      "selectors": {
-        "title": [
-          "div.post-title > h1",
-          ".breadcrumb > li:nth-child(3) > a"
-        ],
-        "synopsis": "div.manga-excerpt",
-        "cover": [
-          "[property=og\\:image]",
-          "div.summary_image > a > img"
-        ],
-        "chapters": {
-          "container": "li.wp-manga-chapter",
-          "name": "a",
-          "url": "a",
-          "premium_status": "span.required-login"
-        },
-        "status": [
-          "div.summary-heading:has(h5:-soup-contains(\"Status\")) + div"
-        ],
-        "front_page": {
-          "container": "div.page-item-detail.manga",
-          "title": "div.post-title > h3.h5 > a",
-          "url": "div.post-title > h3.h5 > a",
-          "cover": "img"
-        },
-        "unwanted_tags": [
-          "span.manga-title-badges"
-        ],
-        "search": {
-          "container": "div.c-tabs-item__content",
-          "title": "h3.h4 > a",
-          "url": "h3.h4 > a",
-          "cover": "img"
-        }
-      },
-      "search": {
-        "url": "https://theblank.net/",
-        "search_param_name": "s",
-        "extra_params": {
-          "post_type": "wp-manga",
-          "op": "",
-          "author": "",
-          "artist": "",
-          "release": "",
-          "adult": ""
-        },
-        "as_type": "param",
-        "query_parsing": {
-          "encoding": "url"
-        },
-        "request_method": "GET"
-      }
-    },
     "zinmanga": {
       "chapter_ajax": null,
       "request_method": "curl",
@@ -2653,7 +2574,7 @@
         },
         "unwanted_tags": [],
         "search": {
-          "container": "div.DescSeriesCard_cardContainer__39kZS > div",
+          "container": "div.m_96bdd299:has(img)",
           "title": "div.mantine-Stack-root > a.mantine-focus-auto:nth-child(2)",
           "url": "div.mantine-Stack-root > a.mantine-focus-auto:nth-child(2)",
           "cover": "img"
@@ -2750,7 +2671,7 @@
     },
     "vortexscans": {
       "chapter_ajax": null,
-      "request_method": "curl",
+      "request_method": "fox",
       "url_regex": "(?:https?://)?(?:www\\.)?vortexscans\\.org/series/(?P<url_name>[a-zA-Z0-9-]+)(?:/.*)?",
       "properties": {
         "base_url": "https://vortexscans.org",
@@ -2884,6 +2805,82 @@
         },
         "extra_params": {},
         "as_type": "path"
+      }
+    },
+    "theblank": {
+      "chapter_ajax": null,
+      "request_method": "curl",
+      "url_regex": "(?:https?://)?(?:www\\.)?beta\\.theblank\\.net/serie/(?P<url_name>[\\w-]+)(?:/.*)?",
+      "properties": {
+        "base_url": "https://beta.theblank.net",
+        "icon_url": "https://beta.theblank.net/favicon.ico",
+        "format_urls": {
+          "manga": "https://beta.theblank.net/serie/{url_name}/"
+        },
+        "latest_updates_url": "https://beta.theblank.net/",
+        "dynamicURL": false,
+        "url_chapter_prefix": null,
+        "supports_search": true
+      },
+      "custom_headers": {
+        "Cookies": [
+          {
+            "name": "cf_clearance",
+            "value": "random ahh value",
+            "domain": "theblank.net",
+            "path": "/"
+          }
+        ]
+      },
+      "selectors": {
+        "title": [
+          "h1.text-white"
+        ],
+        "synopsis": "p.text-white\\/75",
+        "cover": [
+          "img.bg-card"
+        ],
+        "chapters": {
+          "container": "div > button[title]",
+          "name": "span.text-sm",
+          "url": "a",
+          "premium_status": "span.required-login"
+        },
+        "status": [
+          "label.text-xs:last-child",
+          "div.summary-heading:has(h5:-soup-contains(\"Status\")) + div"
+        ],
+        "front_page": {
+          "container": "section.w-full > div.grid > div",
+          "title": "div.flex > span.font-bold",
+          "url": "a.flex",
+          "cover": "img",
+          "chapters": {
+            "container": "a.block",
+            "name": "span.truncate",
+            "url": "_container_"
+          }
+        },
+        "unwanted_tags": [
+          "label.text-xs > span.font-bold"
+        ],
+        "search": {
+          "container": "div.c-tabs-item__content",
+          "title": "h3.h4 > a",
+          "url": "h3.h4 > a",
+          "cover": "img"
+        }
+      },
+      "search": {
+        "url": "https://beta.theblank.net/api/v1/search/series",
+        "search_param_name": "q",
+        "as_type": "param",
+        "extra_params": {},
+        "query_parsing": {
+          "encoding": "raw"
+        },
+        "request_method": "GET",
+        "session_type": "fox"
       }
     },
     "qiscans": {

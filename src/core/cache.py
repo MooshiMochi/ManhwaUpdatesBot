@@ -302,6 +302,8 @@ class CachedCamoufoxSession(BaseCacheSessionMixin):
         if not self.camoufox.browser:
             await self.camoufox.__aenter__()  # This creates self.camoufox.browser/context
             self.logger.info("Camoufox started.")
+            await self.camoufox.browser.new_page()
+            self.logger.info("New camoufox page for keepalive created.")
         else:
             self.logger.debug("Camoufox already started.")
 

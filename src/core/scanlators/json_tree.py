@@ -108,6 +108,7 @@ class _SearchProperties:
         self.as_type: Literal["param", "path"] = search_dict["as_type"]
         self.query_parsing: _QueryParsing = _QueryParsing(**search_dict["query_parsing"])
         self.request_method: Literal["GET", "POST"] = search_dict["request_method"]
+        self.session_type: str = search_dict.get("session_type", "curl")
 
 
 class JSONTree:

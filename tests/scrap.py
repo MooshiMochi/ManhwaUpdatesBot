@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
+
+from src.core.scanlators.classes import BasicScanlator
+from src.utils import get_manga_scanlator_class
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -13,25 +17,51 @@ from src.core.scanlators import scanlators
 #
 done = [
     "tritinia",
-    "manganato",
-    "toonily",
-    "mangadex",
-    "flamecomics",
-    "asura",
-    "reaperscans",
-    "comick",
-    "drakescans",
-    "nitroscans",
-    "mangapill",
-    "bato",
-    "omegascans",
-    ""
+    # "manganato",
+    # "toonily",
+    # "mangadex",
+    # "flamecomics",
+    # "asura",
+    # "reaperscans",
+    # "comick",
+    # "drakescans",
+    # "nitroscans",
+    # "mangapill",
+    # "bato",
+    # "omegascans",
 ]
 
 
 class FixDbCog(commands.Cog):
     def __init__(self, bot: "MangaClient"):
         self.bot = bot
+
+
+    async def check_invalid_website_formats(self):
+        print("Checking for invalid URLs")
+        all_series = await self.bot.db.get_all_series()
+        series = {}
+        to_fix = set()
+        for item in all_series:
+            if item.scanlator not in series:
+                series[item.scanlator] = []
+            series[item.scanlator].append(item)
+
+        for name in self.bot._all_scanners:
+            print(f"Checking {name}")
+            # mangas = await self.bot.db.get_all_series(scanlator=sc_name)
+            mangas = series.get(name)
+            if not mangas:
+                continue
+            sc: BasicScanlator = self.bot._all_scanners[name]
+            for m in mangas:
+                if not sc.json_tree.rx.match(m.url):
+                    to_fix.add(name)
+                    break
+            print(f"Finished checking {name}")
+
+        print(to_fix)
+        print("Finished checking for invalid URLs")
 
     async def delete_from_db(self, _id: str, scanlator: str):
         await self.bot.db.execute(
@@ -114,6 +144,8 @@ class FixDbCog(commands.Cog):
     async def cog_load(self) -> None:
         if not self.bot.is_ready():
             await self.bot.wait_until_ready()
+
+        await self.check_invalid_website_formats()
         # await self.delete_old_scan_configs()
         # await self.enable_all_scanlators()
 

@@ -12,7 +12,7 @@ import sys
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
-from typing import Any, Callable, Coroutine, Dict, Literal, Optional
+from typing import Any, Awaitable, Callable, Coroutine, Dict, Literal, Optional
 
 import curl_cffi
 import requests  # noqa
@@ -470,12 +470,17 @@ async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None
             print(f"⚠️ Scanlator {scanlator_name} is disabled! No tests will be run.")
     if to_ignore is None:
         to_ignore = []
+
+    # tasks: list[Coroutine[Any, Any, str]] = []
     for name, test_case in test_cases.items():
         if name in to_ignore:
             total_tests -= 1
             continue
 
         test_case.setup()
+        # tasks.append(test_case.begin())
+
+    # for checks_passed in asyncio.as_completed(tasks):
         checks_passed: str = await test_case.begin()
         if checks_passed == "N/A":
             total_tests -= 1
@@ -572,6 +577,8 @@ tests_to_ignore = [
 
     # disabled cos tested when using VPN:
     # "mangabuddy",
+
+    "qiscans",  # not completed
 
     # Changed domain.
 
@@ -686,7 +693,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_search_results", "kunmanga"))
-        asyncio.run(test_single_scanlator("comick"))
+        asyncio.run(test_single_scanlator("vortexscans"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

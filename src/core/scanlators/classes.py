@@ -524,10 +524,14 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         return extra_kwargs
 
     async def _get_text(self, url: str, method: Literal["GET", "POST"] = "GET", **params) -> str:
+        request_method = self.json_tree.request_method
+        if "overwrite_req_method" in params:
+            request_method = params.pop("overwrite_req_method")
+
         provided_headers = params.pop("headers", None)
         if not provided_headers: provided_headers = {}  # noqa: Allow inline operation
         headers = ((self.create_headers() or {}) | provided_headers) or None
-        if self.json_tree.request_method == "curl":
+        if request_method == "curl":
             if self.json_tree.verify_ssl is False:
                 params["verify"] = False
             resp = await self.bot.session.request(
@@ -535,12 +539,12 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
             )
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
-        elif self.json_tree.request_method == "fox":
+        elif request_method == "fox":
             resp = await self.bot.fox_session.get(url, headers=headers, **params)
             await raise_and_report_for_status(self.bot, resp)
             return resp.text
         else:
-            raise ValueError(f"Unknown {self.json_tree.request_method} request method.")
+            raise ValueError(f"Unknown {request_method} request method.")
 
     # async def download_cover(self, raw_url: str) -> BytesIO:
     #     cover_url = await self.get_cover(raw_url)
@@ -822,6 +826,10 @@ class BasicScanlator(AbstractScanlator, _AbstractScanlatorUtilsMixin):
         else:  # as param
             params = {self.json_tree.search.search_param_name: query} | extra_params
             request_kwargs["params"] = params
+
+        search_session_type = self.json_tree.search.session_type
+        if search_session_type is not None and search_session_type != self.json_tree.request_method:
+            request_kwargs["overwrite_req_method"] = search_session_type
         text = await self._get_text(**request_kwargs)
         return text
 

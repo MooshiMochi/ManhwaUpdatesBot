@@ -19,3 +19,4 @@ rapidfuzz
 certifi
 camoufox[geoip]
 playwright-captcha
+lxml
