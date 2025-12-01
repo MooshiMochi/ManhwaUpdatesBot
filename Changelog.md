@@ -2,6 +2,12 @@
 
 #### Consider supporting me on [Patreon](https://patreon.com/mooshi69) or [Ko-Fi](https://ko-fi.com/mooshi69)!
 
+### December 1st, 2025
++ Added ability to use a different request session for the search method to the one that the whole scanlator uses.
++ Fixed theblank.net.
++ Made the camoufox session to keep a page always open to make it easier to re-open new tabs.
++ Fixed search method for flamecomics
+
 ### November 20th, 2025
 - Removed test method from [html_json_parser.py](./src/html_json_parser.py).
 + Updated [ComickAPI](./src/core/apis/comickAPI.py) to use fox_session instead of curl_session.
