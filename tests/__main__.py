@@ -12,7 +12,7 @@ import sys
 import traceback as tb
 from asyncio import iscoroutinefunction
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Coroutine, Dict, Literal, Optional
+from typing import Any, Callable, Coroutine, Dict, Literal, Optional
 
 import curl_cffi
 import requests  # noqa
@@ -32,6 +32,7 @@ logger: logging.Logger = logging.getLogger("test")
 root_path = [x for x in sys.path if x.removesuffix("/").endswith("ManhwaUpdatesBot")][0]
 
 config: dict = {}
+
 
 # noinspection PyTypeChecker
 
@@ -480,7 +481,7 @@ async def run_tests(test_cases: dict[str, TestCase], to_ignore: list[str] = None
         test_case.setup()
         # tasks.append(test_case.begin())
 
-    # for checks_passed in asyncio.as_completed(tasks):
+        # for checks_passed in asyncio.as_completed(tasks):
         checks_passed: str = await test_case.begin()
         if checks_passed == "N/A":
             total_tests -= 1
@@ -693,7 +694,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # asyncio.run(test_single_method("show_search_results", "kunmanga"))
-        asyncio.run(test_single_scanlator("vortexscans"))
+        asyncio.run(test_single_scanlator("epsilonsoft"))
         # asyncio.run(sub_main())
         # asyncio.run(paused_test())
         # asyncio.run(main())

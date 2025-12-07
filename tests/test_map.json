@@ -884,5 +884,43 @@
         "https://arvencomics.com/comic/the-delusional-hunter-in-another-world/chapter-63/"
       ]
     }
+  },
+  "epsilonscan": {
+    "user_input_url": "https://beta.epsilonscan.to/serie/night-lessons",
+    "expected_results": {
+      "scanlator_name": "epsilonscan",
+      "manga_url": "https://beta.epsilonscan.to/serie/night-lessons",
+      "completed": true,
+      "title": "Night Lessons",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://beta.epsilonscan.to/serie/night-lessons/chapter/N777tzYDMmD0-chapitre-73-bonus-7-un-vrai-miracle",
+      "first_chapter_url": "https://beta.epsilonscan.to/serie/night-lessons/chapter/fHYDhlRtbRG4-chapitre-1-tu-es-bon",
+      "cover_image": "",
+      "last_3_chapter_urls": [
+        "https://beta.epsilonscan.to/serie/night-lessons/chapter/DvpS71YoP6Jy-chapitre-71-bonus-5-une-enfance-difficile",
+        "https://beta.epsilonscan.to/serie/night-lessons/chapter/y7406KfENLnh-chapitre-72-bonus-6-ce-jour-la",
+        "https://beta.epsilonscan.to/serie/night-lessons/chapter/N777tzYDMmD0-chapitre-73-bonus-7-un-vrai-miracle"
+      ]
+    }
+  },
+  "epsilonsoft": {
+    "user_input_url": "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law",
+    "expected_results": {
+      "scanlator_name": "epsilonsoft",
+      "manga_url": "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law",
+      "completed": true,
+      "title": "I'm living with my Mother-in-law!",
+      "manga_id": "default_id_function",
+      "use_default_id_function": true,
+      "curr_chapter_url": "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law/chapter/fdpfFty3I0dT-chapitre-80-dernier-chapitre",
+      "first_chapter_url": "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law/chapter/TZmoeLlcaOlW-chapitre-1",
+      "cover_image": "",
+      "last_3_chapter_urls": [
+        "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law/chapter/XljXY0lno4RP-chapitre-78",
+        "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law/chapter/kAuAaUFngwNn-chapitre-79",
+        "https://beta.epsilonsoft.to/serie/im-living-with-my-mother-in-law/chapter/fdpfFty3I0dT-chapitre-80-dernier-chapitre"
+      ]
+    }
   }
 }

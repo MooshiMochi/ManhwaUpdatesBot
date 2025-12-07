@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
 from src.core.scanlators.classes import BasicScanlator
-from src.utils import get_manga_scanlator_class
 
 if TYPE_CHECKING:
     from src.core import MangaClient
@@ -35,33 +33,6 @@ done = [
 class FixDbCog(commands.Cog):
     def __init__(self, bot: "MangaClient"):
         self.bot = bot
-
-
-    async def check_invalid_website_formats(self):
-        print("Checking for invalid URLs")
-        all_series = await self.bot.db.get_all_series()
-        series = {}
-        to_fix = set()
-        for item in all_series:
-            if item.scanlator not in series:
-                series[item.scanlator] = []
-            series[item.scanlator].append(item)
-
-        for name in self.bot._all_scanners:
-            print(f"Checking {name}")
-            # mangas = await self.bot.db.get_all_series(scanlator=sc_name)
-            mangas = series.get(name)
-            if not mangas:
-                continue
-            sc: BasicScanlator = self.bot._all_scanners[name]
-            for m in mangas:
-                if not sc.json_tree.rx.match(m.url):
-                    to_fix.add(name)
-                    break
-            print(f"Finished checking {name}")
-
-        print(to_fix)
-        print("Finished checking for invalid URLs")
 
     async def delete_from_db(self, _id: str, scanlator: str):
         await self.bot.db.execute(
@@ -145,9 +116,84 @@ class FixDbCog(commands.Cog):
         if not self.bot.is_ready():
             await self.bot.wait_until_ready()
 
-        await self.check_invalid_website_formats()
+        # await self.check_invalid_website_formats()
+        await self.fix_manganaot()
         # await self.delete_old_scan_configs()
         # await self.enable_all_scanlators()
+
+    async def check_invalid_website_formats(self):
+        print("Checking for invalid URLs")
+        all_series = await self.bot.db.get_all_series()
+        series = {}
+        to_fix = set()
+        for item in all_series:
+            if item.scanlator not in series:
+                series[item.scanlator] = []
+            series[item.scanlator].append(item)
+
+        for name in self.bot._all_scanners:
+            print(f"Checking {name}")
+            # mangas = await self.bot.db.get_all_series(scanlator=sc_name)
+            mangas = series.get(name)
+            if not mangas:
+                continue
+            sc: BasicScanlator = self.bot._all_scanners[name]
+            for m in mangas:
+                if not sc.json_tree.rx.match(m.url):
+                    print(f"Invalid URL found for {name}: {m.url} (ID: {m.id})")
+                    to_fix.add(name)
+                    break
+            print(f"Finished checking {name}")
+
+        print(to_fix)
+        print("Finished checking for invalid URLs")
+
+    async def check_sinlge_manga_for_invalid_website(self, manga: Manga, scanlator: BasicScanlator):
+        if not scanlator.json_tree.rx.match(manga.url):
+            print(f"Invalid URL found for {scanlator.name}: {manga.url} (ID: {manga.id})")
+            return False
+        return True
+
+    async def fix_manganaot(self):
+        scanlator = scanlators.get("manganato")
+        if not scanlator:
+            print("Manganato scanlator not found!")
+            return
+
+        mangas: list[Manga] = await self.get_raw_scanaltor_manga_objs("manganato")
+        for entry in mangas:
+            title = entry.title
+            # search for the manga by title, and check if any of the titles within the 1st 3 entries match 100% (lower)
+            # if they do, then get the manga object for the found manga, add it to the db, then delete the old one
+            # and replace the old ID to the new ID in all relevant tables
+            search_results = await scanlator.search(title)
+            correct_manga = None
+            for result in search_results[:3]:
+                if result.title.lower() == title.lower():
+                    correct_manga = result
+                    break
+            else:
+                print(f"No exact match found for {title}")
+                continue
+            if correct_manga:
+                correct_id = correct_manga.id
+                if correct_id != entry.id:
+                    print(f"Fixing manga ID for {title}: {entry.id} -> {correct_id}")
+                    # Check if the correct ID already exists
+                    existing = await self.get_raw_manga_obj(correct_id, "manganato")
+                    if existing:
+                        print(f"Correct ID {correct_id} already exists. Merging data.")
+                        await self.replace_series_id(entry.id, correct_id, "manganato", delete_old=True)
+                    else:
+                        print(f"Inserting manga with correct ID {correct_id}.")
+                        entry.id = correct_id
+                        await self.insert_to_db(entry)
+                        await self.delete_from_db(entry.id, "manganato")
+                success = await self.check_sinlge_manga_for_invalid_website(correct_manga, scanlator)
+                if success:
+                    print(f"Successfully fixed manga: {title}")
+                else:
+                    print(f"Failed to fix manga: {title}")
 
 
 async def setup(bot: "MangaClient"):

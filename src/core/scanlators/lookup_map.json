@@ -173,7 +173,7 @@
         "latest_updates_url": "https://www.manganato.gg/",
         "dynamicURL": false,
         "url_chapter_prefix": null,
-        "supports_search": false
+        "supports_search": true
       },
       "selectors": {
         "title": [

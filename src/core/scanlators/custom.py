@@ -6,7 +6,6 @@ from typing import Optional
 import discord
 from bs4 import BeautifulSoup
 from discord import Embed
-from pandas.io.sas.sas_constants import page_data_type
 
 from src.core.objects import Chapter, PartialManga
 from .classes import BasicScanlator, scanlators
@@ -357,6 +356,7 @@ class _Templescan(BasicScanlator):
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
 
+
 class _TheBlank(BasicScanlator):
 
     @staticmethod
@@ -407,7 +407,7 @@ class _TheBlank(BasicScanlator):
 
         for i, chapter in enumerate(serie.get("chapters", [])):
             chapter_url = base_series_url + "chapter/" + chapter.get('slug')
-            chapter_name = chapter.get('title', f"Chapter {chapter.get('chapterNumber', i+1)}")
+            chapter_name = chapter.get('title', f"Chapter {chapter.get('chapterNumber', i + 1)}")
             chapters.append(Chapter(chapter_url, chapter_name, i))
 
         return SimpleNamespace(
@@ -493,6 +493,7 @@ class _TheBlank(BasicScanlator):
         if as_em:
             found_manga: list[discord.Embed] = self.partial_manga_to_embed(found_manga)
         return found_manga
+
 
 class CustomKeys:
     flamecomics: str = "flamecomics"
