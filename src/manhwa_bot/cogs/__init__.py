@@ -1,3 +1,5 @@
 """Cog registry — appended to as phases land."""
 
-COGS: list[str] = []
+COGS: list[str] = [
+    "manhwa_bot.cogs.catalog",
+]

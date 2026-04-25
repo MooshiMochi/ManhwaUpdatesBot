@@ -14,6 +14,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from .cache import TtlCache
 from .checks import PREMIUM_REQUIRED
 from .cogs import COGS
 from .config import AppConfig
@@ -45,6 +46,7 @@ class ManhwaBot(commands.Bot):
     patreon: PatreonClient
     discord_ents: DiscordEntitlementsService
     premium: PremiumService
+    websites_cache: TtlCache[list]
 
     def __init__(self, config: AppConfig, db: DbPool, crawler: CrawlerClient) -> None:
         intents = discord.Intents.default()
@@ -107,6 +109,8 @@ class ManhwaBot(commands.Bot):
 
         await self.crawler.start()
         _log.info("Crawler client started")
+
+        self.websites_cache: TtlCache[list] = TtlCache()
 
         for cog_path in COGS:
             await self.load_extension(cog_path)
