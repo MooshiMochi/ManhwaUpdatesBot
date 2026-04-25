@@ -1,0 +1,72 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+config.toml
+local/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Bot runtime data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.log
+logs/
+
+# Editor / IDE
+.idea/
+.vscode/
+.idx/
+.discord/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test / coverage
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checkers
+.mypy_cache/
+.pyright/
+.dmypy.json
+dmypy.json
+
+# Local artifacts
+.codex_tmp/
+artifacts/

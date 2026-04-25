@@ -1,0 +1,72 @@
+# ManhwaUpdatesBot v2 configuration.
+# Copy this file to config.toml (gitignored) and fill in real values.
+# Secrets (tokens, API keys) go in .env, NOT here.
+
+[bot]
+# Bot owners get full access to /dev commands and bypass premium checks (if owner_bypass=true below).
+owner_ids = []
+# When the bot starts up it logs the resolved configuration. Set to "DEBUG" for verbose logs.
+log_level = "INFO"
+# Optional: a single home guild where prefix-mentioned dev commands are allowed (extra defense-in-depth).
+# Leave as 0 to allow dev commands in any guild the owner can reach.
+dev_guild_id = 0
+
+[crawler]
+# WebSocket URL of the crawler service. Bearer token comes from CRAWLER_API_KEY in .env.
+ws_url = "ws://127.0.0.1:8000/ws"
+# REST base for fallback requests (downloads, request_id lookups). Same host, http:// scheme.
+http_base_url = "http://127.0.0.1:8000"
+# Per-request timeout for synchronous WS calls.
+request_timeout_seconds = 30.0
+# Reconnect tuning.
+reconnect_initial_delay_seconds = 1.0
+reconnect_max_delay_seconds = 60.0
+reconnect_jitter_seconds = 1.5
+# Consumer key used for notifications_list / notifications_ack catch-up. Use a stable id per bot deployment.
+consumer_key = "manhwa-bot-default"
+
+[db]
+# Path to the SQLite file. Relative paths resolve against the bot's working directory.
+path = "manhwa_bot.db"
+
+[premium]
+enabled = true
+owner_bypass = true
+# Logged + surfaced in /dev premium check. Useful for debugging "why didn't this user pass?" tickets.
+log_decisions = false
+
+[premium.discord]
+enabled = true
+# SKUs configured in the Discord Developer Portal under Monetization → SKUs.
+# user_sku_ids: subscriptions sold to a user (premium follows the user across guilds).
+user_sku_ids = []
+# guild_sku_ids: subscriptions sold to a guild (premium applies inside that guild).
+guild_sku_ids = []
+# Shown in the upgrade embed when a user fails the premium check.
+upgrade_url = ""
+
+[premium.patreon]
+# Set enabled = false to skip Patreon entirely (e.g., if PATREON_ACCESS_TOKEN is unset).
+enabled = false
+# Found in the Patreon API: https://www.patreon.com/api/oauth2/v2/identity?include=memberships,memberships.campaign
+campaign_id = 0
+# How often to refresh the Patreon → Discord member cache (seconds).
+poll_interval_seconds = 600
+# How long after a poll a cached entry stays "fresh" before becoming stale (seconds).
+freshness_seconds = 1800
+# Tier IDs that grant premium. Leave empty to grant premium to any active patron regardless of tier.
+required_tier_ids = []
+# Pretty link shown in the upgrade embed.
+pledge_url = ""
+
+[notifications]
+# When dispatching a notification_event, how many concurrent guild posts to fan out at once.
+fanout_concurrency = 8
+# When sending DMs to subscribed users, this caps the parallelism.
+dm_fanout_concurrency = 4
+# Skip premium/paid chapter notifications for guilds that have paid_chapter_notifs disabled.
+respect_paid_chapter_setting = true
+
+[supported_websites_cache]
+# /supported_websites cache TTL.
+ttl_seconds = 3600
