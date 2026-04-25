@@ -21,7 +21,6 @@ from ..log import get
 from .errors import CrawlerError, Disconnected, RequestTimeout
 from .retry import Backoff
 
-
 PushHandler = Callable[[dict[str, Any]], Awaitable[None]]
 
 
@@ -43,6 +42,7 @@ class CrawlerClient:
         self._connected_event = asyncio.Event()
         self._stopping = False
         self._on_connect: list[Callable[[], Awaitable[None]]] = []
+        self._background_tasks: set[asyncio.Task[None]] = set()
 
     # -- public api -----------------------------------------------------
 
@@ -69,14 +69,14 @@ class CrawlerClient:
             self._reader_task.cancel()
             try:
                 await self._reader_task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            except asyncio.CancelledError, Exception:
                 pass
             self._reader_task = None
         if self._connect_task is not None:
             self._connect_task.cancel()
             try:
                 await self._connect_task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            except asyncio.CancelledError, Exception:
                 pass
             self._connect_task = None
         if self._session is not None:
@@ -155,7 +155,7 @@ class CrawlerClient:
                     await self._reader_task
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _log.warning("crawler connect/read failed: %s", exc)
             finally:
                 # Fail in-flight requests so callers retry.
@@ -179,13 +179,15 @@ class CrawlerClient:
             self._session = aiohttp.ClientSession()
         headers = {"Authorization": f"Bearer {self._config.api_key}"}
         _log.info("connecting to crawler at %s", self._config.ws_url)
-        self._ws = await self._session.ws_connect(self._config.ws_url, headers=headers, heartbeat=30.0)
+        self._ws = await self._session.ws_connect(
+            self._config.ws_url, headers=headers, heartbeat=30.0
+        )
         self._connected_event.set()
         self._reader_task = asyncio.create_task(self._reader_loop(), name="crawler-reader")
         for callback in list(self._on_connect):
             try:
                 await callback()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 _log.exception("crawler on_connect callback failed")
 
     async def _reader_loop(self) -> None:
@@ -202,7 +204,11 @@ class CrawlerClient:
                 if not isinstance(payload, dict):
                     continue
                 self._dispatch(payload)
-            elif msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING):
+            elif msg.type in (
+                aiohttp.WSMsgType.CLOSE,
+                aiohttp.WSMsgType.CLOSED,
+                aiohttp.WSMsgType.CLOSING,
+            ):
                 break
             elif msg.type == aiohttp.WSMsgType.ERROR:
                 _log.warning("crawler WS error: %s", ws.exception())
@@ -223,10 +229,12 @@ class CrawlerClient:
             _log.debug("ignoring unsolicited crawler message of type %r", type_)
             return
         for handler in handlers:
-            asyncio.create_task(self._safe_push(handler, payload), name=f"push-{type_}")
+            task = asyncio.create_task(self._safe_push(handler, payload), name=f"push-{type_}")
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
     async def _safe_push(self, handler: PushHandler, payload: dict[str, Any]) -> None:
         try:
             await handler(payload)
-        except Exception:  # noqa: BLE001
+        except Exception:
             _log.exception("push handler raised; continuing")

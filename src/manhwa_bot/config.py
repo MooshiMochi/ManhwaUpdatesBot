@@ -183,21 +183,59 @@ def load_config(
 
     bot = BotConfig(
         owner_ids=tuple(_ints(bot_section.get("owner_ids", []))),
-        log_level=str(_env_override("MANHWABOT_BOT_LOG_LEVEL", bot_section.get("log_level", "INFO"))),
-        dev_guild_id=int(_env_override("MANHWABOT_BOT_DEV_GUILD_ID", bot_section.get("dev_guild_id", 0))),
+        log_level=str(
+            _env_override("MANHWABOT_BOT_LOG_LEVEL", bot_section.get("log_level", "INFO"))
+        ),
+        dev_guild_id=int(
+            _env_override("MANHWABOT_BOT_DEV_GUILD_ID", bot_section.get("dev_guild_id", 0))
+        ),
     )
 
     crawler_api_key = os.environ.get("CRAWLER_API_KEY", "").strip()
     if not crawler_api_key:
         raise ConfigError("CRAWLER_API_KEY is required (set in .env)")
     crawler = CrawlerConfig(
-        ws_url=str(_env_override("MANHWABOT_CRAWLER_WS_URL", crawler_section.get("ws_url", "ws://127.0.0.1:8000/ws"))),
-        http_base_url=str(_env_override("MANHWABOT_CRAWLER_HTTP_BASE_URL", crawler_section.get("http_base_url", "http://127.0.0.1:8000"))),
-        request_timeout_seconds=float(_env_override("MANHWABOT_CRAWLER_REQUEST_TIMEOUT", crawler_section.get("request_timeout_seconds", 30.0))),
-        reconnect_initial_delay_seconds=float(_env_override("MANHWABOT_CRAWLER_RECONNECT_INITIAL_DELAY", crawler_section.get("reconnect_initial_delay_seconds", 1.0))),
-        reconnect_max_delay_seconds=float(_env_override("MANHWABOT_CRAWLER_RECONNECT_MAX_DELAY", crawler_section.get("reconnect_max_delay_seconds", 60.0))),
-        reconnect_jitter_seconds=float(_env_override("MANHWABOT_CRAWLER_RECONNECT_JITTER", crawler_section.get("reconnect_jitter_seconds", 1.5))),
-        consumer_key=str(_env_override("MANHWABOT_CRAWLER_CONSUMER_KEY", crawler_section.get("consumer_key", "manhwa-bot-default"))),
+        ws_url=str(
+            _env_override(
+                "MANHWABOT_CRAWLER_WS_URL", crawler_section.get("ws_url", "ws://127.0.0.1:8000/ws")
+            )
+        ),
+        http_base_url=str(
+            _env_override(
+                "MANHWABOT_CRAWLER_HTTP_BASE_URL",
+                crawler_section.get("http_base_url", "http://127.0.0.1:8000"),
+            )
+        ),
+        request_timeout_seconds=float(
+            _env_override(
+                "MANHWABOT_CRAWLER_REQUEST_TIMEOUT",
+                crawler_section.get("request_timeout_seconds", 30.0),
+            )
+        ),
+        reconnect_initial_delay_seconds=float(
+            _env_override(
+                "MANHWABOT_CRAWLER_RECONNECT_INITIAL_DELAY",
+                crawler_section.get("reconnect_initial_delay_seconds", 1.0),
+            )
+        ),
+        reconnect_max_delay_seconds=float(
+            _env_override(
+                "MANHWABOT_CRAWLER_RECONNECT_MAX_DELAY",
+                crawler_section.get("reconnect_max_delay_seconds", 60.0),
+            )
+        ),
+        reconnect_jitter_seconds=float(
+            _env_override(
+                "MANHWABOT_CRAWLER_RECONNECT_JITTER",
+                crawler_section.get("reconnect_jitter_seconds", 1.5),
+            )
+        ),
+        consumer_key=str(
+            _env_override(
+                "MANHWABOT_CRAWLER_CONSUMER_KEY",
+                crawler_section.get("consumer_key", "manhwa-bot-default"),
+            )
+        ),
         api_key=crawler_api_key,
     )
 
@@ -231,7 +269,9 @@ def load_config(
     notifications = NotificationsConfig(
         fanout_concurrency=int(notifications_section.get("fanout_concurrency", 8)),
         dm_fanout_concurrency=int(notifications_section.get("dm_fanout_concurrency", 4)),
-        respect_paid_chapter_setting=bool(notifications_section.get("respect_paid_chapter_setting", True)),
+        respect_paid_chapter_setting=bool(
+            notifications_section.get("respect_paid_chapter_setting", True)
+        ),
     )
     websites_cache = SupportedWebsitesCacheConfig(
         ttl_seconds=int(websites_cache_section.get("ttl_seconds", 3600)),
