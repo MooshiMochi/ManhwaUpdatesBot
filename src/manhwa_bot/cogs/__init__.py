@@ -3,4 +3,5 @@
 COGS: list[str] = [
     "manhwa_bot.cogs.catalog",
     "manhwa_bot.cogs.tracking",
+    "manhwa_bot.cogs.subscriptions",
 ]
