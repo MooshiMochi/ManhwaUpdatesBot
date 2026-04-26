@@ -8,4 +8,5 @@ COGS: list[str] = [
     "manhwa_bot.cogs.settings",
     "manhwa_bot.cogs.updates",
     "manhwa_bot.cogs.general",
+    "manhwa_bot.cogs.dev",
 ]

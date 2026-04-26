@@ -135,3 +135,10 @@ class GuildSettingsStore:
             "SELECT * FROM guild_scanlator_channels WHERE guild_id = ?", (guild_id,)
         )
         return [dict(r) for r in rows]
+
+    async def list_with_system_alerts(self) -> list[GuildSettings]:
+        """Return guild settings rows that have a system-alerts channel configured."""
+        rows = await self._pool.fetchall(
+            "SELECT * FROM guild_settings WHERE system_alerts_channel_id IS NOT NULL"
+        )
+        return [_row_to_settings(r) for r in rows]
