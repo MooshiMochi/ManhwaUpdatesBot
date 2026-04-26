@@ -122,14 +122,16 @@ async def supported_website_keys(
 
         async def _loader() -> list[str]:
             data = await bot.crawler.request("supported_websites")
-            return [w.get("key") or w.get("website_key") for w in data.get("websites", []) if w.get("key") or w.get("website_key")]
+            return [
+                w.get("key") or w.get("website_key")
+                for w in data.get("websites", [])
+                if w.get("key") or w.get("website_key")
+            ]
 
         keys: list[str] = await bot.websites_cache.get_or_set("websites", _loader, ttl)
         lower = current.lower()
         choices = [
-            app_commands.Choice(name=k, value=k)
-            for k in keys
-            if not lower or lower in k.lower()
+            app_commands.Choice(name=k, value=k) for k in keys if not lower or lower in k.lower()
         ]
         return choices[:25]
     except Exception:

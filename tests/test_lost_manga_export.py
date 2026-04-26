@@ -80,9 +80,7 @@ def test_lost_entries_bookmark() -> None:
                 bot = _make_bot(pool, supported_keys=["alive"])
                 entries = await _get_lost_entries(bot)
 
-                assert any(
-                    e["website_key"] == "dead" and e["kind"] == "bookmark" for e in entries
-                )
+                assert any(e["website_key"] == "dead" and e["kind"] == "bookmark" for e in entries)
             finally:
                 await pool.close()
 
