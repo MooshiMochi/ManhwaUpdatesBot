@@ -20,20 +20,26 @@ def series_info_embed(data: dict, *, request_id: str) -> discord.Embed:
     description = synopsis[:_SYNOPSIS_MAX] if synopsis else "*No synopsis available.*"
 
     colour = _status_colour(status)
-    embed = discord.Embed(title=title, description=description, colour=colour, url=series_url or None)
+    embed = discord.Embed(
+        title=title, description=description, colour=colour, url=series_url or None
+    )
 
     if status:
         embed.add_field(name="Status", value=status, inline=True)
 
     genres: list = data.get("genres") or []
     if genres:
-        embed.add_field(name="Genres", value=", ".join(str(g) for g in genres)[:_FIELD_MAX], inline=True)
+        embed.add_field(
+            name="Genres", value=", ".join(str(g) for g in genres)[:_FIELD_MAX], inline=True
+        )
 
     authors: list = data.get("authors") or data.get("author") or []
     if isinstance(authors, str):
         authors = [authors]
     if authors:
-        embed.add_field(name="Authors", value=", ".join(str(a) for a in authors)[:_FIELD_MAX], inline=True)
+        embed.add_field(
+            name="Authors", value=", ".join(str(a) for a in authors)[:_FIELD_MAX], inline=True
+        )
 
     if cover_url:
         embed.set_thumbnail(url=cover_url)
@@ -55,7 +61,9 @@ def chapter_list_embeds(
 ) -> list[discord.Embed]:
     """Split a chapter list into paginated embeds of *page_size* rows each."""
     if not chapters:
-        embed = discord.Embed(title=title, description="No chapters found.", colour=discord.Colour.greyple())
+        embed = discord.Embed(
+            title=title, description="No chapters found.", colour=discord.Colour.greyple()
+        )
         return [embed]
 
     pages: list[discord.Embed] = []
@@ -137,7 +145,13 @@ def failed_websites_field(failed: list[str]) -> tuple[str, str] | None:
 def supported_websites_embeds(websites: list[dict], *, page_size: int = 20) -> list[discord.Embed]:
     """Render the supported websites list as paginated embeds."""
     if not websites:
-        return [discord.Embed(title="Supported websites", description="None available.", colour=discord.Colour.greyple())]
+        return [
+            discord.Embed(
+                title="Supported websites",
+                description="None available.",
+                colour=discord.Colour.greyple(),
+            )
+        ]
 
     pages: list[discord.Embed] = []
     total = len(websites)
@@ -162,6 +176,37 @@ def supported_websites_embeds(websites: list[dict], *, page_size: int = 20) -> l
         pages.append(embed)
 
     return pages
+
+
+def chapter_update_embed(payload: dict) -> discord.Embed:
+    """Embed for a single new-chapter notification, used by the updates cog."""
+    series_title = payload.get("series_title") or payload.get("url_name") or "New chapter"
+    series_url = payload.get("series_url") or None
+    chapter = payload.get("chapter") or {}
+    chapter_name = chapter.get("name") or f"Chapter {chapter.get('index', '?')}"
+    chapter_url = chapter.get("url") or series_url or ""
+    is_premium = bool(chapter.get("is_premium"))
+
+    suffix = " (premium)" if is_premium else ""
+    if chapter_url:
+        description = f"New chapter: [{chapter_name}{suffix}]({chapter_url})"
+    else:
+        description = f"New chapter: {chapter_name}{suffix}"
+
+    colour = discord.Colour.gold() if is_premium else discord.Colour.green()
+    embed = discord.Embed(
+        title=f"📖 {series_title}",
+        description=description,
+        url=series_url,
+        colour=colour,
+    )
+    cover = payload.get("cover_url")
+    if cover:
+        embed.set_thumbnail(url=cover)
+    website_key = payload.get("website_key")
+    if website_key:
+        embed.set_footer(text=str(website_key))
+    return embed
 
 
 def _status_colour(status: str) -> discord.Colour:
