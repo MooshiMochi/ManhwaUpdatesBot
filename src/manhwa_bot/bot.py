@@ -88,7 +88,9 @@ class ManhwaBot(commands.Bot):
         _log.info("DB migrations applied")
 
         self.grants = GrantsService(PremiumGrantStore(self.db))
-        self.patreon = PatreonClient(self.config.premium.patreon, PatreonLinkStore(self.db))
+        self.patreon = PatreonClient(
+            self.config.premium.patreon, PatreonLinkStore(self.db)
+        )
         self.discord_ents = DiscordEntitlementsService(self.config.premium.discord)
         self.premium = PremiumService(
             self,
@@ -99,9 +101,15 @@ class ManhwaBot(commands.Bot):
         )
         await self.grants.start()
         await self.patreon.start()
-        self.add_listener(self.discord_ents.on_entitlement_create, "on_entitlement_create")
-        self.add_listener(self.discord_ents.on_entitlement_update, "on_entitlement_update")
-        self.add_listener(self.discord_ents.on_entitlement_delete, "on_entitlement_delete")
+        self.add_listener(
+            self.discord_ents.on_entitlement_create, "on_entitlement_create"
+        )
+        self.add_listener(
+            self.discord_ents.on_entitlement_update, "on_entitlement_update"
+        )
+        self.add_listener(
+            self.discord_ents.on_entitlement_delete, "on_entitlement_delete"
+        )
 
         self.tree.on_error = self._on_app_command_error  # type: ignore[assignment]
         self.add_listener(self._on_command_error, "on_command_error")
@@ -141,14 +149,21 @@ class ManhwaBot(commands.Bot):
         interaction: discord.Interaction,
         error: app_commands.AppCommandError,
     ) -> None:
-        if isinstance(error, app_commands.CheckFailure) and str(error) == PREMIUM_REQUIRED:
+        if (
+            isinstance(error, app_commands.CheckFailure)
+            and str(error) == PREMIUM_REQUIRED
+        ):
             embed = build_upgrade_embed(self.config.premium)
             view = build_upgrade_view(self.config.premium)
             try:
                 if interaction.response.is_done():
-                    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+                    await interaction.followup.send(
+                        embed=embed, view=view, ephemeral=True
+                    )
                 else:
-                    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+                    await interaction.response.send_message(
+                        embed=embed, view=view, ephemeral=True
+                    )
             except discord.HTTPException:
                 _log.exception("Failed to send premium upgrade embed")
             return

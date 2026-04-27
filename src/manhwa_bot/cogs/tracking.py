@@ -40,7 +40,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
         name="track",
         description="Manage tracked manga",
         guild_only=True,
-        default_member_permissions=discord.Permissions(manage_roles=True),
+        default_permissions=discord.Permissions(manage_roles=True),
     )
 
     # -- /track new ---------------------------------------------------------
