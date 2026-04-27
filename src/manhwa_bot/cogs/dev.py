@@ -340,7 +340,7 @@ class DevCog(commands.Cog, name="Dev"):
             return
         try:
             src = inspect.getsource(obj.callback)
-        except OSError, TypeError:
+        except (OSError, TypeError):
             await ctx.send("Could not load source.")
             return
         if len(src) > _DISCORD_LIMIT:

@@ -143,19 +143,30 @@ async def track_new_url_or_search(
     interaction: discord.Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    """When typing a URL, returns the URL itself; otherwise live-searches the crawler.
+    """Autocomplete for /track new.
 
-    Choice value format for search results: ``"{website_key}|{series_url}"``.
+    Order of detection (no backend call when shape matches):
+      1. Empty input → ``[]``.
+      2. Bare URL (``http(s)://...``) → return as-is.
+      3. ``website_key|https://...`` shape → return as-is.
+      4. Otherwise → query the crawler's local-DB ``autocomplete`` op (no live scrape).
+
+    Choice value format for autocomplete suggestions: ``"{website_key}|{series_url}"``.
     """
     if not current:
         return []
     try:
-        # If it looks like a URL, offer it as-is.
         if current.startswith("http://") or current.startswith("https://"):
             return [app_commands.Choice(name=current[:100], value=current[:100])]
 
+        if "|" in current:
+            _, _, after_pipe = current.partition("|")
+            after_pipe = after_pipe.strip()
+            if after_pipe.startswith("http://") or after_pipe.startswith("https://"):
+                return [app_commands.Choice(name=current[:100], value=current[:100])]
+
         bot: Any = interaction.client
-        data = await bot.crawler.request("search", query=current, limit=10)
+        data = await bot.crawler.request("autocomplete", query=current, limit=10)
         results: list[dict] = data.get("results") or []
         choices: list[app_commands.Choice[str]] = []
         for r in results:

@@ -76,7 +76,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 data = await self.bot.crawler.request(  # type: ignore[attr-defined]
                     "info", website_key=website_key, url=url_name
                 )
-            except CrawlerError, RequestTimeout, Disconnected:
+            except (CrawlerError, RequestTimeout, Disconnected):
                 return None
             series_url = data.get("series_url") or url_name
             return (website_key, url_name, series_url)
@@ -87,7 +87,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 data = await self.bot.crawler.request(  # type: ignore[attr-defined]
                     "info", url=manga_url_or_id
                 )
-            except CrawlerError, RequestTimeout, Disconnected:
+            except (CrawlerError, RequestTimeout, Disconnected):
                 return None
             wk = data.get("website_key")
             un = data.get("url_name")

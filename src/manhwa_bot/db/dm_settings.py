@@ -13,6 +13,7 @@ class DmSettings:
     user_id: int
     notifications_enabled: bool
     paid_chapter_notifs: bool
+    show_update_buttons: bool
     updated_at: str
 
 
@@ -21,6 +22,7 @@ def _row_to_dm_settings(row: Any) -> DmSettings:
         user_id=row["user_id"],
         notifications_enabled=bool(row["notifications_enabled"]),
         paid_chapter_notifs=bool(row["paid_chapter_notifs"]),
+        show_update_buttons=bool(row["show_update_buttons"]),
         updated_at=row["updated_at"],
     )
 
@@ -36,17 +38,20 @@ class DmSettingsStore:
     async def upsert(self, settings: DmSettings) -> None:
         await self._pool.execute(
             """
-            INSERT INTO dm_settings (user_id, notifications_enabled, paid_chapter_notifs)
-            VALUES (?, ?, ?)
+            INSERT INTO dm_settings
+              (user_id, notifications_enabled, paid_chapter_notifs, show_update_buttons)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
               notifications_enabled = excluded.notifications_enabled,
               paid_chapter_notifs   = excluded.paid_chapter_notifs,
+              show_update_buttons   = excluded.show_update_buttons,
               updated_at            = CURRENT_TIMESTAMP
             """,
             (
                 settings.user_id,
                 int(settings.notifications_enabled),
                 int(settings.paid_chapter_notifs),
+                int(settings.show_update_buttons),
             ),
         )
 
@@ -69,6 +74,18 @@ class DmSettingsStore:
             VALUES (?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
               paid_chapter_notifs = excluded.paid_chapter_notifs,
+              updated_at          = CURRENT_TIMESTAMP
+            """,
+            (user_id, int(enabled)),
+        )
+
+    async def set_show_update_buttons(self, user_id: int, enabled: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO dm_settings (user_id, show_update_buttons)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+              show_update_buttons = excluded.show_update_buttons,
               updated_at          = CURRENT_TIMESTAMP
             """,
             (user_id, int(enabled)),

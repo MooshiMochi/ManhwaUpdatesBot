@@ -1,4 +1,11 @@
-"""SettingsView — ephemeral guild config UI for /settings."""
+"""SettingsView — ephemeral guild config UI for /settings.
+
+Layout matches the v1 bot's main-menu pattern:
+  Row 0  — Select: pick which setting to edit (8 options).
+  Row 1  — Dynamic component (ChannelSelect / RoleSelect / Boolean Select)
+           swapped based on row 0 selection.
+  Row 2  — Per-Scanlator Channels button + DM toggles button (premium only when in DMs).
+"""
 
 from __future__ import annotations
 
@@ -7,6 +14,7 @@ from typing import Any
 
 import discord
 
+from ..db.dm_settings import DmSettingsStore
 from ..db.guild_settings import GuildSettings, GuildSettingsStore
 
 _log = logging.getLogger(__name__)
@@ -64,12 +72,28 @@ def _collect_warnings(
             if missing:
                 warnings.append(f"❌ Missing permissions in {ch.mention}: `{', '.join(missing)}`")
 
-    if settings.default_ping_role_id:
-        role = guild.get_role(settings.default_ping_role_id)
+    for attr, label in (
+        ("default_ping_role_id", "Default ping role"),
+        ("bot_manager_role_id", "Bot manager role"),
+    ):
+        role_id = getattr(settings, attr)
+        if not role_id:
+            continue
+        role = guild.get_role(role_id)
         if role is None:
-            warnings.append("⚠️ Default ping role not found — it may have been deleted.")
+            warnings.append(f"⚠️ {label} not found — it may have been deleted.")
+        elif role.managed:
+            warnings.append(f"⚠️ {label} is bot-managed and cannot be assigned by this bot.")
+        elif role >= me.top_role:
+            warnings.append(
+                f"⚠️ {label} is higher than the bot's top role — the bot can't assign it."
+            )
 
     return warnings
+
+
+def _bool_emoji(value: bool) -> str:
+    return "✅" if value else "❌"
 
 
 def _build_settings_embed(
@@ -92,7 +116,14 @@ def _build_settings_embed(
         if settings and settings.default_ping_role_id
         else "Not set"
     )
-    paid = "✅" if settings and settings.paid_chapter_notifs else "❌"
+    manager_role = (
+        f"<@&{settings.bot_manager_role_id}>"
+        if settings and settings.bot_manager_role_id
+        else "Not set"
+    )
+    auto_create = _bool_emoji(bool(settings and settings.auto_create_role))
+    show_buttons = _bool_emoji(bool(settings and settings.show_update_buttons))
+    paid = _bool_emoji(bool(settings and settings.paid_chapter_notifs))
 
     override_lines = [
         f"• **{r['website_key']}** → <#{r['channel_id']}>" for r in scanlator_overrides
@@ -103,11 +134,17 @@ def _build_settings_embed(
         f"**#️⃣ Notifications Channel:** {notif_ch}\n"
         f"​ ​ ​ **^** `Chapter update notifications are sent here.`\n"
         f"**❗ System Alerts Channel:** {alerts_ch}\n"
-        f"​ ​ ​ **^** `Critical system alerts are sent here.`\n"
+        f"​ ​ ​ **^** `Critical bot alerts are sent here.`\n"
         f"**🔔 Default Ping Role:** {ping_role}\n"
-        f"​ ​ ​ **^** `This role is pinged for chapter updates.`\n"
+        f"​ ​ ​ **^** `Pinged for chapter updates when a tracked manga has no role of its own.`\n"
+        f"**🛡️ Bot Manager Role:** {manager_role}\n"
+        f"​ ​ ​ **^** `Members with this role can use admin commands without Manage Server.`\n"
+        f"**🪄 Auto-Create Role:** {auto_create}\n"
+        f"​ ​ ​ **^** `Automatically create a role when /track new is used without a ping_role.`\n"
+        f"**🔘 Show Update Buttons:** {show_buttons}\n"
+        f"​ ​ ​ **^** `Show 'Mark Read' buttons on chapter update notifications.`\n"
         f"**💰 Paid Chapter Notifs:** {paid}\n"
-        f"​ ​ ​ **^** `Toggle with the button below.`\n"
+        f"​ ​ ​ **^** `Notify subscribers about premium / locked chapters.`\n"
         f"**🗨️ Per-Scanlator Channels:**\n{overrides_text}"
     )
 
@@ -118,15 +155,84 @@ def _build_settings_embed(
     return embed
 
 
-class SettingsView(discord.ui.View):
-    """Main ephemeral settings view.
+# Main-menu setting keys. Used both as the Select option `value`s and as a switch
+# in `_apply_main_select` to determine which dynamic component to render in row 1.
+_SETTING_NOTIFICATIONS_CHANNEL = "notifications_channel"
+_SETTING_SYSTEM_ALERTS_CHANNEL = "system_alerts_channel"
+_SETTING_DEFAULT_PING_ROLE = "default_ping_role"
+_SETTING_BOT_MANAGER_ROLE = "bot_manager_role"
+_SETTING_AUTO_CREATE_ROLE = "auto_create_role"
+_SETTING_SHOW_UPDATE_BUTTONS = "show_update_buttons"
+_SETTING_PAID_CHAPTER_NOTIFS = "paid_chapter_notifs"
+_SETTING_SCANLATOR_CHANNELS = "scanlator_channels"
 
-    Layout (4 active rows):
-      Row 0 — ChannelSelect: notifications channel
-      Row 1 — ChannelSelect: system alerts channel
-      Row 2 — RoleSelect:    default ping role
-      Row 3 — Button: toggle paid chapters  |  Button: open scanlator sub-view
-    """
+_BOOL_SETTINGS = frozenset(
+    {
+        _SETTING_AUTO_CREATE_ROLE,
+        _SETTING_SHOW_UPDATE_BUTTONS,
+        _SETTING_PAID_CHAPTER_NOTIFS,
+    }
+)
+_CHANNEL_SETTINGS = frozenset(
+    {_SETTING_NOTIFICATIONS_CHANNEL, _SETTING_SYSTEM_ALERTS_CHANNEL}
+)
+_ROLE_SETTINGS = frozenset({_SETTING_DEFAULT_PING_ROLE, _SETTING_BOT_MANAGER_ROLE})
+
+
+_MAIN_OPTIONS: list[discord.SelectOption] = [
+    discord.SelectOption(
+        label="Notifications Channel",
+        value=_SETTING_NOTIFICATIONS_CHANNEL,
+        emoji="#️⃣",
+        description="Where chapter update notifications are sent.",
+    ),
+    discord.SelectOption(
+        label="System Alerts Channel",
+        value=_SETTING_SYSTEM_ALERTS_CHANNEL,
+        emoji="❗",
+        description="Where critical bot alerts are sent.",
+    ),
+    discord.SelectOption(
+        label="Default Ping Role",
+        value=_SETTING_DEFAULT_PING_ROLE,
+        emoji="🔔",
+        description="Pinged for tracked manga without their own role.",
+    ),
+    discord.SelectOption(
+        label="Bot Manager Role",
+        value=_SETTING_BOT_MANAGER_ROLE,
+        emoji="🛡️",
+        description="Members with this role can use admin commands.",
+    ),
+    discord.SelectOption(
+        label="Auto-Create Role",
+        value=_SETTING_AUTO_CREATE_ROLE,
+        emoji="🪄",
+        description="Auto-create a role for each tracked manga.",
+    ),
+    discord.SelectOption(
+        label="Show Update Buttons",
+        value=_SETTING_SHOW_UPDATE_BUTTONS,
+        emoji="🔘",
+        description="Show 'Mark Read' buttons on update notifications.",
+    ),
+    discord.SelectOption(
+        label="Paid Chapter Notifs",
+        value=_SETTING_PAID_CHAPTER_NOTIFS,
+        emoji="💰",
+        description="Send notifications for paid / locked chapters.",
+    ),
+    discord.SelectOption(
+        label="Per-Scanlator Channels",
+        value=_SETTING_SCANLATOR_CHANNELS,
+        emoji="🗨️",
+        description="Route specific websites to dedicated channels.",
+    ),
+]
+
+
+class SettingsView(discord.ui.View):
+    """Main ephemeral settings view with v1-style menu navigation."""
 
     def __init__(
         self,
@@ -141,23 +247,42 @@ class SettingsView(discord.ui.View):
         self._store = GuildSettingsStore(bot.db)
         self._settings = settings
         self._scanlator_overrides = scanlator_overrides
-        self._sync_paid_button()
+        self._selected_setting: str | None = None
 
-    def _sync_paid_button(self) -> None:
-        paid = self._settings.paid_chapter_notifs if self._settings else False
-        for item in self.children:
-            if isinstance(item, discord.ui.Button) and item.custom_id == "toggle_paid_notifs":
-                item.label = f"💰 Paid Chapters: {'✅' if paid else '❌'}"
-                break
+        self._main_select: discord.ui.Select = discord.ui.Select(
+            placeholder="Pick a setting to edit…",
+            options=_MAIN_OPTIONS,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+        self._main_select.callback = self._on_main_select
+        self.add_item(self._main_select)
+
+        self._dynamic_item: discord.ui.Item[Any] | None = None
+
+        self._scanlator_btn = discord.ui.Button(
+            label="🗨️ Per-Scanlator Channels…",
+            style=discord.ButtonStyle.primary,
+            row=2,
+        )
+        self._scanlator_btn.callback = self._open_scanlator_channels
+        self.add_item(self._scanlator_btn)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
             return False
         member = interaction.guild.get_member(interaction.user.id)
-        if member and member.guild_permissions.manage_guild:
+        if member is None:
+            return False
+        if member.guild_permissions.manage_guild:
+            return True
+        manager_role_id = self._settings.bot_manager_role_id if self._settings else None
+        if manager_role_id and any(r.id == manager_role_id for r in member.roles):
             return True
         await interaction.response.send_message(
-            "You need the **Manage Guild** permission to use this.", ephemeral=True
+            "You need the **Manage Server** permission (or the bot manager role) to use this.",
+            ephemeral=True,
         )
         return False
 
@@ -167,66 +292,146 @@ class SettingsView(discord.ui.View):
         guild = interaction.guild
         me = guild.me if guild else None
         warnings = _collect_warnings(self._settings, guild, me) if guild and me else []
-        self._sync_paid_button()
         embed = _build_settings_embed(self._settings, self._scanlator_overrides, warnings)
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.select(
-        cls=discord.ui.ChannelSelect,
-        channel_types=[discord.ChannelType.text],
-        placeholder="📢 Notifications channel…",
-        row=0,
-    )
-    async def _notifications_channel(
-        self, interaction: discord.Interaction, select: discord.ui.ChannelSelect
-    ) -> None:
-        await self._store.set_notifications_channel(self._guild_id, select.values[0].id)
+    def _set_dynamic(self, item: discord.ui.Item[Any] | None) -> None:
+        if self._dynamic_item is not None:
+            try:
+                self.remove_item(self._dynamic_item)
+            except ValueError:
+                pass
+        self._dynamic_item = item
+        if item is not None:
+            self.add_item(item)
+
+    async def _on_main_select(self, interaction: discord.Interaction) -> None:
+        value = self._main_select.values[0]
+        self._selected_setting = value
+
+        if value in _CHANNEL_SETTINGS:
+            placeholder = (
+                "📢 Pick the notifications channel…"
+                if value == _SETTING_NOTIFICATIONS_CHANNEL
+                else "❗ Pick the system alerts channel…"
+            )
+            ch_select = discord.ui.ChannelSelect(
+                placeholder=placeholder,
+                channel_types=[discord.ChannelType.text],
+                row=1,
+            )
+            ch_select.callback = self._on_channel_picked
+            self._set_dynamic(ch_select)
+        elif value in _ROLE_SETTINGS:
+            placeholder = (
+                "🔔 Pick the default ping role…"
+                if value == _SETTING_DEFAULT_PING_ROLE
+                else "🛡️ Pick the bot manager role…"
+            )
+            role_select = discord.ui.RoleSelect(placeholder=placeholder, row=1)
+            role_select.callback = self._on_role_picked
+            self._set_dynamic(role_select)
+        elif value in _BOOL_SETTINGS:
+            current = self._read_bool(value)
+            bool_select = discord.ui.Select(
+                placeholder="Choose: enable or disable",
+                options=[
+                    discord.SelectOption(
+                        label="Enabled",
+                        value="1",
+                        emoji="✅",
+                        default=current,
+                    ),
+                    discord.SelectOption(
+                        label="Disabled",
+                        value="0",
+                        emoji="❌",
+                        default=not current,
+                    ),
+                ],
+                min_values=1,
+                max_values=1,
+                row=1,
+            )
+            bool_select.callback = self._on_bool_picked
+            self._set_dynamic(bool_select)
+        elif value == _SETTING_SCANLATOR_CHANNELS:
+            await self._open_scanlator_channels(interaction)
+            return
+        else:
+            self._set_dynamic(None)
+
+        guild = interaction.guild
+        me = guild.me if guild else None
+        warnings = _collect_warnings(self._settings, guild, me) if guild and me else []
+        embed = _build_settings_embed(self._settings, self._scanlator_overrides, warnings)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    def _read_bool(self, setting: str) -> bool:
+        if self._settings is None:
+            return setting == _SETTING_SHOW_UPDATE_BUTTONS  # default-on for buttons
+        if setting == _SETTING_AUTO_CREATE_ROLE:
+            return self._settings.auto_create_role
+        if setting == _SETTING_SHOW_UPDATE_BUTTONS:
+            return self._settings.show_update_buttons
+        if setting == _SETTING_PAID_CHAPTER_NOTIFS:
+            return self._settings.paid_chapter_notifs
+        return False
+
+    async def _on_channel_picked(self, interaction: discord.Interaction) -> None:
+        item = self._dynamic_item
+        if not isinstance(item, discord.ui.ChannelSelect):
+            await interaction.response.defer()
+            return
+        channel = item.values[0]
+        if self._selected_setting == _SETTING_NOTIFICATIONS_CHANNEL:
+            await self._store.set_notifications_channel(self._guild_id, channel.id)
+        elif self._selected_setting == _SETTING_SYSTEM_ALERTS_CHANNEL:
+            await self._store.set_system_alerts_channel(self._guild_id, channel.id)
         await self._refresh(interaction)
 
-    @discord.ui.select(
-        cls=discord.ui.ChannelSelect,
-        channel_types=[discord.ChannelType.text],
-        placeholder="❗ System alerts channel…",
-        row=1,
-    )
-    async def _system_alerts_channel(
-        self, interaction: discord.Interaction, select: discord.ui.ChannelSelect
-    ) -> None:
-        await self._store.set_system_alerts_channel(self._guild_id, select.values[0].id)
+    async def _on_role_picked(self, interaction: discord.Interaction) -> None:
+        item = self._dynamic_item
+        if not isinstance(item, discord.ui.RoleSelect):
+            await interaction.response.defer()
+            return
+        role = item.values[0]
+        guild = interaction.guild
+        me = guild.me if guild else None
+        if me is not None:
+            if role.managed:
+                await interaction.response.send_message(
+                    f"❌ `{role.name}` is bot-managed and can't be assigned by this bot.",
+                    ephemeral=True,
+                )
+                return
+            if role >= me.top_role:
+                await interaction.response.send_message(
+                    f"❌ `{role.name}` is higher than the bot's top role; pick a lower role.",
+                    ephemeral=True,
+                )
+                return
+        if self._selected_setting == _SETTING_DEFAULT_PING_ROLE:
+            await self._store.set_default_ping_role(self._guild_id, role.id)
+        elif self._selected_setting == _SETTING_BOT_MANAGER_ROLE:
+            await self._store.set_bot_manager_role(self._guild_id, role.id)
         await self._refresh(interaction)
 
-    @discord.ui.select(
-        cls=discord.ui.RoleSelect,
-        placeholder="🔔 Default ping role…",
-        row=2,
-    )
-    async def _default_ping_role(
-        self, interaction: discord.Interaction, select: discord.ui.RoleSelect
-    ) -> None:
-        await self._store.set_default_ping_role(self._guild_id, select.values[0].id)
+    async def _on_bool_picked(self, interaction: discord.Interaction) -> None:
+        item = self._dynamic_item
+        if not isinstance(item, discord.ui.Select):
+            await interaction.response.defer()
+            return
+        enabled = item.values[0] == "1"
+        if self._selected_setting == _SETTING_AUTO_CREATE_ROLE:
+            await self._store.set_auto_create_role(self._guild_id, enabled)
+        elif self._selected_setting == _SETTING_SHOW_UPDATE_BUTTONS:
+            await self._store.set_show_update_buttons(self._guild_id, enabled)
+        elif self._selected_setting == _SETTING_PAID_CHAPTER_NOTIFS:
+            await self._store.set_paid_chapter_notifs(self._guild_id, enabled)
         await self._refresh(interaction)
 
-    @discord.ui.button(
-        label="💰 Paid Chapters: ❌",
-        style=discord.ButtonStyle.secondary,
-        custom_id="toggle_paid_notifs",
-        row=3,
-    )
-    async def _toggle_paid(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
-        current = self._settings.paid_chapter_notifs if self._settings else False
-        await self._store.set_paid_chapter_notifs(self._guild_id, not current)
-        await self._refresh(interaction)
-
-    @discord.ui.button(
-        label="🗨️ Per-Scanlator Channels…",
-        style=discord.ButtonStyle.primary,
-        row=3,
-    )
-    async def _open_scanlator_channels(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _open_scanlator_channels(self, interaction: discord.Interaction) -> None:
         overrides = await self._store.list_scanlator_channels(self._guild_id)
         view = ScanlatorChannelsView(self._bot, self._guild_id, overrides, parent=self)
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
@@ -318,7 +523,7 @@ class ScanlatorChannelsView(discord.ui.View):
         if member and member.guild_permissions.manage_guild:
             return True
         await interaction.response.send_message(
-            "You need the **Manage Guild** permission to use this.", ephemeral=True
+            "You need the **Manage Server** permission to use this.", ephemeral=True
         )
         return False
 
@@ -364,7 +569,6 @@ class ScanlatorChannelsView(discord.ui.View):
         guild = interaction.guild
         me = guild.me if guild else None
         warnings = _collect_warnings(parent._settings, guild, me) if guild and me else []
-        parent._sync_paid_button()
         embed = _build_settings_embed(parent._settings, parent._scanlator_overrides, warnings)
         await interaction.response.edit_message(embed=embed, view=parent)
 
@@ -435,7 +639,7 @@ class ScanlatorAddView(discord.ui.View):
         if member and member.guild_permissions.manage_guild:
             return True
         await interaction.response.send_message(
-            "You need the **Manage Guild** permission to use this.", ephemeral=True
+            "You need the **Manage Server** permission to use this.", ephemeral=True
         )
         return False
 
@@ -463,3 +667,108 @@ class ScanlatorAddView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
         await interaction.response.edit_message(embed=self._parent.build_embed(), view=self._parent)
+
+
+# -- DM settings ----------------------------------------------------------------
+
+
+def _build_dm_settings_embed(
+    paid_chapter_notifs: bool,
+    show_update_buttons: bool,
+    notifications_enabled: bool,
+) -> discord.Embed:
+    desc = (
+        f"**🔔 DM Notifications:** {_bool_emoji(notifications_enabled)}\n"
+        f"​ ​ ​ **^** `Receive personal chapter update DMs from the bot.`\n"
+        f"**🔘 Show Update Buttons:** {_bool_emoji(show_update_buttons)}\n"
+        f"​ ​ ​ **^** `Show 'Mark Read' buttons on chapter updates in DMs.`\n"
+        f"**💰 Paid Chapter Notifs:** {_bool_emoji(paid_chapter_notifs)}\n"
+        f"​ ​ ​ **^** `Notify me about premium / locked chapters.`\n"
+    )
+    return discord.Embed(
+        title="DM Settings",
+        description=desc,
+        colour=discord.Colour.blurple(),
+    )
+
+
+class DmSettingsView(discord.ui.View):
+    """Personal DM-context settings view (premium-only)."""
+
+    def __init__(self, bot: Any, user_id: int) -> None:
+        super().__init__(timeout=2 * 24 * 60 * 60)
+        self._bot = bot
+        self._user_id = user_id
+        self._store = DmSettingsStore(bot.db)
+        self._notifications_enabled = True
+        self._paid_chapter_notifs = True
+        self._show_update_buttons = True
+        self._sync_button_labels()
+
+    async def initialize(self) -> None:
+        record = await self._store.get(self._user_id)
+        if record is not None:
+            self._notifications_enabled = record.notifications_enabled
+            self._paid_chapter_notifs = record.paid_chapter_notifs
+            self._show_update_buttons = record.show_update_buttons
+        self._sync_button_labels()
+
+    def build_embed(self) -> discord.Embed:
+        return _build_dm_settings_embed(
+            paid_chapter_notifs=self._paid_chapter_notifs,
+            show_update_buttons=self._show_update_buttons,
+            notifications_enabled=self._notifications_enabled,
+        )
+
+    def _sync_button_labels(self) -> None:
+        for item in self.children:
+            if not isinstance(item, discord.ui.Button):
+                continue
+            if item.custom_id == "dm_toggle_notifs":
+                item.label = f"🔔 DM Notifications: {_bool_emoji(self._notifications_enabled)}"
+            elif item.custom_id == "dm_toggle_buttons":
+                item.label = f"🔘 Update Buttons: {_bool_emoji(self._show_update_buttons)}"
+            elif item.custom_id == "dm_toggle_paid":
+                item.label = f"💰 Paid Chapters: {_bool_emoji(self._paid_chapter_notifs)}"
+
+    @discord.ui.button(
+        label="🔔 DM Notifications: ✅",
+        style=discord.ButtonStyle.secondary,
+        custom_id="dm_toggle_notifs",
+        row=0,
+    )
+    async def _toggle_notifs(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        self._notifications_enabled = not self._notifications_enabled
+        await self._store.set_notifications_enabled(self._user_id, self._notifications_enabled)
+        self._sync_button_labels()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @discord.ui.button(
+        label="🔘 Update Buttons: ✅",
+        style=discord.ButtonStyle.secondary,
+        custom_id="dm_toggle_buttons",
+        row=0,
+    )
+    async def _toggle_buttons(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        self._show_update_buttons = not self._show_update_buttons
+        await self._store.set_show_update_buttons(self._user_id, self._show_update_buttons)
+        self._sync_button_labels()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @discord.ui.button(
+        label="💰 Paid Chapters: ✅",
+        style=discord.ButtonStyle.secondary,
+        custom_id="dm_toggle_paid",
+        row=0,
+    )
+    async def _toggle_paid(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        self._paid_chapter_notifs = not self._paid_chapter_notifs
+        await self._store.set_paid_chapter_notifs(self._user_id, self._paid_chapter_notifs)
+        self._sync_button_labels()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)

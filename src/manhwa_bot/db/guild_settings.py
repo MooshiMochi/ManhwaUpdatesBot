@@ -14,7 +14,10 @@ class GuildSettings:
     notifications_channel_id: int | None
     system_alerts_channel_id: int | None
     default_ping_role_id: int | None
+    bot_manager_role_id: int | None
     paid_chapter_notifs: bool
+    auto_create_role: bool
+    show_update_buttons: bool
     updated_at: str
 
 
@@ -24,7 +27,10 @@ def _row_to_settings(row: Any) -> GuildSettings:
         notifications_channel_id=row["notifications_channel_id"],
         system_alerts_channel_id=row["system_alerts_channel_id"],
         default_ping_role_id=row["default_ping_role_id"],
+        bot_manager_role_id=row["bot_manager_role_id"],
         paid_chapter_notifs=bool(row["paid_chapter_notifs"]),
+        auto_create_role=bool(row["auto_create_role"]),
+        show_update_buttons=bool(row["show_update_buttons"]),
         updated_at=row["updated_at"],
     )
 
@@ -44,13 +50,17 @@ class GuildSettingsStore:
             """
             INSERT INTO guild_settings
               (guild_id, notifications_channel_id, system_alerts_channel_id,
-               default_ping_role_id, paid_chapter_notifs)
-            VALUES (?, ?, ?, ?, ?)
+               default_ping_role_id, bot_manager_role_id,
+               paid_chapter_notifs, auto_create_role, show_update_buttons)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
               notifications_channel_id = excluded.notifications_channel_id,
               system_alerts_channel_id = excluded.system_alerts_channel_id,
               default_ping_role_id     = excluded.default_ping_role_id,
+              bot_manager_role_id      = excluded.bot_manager_role_id,
               paid_chapter_notifs      = excluded.paid_chapter_notifs,
+              auto_create_role         = excluded.auto_create_role,
+              show_update_buttons      = excluded.show_update_buttons,
               updated_at               = CURRENT_TIMESTAMP
             """,
             (
@@ -58,7 +68,10 @@ class GuildSettingsStore:
                 settings.notifications_channel_id,
                 settings.system_alerts_channel_id,
                 settings.default_ping_role_id,
+                settings.bot_manager_role_id,
                 int(settings.paid_chapter_notifs),
+                int(settings.auto_create_role),
+                int(settings.show_update_buttons),
             ),
         )
 
@@ -98,6 +111,18 @@ class GuildSettingsStore:
             (guild_id, role_id),
         )
 
+    async def set_bot_manager_role(self, guild_id: int, role_id: int | None) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO guild_settings (guild_id, bot_manager_role_id)
+            VALUES (?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET
+              bot_manager_role_id = excluded.bot_manager_role_id,
+              updated_at          = CURRENT_TIMESTAMP
+            """,
+            (guild_id, role_id),
+        )
+
     async def set_paid_chapter_notifs(self, guild_id: int, enabled: bool) -> None:
         await self._pool.execute(
             """
@@ -105,6 +130,30 @@ class GuildSettingsStore:
             VALUES (?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
               paid_chapter_notifs = excluded.paid_chapter_notifs,
+              updated_at          = CURRENT_TIMESTAMP
+            """,
+            (guild_id, int(enabled)),
+        )
+
+    async def set_auto_create_role(self, guild_id: int, enabled: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO guild_settings (guild_id, auto_create_role)
+            VALUES (?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET
+              auto_create_role = excluded.auto_create_role,
+              updated_at       = CURRENT_TIMESTAMP
+            """,
+            (guild_id, int(enabled)),
+        )
+
+    async def set_show_update_buttons(self, guild_id: int, enabled: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO guild_settings (guild_id, show_update_buttons)
+            VALUES (?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET
+              show_update_buttons = excluded.show_update_buttons,
               updated_at          = CURRENT_TIMESTAMP
             """,
             (guild_id, int(enabled)),
