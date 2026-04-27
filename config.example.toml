@@ -7,6 +7,8 @@
 owner_ids = []
 # When the bot starts up it logs the resolved configuration. Set to "DEBUG" for verbose logs.
 log_level = "INFO"
+# Prefix for owner-only text commands. Mentions also remain valid.
+command_prefix = "?"
 # Optional: a single home guild where prefix-mentioned dev commands are allowed (extra defense-in-depth).
 # Leave as 0 to allow dev commands in any guild the owner can reach.
 dev_guild_id = 0

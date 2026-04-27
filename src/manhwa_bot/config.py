@@ -23,6 +23,7 @@ class BotConfig:
     owner_ids: tuple[int, ...]
     log_level: str
     dev_guild_id: int
+    command_prefix: str
 
 
 @dataclass(frozen=True)
@@ -188,6 +189,12 @@ def load_config(
         ),
         dev_guild_id=int(
             _env_override("MANHWABOT_BOT_DEV_GUILD_ID", bot_section.get("dev_guild_id", 0))
+        ),
+        command_prefix=str(
+            _env_override(
+                "MANHWABOT_BOT_COMMAND_PREFIX",
+                bot_section.get("command_prefix", "?"),
+            )
         ),
     )
 

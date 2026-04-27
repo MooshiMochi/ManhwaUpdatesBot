@@ -1,9 +1,7 @@
-"""Dev cog — owner-only prefix-mention operations.
+"""Dev cog — owner-only prefix operations.
 
 Mirrors v1's ``developer`` group (aliases ``d``, ``dev``). Invoked via
-``@bot d <subcommand>`` so it works without the ``message_content`` intent
-(Discord forwards full content when the bot is mentioned). DMs to the bot
-also work (no mention needed).
+``?dev <subcommand>`` or ``?d <subcommand>``.
 """
 
 from __future__ import annotations
@@ -47,6 +45,41 @@ _TABLES_FOR_JSON_EXPORT = (
     "premium_grants",
     "patreon_links",
 )
+
+_DEV_COMMAND_DESCRIPTIONS = {
+    "help": "Show this dev command reference.",
+    "restart": "Restart the bot process.",
+    "sync": "Sync slash commands globally, to this guild, or to provided guild IDs.",
+    "pull": "Run git pull and reload extensions when updates are fetched.",
+    "loaded_cogs": "List currently loaded cogs.",
+    "shell": "Run an owner-only shell command.",
+    "get_emoji": "Copy custom emojis into the current guild.",
+    "source": "Show the Python source for a command callback.",
+    "load": "Load a cog extension by module path.",
+    "unload": "Unload a cog extension by module path.",
+    "reload": "Reload a cog extension by module path.",
+    "eval": "Evaluate owner-only Python in the bot context.",
+    "logs": "View or clear the error log file.",
+    "export_db": "Export the bot database as JSON or a raw DB file.",
+    "import_db": "Import a JSON or SQLite database attachment.",
+    "sql": "Run a SQL statement against the bot database.",
+    "disabled_scanlators": "List crawler websites currently marked as disabled.",
+    "g_update": "Send a system alert message to configured guild channels.",
+    "test_update": "Dispatch a fake update through the update cog.",
+    "crawler": "Crawler maintenance commands.",
+    "crawler health": "Show crawler schema health.",
+    "crawler heal": "Run crawler schema healing for a series URL.",
+    "crawler test": "Run a crawler schema health test.",
+    "crawler websites": "Refresh and list supported crawler websites.",
+    "premium": "Premium entitlement maintenance commands.",
+    "premium grant": "Grant premium access to a user or guild.",
+    "premium revoke": "Revoke a premium grant by ID or target.",
+    "premium list": "List premium grants.",
+    "premium check": "Check premium sources for a user.",
+    "premium patreon": "Patreon premium maintenance commands.",
+    "premium patreon refresh": "Refresh Patreon premium grants.",
+    "premium patreon link": "Link a Discord user to a Patreon user ID.",
+}
 
 
 class _ConfirmView(discord.ui.View):
@@ -134,7 +167,11 @@ class DevCog(commands.Cog, name="Dev"):
         case_insensitive=True,
     )
     async def developer(self, ctx: commands.Context) -> None:
-        await ctx.send("Use `@bot d <subcommand>`. See `@bot d loaded_cogs` or `@bot d help`.")
+        await self._send_dev_help(ctx)
+
+    @developer.command(name="help")
+    async def dev_help(self, ctx: commands.Context) -> None:
+        await self._send_dev_help(ctx)
 
     # -- restart --------------------------------------------------------
 
@@ -878,6 +915,62 @@ class DevCog(commands.Cog, name="Dev"):
         ]
         view = Paginator(embeds, invoker_id=ctx.author.id)
         await ctx.send(embed=embeds[0], view=view)
+
+    async def _send_dev_help(self, ctx: commands.Context) -> None:
+        prefix = getattr(ctx, "clean_prefix", "?")
+        invoked_with = getattr(ctx, "invoked_with", "dev")
+        base = f"{prefix}{invoked_with}"
+        fields = _dev_help_fields(self.developer, base)
+
+        embed = discord.Embed(
+            title="Dev commands",
+            description=f"Owner-only prefix commands. Use `{base} <command>`.",
+            color=discord.Color.dark_grey(),
+        )
+        for name, value in fields:
+            embed.add_field(name=name, value=value, inline=False)
+        await ctx.send(embed=embed)
+
+
+def _dev_help_fields(group: commands.Group, base: str) -> list[tuple[str, str]]:
+    buckets: dict[str, list[str]] = {"Core": [], "Crawler": [], "Premium": []}
+    for command in group.walk_commands():
+        relative = command.qualified_name.removeprefix(f"{group.name} ").strip()
+        if not relative:
+            continue
+        bucket = "Core"
+        if relative.startswith("crawler"):
+            bucket = "Crawler"
+        elif relative.startswith("premium"):
+            bucket = "Premium"
+
+        signature = f" `{command.signature}`" if command.signature else ""
+        description = _DEV_COMMAND_DESCRIPTIONS.get(
+            relative, command.short_doc or "No description available."
+        )
+        buckets[bucket].append(f"`{base} {relative}`{signature} - {description}")
+
+    fields: list[tuple[str, str]] = []
+    for bucket, lines in buckets.items():
+        if not lines:
+            continue
+        chunk: list[str] = []
+        size = 0
+        part = 1
+        for line in lines:
+            line_size = len(line) + 1
+            if chunk and size + line_size > 1000:
+                name = bucket if part == 1 else f"{bucket} {part}"
+                fields.append((name, "\n".join(chunk)))
+                chunk = []
+                size = 0
+                part += 1
+            chunk.append(line)
+            size += line_size
+        if chunk:
+            name = bucket if part == 1 else f"{bucket} {part}"
+            fields.append((name, "\n".join(chunk)))
+    return fields
 
 
 async def setup(bot: commands.Bot) -> None:

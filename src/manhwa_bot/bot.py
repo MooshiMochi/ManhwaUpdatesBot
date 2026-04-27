@@ -51,7 +51,7 @@ class ManhwaBot(commands.Bot):
     def __init__(self, config: AppConfig, db: DbPool, crawler: CrawlerClient) -> None:
         intents = discord.Intents.default()
         intents.members = True
-        intents.message_content = False
+        intents.message_content = True
         intents.presences = False
 
         allowed_mentions = discord.AllowedMentions(
@@ -61,7 +61,7 @@ class ManhwaBot(commands.Bot):
         )
 
         super().__init__(
-            command_prefix=commands.when_mentioned,
+            command_prefix=commands.when_mentioned_or(config.bot.command_prefix),
             intents=intents,
             help_command=None,
             case_insensitive=True,
@@ -139,10 +139,6 @@ class ManhwaBot(commands.Bot):
         await self.crawler.stop()
         await self.db.close()
         await super().close()
-
-    async def process_commands(self, message: discord.Message) -> None:
-        if message.guild is None or self.user in message.mentions:
-            await super().process_commands(message)
 
     async def _on_app_command_error(
         self,

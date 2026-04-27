@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
 from discord.ext import commands
 
 from manhwa_bot.bot import ManhwaBot
@@ -20,9 +24,14 @@ from manhwa_bot.crawler.client import CrawlerClient
 from manhwa_bot.db.pool import DbPool
 
 
-def _fake_config() -> AppConfig:
+def _fake_config(command_prefix: str = "?") -> AppConfig:
     return AppConfig(
-        bot=BotConfig(owner_ids=(123456789,), log_level="WARNING", dev_guild_id=0),
+        bot=BotConfig(
+            owner_ids=(123456789,),
+            log_level="WARNING",
+            dev_guild_id=0,
+            command_prefix=command_prefix,
+        ),
         crawler=CrawlerConfig(
             ws_url="ws://127.0.0.1:9999/ws",
             http_base_url="http://127.0.0.1:9999",
@@ -64,8 +73,8 @@ def _fake_config() -> AppConfig:
     )
 
 
-def _make_bot() -> ManhwaBot:
-    config = _fake_config()
+def _make_bot(command_prefix: str = "?") -> ManhwaBot:
+    config = _fake_config(command_prefix=command_prefix)
     # DbPool and CrawlerClient are not connected — we only test construction.
     db = object.__new__(DbPool)
     crawler = CrawlerClient(config.crawler)
@@ -75,15 +84,36 @@ def _make_bot() -> ManhwaBot:
 def test_intents() -> None:
     bot = _make_bot()
     assert bot.intents.members is True
-    assert bot.intents.message_content is False
+    assert bot.intents.message_content is True
     assert bot.intents.presences is False
 
 
 def test_command_prefix() -> None:
     bot = _make_bot()
-    assert bot.command_prefix is commands.when_mentioned
+    assert bot.command_prefix is not commands.when_mentioned
+
+
+def test_command_prefix_uses_configured_prefix() -> None:
+    bot = _make_bot(command_prefix="!")
+    bot._connection.user = SimpleNamespace(id=42)  # type: ignore[attr-defined]
+    message = SimpleNamespace(guild=object(), content="!dev help")
+
+    prefixes = asyncio.run(bot.get_prefix(message))  # type: ignore[arg-type]
+
+    assert "!" in prefixes
+    assert "?" not in prefixes
 
 
 def test_help_command_is_none() -> None:
     bot = _make_bot()
     assert bot.help_command is None
+
+
+def test_process_commands_allows_question_prefix_in_guild_messages() -> None:
+    bot = _make_bot()
+    message = SimpleNamespace(guild=object(), mentions=[], content="?dev help")
+
+    with patch.object(commands.Bot, "process_commands", new=AsyncMock()) as process_commands:
+        asyncio.run(bot.process_commands(message))  # type: ignore[arg-type]
+
+    process_commands.assert_awaited_once_with(message)

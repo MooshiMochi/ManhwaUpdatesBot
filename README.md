@@ -54,7 +54,7 @@ PATREON_ACCESS_TOKEN=...
 
 Non-secret deployment settings live in `config.toml`, copied from [`config.example.toml`](config.example.toml):
 
-- `[bot]`: owner Discord IDs, log level, optional dev guild guard.
+- `[bot]`: owner Discord IDs, log level, owner command prefix, optional dev guild guard.
 - `[crawler]`: WebSocket URL, REST base URL, request timeout, reconnect tuning, consumer key.
 - `[db]`: SQLite database path.
 - `[premium]`: premium enablement and owner bypass.

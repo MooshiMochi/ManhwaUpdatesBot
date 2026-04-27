@@ -33,7 +33,12 @@ from manhwa_bot.db.tracked import TrackedStore
 
 def _build_config(*, respect_paid_chapter: bool = True) -> AppConfig:
     return AppConfig(
-        bot=BotConfig(owner_ids=(), log_level="INFO", dev_guild_id=0),
+        bot=BotConfig(
+            owner_ids=(),
+            log_level="INFO",
+            dev_guild_id=0,
+            command_prefix="?",
+        ),
         crawler=CrawlerConfig(
             ws_url="ws://unused",
             http_base_url="http://unused",
