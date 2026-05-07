@@ -173,60 +173,58 @@ _BOOL_SETTINGS = frozenset(
         _SETTING_PAID_CHAPTER_NOTIFS,
     }
 )
-_CHANNEL_SETTINGS = frozenset(
-    {_SETTING_NOTIFICATIONS_CHANNEL, _SETTING_SYSTEM_ALERTS_CHANNEL}
-)
+_CHANNEL_SETTINGS = frozenset({_SETTING_NOTIFICATIONS_CHANNEL, _SETTING_SYSTEM_ALERTS_CHANNEL})
 _ROLE_SETTINGS = frozenset({_SETTING_DEFAULT_PING_ROLE, _SETTING_BOT_MANAGER_ROLE})
 
 
 _MAIN_OPTIONS: list[discord.SelectOption] = [
     discord.SelectOption(
-        label="Notifications Channel",
+        label="Set the updates channel",
         value=_SETTING_NOTIFICATIONS_CHANNEL,
         emoji="#️⃣",
         description="Where chapter update notifications are sent.",
     ),
     discord.SelectOption(
-        label="System Alerts Channel",
-        value=_SETTING_SYSTEM_ALERTS_CHANNEL,
-        emoji="❗",
-        description="Where critical bot alerts are sent.",
-    ),
-    discord.SelectOption(
-        label="Default Ping Role",
+        label="Set Default ping role",
         value=_SETTING_DEFAULT_PING_ROLE,
         emoji="🔔",
         description="Pinged for tracked manga without their own role.",
     ),
     discord.SelectOption(
-        label="Bot Manager Role",
-        value=_SETTING_BOT_MANAGER_ROLE,
-        emoji="🛡️",
-        description="Members with this role can use admin commands.",
-    ),
-    discord.SelectOption(
-        label="Auto-Create Role",
+        label="Auto create role for new tracked manhwa",
         value=_SETTING_AUTO_CREATE_ROLE,
         emoji="🪄",
         description="Auto-create a role for each tracked manga.",
     ),
     discord.SelectOption(
-        label="Show Update Buttons",
+        label="Set the bot manager role",
+        value=_SETTING_BOT_MANAGER_ROLE,
+        emoji="🔧",
+        description="Members with this role can use admin commands.",
+    ),
+    discord.SelectOption(
+        label="Set the system notifications channel",
+        value=_SETTING_SYSTEM_ALERTS_CHANNEL,
+        emoji="❗",
+        description="Where critical bot alerts are sent.",
+    ),
+    discord.SelectOption(
+        label="Show buttons for chapter updates",
         value=_SETTING_SHOW_UPDATE_BUTTONS,
         emoji="🔘",
         description="Show 'Mark Read' buttons on update notifications.",
     ),
     discord.SelectOption(
-        label="Paid Chapter Notifs",
-        value=_SETTING_PAID_CHAPTER_NOTIFS,
-        emoji="💰",
-        description="Send notifications for paid / locked chapters.",
-    ),
-    discord.SelectOption(
-        label="Per-Scanlator Channels",
+        label="Custom Scanlator Channels",
         value=_SETTING_SCANLATOR_CHANNELS,
         emoji="🗨️",
         description="Route specific websites to dedicated channels.",
+    ),
+    discord.SelectOption(
+        label="Notify for Paid Chapter releases",
+        value=_SETTING_PAID_CHAPTER_NOTIFS,
+        emoji="💵",
+        description="Send notifications for paid / locked chapters.",
     ),
 ]
 
@@ -248,9 +246,10 @@ class SettingsView(discord.ui.View):
         self._settings = settings
         self._scanlator_overrides = scanlator_overrides
         self._selected_setting: str | None = None
+        self._delete_mode = False
 
         self._main_select: discord.ui.Select = discord.ui.Select(
-            placeholder="Pick a setting to edit…",
+            placeholder="Select the option to edit.",
             options=_MAIN_OPTIONS,
             min_values=1,
             max_values=1,
@@ -261,13 +260,31 @@ class SettingsView(discord.ui.View):
 
         self._dynamic_item: discord.ui.Item[Any] | None = None
 
-        self._scanlator_btn = discord.ui.Button(
-            label="🗨️ Per-Scanlator Channels…",
-            style=discord.ButtonStyle.primary,
-            row=2,
+        save_btn = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, row=4)
+        save_btn.callback = self._on_save
+        self.add_item(save_btn)
+
+        cancel_btn = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.blurple, row=4)
+        cancel_btn.callback = self._on_cancel
+        self.add_item(cancel_btn)
+
+        delete_mode_btn = discord.ui.Button(
+            label="Delete Mode: Off",
+            emoji="⚠️",
+            style=discord.ButtonStyle.green,
+            row=4,
         )
-        self._scanlator_btn.callback = self._open_scanlator_channels
-        self.add_item(self._scanlator_btn)
+        delete_mode_btn.callback = self._on_delete_mode
+        self.add_item(delete_mode_btn)
+
+        delete_config_btn = discord.ui.Button(
+            label="Delete config",
+            emoji="🗑️",
+            style=discord.ButtonStyle.red,
+            row=4,
+        )
+        delete_config_btn.callback = self._on_delete_config
+        self.add_item(delete_config_btn)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
@@ -435,6 +452,70 @@ class SettingsView(discord.ui.View):
         overrides = await self._store.list_scanlator_channels(self._guild_id)
         view = ScanlatorChannelsView(self._bot, self._guild_id, overrides, parent=self)
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
+
+    async def _on_save(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message(view=None)
+        await interaction.followup.send(
+            embed=discord.Embed(
+                title="Settings Saved",
+                description="Your settings have been saved.",
+                colour=discord.Colour.green(),
+            ),
+            ephemeral=True,
+        )
+
+    async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                title="Operation cancelled!",
+                description="No changes were made.",
+                colour=discord.Colour.red(),
+            ),
+            view=None,
+        )
+
+    async def _on_delete_mode(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        self._delete_mode = not self._delete_mode
+        button.label = f"Delete Mode: {'On' if self._delete_mode else 'Off'}"
+        button.style = discord.ButtonStyle.red if self._delete_mode else discord.ButtonStyle.green
+        guild = interaction.guild
+        me = guild.me if guild else None
+        warnings = _collect_warnings(self._settings, guild, me) if guild and me else []
+        embed = _build_settings_embed(self._settings, self._scanlator_overrides, warnings)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _on_delete_config(self, interaction: discord.Interaction) -> None:
+        if not self._delete_mode:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="Delete Mode is Off",
+                    description="Turn on delete mode before deleting the config.",
+                    colour=discord.Colour.red(),
+                ),
+                ephemeral=True,
+            )
+            return
+
+        pool = getattr(self._store, "_pool", None)
+        if pool is not None:
+            await pool.execute(
+                "DELETE FROM guild_scanlator_channels WHERE guild_id = ?",
+                (self._guild_id,),
+            )
+            await pool.execute(
+                "DELETE FROM guild_settings WHERE guild_id = ?",
+                (self._guild_id,),
+            )
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                title="Config Deleted",
+                description="The server config has been deleted.",
+                colour=discord.Colour.green(),
+            ),
+            view=None,
+        )
 
 
 class _RemoveButton(discord.ui.Button["ScanlatorChannelsView"]):

@@ -47,7 +47,7 @@ def _build_visual_embed(
     total: int,
 ) -> discord.Embed:
     embed = discord.Embed(
-        title=title,
+        title=f"Bookmark: {title}",
         url=series_url or None,
         colour=_folder_colour(bm.folder),
     )
@@ -265,12 +265,93 @@ class BookmarkView(discord.ui.View):
     async def _rebuild_components(self) -> None:
         self.clear_items()
 
-        # Row 0: folder filter dropdown
-        folder_select = discord.ui.Select(
-            placeholder="Filter by folder",
+        # Row 0: v1 navigation buttons.
+        nav_buttons = [
+            ("⏮️", discord.ButtonStyle.blurple, self._on_first),
+            ("⬅️", discord.ButtonStyle.blurple, self._on_prev),
+            ("⏹️", discord.ButtonStyle.red, self._on_stop),
+            ("➡️", discord.ButtonStyle.blurple, self._on_next),
+            ("⏭️", discord.ButtonStyle.blurple, self._on_last),
+        ]
+        for label, style, callback in nav_buttons:
+            btn = discord.ui.Button(label=label, style=style, row=0)
+            btn.callback = callback  # type: ignore[assignment]
+            self.add_item(btn)
+
+        if not self._filtered:
+            return
+
+        if self._mode == "text":
+            sort_select = discord.ui.Select(
+                placeholder="Select sort type.",
+                min_values=1,
+                max_values=1,
+                row=1,
+                options=[
+                    discord.SelectOption(label="Last Updated", value="last_updated"),
+                    discord.SelectOption(label="Title", value="title"),
+                ],
+            )
+            sort_select.callback = self._on_sort_select  # type: ignore[assignment]
+            self.add_item(sort_select)
+
+        view_select = discord.ui.Select(
+            placeholder="Select view type.",
             min_values=1,
             max_values=1,
-            row=0,
+            row=2,
+            options=[
+                discord.SelectOption(
+                    label="Visual",
+                    value="visual",
+                    default=self._mode == "visual",
+                ),
+                discord.SelectOption(
+                    label="Text",
+                    value="text",
+                    default=self._mode == "text",
+                ),
+            ],
+        )
+        view_select.callback = self._on_view_select  # type: ignore[assignment]
+        self.add_item(view_select)
+
+        # Row 3: visual-only actions.
+        if self._mode == "visual":
+            self.add_item(
+                discord.ui.Button(
+                    label="\u200b",
+                    style=discord.ButtonStyle.grey,
+                    disabled=True,
+                    row=3,
+                )
+            )
+            update_btn = discord.ui.Button(label="Update", style=discord.ButtonStyle.blurple, row=3)
+            update_btn.callback = self._on_set_last_read  # type: ignore[assignment]
+            self.add_item(update_btn)
+
+            search_btn = discord.ui.Button(label="Search", style=discord.ButtonStyle.blurple, row=3)
+            search_btn.callback = self._on_search  # type: ignore[assignment]
+            self.add_item(search_btn)
+
+            delete_btn = discord.ui.Button(label="Delete", style=discord.ButtonStyle.red, row=3)
+            delete_btn.callback = self._on_delete  # type: ignore[assignment]
+            self.add_item(delete_btn)
+
+            self.add_item(
+                discord.ui.Button(
+                    label="\u200b",
+                    style=discord.ButtonStyle.grey,
+                    disabled=True,
+                    row=3,
+                )
+            )
+
+        folder_select = discord.ui.Select(
+            placeholder="Select folder.",
+            min_values=1,
+            max_values=1,
+            row=4,
             options=[
                 discord.SelectOption(
                     label="All",
@@ -286,56 +367,6 @@ class BookmarkView(discord.ui.View):
         folder_select.callback = self._on_folder_select  # type: ignore[assignment]
         self.add_item(folder_select)
 
-        if not self._filtered:
-            return
-
-        # Row 1: prev / next / mode toggle
-        if self._mode == "visual":
-            at_start = self._index == 0
-            at_end = self._index >= len(self._filtered) - 1
-        else:
-            page = self._index // _TEXT_PAGE_SIZE
-            total_pages = max(1, (len(self._filtered) + _TEXT_PAGE_SIZE - 1) // _TEXT_PAGE_SIZE)
-            at_start = page == 0
-            at_end = page >= total_pages - 1
-
-        prev_btn = discord.ui.Button(
-            label="◀", style=discord.ButtonStyle.secondary, disabled=at_start, row=1
-        )
-        prev_btn.callback = self._on_prev  # type: ignore[assignment]
-        next_btn = discord.ui.Button(
-            label="▶", style=discord.ButtonStyle.secondary, disabled=at_end, row=1
-        )
-        next_btn.callback = self._on_next  # type: ignore[assignment]
-        toggle_label = "Text view" if self._mode == "visual" else "Visual view"
-        toggle_btn = discord.ui.Button(label=toggle_label, style=discord.ButtonStyle.primary, row=1)
-        toggle_btn.callback = self._on_toggle_mode  # type: ignore[assignment]
-
-        self.add_item(prev_btn)
-        self.add_item(next_btn)
-        self.add_item(toggle_btn)
-
-        # Row 2: visual-only actions
-        if self._mode == "visual":
-            bm = self._filtered[self._index]
-            meta = await self._meta_for(bm)
-            if meta["series_url"]:
-                self.add_item(
-                    discord.ui.Button(
-                        label="Open series",
-                        style=discord.ButtonStyle.link,
-                        url=meta["series_url"],
-                        row=2,
-                    )
-                )
-            set_last_btn = discord.ui.Button(
-                label="Set last read",
-                style=discord.ButtonStyle.success,
-                row=2,
-            )
-            set_last_btn.callback = self._on_set_last_read  # type: ignore[assignment]
-            self.add_item(set_last_btn)
-
     # -- callbacks -------------------------------------------------------
 
     async def _on_folder_select(self, interaction: discord.Interaction) -> None:
@@ -349,29 +380,57 @@ class BookmarkView(discord.ui.View):
         embed = await self._current_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    async def _on_prev(self, interaction: discord.Interaction) -> None:
-        if self._mode == "visual":
-            self._index = max(0, self._index - 1)
-        else:
-            self._index = max(0, self._index - _TEXT_PAGE_SIZE)
+    async def _on_first(self, interaction: discord.Interaction) -> None:
+        self._index = 0
         await self._rebuild_components()
         embed = await self._current_embed()
         await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _on_prev(self, interaction: discord.Interaction) -> None:
+        if self._mode == "visual":
+            self._index = (self._index - 1) % len(self._filtered)
+        else:
+            self._index = (self._index - _TEXT_PAGE_SIZE) % len(self._filtered)
+        await self._rebuild_components()
+        embed = await self._current_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _on_stop(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message(view=None)
+        self.stop()
 
     async def _on_next(self, interaction: discord.Interaction) -> None:
         if self._mode == "visual":
-            self._index = min(len(self._filtered) - 1, self._index + 1)
+            self._index = (self._index + 1) % len(self._filtered)
         else:
-            self._index = min(len(self._filtered) - 1, self._index + _TEXT_PAGE_SIZE)
+            self._index = (self._index + _TEXT_PAGE_SIZE) % len(self._filtered)
         await self._rebuild_components()
         embed = await self._current_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    async def _on_toggle_mode(self, interaction: discord.Interaction) -> None:
-        self._mode = "text" if self._mode == "visual" else "visual"
+    async def _on_last(self, interaction: discord.Interaction) -> None:
+        self._index = len(self._filtered) - 1
+        await self._rebuild_components()
+        embed = await self._current_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _on_view_select(self, interaction: discord.Interaction) -> None:
+        values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
+        self._mode = "text" if values and values[0] == "text" else "visual"
         # Snap index to a valid value for the new mode.
         if self._mode == "text":
             self._index = (self._index // _TEXT_PAGE_SIZE) * _TEXT_PAGE_SIZE
+        await self._rebuild_components()
+        embed = await self._current_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _on_sort_select(self, interaction: discord.Interaction) -> None:
+        values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
+        if values and values[0] == "title":
+            self._filtered = sorted(self._filtered, key=lambda bm: bm.url_name.lower())
+        else:
+            self._filtered = sorted(self._filtered, key=lambda bm: bm.updated_at, reverse=True)
+        self._index = 0
         await self._rebuild_components()
         embed = await self._current_embed()
         await interaction.response.edit_message(embed=embed, view=self)
@@ -382,6 +441,16 @@ class BookmarkView(discord.ui.View):
             return
         bm = self._filtered[self._index]
         await interaction.response.send_modal(_SetLastReadModal(self, bm))
+
+    async def _on_search(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(
+            "Bookmark search is not available in this view yet.", ephemeral=True
+        )
+
+    async def _on_delete(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(
+            "Use `/bookmark delete` to delete this bookmark.", ephemeral=True
+        )
 
     async def _refresh_current(
         self,

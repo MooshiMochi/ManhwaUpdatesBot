@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .. import autocomplete
+from .. import autocomplete, formatting
 from ..checks import has_premium
 from ..db.guild_settings import GuildSettingsStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
+from ..ui.confirm_view import ConfirmView
 from ..ui.paginator import Paginator
 
 _log = logging.getLogger(__name__)
@@ -50,24 +50,28 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
     subscribe = app_commands.Group(
         name="subscribe",
-        description="Manage manga subscriptions for DM notifications",
+        description="Subscribe to a manga to get notifications.",
         guild_only=False,
     )
 
     # -- /subscribe new ---------------------------------------------------------
 
-    @subscribe.command(name="new", description="Subscribe to a manga for DM notifications")
+    @subscribe.command(
+        name="new",
+        description="Subscribe to a tracked manga to get new release notifications.",
+    )
     @app_commands.describe(
-        manga_id="The manga to subscribe to (or * for all guild tracked)",
+        manga_id="The name of the tracked manga you want to subscribe to.",
     )
     @app_commands.autocomplete(manga_id=autocomplete.tracked_manga_in_guild)
+    @app_commands.rename(manga_id="manga")
     @has_premium(dm_only=True)
     async def subscribe_new(
         self,
         interaction: discord.Interaction,
         manga_id: str,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         guild_id = interaction.guild_id or 0
 
@@ -124,55 +128,92 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             )
             return
 
-        # Build confirmation embed
-        embed = await self._build_subscription_embed(
-            title="✓ Subscribed",
-            series=series_match,
-            guild_id=guild_id,
-            color=discord.Colour.green(),
+        # V1-style success embed
+        gs = await self._guild_settings.get(guild_id) if guild_id else None
+        notif_channel = None
+        if gs and gs.notifications_channel_id and interaction.guild:
+            notif_channel = interaction.guild.get_channel(gs.notifications_channel_id)
+        embed = formatting.subscribe_success_embed(
+            title=series_match.title,
+            series_url=series_match.series_url,
+            ping_role=None,  # ping_role lookup is part of /track update; v1 also resolves via guild
+            notif_channel=notif_channel,
+            cover_url=series_match.cover_url,
+            is_dm=interaction.guild_id is None,
+            bot=self.bot,
         )
-        await interaction.followup.send(embed=embed, ephemeral=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def _handle_subscribe_all(self, interaction: discord.Interaction, guild_id: int) -> None:
-        """Handle /subscribe new manga_id:*."""
+        """Handle /subscribe new manga_id=*. Prompts via ConfirmView like v1."""
         try:
-            # Fetch all tracked series in guild
             tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
-
-            # Fetch user's existing subs in guild
             existing_subs = await self._subs.list_for_user(
                 interaction.user.id, guild_id=guild_id, limit=500
             )
-            existing_set = {(sub["website_key"], sub["url_name"]) for sub in existing_subs}
-
-            # Compute diff
+            existing_set = {(s["website_key"], s["url_name"]) for s in existing_subs}
             to_subscribe = [
                 s for s in tracked_list if (s.website_key, s.url_name) not in existing_set
             ]
 
-            # Subscribe to all
-            for series in to_subscribe:
-                await self._subs.subscribe(
-                    interaction.user.id, guild_id, series.website_key, series.url_name
+            if not to_subscribe:
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Already subscribed",
+                        description="You're already subscribed to every tracked series here.",
+                        colour=discord.Colour.green(),
+                    ),
+                    ephemeral=True,
                 )
+                return
 
-            # Build batch confirmation embed
-            total = len(tracked_list)
-            added = len(to_subscribe)
-            skipped = len(existing_subs)
-
-            embed = discord.Embed(
-                title="Batch Subscribe",
-                description=f"Subscribed to {added} manga",
-                colour=discord.Colour.blue(),
+            prompt = discord.Embed(
+                description=(
+                    f"You are about to subscribe to an additional **{len(to_subscribe)}** "
+                    f"tracked series from this server.\n\n**Do you wish to continue?**"
+                ),
+                colour=discord.Colour.blurple(),
             )
-            if interaction.guild:
-                embed.add_field(name="Guild", value=interaction.guild.name, inline=False)
-            embed.add_field(name="Added", value=str(added), inline=True)
-            embed.add_field(name="Already subscribed", value=str(skipped), inline=True)
-            embed.add_field(name="Total tracked", value=str(total), inline=True)
+            confirm = ConfirmView(author_id=interaction.user.id)
+            confirm.message = await interaction.followup.send(
+                embed=prompt, view=confirm, ephemeral=True, wait=True
+            )
+            await confirm.wait()
 
-            await interaction.followup.send(embed=embed, ephemeral=False)
+            if confirm.value is not True:
+                await interaction.edit_original_response(
+                    embed=discord.Embed(
+                        title="Operation cancelled!", colour=discord.Colour.green()
+                    ),
+                    view=None,
+                )
+                return
+
+            successes = 0
+            fails = 0
+            for series in to_subscribe:
+                try:
+                    await self._subs.subscribe(
+                        interaction.user.id, guild_id, series.website_key, series.url_name
+                    )
+                    successes += 1
+                except Exception:
+                    _log.exception(
+                        "batch subscribe failed for %s:%s", series.website_key, series.url_name
+                    )
+                    fails += 1
+
+            description = f"You have successfully subscribed to {successes} series!"
+            if fails:
+                description += (
+                    f"\n\n**Note:** I was unable to subscribe to {fails} series. "
+                    "Double check my permissions and try again!"
+                )
+            colour = discord.Colour.orange() if fails else discord.Colour.green()
+            await interaction.edit_original_response(
+                embed=discord.Embed(title="Subscribed", description=description, colour=colour),
+                view=None,
+            )
         except Exception as exc:
             _log.exception("batch subscribe failed")
             await interaction.followup.send(
@@ -182,18 +223,19 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
     # -- /subscribe delete ---------------------------------------------------------
 
-    @subscribe.command(name="delete", description="Unsubscribe from a manga")
+    @subscribe.command(name="delete", description="Unsubscribe from a currently subscribed manga.")
     @app_commands.describe(
-        manga_id="The manga to unsubscribe from (or * for all)",
+        manga_id="The name of the manga.",
     )
     @app_commands.autocomplete(manga_id=autocomplete.user_subscribed_manga)
+    @app_commands.rename(manga_id="manga")
     @has_premium(dm_only=True)
     async def subscribe_delete(
         self,
         interaction: discord.Interaction,
         manga_id: str,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         guild_id = interaction.guild_id or 0
 
@@ -235,56 +277,93 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             )
             return
 
-        # Build confirmation embed (fetch series info if possible)
+        # V1-style "Unsubscribed" embed.
         tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
-        series_match = None
-        for series in tracked_list:
-            if series.website_key == website_key and series.url_name == url_name:
-                series_match = series
-                break
-
-        if series_match:
-            embed = await self._build_subscription_embed(
-                title="✗ Unsubscribed",
-                series=series_match,
-                guild_id=guild_id,
-                color=discord.Colour.red(),
-            )
+        series_match = next(
+            (s for s in tracked_list if s.website_key == website_key and s.url_name == url_name),
+            None,
+        )
+        title = series_match.title if series_match else f"{website_key}:{url_name}"
+        url = series_match.series_url if series_match else None
+        if url:
+            description = f"Successfully unsubscribed from **[{title}]({url})**."
         else:
-            embed = discord.Embed(
-                title="✗ Unsubscribed",
-                description=f"{website_key}:{url_name}",
-                colour=discord.Colour.red(),
-            )
+            description = f"Successfully unsubscribed from **{title}**."
 
-        await interaction.followup.send(embed=embed, ephemeral=False)
+        embed = discord.Embed(
+            title="Unsubscribed",
+            description=description,
+            colour=discord.Colour.green(),
+        )
+        formatting._set_mu_footer(embed, self.bot)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def _handle_unsubscribe_all(
         self, interaction: discord.Interaction, guild_id: int
     ) -> None:
-        """Handle /subscribe delete manga_id:*."""
+        """Handle /subscribe delete manga_id=*. Prompts via ConfirmView like v1."""
         try:
-            # Fetch user's subs in guild
             subs = await self._subs.list_for_user(interaction.user.id, guild_id=guild_id, limit=500)
-
-            # Unsubscribe from all
-            for sub in subs:
-                await self._subs.unsubscribe(
-                    interaction.user.id, guild_id, sub["website_key"], sub["url_name"]
+            if not subs:
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Nothing to unsubscribe from",
+                        description="You have no subscriptions in this server.",
+                        colour=discord.Colour.green(),
+                    ),
+                    ephemeral=True,
                 )
+                return
 
-            # Build confirmation embed
-            count = len(subs)
-            embed = discord.Embed(
-                title="Batch Unsubscribe",
-                description=f"Unsubscribed from {count} manga",
-                colour=discord.Colour.orange(),
+            prompt = discord.Embed(
+                description=(
+                    f"You are about to unsubscribe from **{len(subs)}** subbed series "
+                    f"from this server.\n\n**Do you wish to continue?**"
+                ),
+                colour=discord.Colour.blurple(),
             )
-            if interaction.guild:
-                embed.add_field(name="Guild", value=interaction.guild.name, inline=False)
-            embed.add_field(name="Removed", value=str(count), inline=True)
+            confirm = ConfirmView(author_id=interaction.user.id)
+            confirm.message = await interaction.followup.send(
+                embed=prompt, view=confirm, ephemeral=True, wait=True
+            )
+            await confirm.wait()
 
-            await interaction.followup.send(embed=embed, ephemeral=False)
+            if confirm.value is not True:
+                await interaction.edit_original_response(
+                    embed=discord.Embed(
+                        title="Operation cancelled!", colour=discord.Colour.green()
+                    ),
+                    view=None,
+                )
+                return
+
+            successes = 0
+            fails = 0
+            for sub in subs:
+                try:
+                    await self._subs.unsubscribe(
+                        interaction.user.id, guild_id, sub["website_key"], sub["url_name"]
+                    )
+                    successes += 1
+                except Exception:
+                    _log.exception(
+                        "batch unsubscribe failed for %s:%s",
+                        sub.get("website_key"),
+                        sub.get("url_name"),
+                    )
+                    fails += 1
+
+            description = f"You have successfully unsubscribed from {successes} series!"
+            if fails:
+                description += (
+                    f"\n\n**Note:** I was unable to unsubscribe you from {fails} series. "
+                    "Double check my permissions and try again!"
+                )
+            colour = discord.Colour.orange() if fails else discord.Colour.green()
+            await interaction.edit_original_response(
+                embed=discord.Embed(title="Unsubscribed", description=description, colour=colour),
+                view=None,
+            )
         except Exception as exc:
             _log.exception("batch unsubscribe failed")
             await interaction.followup.send(
@@ -294,199 +373,55 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
     # -- /subscribe list ---------------------------------------------------------
 
-    @subscribe.command(name="list", description="View your manga subscriptions")
+    @subscribe.command(name="list", description="List all the manga you're subscribed to.")
     @app_commands.describe(
-        _global="Show subscriptions across all guilds (default: current guild only)",
+        _global="Whether to show your subscriptions in all servers.",
     )
+    @app_commands.rename(_global="global")
     @has_premium(dm_only=True)
     async def subscribe_list(
         self,
         interaction: discord.Interaction,
         _global: bool = False,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         guild_id = interaction.guild_id if not _global else None
 
         try:
-            # Fetch subscriptions
             subs = await self._subs.list_for_user(interaction.user.id, guild_id=guild_id, limit=500)
 
-            if not subs:
-                embed = discord.Embed(
-                    title="No Subscriptions",
-                    description="You don't have any subscriptions yet.",
-                    colour=discord.Colour.greyple(),
-                )
-                await interaction.followup.send(embed=embed, ephemeral=False)
-                return
+            sorted_subs = sorted(subs, key=lambda s: str(s.get("title") or "").lower())
+            items = [
+                {
+                    "title": s.get("title") or s.get("url_name") or "Unknown",
+                    "url": s.get("series_url") or "",
+                    "website_key": s.get("website_key") or "",
+                    "last_chapter": None,
+                }
+                for s in sorted_subs
+            ]
+            count = len(items)
+            title_prefix = "Your (Global) Subscriptions" if _global else "Your Subscriptions"
+            embeds = formatting.grouped_list_embeds(
+                items,
+                title=f"{title_prefix} ({count})",
+                bot=self.bot,
+                empty_title="No Subscriptions",
+                empty_description="You have no subscriptions.",
+            )
 
-            # Build paginated embeds
-            embeds = await self._build_list_embeds(subs, global_view=_global)
-
-            # Send with paginator if needed
             if len(embeds) == 1:
-                await interaction.followup.send(embed=embeds[0], ephemeral=False)
+                await interaction.followup.send(embed=embeds[0], ephemeral=True)
             else:
                 paginator = Paginator(embeds, invoker_id=interaction.user.id)
-                await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=False)
+                await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
         except Exception as exc:
             _log.exception("list subscriptions failed")
             await interaction.followup.send(
                 embed=_error_embed(f"Failed to list subscriptions: {exc}"),
                 ephemeral=True,
             )
-
-    # -- Helper methods ---------------------------------------------------------
-
-    async def _build_subscription_embed(
-        self,
-        title: str,
-        series: Any,
-        guild_id: int,
-        color: discord.Colour,
-    ) -> discord.Embed:
-        """Build a confirmation embed for subscribe/unsubscribe action."""
-        embed = discord.Embed(
-            title=title,
-            description=f"**{series.title}**",
-            colour=color,
-            url=series.series_url,
-        )
-
-        # Add field for website
-        embed.add_field(name="Website", value=series.website_key, inline=True)
-
-        # Add field for notifications channel
-        try:
-            guild_settings = await self._guild_settings.get(guild_id)
-            if guild_settings and guild_settings.notifications_channel_id:
-                channel = self.bot.get_channel(guild_settings.notifications_channel_id)  # type: ignore[union-attr]
-                if channel:
-                    embed.add_field(name="Notifications", value=f"{channel.mention}", inline=True)
-        except Exception:
-            pass
-
-        # Add status if available
-        if series.status:
-            embed.add_field(name="Status", value=series.status, inline=True)
-
-        return embed
-
-    async def _build_list_embeds(
-        self, subs: list[dict], *, global_view: bool
-    ) -> list[discord.Embed]:
-        """Build paginated embeds for subscription list."""
-        if not subs:
-            return [
-                discord.Embed(
-                    title="No Subscriptions",
-                    description="You don't have any subscriptions.",
-                    colour=discord.Colour.greyple(),
-                )
-            ]
-
-        # Group by guild (if global) or by website_key
-        if global_view:
-            # Group by guild_id, then by website_key
-            grouped: dict[int, dict[str, list[dict]]] = {}
-            for sub in subs:
-                guild_id = sub["guild_id"]
-                website_key = sub["website_key"]
-                if guild_id not in grouped:
-                    grouped[guild_id] = {}
-                if website_key not in grouped[guild_id]:
-                    grouped[guild_id][website_key] = []
-                grouped[guild_id][website_key].append(sub)
-
-            # Build embeds per guild
-            embeds: list[discord.Embed] = []
-            for guild_id in grouped:
-                guild = self.bot.get_guild(guild_id)  # type: ignore[union-attr]
-                guild_name = guild.name if guild else f"Guild {guild_id}"
-
-                for website_key in grouped[guild_id]:
-                    entries = grouped[guild_id][website_key]
-                    # Split into pages
-                    for i in range(0, len(entries), _LIST_PAGE_SIZE):
-                        chunk = entries[i : i + _LIST_PAGE_SIZE]
-                        lines = []
-                        for sub in chunk:
-                            title = sub.get("title", "Unknown")
-                            url = sub.get("series_url", "")
-                            subscribed_at = sub.get("subscribed_at", "N/A")
-                            # Format date to short form (YYYY-MM-DD)
-                            if isinstance(subscribed_at, str):
-                                date_part = (
-                                    subscribed_at.split()[0]
-                                    if " " in subscribed_at
-                                    else subscribed_at
-                                )
-                            else:
-                                date_part = "N/A"
-                            lines.append(f"[{title}]({url}) — {date_part}")
-
-                        page_num = (i // _LIST_PAGE_SIZE) + 1
-                        page_label = f"{guild_name} • {website_key} (page {page_num})"
-
-                        embed = discord.Embed(
-                            title="Your Subscriptions",
-                            description="\n".join(lines) if lines else "No entries",
-                            colour=discord.Colour.blurple(),
-                        )
-                        embed.set_footer(text=page_label)
-                        embeds.append(embed)
-        else:
-            # Group by website_key only (single guild)
-            grouped_by_site: dict[str, list[dict]] = {}
-            for sub in subs:
-                website_key = sub["website_key"]
-                if website_key not in grouped_by_site:
-                    grouped_by_site[website_key] = []
-                grouped_by_site[website_key].append(sub)
-
-            # Build embeds per website
-            embeds = []
-            for website_key in grouped_by_site:
-                entries = grouped_by_site[website_key]
-                # Split into pages
-                for i in range(0, len(entries), _LIST_PAGE_SIZE):
-                    chunk = entries[i : i + _LIST_PAGE_SIZE]
-                    lines = []
-                    for sub in chunk:
-                        title = sub.get("title", "Unknown")
-                        url = sub.get("series_url", "")
-                        subscribed_at = sub.get("subscribed_at", "N/A")
-                        if isinstance(subscribed_at, str):
-                            date_part = (
-                                subscribed_at.split()[0] if " " in subscribed_at else subscribed_at
-                            )
-                        else:
-                            date_part = "N/A"
-                        lines.append(f"[{title}]({url}) — {date_part}")
-
-                    page_num = (i // _LIST_PAGE_SIZE) + 1
-                    page_label = f"{website_key} (page {page_num})"
-
-                    embed = discord.Embed(
-                        title="Your Subscriptions",
-                        description="\n".join(lines) if lines else "No entries",
-                        colour=discord.Colour.blurple(),
-                    )
-                    embed.set_footer(text=page_label)
-                    embeds.append(embed)
-
-        return (
-            embeds
-            if embeds
-            else [
-                discord.Embed(
-                    title="No Subscriptions",
-                    description="You don't have any subscriptions.",
-                    colour=discord.Colour.greyple(),
-                )
-            ]
-        )
 
 
 async def setup(bot: commands.Bot) -> None:

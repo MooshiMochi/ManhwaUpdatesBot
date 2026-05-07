@@ -27,7 +27,7 @@ class SettingsCog(commands.Cog, name="Settings"):
 
     @app_commands.command(
         name="settings",
-        description="Configure bot settings for this server (or your DM preferences).",
+        description="View and Edit the server/DM settings.",
     )
     async def settings(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -89,9 +89,7 @@ class SettingsCog(commands.Cog, name="Settings"):
 
         view = DmSettingsView(bot, interaction.user.id)
         await view.initialize()
-        await interaction.response.send_message(
-            embed=view.build_embed(), view=view, ephemeral=True
-        )
+        await interaction.response.send_message(embed=view.build_embed(), view=view, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

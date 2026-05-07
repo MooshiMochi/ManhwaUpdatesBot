@@ -4,8 +4,10 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from src.manhwa_bot.db.migrate import apply_pending
+from src.manhwa_bot.db.migrate import _MIGRATIONS_DIR, apply_pending
 from src.manhwa_bot.db.pool import DbPool
+
+_EXPECTED_MIGRATIONS = sorted(p.name for p in _MIGRATIONS_DIR.glob("*.sql"))
 
 
 def test_all_migrations_apply() -> None:
@@ -18,9 +20,11 @@ def test_all_migrations_apply() -> None:
                     "SELECT filename FROM schema_migrations ORDER BY filename"
                 )
                 names = [r["filename"] for r in rows]
-                assert len(names) == 9, f"expected 9 migrations, got {len(names)}: {names}"
-                # Check all expected files are recorded.
-                for i in range(1, 10):
+                assert names == _EXPECTED_MIGRATIONS, (
+                    f"applied migrations {names} do not match files on disk {_EXPECTED_MIGRATIONS}"
+                )
+                # Sanity: numbered prefixes 001..N are all present.
+                for i in range(1, len(_EXPECTED_MIGRATIONS) + 1):
                     prefix = f"{i:03d}_"
                     assert any(n.startswith(prefix) for n in names), (
                         f"migration {prefix}* not found in {names}"
@@ -40,7 +44,7 @@ def test_migrations_are_idempotent() -> None:
                 # Running a second time must not raise or double-insert.
                 await apply_pending(pool)
                 rows = await pool.fetchall("SELECT filename FROM schema_migrations")
-                assert len(rows) == 9
+                assert len(rows) == len(_EXPECTED_MIGRATIONS)
             finally:
                 await pool.close()
 

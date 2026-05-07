@@ -70,6 +70,22 @@ class UpdatesCog(commands.Cog, name="Updates"):
         chapter = payload.get("chapter") or {}
         is_premium = bool(chapter.get("is_premium"))
 
+        chapter_text = chapter.get("name") or chapter.get("text")
+        chapter_url = chapter.get("url")
+        chapter_at = (
+            payload.get("released_at") or payload.get("created_at") or record.get("created_at")
+        )
+        try:
+            await self._tracked.update_latest_chapter(
+                website_key,
+                url_name,
+                text=str(chapter_text) if chapter_text else None,
+                url=str(chapter_url) if chapter_url else None,
+                at=str(chapter_at) if chapter_at else None,
+            )
+        except Exception:
+            _log.exception("failed to persist latest chapter for %s:%s", website_key, url_name)
+
         embed = formatting.chapter_update_embed(payload)
 
         guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)

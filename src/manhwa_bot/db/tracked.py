@@ -17,6 +17,9 @@ class TrackedSeries:
     cover_url: str | None
     status: str | None
     added_at: str
+    last_chapter_text: str | None = None
+    last_chapter_url: str | None = None
+    last_chapter_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,9 @@ class GuildTrackedSeries:
     added_at: str
     guild_id: int
     ping_role_id: int | None
+    last_chapter_text: str | None = None
+    last_chapter_url: str | None = None
+    last_chapter_at: str | None = None
 
 
 def _row_to_tracked(row: Any) -> TrackedSeries:
@@ -41,6 +47,9 @@ def _row_to_tracked(row: Any) -> TrackedSeries:
         cover_url=row["cover_url"],
         status=row["status"],
         added_at=row["added_at"],
+        last_chapter_text=_optional(row, "last_chapter_text"),
+        last_chapter_url=_optional(row, "last_chapter_url"),
+        last_chapter_at=_optional(row, "last_chapter_at"),
     )
 
 
@@ -55,7 +64,17 @@ def _row_to_guild_tracked(row: Any) -> GuildTrackedSeries:
         added_at=row["added_at"],
         guild_id=row["guild_id"],
         ping_role_id=row["ping_role_id"],
+        last_chapter_text=_optional(row, "last_chapter_text"),
+        last_chapter_url=_optional(row, "last_chapter_url"),
+        last_chapter_at=_optional(row, "last_chapter_at"),
     )
+
+
+def _optional(row: Any, key: str) -> Any:
+    try:
+        return row[key]
+    except KeyError, IndexError:
+        return None
 
 
 class TrackedStore:
@@ -70,18 +89,58 @@ class TrackedStore:
         title: str,
         cover_url: str | None = None,
         status: str | None = None,
+        *,
+        last_chapter_text: str | None = None,
+        last_chapter_url: str | None = None,
+        last_chapter_at: str | None = None,
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO tracked_series (website_key, url_name, series_url, title, cover_url, status)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO tracked_series (
+              website_key, url_name, series_url, title, cover_url, status,
+              last_chapter_text, last_chapter_url, last_chapter_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(website_key, url_name) DO UPDATE SET
-              series_url = excluded.series_url,
-              title      = excluded.title,
-              cover_url  = excluded.cover_url,
-              status     = excluded.status
+              series_url        = excluded.series_url,
+              title             = excluded.title,
+              cover_url         = excluded.cover_url,
+              status            = excluded.status,
+              last_chapter_text = COALESCE(excluded.last_chapter_text, last_chapter_text),
+              last_chapter_url  = COALESCE(excluded.last_chapter_url,  last_chapter_url),
+              last_chapter_at   = COALESCE(excluded.last_chapter_at,   last_chapter_at)
             """,
-            (website_key, url_name, series_url, title, cover_url, status),
+            (
+                website_key,
+                url_name,
+                series_url,
+                title,
+                cover_url,
+                status,
+                last_chapter_text,
+                last_chapter_url,
+                last_chapter_at,
+            ),
+        )
+
+    async def update_latest_chapter(
+        self,
+        website_key: str,
+        url_name: str,
+        *,
+        text: str | None,
+        url: str | None,
+        at: str | None,
+    ) -> None:
+        await self._pool.execute(
+            """
+            UPDATE tracked_series
+            SET last_chapter_text = ?,
+                last_chapter_url  = ?,
+                last_chapter_at   = ?
+            WHERE website_key = ? AND url_name = ?
+            """,
+            (text, url, at, website_key, url_name),
         )
 
     async def add_to_guild(

@@ -19,6 +19,7 @@ from .checks import PREMIUM_REQUIRED
 from .cogs import COGS
 from .config import AppConfig
 from .crawler.client import CrawlerClient
+from .crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from .db.migrate import apply_pending
 from .db.patreon_links import PatreonLinkStore
 from .db.pool import DbPool
@@ -28,6 +29,13 @@ from .premium import (
     GrantsService,
     PatreonClient,
     PremiumService,
+)
+from .ui.error import (
+    SOURCE_BOT,
+    SOURCE_COOLDOWN,
+    SOURCE_CRAWLER,
+    SOURCE_PERMISSION,
+    error_embed,
 )
 from .ui.upgrade_embed import build_upgrade_embed, build_upgrade_view
 
@@ -88,9 +96,7 @@ class ManhwaBot(commands.Bot):
         _log.info("DB migrations applied")
 
         self.grants = GrantsService(PremiumGrantStore(self.db))
-        self.patreon = PatreonClient(
-            self.config.premium.patreon, PatreonLinkStore(self.db)
-        )
+        self.patreon = PatreonClient(self.config.premium.patreon, PatreonLinkStore(self.db))
         self.discord_ents = DiscordEntitlementsService(self.config.premium.discord)
         self.premium = PremiumService(
             self,
@@ -101,15 +107,9 @@ class ManhwaBot(commands.Bot):
         )
         await self.grants.start()
         await self.patreon.start()
-        self.add_listener(
-            self.discord_ents.on_entitlement_create, "on_entitlement_create"
-        )
-        self.add_listener(
-            self.discord_ents.on_entitlement_update, "on_entitlement_update"
-        )
-        self.add_listener(
-            self.discord_ents.on_entitlement_delete, "on_entitlement_delete"
-        )
+        self.add_listener(self.discord_ents.on_entitlement_create, "on_entitlement_create")
+        self.add_listener(self.discord_ents.on_entitlement_update, "on_entitlement_update")
+        self.add_listener(self.discord_ents.on_entitlement_delete, "on_entitlement_delete")
 
         self.tree.on_error = self._on_app_command_error  # type: ignore[assignment]
         self.add_listener(self._on_command_error, "on_command_error")
@@ -145,25 +145,32 @@ class ManhwaBot(commands.Bot):
         interaction: discord.Interaction,
         error: app_commands.AppCommandError,
     ) -> None:
-        if (
-            isinstance(error, app_commands.CheckFailure)
-            and str(error) == PREMIUM_REQUIRED
-        ):
+        if isinstance(error, app_commands.CheckFailure) and str(error) == PREMIUM_REQUIRED:
             embed = build_upgrade_embed(self.config.premium)
             view = build_upgrade_view(self.config.premium)
             try:
                 if interaction.response.is_done():
-                    await interaction.followup.send(
-                        embed=embed, view=view, ephemeral=True
-                    )
+                    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
                 else:
-                    await interaction.response.send_message(
-                        embed=embed, view=view, ephemeral=True
-                    )
+                    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             except discord.HTTPException:
                 _log.exception("Failed to send premium upgrade embed")
             return
-        _log.exception("Unhandled app command error", exc_info=error)
+
+        original = getattr(error, "original", None) or error
+        source, message = _user_message_for_error(original)
+
+        cmd_name = interaction.command.qualified_name if interaction.command is not None else "?"
+        _log.exception("App command error in /%s", cmd_name, exc_info=original)
+
+        try:
+            embed = error_embed(message, source=source)
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+        except discord.HTTPException:
+            _log.exception("Failed to send error embed for /%s", cmd_name)
 
     async def _on_command_error(
         self,
@@ -177,3 +184,53 @@ class ManhwaBot(commands.Bot):
                 await ctx.reply(embed=embed, view=view, mention_author=False)
             except discord.HTTPException:
                 _log.exception("Failed to send premium upgrade embed")
+
+
+_CRAWLER_ERROR_MESSAGES: dict[str, str] = {
+    "rate_limited": "You're going too fast — please wait a few seconds and try again.",
+    "website_blocked": "That website is currently blocking us. We'll try again shortly.",
+    "page_blocked": "The crawler was blocked while trying to reach that page.",
+    "website_disabled": "That website is temporarily disabled.",
+    "not_found": "That series could not be found.",
+    "tracking_seed_failed": "Couldn't fetch this series right now — try again later.",
+    "unavailable": "The crawler service is temporarily unavailable.",
+    "unknown_type": "This action isn't supported right now.",
+}
+
+
+def _user_message_for_error(exc: BaseException) -> tuple[str, str]:
+    """Map an exception to (source_label, user_facing_message)."""
+    if isinstance(exc, RequestTimeout):
+        return SOURCE_CRAWLER, (
+            "The crawler took too long to respond. Please try again in a moment."
+        )
+    if isinstance(exc, Disconnected):
+        return SOURCE_CRAWLER, ("The connection to the crawler was interrupted. Please try again.")
+    if isinstance(exc, CrawlerError):
+        msg = (exc.message or "").lower()
+        if exc.code == "invalid_request" and ("url template" in msg or "url rebuild failed" in msg):
+            return SOURCE_CRAWLER, (
+                "That URL is not in a valid format for this website. "
+                "Use the autocomplete or paste a full series URL."
+            )
+        mapped = _CRAWLER_ERROR_MESSAGES.get(exc.code)
+        if mapped:
+            return SOURCE_CRAWLER, mapped
+        if exc.code == "invalid_request":
+            return SOURCE_CRAWLER, exc.message or "Invalid request."
+        return SOURCE_CRAWLER, f"[{exc.code}] {exc.message}"
+
+    if isinstance(exc, app_commands.CommandOnCooldown):
+        retry = getattr(exc, "retry_after", 0.0) or 0.0
+        return SOURCE_COOLDOWN, f"Slow down — try again in {retry:.0f}s."
+    if isinstance(exc, app_commands.MissingPermissions):
+        perms = ", ".join(getattr(exc, "missing_permissions", []) or []) or "permissions"
+        return SOURCE_PERMISSION, (f"You're missing the required {perms} to use this command.")
+    if isinstance(exc, app_commands.BotMissingPermissions):
+        perms = ", ".join(getattr(exc, "missing_permissions", []) or []) or "permissions"
+        return SOURCE_PERMISSION, (f"I'm missing the required {perms} to run this command here.")
+    if isinstance(exc, app_commands.CheckFailure):
+        return SOURCE_PERMISSION, "You don't have permission to use this command here."
+
+    rid = getattr(exc, "request_id", None) or "n/a"
+    return SOURCE_BOT, (f"Something went wrong. Please try again later. (request_id: {rid})")

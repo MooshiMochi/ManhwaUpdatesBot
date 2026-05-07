@@ -23,14 +23,20 @@ def _nav_buttons(p: Paginator) -> tuple:
 
 def test_single_page_all_nav_disabled() -> None:
     p = Paginator(_embeds(1))
-    first, prev, label, nxt, last = _nav_buttons(p)
+    first, prev, stop, nxt, last = _nav_buttons(p)
 
-    assert first.disabled
-    assert prev.disabled
-    assert label.disabled
-    assert nxt.disabled
-    assert last.disabled
-    assert label.label == "Page 1/1"
+    assert [b.label for b in (first, prev, stop, nxt, last)] == [
+        "⏮️",
+        "⬅️",
+        "⏹️",
+        "➡️",
+        "⏭️",
+    ]
+    assert not first.disabled
+    assert not prev.disabled
+    assert not stop.disabled
+    assert not nxt.disabled
+    assert not last.disabled
 
 
 # -- multi-page initial state -------------------------------------------
@@ -38,13 +44,25 @@ def test_single_page_all_nav_disabled() -> None:
 
 def test_multi_page_first_page_state() -> None:
     p = Paginator(_embeds(3))
-    first, prev, label, nxt, last = _nav_buttons(p)
+    first, prev, stop, nxt, last = _nav_buttons(p)
 
-    assert first.disabled, "«  should be disabled on first page"
-    assert prev.disabled, "<  should be disabled on first page"
-    assert not nxt.disabled, ">  should be enabled on first page"
-    assert not last.disabled, "»  should be enabled on first page"
-    assert label.label == "Page 1/3"
+    assert [b.label for b in (first, prev, stop, nxt, last)] == [
+        "⏮️",
+        "⬅️",
+        "⏹️",
+        "➡️",
+        "⏭️",
+    ]
+    assert first.style is discord.ButtonStyle.blurple
+    assert prev.style is discord.ButtonStyle.blurple
+    assert stop.style is discord.ButtonStyle.red
+    assert nxt.style is discord.ButtonStyle.blurple
+    assert last.style is discord.ButtonStyle.blurple
+    assert not first.disabled
+    assert not prev.disabled
+    assert not stop.disabled
+    assert not nxt.disabled
+    assert not last.disabled
     assert p.page == 0
     assert p.total_pages == 3
 
@@ -55,13 +73,13 @@ def test_multi_page_last_page_state() -> None:
     p._page = 2
     p._rebuild()
 
-    first, prev, label, nxt, last = _nav_buttons(p)
+    first, prev, stop, nxt, last = _nav_buttons(p)
 
     assert not first.disabled
     assert not prev.disabled
-    assert nxt.disabled
-    assert last.disabled
-    assert label.label == "Page 3/3"
+    assert not stop.disabled
+    assert not nxt.disabled
+    assert not last.disabled
 
 
 def test_middle_page_all_nav_enabled() -> None:
@@ -69,13 +87,13 @@ def test_middle_page_all_nav_enabled() -> None:
     p._page = 2
     p._rebuild()
 
-    first, prev, label, nxt, last = _nav_buttons(p)
+    first, prev, stop, nxt, last = _nav_buttons(p)
 
     assert not first.disabled
     assert not prev.disabled
+    assert not stop.disabled
     assert not nxt.disabled
     assert not last.disabled
-    assert label.label == "Page 3/5"
 
 
 # -- current_embed reflects the page ------------------------------------
@@ -89,6 +107,23 @@ def test_current_embed_matches_page() -> None:
     p._page = 3
     p._rebuild()
     assert p.current_embed is embeds[3]
+
+
+def test_prev_wraps_from_first_to_last() -> None:
+    p = Paginator(_embeds(3))
+
+    p._move(-1)
+
+    assert p.page == 2
+
+
+def test_next_wraps_from_last_to_first() -> None:
+    p = Paginator(_embeds(3))
+    p._page = 2
+
+    p._move(1)
+
+    assert p.page == 0
 
 
 # -- items_factory adds extra items per page ----------------------------

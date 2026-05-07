@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import logging
-from itertools import groupby
+from typing import Any
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .. import autocomplete
+from .. import autocomplete, formatting
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
+from ..crawler.website_detect import detect_website_key
 from ..db.guild_settings import GuildSettingsStore
 from ..db.tracked import TrackedStore
+from ..ui.error import SOURCE_CRAWLER
+from ..ui.error import error_embed as _shared_error_embed
 from ..ui.paginator import Paginator
 
 _log = logging.getLogger(__name__)
@@ -38,17 +41,20 @@ class TrackingCog(commands.Cog, name="Tracking"):
 
     track = app_commands.Group(
         name="track",
-        description="Manage tracked manga",
+        description="(Mods) Start tracking a manga for the server to get notifications.",
         guild_only=True,
         default_permissions=discord.Permissions(manage_roles=True),
     )
 
     # -- /track new ---------------------------------------------------------
 
-    @track.command(name="new", description="Start tracking a manga in this guild")
+    @track.command(
+        name="new",
+        description="Start tracking a manga for the server to get notifications.",
+    )
     @app_commands.describe(
-        manga_url="Search or paste a URL (use autocomplete for best results)",
-        ping_role="Role to mention when a new chapter drops (optional)",
+        manga_url="The URL of the manga you want to track.",
+        ping_role="The role to ping when a notification is sent.",
     )
     @app_commands.autocomplete(manga_url=autocomplete.track_new_url_or_search)
     @has_premium(dm_only=True)
@@ -58,31 +64,55 @@ class TrackingCog(commands.Cog, name="Tracking"):
         manga_url: str,
         ping_role: discord.Role | None = None,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
-        parsed = _parse_new_url(manga_url)
+        parsed = await _resolve_track_input(self.bot, manga_url)
         if parsed is None:
             await interaction.followup.send(
                 embed=_error_embed(
-                    "Couldn't parse that URL.\n"
-                    "Use the autocomplete to search by title, or paste a value in "
-                    "`website_key|https://...` format."
+                    "Couldn't resolve that URL.\n"
+                    "Use the autocomplete to search by title, or paste a full series "
+                    "URL from a supported website."
                 ),
                 ephemeral=True,
             )
             return
 
         website_key, series_url = parsed
+        guild_id = interaction.guild_id  # type: ignore[union-attr]
+
+        if interaction.guild is not None:
+            channel = await self._resolve_notifications_channel(interaction.guild, website_key)
+            if channel is None:
+                await interaction.followup.send(
+                    embed=_error_embed(
+                        "**No updates channel configured for this server.**\n\n"
+                        "Set one with `/settings` → Notifications channel "
+                        "(or per-scanlator override) before tracking series. "
+                        "Without a channel I have nowhere to post chapter updates."
+                    ),
+                    ephemeral=True,
+                )
+                return
+        else:
+            channel = None
+
         try:
             data = await self.bot.crawler.request(  # type: ignore[attr-defined]
                 "track_series", website_key=website_key, series_url=series_url
             )
         except CrawlerError as exc:
-            friendly = _FRIENDLY_ERRORS.get(exc.code, f"Crawler error: {exc.message}")
-            await interaction.followup.send(embed=_error_embed(friendly), ephemeral=True)
+            friendly = _FRIENDLY_ERRORS.get(exc.code, f"[{exc.code}] {exc.message}")
+            await interaction.followup.send(
+                embed=_shared_error_embed(friendly, source=SOURCE_CRAWLER),
+                ephemeral=True,
+            )
             return
         except (RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(embed=_error_embed(str(exc)), ephemeral=True)
+            await interaction.followup.send(
+                embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
+                ephemeral=True,
+            )
             return
 
         website_key = data["website_key"]
@@ -91,48 +121,73 @@ class TrackingCog(commands.Cog, name="Tracking"):
         series_data: dict = data.get("series") or {}
         title: str = series_data.get("title") or url_name
         status: str | None = series_data.get("status")
+        cover_url: str | None = series_data.get("cover_url")
 
-        guild_id = interaction.guild_id  # type: ignore[union-attr]
+        latest_chapters = series_data.get("latest_chapters") or []
+        latest_text: str | None = None
+        latest_url: str | None = None
+        if latest_chapters:
+            first = latest_chapters[0] or {}
+            latest_text = first.get("name") or first.get("text")
+            latest_url = first.get("url")
 
         await self._tracked.upsert_series(
-            website_key, url_name, series_url, title, cover_url=None, status=status
+            website_key,
+            url_name,
+            series_url,
+            title,
+            cover_url=cover_url,
+            status=status,
+            last_chapter_text=latest_text,
+            last_chapter_url=latest_url,
         )
         await self._tracked.add_to_guild(
             guild_id, website_key, url_name, ping_role.id if ping_role else None
         )
 
-        gs = await self._guild_settings.get(guild_id)
+        embed = formatting.tracking_success_embed(
+            title=title,
+            series_url=series_url,
+            ping_role=ping_role,
+            notif_channel=channel,
+            cover_url=cover_url,
+            is_dm=interaction.guild_id is None,
+            bot=self.bot,
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-        embed = discord.Embed(
-            title=f"Now tracking: {title}",
-            url=series_url,
-            colour=discord.Colour.green(),
-        )
-        if status:
-            embed.add_field(name="Status", value=status, inline=True)
-        embed.add_field(name="Website", value=website_key, inline=True)
-        embed.add_field(
-            name="Ping role",
-            value=ping_role.mention if ping_role else "None",
-            inline=True,
-        )
+    async def _resolve_notifications_channel(
+        self, guild: discord.Guild, website_key: str
+    ) -> discord.abc.GuildChannel | discord.Thread | None:
+        """Per-scanlator override → guild-wide notifications channel → None."""
+        try:
+            scanlator_rows = await self._guild_settings.list_scanlator_channels(guild.id)
+        except Exception:
+            scanlator_rows = []
+        for row in scanlator_rows:
+            if row.get("website_key") == website_key and row.get("channel_id"):
+                ch = guild.get_channel(int(row["channel_id"]))
+                if ch is not None:
+                    return ch
+        gs = await self._guild_settings.get(guild.id)
         if gs and gs.notifications_channel_id:
-            embed.set_footer(
-                text=f"Updates → #{interaction.guild.get_channel(gs.notifications_channel_id) or gs.notifications_channel_id}"
-            )  # type: ignore[union-attr]
-        else:
-            embed.set_footer(text="Set a notifications channel with /settings")
-
-        await interaction.followup.send(embed=embed)
+            ch = guild.get_channel(int(gs.notifications_channel_id))
+            if ch is not None:
+                return ch
+        return None
 
     # -- /track update ------------------------------------------------------
 
-    @track.command(name="update", description="Change the ping role for a tracked manga")
+    @track.command(
+        name="update",
+        description="Update a tracked manga for the server to get notifications.",
+    )
     @app_commands.describe(
-        manga_id="Manga to update (use autocomplete)",
-        role="New ping role — leave empty to remove the current role",
+        manga_id="The name of the manga.",
+        role="The new role to ping.",
     )
     @app_commands.autocomplete(manga_id=autocomplete.tracked_manga_in_guild)
+    @app_commands.rename(manga_id="manga")
     @has_premium(dm_only=True)
     async def track_update(
         self,
@@ -153,29 +208,63 @@ class TrackingCog(commands.Cog, name="Tracking"):
         website_key, url_name = parsed
         guild_id = interaction.guild_id  # type: ignore[union-attr]
 
+        # V1 validates the role against bot permissions/hierarchy.
+        if role is not None and interaction.guild is not None:
+            me = interaction.guild.me
+            if role.is_bot_managed():
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Error",
+                        description=(
+                            "The role you provided is managed by a bot.\n"
+                            "Please provide a role that is not managed by a bot and try again."
+                        ),
+                        colour=discord.Colour.red(),
+                    ),
+                    ephemeral=True,
+                )
+                return
+            if me is not None and role >= me.top_role:
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Error",
+                        description=(
+                            "The role you provided is higher than my top role.\n"
+                            "Please move the role below my top role and try again."
+                        ),
+                        colour=discord.Colour.red(),
+                    ),
+                    ephemeral=True,
+                )
+                return
+
         await self._tracked.update_ping_role(
             guild_id, website_key, url_name, role.id if role else None
         )
 
         series = await self._tracked.find(website_key, url_name)
         title = series.title if series else f"{website_key}:{url_name}"
-        role_text = role.mention if role else "*removed*"
+        cover_url = series.cover_url if series else None
+        role_text = role.mention if role else "nothing"
 
         embed = discord.Embed(
-            title="Ping role updated",
-            description=f"**{title}** ping role → {role_text}",
-            colour=discord.Colour.blurple(),
+            title="Success",
+            description=f"The role for **{title}** has been updated to {role_text}.",
+            colour=discord.Colour.green(),
         )
+        if cover_url:
+            embed.set_image(url=cover_url)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     # -- /track remove ------------------------------------------------------
 
-    @track.command(name="remove", description="Stop tracking a manga in this guild")
+    @track.command(name="remove", description="Stop tracking a manga on this server.")
     @app_commands.describe(
-        manga_id="Manga to untrack (use autocomplete)",
-        delete_role="Also delete the manga's ping role from this server",
+        manga_id="The name of the manga.",
+        delete_role="Whether to delete the role associated with the manhwa.",
     )
     @app_commands.autocomplete(manga_id=autocomplete.tracked_manga_in_guild)
+    @app_commands.rename(manga_id="manga")
     @has_premium(dm_only=True)
     async def track_remove(
         self,
@@ -183,7 +272,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
         manga_id: str,
         delete_role: bool = False,
     ) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         parsed = _parse_manga_id(manga_id)
         if parsed is None:
@@ -215,7 +304,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
                     "untrack_series", website_key=website_key, url_name=url_name
                 )
                 crawler_untracked = True
-            except (CrawlerError, RequestTimeout, Disconnected):
+            except CrawlerError, RequestTimeout, Disconnected:
                 _log.exception(
                     "untrack_series call failed for %s:%s — series removed from bot DB anyway",
                     website_key,
@@ -224,6 +313,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
             await self._tracked.delete_series(website_key, url_name)
 
         role_deleted = False
+        deleted_role_name: str | None = None
         if delete_role and captured_role_id:
             role_obj = (
                 interaction.guild.get_role(captured_role_id)  # type: ignore[union-attr]
@@ -232,68 +322,91 @@ class TrackingCog(commands.Cog, name="Tracking"):
             )
             if role_obj is None:
                 try:
-                    role_obj = await interaction.guild.fetch_roles()  # type: ignore[union-attr]
-                    role_obj = next((r for r in role_obj if r.id == captured_role_id), None)
+                    fetched = await interaction.guild.fetch_roles()  # type: ignore[union-attr]
+                    role_obj = next((r for r in fetched if r.id == captured_role_id), None)
                 except discord.HTTPException:
                     role_obj = None
             if role_obj is not None:
+                deleted_role_name = role_obj.name
                 try:
                     await role_obj.delete(reason=f"Deleted with /track remove for {title}")
                     role_deleted = True
                 except discord.HTTPException:
                     _log.warning("failed to delete ping role %s for %s", captured_role_id, title)
+                    deleted_role_name = None
+
+        # V1 layout: title "Success", green, plain description.
+        url_for_link = series.series_url if series else None
+
+        if url_for_link:
+            description = f"Successfully stopped tracking **[{title}]({url_for_link})**"
+        else:
+            description = f"Successfully stopped tracking **{title}**"
+        if deleted_role_name:
+            description += f" and deleted the @{deleted_role_name} role"
+        description += "."
 
         embed = discord.Embed(
-            title=f"Untracked: {title}",
-            colour=discord.Colour.orange(),
+            title="Success",
+            description=description,
+            colour=discord.Colour.green(),
         )
-        if was_last:
+        if was_last and not crawler_untracked:
             embed.add_field(
-                name="Crawler untracked",
-                value="Yes — no other guilds track this series."
-                if crawler_untracked
-                else "Attempted (error — see logs)",
+                name="⚠️ Crawler",
+                value="Could not notify the crawler (error — see logs).",
                 inline=False,
             )
-        if delete_role:
+        if delete_role and not role_deleted and captured_role_id:
             embed.add_field(
-                name="Role deleted",
-                value="Yes"
-                if role_deleted
-                else ("No role assigned" if not captured_role_id else "Failed (see logs)"),
-                inline=True,
+                name="⚠️ Role",
+                value="Failed to delete the role (see logs).",
+                inline=False,
             )
-
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     # -- /track list --------------------------------------------------------
 
-    @track.command(name="list", description="List all tracked manga in this guild")
+    @track.command(
+        name="list",
+        description="List all the manga that are being tracked in this server.",
+    )
     @has_premium(dm_only=True)
     async def track_list(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer(ephemeral=True)
 
         guild_id = interaction.guild_id  # type: ignore[union-attr]
         rows = await self._tracked.list_for_guild(guild_id, limit=_LIST_FETCH_LIMIT)
 
-        if not rows:
-            await interaction.followup.send(
-                embed=discord.Embed(
-                    title="No manga tracked",
-                    description="This guild isn't tracking any manga yet. Use `/track new` to start.",
-                    colour=discord.Colour.greyple(),
-                )
-            )
-            return
-
-        guild_name = interaction.guild.name if interaction.guild else "this guild"  # type: ignore[union-attr]
-        embeds = _build_list_embeds(rows, guild_name=guild_name)
+        # Sort alphabetically by title (the helper groups by website_key internally).
+        sorted_rows = sorted(rows, key=lambda r: r.title.lower())
+        items = [
+            {
+                "title": r.title,
+                "url": r.series_url,
+                "website_key": r.website_key,
+                "last_chapter": r.last_chapter_text,
+                "last_chapter_url": r.last_chapter_url,
+            }
+            for r in sorted_rows
+        ]
+        embeds = formatting.grouped_list_embeds(
+            items,
+            title=f"Tracked Manhwa ({len(items)})",
+            bot=self.bot,
+            empty_title="Nothing found",
+            empty_description=(
+                "There are no tracked manga in this server."
+                if interaction.guild_id is not None
+                else "You are not tracking any manga."
+            ),
+        )
 
         if len(embeds) == 1:
-            await interaction.followup.send(embed=embeds[0])
+            await interaction.followup.send(embed=embeds[0], ephemeral=True)
         else:
             paginator = Paginator(embeds, invoker_id=interaction.user.id)
-            await interaction.followup.send(embed=embeds[0], view=paginator)
+            await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
 
 
 # -- module helpers ---------------------------------------------------------
@@ -303,7 +416,6 @@ def _parse_new_url(manga_url: str) -> tuple[str, str] | None:
     """Parse an autocomplete value for /track new.
 
     Accepts ``"website_key|https://..."`` (search result format).
-    Rejects bare ``https://`` URLs — website_key cannot be inferred.
     """
     if not manga_url:
         return None
@@ -314,6 +426,23 @@ def _parse_new_url(manga_url: str) -> tuple[str, str] | None:
     return None
 
 
+async def _resolve_track_input(bot: Any, manga_url: str) -> tuple[str, str] | None:
+    """Return ``(website_key, series_url)`` for /track new input.
+
+    Accepts:
+    - ``"website_key|https://…"`` (search-as-you-type autocomplete value)
+    - bare ``https://…`` URL (website_key inferred from host)
+    """
+    parsed = _parse_new_url(manga_url)
+    if parsed is not None:
+        return parsed
+    if manga_url and manga_url.startswith("http"):
+        wk = await detect_website_key(bot, manga_url)
+        if wk:
+            return (wk, manga_url)
+    return None
+
+
 def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
     """Parse ``"website_key:url_name"`` → ``(website_key, url_name)``, or None."""
     if ":" in manga_id and not manga_id.startswith("http"):
@@ -321,34 +450,6 @@ def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
         if len(parts) == 2 and parts[0] and parts[1]:
             return (parts[0], parts[1])
     return None
-
-
-def _build_list_embeds(rows: list, *, guild_name: str) -> list[discord.Embed]:
-    """Build paginated embeds from a list of GuildTrackedSeries, grouped by website_key."""
-    total = len(rows)
-    # Sort by website_key then title (list_for_guild already orders by title, re-sort for grouping).
-    sorted_rows = sorted(rows, key=lambda r: (r.website_key, r.title.lower()))
-
-    lines: list[str] = []
-    for website_key, group in groupby(sorted_rows, key=lambda r: r.website_key):
-        lines.append(f"**{website_key}**")
-        for row in group:
-            role_part = f" — <@&{row.ping_role_id}>" if row.ping_role_id else ""
-            lines.append(f"• [{row.title}]({row.series_url}){role_part}")
-
-    pages: list[discord.Embed] = []
-    total_pages = max(1, (len(lines) + _LIST_PAGE_SIZE - 1) // _LIST_PAGE_SIZE)
-    for i in range(0, len(lines), _LIST_PAGE_SIZE):
-        chunk = lines[i : i + _LIST_PAGE_SIZE]
-        page_num = i // _LIST_PAGE_SIZE + 1
-        embed = discord.Embed(
-            title=f"Tracked manga — {guild_name}",
-            description="\n".join(chunk),
-            colour=discord.Colour.blurple(),
-        )
-        embed.set_footer(text=f"Page {page_num}/{total_pages} • {total} series total")
-        pages.append(embed)
-    return pages
 
 
 def _error_embed(message: str) -> discord.Embed:

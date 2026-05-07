@@ -302,6 +302,7 @@ def test_dm_disabled_user_is_skipped() -> None:
                     user_id=42,
                     notifications_enabled=False,
                     paid_chapter_notifs=True,
+                    show_update_buttons=True,
                     updated_at="",
                 )
             )
