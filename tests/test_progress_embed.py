@@ -99,6 +99,19 @@ def test_max_visible_events_one_with_two_events_skips_zero_omitted_marker() -> N
     assert "0 earlier updates omitted" not in embed.description
 
 
+def test_description_is_bounded_to_discord_limit_with_long_visible_history() -> None:
+    state = ProgressEmbedState(command_name="/info", request_id="abc", max_visible_events=20)
+    long_message = "x" * 300
+
+    for index in range(20):
+        state.add(f"{index} {long_message}")
+
+    embed = state.to_embed()
+
+    assert len(embed.description or "") <= 4096
+    assert "20. " in (embed.description or "")
+
+
 def test_progress_event_message_converts_typed_object() -> None:
     event = SimpleNamespace(
         title="Retrying scrape",
@@ -123,3 +136,16 @@ def test_progress_event_message_converts_dict_event() -> None:
 
     assert message == "Scrape failed: Series not found."
     assert severity == "error"
+
+
+def test_progress_event_message_strips_fields_before_composing_and_mapping_status() -> None:
+    message, severity = progress_event_message(
+        {
+            "title": "Retrying scrape ",
+            "detail": " Temporary crawler timeout ",
+            "status": " retrying ",
+        }
+    )
+
+    assert message == "Retrying scrape: Temporary crawler timeout."
+    assert severity == "warning"

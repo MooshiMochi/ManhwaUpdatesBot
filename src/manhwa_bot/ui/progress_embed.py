@@ -12,6 +12,7 @@ import discord
 ProgressSeverity = Literal["info", "warning", "error"]
 
 _ACTIVE_SUFFIX = "..."
+_MAX_DESCRIPTION_LENGTH = 4096
 _MAX_MESSAGE_LENGTH = 240
 _SENTENCE_PUNCTUATION = ".!?"
 
@@ -85,7 +86,7 @@ class ProgressEmbedState:
             if not final_error and number == latest_number:
                 rendered_message = _active_message(message)
             lines.append(f"{number}. {rendered_message}")
-        return "\n".join(lines)
+        return _bounded_description(lines)
 
 
 def progress_event_message(event: object) -> tuple[str, ProgressSeverity]:
@@ -108,7 +109,29 @@ def _event_value(event: object, key: str) -> str | None:
         value = event.get(key)
     else:
         value = getattr(event, key, None)
-    return value if isinstance(value, str) and value.strip() else None
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _bounded_description(lines: list[str]) -> str:
+    description = "\n".join(lines)
+    if len(description) <= _MAX_DESCRIPTION_LENGTH:
+        return description
+
+    marker = "... earlier visible updates truncated."
+    kept_tail: list[str] = []
+    for line in reversed(lines[1:]):
+        candidate = [lines[0], marker, line, *kept_tail]
+        if len("\n".join(candidate)) > _MAX_DESCRIPTION_LENGTH:
+            break
+        kept_tail.insert(0, line)
+
+    bounded = "\n".join([lines[0], marker, *kept_tail])
+    if len(bounded) <= _MAX_DESCRIPTION_LENGTH:
+        return bounded
+    return bounded[: _MAX_DESCRIPTION_LENGTH - len(_ACTIVE_SUFFIX)].rstrip() + _ACTIVE_SUFFIX
 
 
 def _severity_for_status(status: str | None) -> ProgressSeverity:
