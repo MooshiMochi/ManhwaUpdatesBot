@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 
 import discord
 from discord import app_commands
@@ -23,6 +24,7 @@ from ..formatting import (
 from ..ui.error import SOURCE_CRAWLER
 from ..ui.error import error_embed as _shared_error_embed
 from ..ui.paginator import Paginator
+from ..ui.progress_embed import ProgressEmbedState, progress_event_message
 from ..ui.subscribe_view import SubscribeView
 
 _log = logging.getLogger(__name__)
@@ -253,8 +255,22 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
         website_key, identifier = resolved
 
-        info_task = self.bot.crawler.request(  # type: ignore[attr-defined]
-            "info", website_key=website_key, url=identifier
+        request_id = uuid.uuid4().hex
+        progress = ProgressEmbedState(command_name="/info", request_id=request_id)
+        progress.add("Sent request to crawler.")
+        await interaction.edit_original_response(embed=progress.to_embed())
+
+        async def on_progress(event: object) -> None:
+            message, severity = progress_event_message(event)
+            progress.add(message, severity=severity)
+            await interaction.edit_original_response(embed=progress.to_embed())
+
+        info_task = self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+            "info",
+            website_key=website_key,
+            url=identifier,
+            request_id=request_id,
+            on_progress=on_progress,
         )
         chapters_task = self.bot.crawler.request(  # type: ignore[attr-defined]
             "chapters", website_key=website_key, url=identifier
@@ -262,15 +278,21 @@ class CatalogCog(commands.Cog, name="Catalog"):
         try:
             info_data, chapters_data = await asyncio.gather(info_task, chapters_task)
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(
-                embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
-                ephemeral=True,
+            progress.add(str(exc), severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            await interaction.edit_original_response(
+                embed=_shared_error_embed(
+                    f"{exc}\n\nProgress:\n{history}",
+                    source=SOURCE_CRAWLER,
+                )
             )
             return
 
         if not info_data:
-            await interaction.followup.send(
-                embed=_error_embed("No data returned for that series."), ephemeral=True
+            progress.add("No data returned for that series.", severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            await interaction.edit_original_response(
+                embed=_error_embed(f"No data returned for that series.\n\nProgress:\n{history}")
             )
             return
 
@@ -298,7 +320,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
             show_track_button=True,
             show_bookmark_button=True,
         )
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        await interaction.edit_original_response(embed=embed, view=view)
 
     async def _resolve_url_name(self, website_key: str, identifier: str) -> str | None:
         """Best-effort lookup: convert a series URL into a stored ``url_name``.
