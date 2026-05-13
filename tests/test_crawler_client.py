@@ -97,6 +97,23 @@ def test_parse_progress_event_rejects_missing_required_fields() -> None:
             parse_progress_event(payload)
 
 
+def test_parse_progress_event_rejects_hybrid_top_level_payload_missing_title() -> None:
+    with pytest.raises(ValueError):
+        parse_progress_event(
+            {
+                "type": "request_progress",
+                "request_id": "req-1",
+                "event": "scrape_started",
+                "sequence": 1,
+                "status": "running",
+                "data": {
+                    "stage": "queued",
+                    "message": "Preparing",
+                },
+            }
+        )
+
+
 async def _start_server(handler) -> tuple[web.AppRunner, str]:
     app = web.Application()
     app.router.add_get("/ws", handler)

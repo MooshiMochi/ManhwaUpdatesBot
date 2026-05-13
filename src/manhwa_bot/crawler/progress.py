@@ -6,6 +6,22 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+_TOP_LEVEL_PROGRESS_KEYS = frozenset(
+    {
+        "event",
+        "sequence",
+        "title",
+        "detail",
+        "status",
+        "retry_attempt",
+        "max_retries",
+        "error_code",
+        "elapsed_ms",
+    }
+)
+
+_CRAWLER_DATA_PROGRESS_KEYS = frozenset({"stage", "message", "severity"})
+
 
 @dataclass(frozen=True, slots=True)
 class CrawlerProgressEvent:
@@ -32,7 +48,11 @@ def parse_progress_event(payload: Mapping[str, Any]) -> CrawlerProgressEvent:
     """
     request_id = _required_str(payload, "request_id")
     data = payload.get("data")
-    if isinstance(data, Mapping) and ("event" not in payload or "title" not in payload):
+    if (
+        not _has_top_level_progress_keys(payload)
+        and isinstance(data, Mapping)
+        and _has_crawler_data_progress_keys(data)
+    ):
         return _parse_crawler_data_progress_event(request_id, payload, data)
 
     event = _required_str(payload, "event")
@@ -51,6 +71,14 @@ def parse_progress_event(payload: Mapping[str, Any]) -> CrawlerProgressEvent:
         error_code=_optional_str(payload, "error_code"),
         elapsed_ms=_optional_int(payload, "elapsed_ms"),
     )
+
+
+def _has_top_level_progress_keys(payload: Mapping[str, Any]) -> bool:
+    return any(key in payload for key in _TOP_LEVEL_PROGRESS_KEYS)
+
+
+def _has_crawler_data_progress_keys(data: Mapping[str, Any]) -> bool:
+    return any(key in data for key in _CRAWLER_DATA_PROGRESS_KEYS)
 
 
 def _parse_crawler_data_progress_event(
