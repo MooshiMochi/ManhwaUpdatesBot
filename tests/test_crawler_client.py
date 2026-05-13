@@ -53,6 +53,34 @@ def test_parse_progress_event_tolerates_missing_and_unknown_optional_fields() ->
     assert event.detail is None
 
 
+def test_parse_progress_event_accepts_nested_crawler_data_shape() -> None:
+    event = parse_progress_event(
+        {
+            "type": "request_progress",
+            "request_id": "req-1",
+            "ok": True,
+            "data": {
+                "stage": "retrying",
+                "severity": "warning",
+                "message": "Retrying toongod scrape.",
+                "attempt": 2,
+                "max_attempts": 3,
+                "website_key": "toongod",
+            },
+        }
+    )
+
+    assert event.request_id == "req-1"
+    assert event.event == "retrying"
+    assert event.sequence == 0
+    assert event.title == "Retrying toongod scrape."
+    assert event.status == "retrying"
+    assert event.retry_attempt == 2
+    assert event.max_retries == 3
+    assert event.detail is not None
+    assert "toongod" in event.detail
+
+
 def test_parse_progress_event_rejects_missing_required_fields() -> None:
     base_payload = {
         "type": "request_progress",
@@ -265,6 +293,67 @@ def test_request_with_progress_routes_events_before_final_result() -> None:
             assert [event.sequence for event in received] == [1, 2]
             assert [event.event for event in received] == ["scrape_started", "scrape_succeeded"]
             assert data == {"series": "solo-leveling"}
+        finally:
+            await client.stop()
+            await runner.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_request_with_progress_routes_nested_crawler_data_before_final_result() -> None:
+    async def _run() -> None:
+        async def handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    payload = json.loads(msg.data)
+                    request_id = payload["request_id"]
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": request_id,
+                                "type": "request_progress",
+                                "ok": True,
+                                "data": {
+                                    "stage": "queued",
+                                    "severity": "info",
+                                    "message": "Preparing scrape for toongod.",
+                                    "website_key": "toongod",
+                                },
+                            }
+                        )
+                    )
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": request_id,
+                                "type": f"{payload['type']}_result",
+                                "ok": True,
+                                "data": {"series": payload.get("url_name")},
+                            }
+                        )
+                    )
+            return ws
+
+        runner, url = await _start_server(handler)
+        client = CrawlerClient(_config(url))
+        received: list[CrawlerProgressEvent] = []
+
+        async def on_progress(event: CrawlerProgressEvent) -> None:
+            received.append(event)
+
+        try:
+            await client.start()
+            data = await client.request_with_progress(
+                "scrape_series",
+                url_name="solo-leveling",
+                on_progress=on_progress,
+            )
+            assert data == {"series": "solo-leveling"}
+            assert [(event.event, event.title, event.status) for event in received] == [
+                ("queued", "Preparing scrape for toongod.", "running")
+            ]
         finally:
             await client.stop()
             await runner.cleanup()

@@ -31,6 +31,10 @@ def parse_progress_event(payload: Mapping[str, Any]) -> CrawlerProgressEvent:
     ignored so backend additions do not break the bot.
     """
     request_id = _required_str(payload, "request_id")
+    data = payload.get("data")
+    if isinstance(data, Mapping) and ("event" not in payload or "title" not in payload):
+        return _parse_crawler_data_progress_event(request_id, payload, data)
+
     event = _required_str(payload, "event")
     sequence = _required_int(payload, "sequence")
     title = _required_str(payload, "title")
@@ -47,6 +51,51 @@ def parse_progress_event(payload: Mapping[str, Any]) -> CrawlerProgressEvent:
         error_code=_optional_str(payload, "error_code"),
         elapsed_ms=_optional_int(payload, "elapsed_ms"),
     )
+
+
+def _parse_crawler_data_progress_event(
+    request_id: str,
+    payload: Mapping[str, Any],
+    data: Mapping[str, Any],
+) -> CrawlerProgressEvent:
+    event = _required_str(data, "stage")
+    title = _optional_str(data, "message") or event
+    return CrawlerProgressEvent(
+        request_id=request_id,
+        event=event,
+        sequence=_optional_int(payload, "sequence") or _optional_int(data, "sequence") or 0,
+        title=title,
+        detail=_crawler_data_detail(data),
+        status=_crawler_data_status(event, _optional_str(data, "severity")),
+        retry_attempt=_optional_int(data, "attempt"),
+        max_retries=_optional_int(data, "max_attempts"),
+        error_code=_optional_str(data, "error_code"),
+        elapsed_ms=_optional_int(data, "elapsed_ms"),
+    )
+
+
+def _crawler_data_status(stage: str, severity: str | None) -> str:
+    if severity == "error":
+        return "failed"
+    if severity == "warning" or stage == "retrying":
+        return "retrying"
+    return "running"
+
+
+def _crawler_data_detail(data: Mapping[str, Any]) -> str | None:
+    parts: list[str] = []
+    attempt = _optional_int(data, "attempt")
+    max_attempts = _optional_int(data, "max_attempts")
+    if attempt is not None and max_attempts is not None:
+        parts.append(f"Attempt {attempt}/{max_attempts}")
+    elif attempt is not None:
+        parts.append(f"Attempt {attempt}")
+
+    website_key = _optional_str(data, "website_key")
+    if website_key is not None:
+        parts.append(website_key)
+
+    return " - ".join(parts) if parts else None
 
 
 def _required_str(payload: Mapping[str, Any], key: str) -> str:
