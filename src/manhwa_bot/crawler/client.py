@@ -168,6 +168,7 @@ class CrawlerClient:
                 response_received = True
             except TimeoutError as exc:
                 raise RequestTimeout(request_id=rid) from exc
+            self._progress_callbacks.pop(rid, None)
             progress_task = self._progress_tasks_by_request.pop(rid, None)
             if progress_task is not None:
                 await self._drain_progress_task(progress_task)
@@ -287,6 +288,7 @@ class CrawlerClient:
         if isinstance(rid, str) and rid in self._pending:
             fut = self._pending.get(rid)
             if fut is not None and not fut.done():
+                self._progress_callbacks.pop(rid, None)
                 fut.set_result(payload)
             return
         # Otherwise, treat as a push.
