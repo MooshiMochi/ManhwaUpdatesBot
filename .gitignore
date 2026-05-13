@@ -70,3 +70,4 @@ dmypy.json
 # Local artifacts
 .codex_tmp/
 artifacts/
+.worktrees/
