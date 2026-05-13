@@ -38,6 +38,30 @@ class _FakeInteraction:
         self.original_edits.append(kwargs)
 
 
+class _FakeChannel:
+    mention = "#updates"
+
+
+class _FakeGuild:
+    id = 456
+
+    def __init__(self) -> None:
+        self.channel = _FakeChannel()
+
+    def get_channel(self, channel_id: int):
+        if channel_id == 789:
+            return self.channel
+        return None
+
+
+class _FakeGuildSettings:
+    async def list_scanlator_channels(self, _guild_id: int):
+        return []
+
+    async def get(self, _guild_id: int):
+        return SimpleNamespace(notifications_channel_id=789)
+
+
 class _FakeTrackedStore:
     def __init__(self) -> None:
         self.upserts: list[tuple] = []
@@ -48,6 +72,11 @@ class _FakeTrackedStore:
 
     async def add_to_guild(self, *args, **kwargs) -> None:
         self.guild_adds.append((args, kwargs))
+
+
+class _FailingTrackedStore(_FakeTrackedStore):
+    async def upsert_series(self, *args, **kwargs) -> None:
+        raise RuntimeError("database unavailable")
 
 
 class _SuccessfulTrackCrawler:
@@ -140,6 +169,53 @@ def test_track_new_edits_original_response_with_progress_then_final_success_embe
         assert final_edit["embed"].title == "Tracking Successful"
         assert tracked.upserts
         assert tracked.guild_adds
+
+    asyncio.run(_run())
+
+
+def test_track_new_guild_context_uses_original_response_for_final_success_embed() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        interaction.guild = _FakeGuild()
+        interaction.guild_id = interaction.guild.id
+        cog = TrackingCog(_FakeBot())
+        tracked = _FakeTrackedStore()
+        cog._tracked = tracked  # type: ignore[method-assign]
+        cog._guild_settings = _FakeGuildSettings()  # type: ignore[method-assign]
+
+        await TrackingCog.track_new.callback(  # type: ignore[attr-defined]
+            cog,
+            interaction,
+            "asura|https://asurascans.example/series/solo-leveling",
+        )
+
+        assert interaction.followup.sends == []
+        final_edit = interaction.original_edits[-1]
+        assert final_edit["embed"].title == "Tracking Successful"
+        assert "#updates" in (final_edit["embed"].description or "")
+        assert tracked.guild_adds[0][0][0] == 456
+
+    asyncio.run(_run())
+
+
+def test_track_new_post_crawler_failure_edits_original_response_with_error() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = TrackingCog(_FakeBot())
+        cog._tracked = _FailingTrackedStore()  # type: ignore[method-assign]
+
+        await TrackingCog.track_new.callback(  # type: ignore[attr-defined]
+            cog,
+            interaction,
+            "asura|https://asurascans.example/series/solo-leveling",
+        )
+
+        assert interaction.followup.sends == []
+        final_embed = interaction.original_edits[-1]["embed"]
+        assert final_embed.title == "Bot Error"
+        assert "database unavailable" in (final_embed.description or "")
+        assert "Sent request to crawler" in (final_embed.description or "")
+        assert "Fetching series: Reading latest chapters" in (final_embed.description or "")
 
     asyncio.run(_run())
 

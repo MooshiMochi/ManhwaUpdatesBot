@@ -149,48 +149,59 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 )
             return
 
-        website_key = data["website_key"]
-        url_name = data["url_name"]
-        series_url = data["series_url"]
-        series_data: dict = data.get("series") or {}
-        title: str = series_data.get("title") or url_name
-        status: str | None = series_data.get("status")
-        cover_url: str | None = series_data.get("cover_url")
+        try:
+            website_key = data["website_key"]
+            url_name = data["url_name"]
+            series_url = data["series_url"]
+            series_data: dict = data.get("series") or {}
+            title: str = series_data.get("title") or url_name
+            status: str | None = series_data.get("status")
+            cover_url: str | None = series_data.get("cover_url")
 
-        latest_chapters = series_data.get("latest_chapters") or []
-        latest_text: str | None = None
-        latest_url: str | None = None
-        if latest_chapters:
-            first = latest_chapters[0] or {}
-            latest_text = first.get("name") or first.get("text")
-            latest_url = first.get("url")
+            latest_chapters = series_data.get("latest_chapters") or []
+            latest_text: str | None = None
+            latest_url: str | None = None
+            if latest_chapters:
+                first = latest_chapters[0] or {}
+                latest_text = first.get("name") or first.get("text")
+                latest_url = first.get("url")
 
-        await self._tracked.upsert_series(
-            website_key,
-            url_name,
-            series_url,
-            title,
-            cover_url=cover_url,
-            status=status,
-            last_chapter_text=latest_text,
-            last_chapter_url=latest_url,
-        )
-        await self._tracked.add_to_guild(
-            guild_id, website_key, url_name, ping_role.id if ping_role else None
-        )
+            await self._tracked.upsert_series(
+                website_key,
+                url_name,
+                series_url,
+                title,
+                cover_url=cover_url,
+                status=status,
+                last_chapter_text=latest_text,
+                last_chapter_url=latest_url,
+            )
+            await self._tracked.add_to_guild(
+                guild_id, website_key, url_name, ping_role.id if ping_role else None
+            )
 
-        embed = formatting.tracking_success_embed(
-            title=title,
-            series_url=series_url,
-            ping_role=ping_role,
-            notif_channel=channel,
-            cover_url=cover_url,
-            is_dm=interaction.guild_id is None,
-            bot=self.bot,
-        )
-        terminal_started = True
-        async with progress_edit_lock:
-            await interaction.edit_original_response(embed=embed)
+            embed = formatting.tracking_success_embed(
+                title=title,
+                series_url=series_url,
+                ping_role=ping_role,
+                notif_channel=channel,
+                cover_url=cover_url,
+                is_dm=interaction.guild_id is None,
+                bot=self.bot,
+            )
+            terminal_started = True
+            async with progress_edit_lock:
+                await interaction.edit_original_response(embed=embed)
+        except Exception as exc:
+            _log.exception("track_new post-crawler success path failed")
+            terminal_started = True
+            message = f"Failed to finish tracking setup after crawler completed: {exc}"
+            progress.add(message, severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            async with progress_edit_lock:
+                await interaction.edit_original_response(
+                    embed=_shared_error_embed(f"{message}\n\nProgress:\n{history}")
+                )
 
     async def _resolve_notifications_channel(
         self, guild: discord.Guild, website_key: str
