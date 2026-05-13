@@ -87,6 +87,18 @@ def test_max_visible_events_one_preserves_first_omitted_marker_and_newest_event(
     )
 
 
+def test_max_visible_events_one_with_two_events_skips_zero_omitted_marker() -> None:
+    state = ProgressEmbedState(command_name="/info", request_id="abc", max_visible_events=1)
+
+    state.add("First update")
+    state.add("Second update")
+
+    embed = state.to_embed()
+
+    assert embed.description == "1. First update.\n2. Second update..."
+    assert "0 earlier updates omitted" not in embed.description
+
+
 def test_progress_event_message_converts_typed_object() -> None:
     event = SimpleNamespace(
         title="Retrying scrape",

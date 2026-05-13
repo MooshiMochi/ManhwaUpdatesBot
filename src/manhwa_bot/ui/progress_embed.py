@@ -60,7 +60,8 @@ class ProgressEmbedState:
         omitted_count = event_count - 1 - tail_count
         tail_start = event_count - tail_count + 1
         visible: list[tuple[int | None, str]] = [(1, self._events[0].message)]
-        visible.append((None, f"... {omitted_count} earlier updates omitted."))
+        if omitted_count > 0:
+            visible.append((None, f"... {omitted_count} earlier updates omitted."))
         visible.extend(
             (index, event.message)
             for index, event in enumerate(self._events[-tail_count:], start=tail_start)
