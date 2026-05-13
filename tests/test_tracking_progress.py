@@ -1,0 +1,171 @@
+"""Tests for tracking command crawler progress responses."""
+
+from __future__ import annotations
+
+import asyncio
+from types import SimpleNamespace
+
+from manhwa_bot.cogs.tracking import TrackingCog
+from manhwa_bot.crawler.errors import CrawlerError
+
+
+class _FakeResponse:
+    def __init__(self) -> None:
+        self.deferred: list[dict] = []
+
+    async def defer(self, **kwargs) -> None:
+        self.deferred.append(kwargs)
+
+
+class _FakeFollowup:
+    def __init__(self) -> None:
+        self.sends: list[dict] = []
+
+    async def send(self, **kwargs) -> None:
+        self.sends.append(kwargs)
+
+
+class _FakeInteraction:
+    def __init__(self) -> None:
+        self.response = _FakeResponse()
+        self.followup = _FakeFollowup()
+        self.user = SimpleNamespace(id=123)
+        self.guild = None
+        self.guild_id = None
+        self.original_edits: list[dict] = []
+
+    async def edit_original_response(self, **kwargs) -> None:
+        self.original_edits.append(kwargs)
+
+
+class _FakeTrackedStore:
+    def __init__(self) -> None:
+        self.upserts: list[tuple] = []
+        self.guild_adds: list[tuple] = []
+
+    async def upsert_series(self, *args, **kwargs) -> None:
+        self.upserts.append((args, kwargs))
+
+    async def add_to_guild(self, *args, **kwargs) -> None:
+        self.guild_adds.append((args, kwargs))
+
+
+class _SuccessfulTrackCrawler:
+    async def request_with_progress(self, type_, *, request_id, on_progress, **kwargs):
+        assert type_ == "track_series"
+        assert request_id
+        assert kwargs == {
+            "website_key": "asura",
+            "series_url": "https://asurascans.example/series/solo-leveling",
+        }
+        await on_progress(
+            SimpleNamespace(
+                title="Fetching series",
+                detail="Reading latest chapters",
+                status="running",
+            )
+        )
+        return {
+            "website_key": "asura",
+            "url_name": "solo-leveling",
+            "series_url": "https://asurascans.example/series/solo-leveling",
+            "series": {
+                "title": "Solo Leveling",
+                "status": "Ongoing",
+                "cover_url": "https://asurascans.example/cover.jpg",
+                "latest_chapters": [
+                    {
+                        "name": "Chapter 1",
+                        "url": "https://asurascans.example/chapter/1",
+                    }
+                ],
+            },
+        }
+
+
+class _FailingTrackCrawler:
+    async def request_with_progress(self, type_, *, request_id, on_progress, **kwargs):
+        assert type_ == "track_series"
+        assert request_id
+        assert kwargs == {
+            "website_key": "asura",
+            "series_url": "https://asurascans.example/series/solo-leveling",
+        }
+        await on_progress(
+            SimpleNamespace(
+                title="Fetching series",
+                detail="Reading latest chapters",
+                status="running",
+            )
+        )
+        raise CrawlerError(
+            code="tracking_seed_failed",
+            message="seed failed",
+            request_id=request_id,
+        )
+
+
+class _FakeBot:
+    def __init__(self, crawler=None) -> None:
+        self.crawler = crawler or _SuccessfulTrackCrawler()
+        self.db = object()
+        self.user = None
+
+
+def test_track_new_edits_original_response_with_progress_then_final_success_embed() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = TrackingCog(_FakeBot())
+        tracked = _FakeTrackedStore()
+        cog._tracked = tracked  # type: ignore[method-assign]
+
+        await TrackingCog.track_new.callback(  # type: ignore[attr-defined]
+            cog,
+            interaction,
+            "asura|https://asurascans.example/series/solo-leveling",
+        )
+
+        assert interaction.response.deferred == [{"ephemeral": True}]
+        assert interaction.followup.sends == []
+
+        first_embed = interaction.original_edits[0]["embed"]
+        assert first_embed.title == "Running /track new"
+        assert "Sent request to crawler" in (first_embed.description or "")
+
+        progress_embed = interaction.original_edits[1]["embed"]
+        assert progress_embed.title == "Running /track new"
+        assert "Fetching series: Reading latest chapters" in (progress_embed.description or "")
+
+        final_edit = interaction.original_edits[-1]
+        assert final_edit["embed"].title == "Tracking Successful"
+        assert tracked.upserts
+        assert tracked.guild_adds
+
+    asyncio.run(_run())
+
+
+def test_track_new_edits_original_response_with_progress_history_on_crawler_error() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = TrackingCog(_FakeBot(_FailingTrackCrawler()))
+        tracked = _FakeTrackedStore()
+        cog._tracked = tracked  # type: ignore[method-assign]
+
+        await TrackingCog.track_new.callback(  # type: ignore[attr-defined]
+            cog,
+            interaction,
+            "asura|https://asurascans.example/series/solo-leveling",
+        )
+
+        assert interaction.followup.sends == []
+        final_embed = interaction.original_edits[-1]["embed"]
+        assert final_embed.title == "Crawler Error"
+        assert "Tracking failed: the crawler couldn't fetch series data." in (
+            final_embed.description or ""
+        )
+        assert "Sent request to crawler" in (final_embed.description or "")
+        assert "Fetching series: Reading latest chapters" in (final_embed.description or "")
+        assert tracked.upserts == []
+        assert tracked.guild_adds == []
+
+    asyncio.run(_run())

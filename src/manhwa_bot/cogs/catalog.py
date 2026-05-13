@@ -154,38 +154,50 @@ class CatalogCog(commands.Cog, name="Catalog"):
         query: str,
         scanlator_website: str | None = None,
     ) -> None:
-        # V1-style loading embed.
-        loading = discord.Embed(
-            title="Processing your request, please wait!",
-            description=(
-                f"🔄 Searching for **{query}** on {scanlator_website or 'all known websites'}…"
-            ),
-            colour=discord.Colour.green(),
-        )
-        bot_user = self.bot.user
-        if bot_user:
-            loading.set_footer(
-                text=str(bot_user.display_name), icon_url=bot_user.display_avatar.url
-            )
-        await interaction.response.send_message(embed=loading, ephemeral=True)
+        request_id = uuid.uuid4().hex
+        progress = ProgressEmbedState(command_name="/search", request_id=request_id)
+        progress.add("Sent request to crawler.")
+        await interaction.response.send_message(embed=progress.to_embed(), ephemeral=True)
+        terminal_started = False
+        progress_edit_lock = asyncio.Lock()
+
+        async def on_progress(event: object) -> None:
+            async with progress_edit_lock:
+                if terminal_started:
+                    return
+                message, severity = progress_event_message(event)
+                progress.add(message, severity=severity)
+                await interaction.edit_original_response(embed=progress.to_embed())
 
         try:
             kwargs: dict = {"query": query, "limit": _SEARCH_LIMIT}
             if scanlator_website:
                 kwargs["website_key"] = scanlator_website
-            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "search", timeout=_SEARCH_TIMEOUT_MS / 1000, **kwargs
+            data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                "search",
+                request_id=request_id,
+                on_progress=on_progress,
+                timeout=_SEARCH_TIMEOUT_MS / 1000,
+                **kwargs,
             )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
-            await interaction.edit_original_response(
-                embed=_shared_error_embed(f"Search failed: {exc}", source=SOURCE_CRAWLER)
-            )
+            terminal_started = True
+            progress.add(str(exc), severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            async with progress_edit_lock:
+                await interaction.edit_original_response(
+                    embed=_shared_error_embed(
+                        f"{exc}\n\nProgress:\n{history}",
+                        source=SOURCE_CRAWLER,
+                    )
+                )
             return
 
         results: list[dict] = data.get("results") or []
         failed: list[str] = data.get("failed_websites") or []
 
         if not results:
+            terminal_started = True
             embed = discord.Embed(
                 title=f'No results for "{query}"',
                 colour=discord.Colour.red(),
@@ -193,7 +205,8 @@ class CatalogCog(commands.Cog, name="Catalog"):
             field = failed_websites_field(failed)
             if field:
                 embed.add_field(name=field[0], value=field[1], inline=False)
-            await interaction.edit_original_response(embed=embed)
+            async with progress_edit_lock:
+                await interaction.edit_original_response(embed=embed)
             return
 
         websites_lookup = await _get_websites_lookup(self.bot)
@@ -226,7 +239,9 @@ class CatalogCog(commands.Cog, name="Catalog"):
             invoker_id=interaction.user.id,
             items_factory=_subscribe_items,
         )
-        await interaction.edit_original_response(embed=embeds[0], view=paginator)
+        terminal_started = True
+        async with progress_edit_lock:
+            await interaction.edit_original_response(embed=embeds[0], view=paginator)
 
     # -- /info -----------------------------------------------------------
 

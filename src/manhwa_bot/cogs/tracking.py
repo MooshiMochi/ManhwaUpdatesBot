@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import uuid
 from typing import Any
 
 import discord
@@ -18,6 +20,7 @@ from ..db.tracked import TrackedStore
 from ..ui.error import SOURCE_CRAWLER
 from ..ui.error import error_embed as _shared_error_embed
 from ..ui.paginator import Paginator
+from ..ui.progress_embed import ProgressEmbedState, progress_event_message
 
 _log = logging.getLogger(__name__)
 
@@ -97,22 +100,53 @@ class TrackingCog(commands.Cog, name="Tracking"):
         else:
             channel = None
 
+        request_id = uuid.uuid4().hex
+        progress = ProgressEmbedState(command_name="/track new", request_id=request_id)
+        progress.add("Sent request to crawler.")
+        await interaction.edit_original_response(embed=progress.to_embed())
+        terminal_started = False
+        progress_edit_lock = asyncio.Lock()
+
+        async def on_progress(event: object) -> None:
+            async with progress_edit_lock:
+                if terminal_started:
+                    return
+                message, severity = progress_event_message(event)
+                progress.add(message, severity=severity)
+                await interaction.edit_original_response(embed=progress.to_embed())
+
         try:
-            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "track_series", website_key=website_key, series_url=series_url
+            data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                "track_series",
+                request_id=request_id,
+                on_progress=on_progress,
+                website_key=website_key,
+                series_url=series_url,
             )
         except CrawlerError as exc:
             friendly = _FRIENDLY_ERRORS.get(exc.code, f"[{exc.code}] {exc.message}")
-            await interaction.followup.send(
-                embed=_shared_error_embed(friendly, source=SOURCE_CRAWLER),
-                ephemeral=True,
-            )
+            terminal_started = True
+            progress.add(friendly, severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            async with progress_edit_lock:
+                await interaction.edit_original_response(
+                    embed=_shared_error_embed(
+                        f"{friendly}\n\nProgress:\n{history}",
+                        source=SOURCE_CRAWLER,
+                    )
+                )
             return
         except (RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(
-                embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
-                ephemeral=True,
-            )
+            terminal_started = True
+            progress.add(str(exc), severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            async with progress_edit_lock:
+                await interaction.edit_original_response(
+                    embed=_shared_error_embed(
+                        f"{exc}\n\nProgress:\n{history}",
+                        source=SOURCE_CRAWLER,
+                    )
+                )
             return
 
         website_key = data["website_key"]
@@ -154,7 +188,9 @@ class TrackingCog(commands.Cog, name="Tracking"):
             is_dm=interaction.guild_id is None,
             bot=self.bot,
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        terminal_started = True
+        async with progress_edit_lock:
+            await interaction.edit_original_response(embed=embed)
 
     async def _resolve_notifications_channel(
         self, guild: discord.Guild, website_key: str
