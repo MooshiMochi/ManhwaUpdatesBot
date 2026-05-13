@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import uuid
 from typing import Any
 
 import discord
@@ -19,6 +21,7 @@ from ..db.tracked import TrackedStore
 from ..ui.bookmark_view import BOOKMARK_FOLDERS, BookmarkView
 from ..ui.error import SOURCE_CRAWLER
 from ..ui.error import error_embed as _shared_error_embed
+from ..ui.progress_embed import ProgressEmbedState, progress_event_message
 
 _log = logging.getLogger(__name__)
 
@@ -86,7 +89,13 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
 
     # -- internal helpers -----------------------------------------------
 
-    async def _resolve_series(self, manga_url_or_id: str) -> tuple[str, str, str] | None:
+    async def _resolve_series(
+        self,
+        manga_url_or_id: str,
+        *,
+        request_id: str | None = None,
+        on_progress: Any | None = None,
+    ) -> tuple[str, str, str] | None:
         """Return ``(website_key, url_name, series_url)`` or None.
 
         Tries the autocomplete value format first, then falls back to a
@@ -112,9 +121,18 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             if not wk:
                 return None
             try:
-                data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                    "info", website_key=wk, url=manga_url_or_id
-                )
+                if on_progress is not None and request_id is not None:
+                    data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                        "info",
+                        website_key=wk,
+                        url=manga_url_or_id,
+                        request_id=request_id,
+                        on_progress=on_progress,
+                    )
+                else:
+                    data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+                        "info", website_key=wk, url=manga_url_or_id
+                    )
             except CrawlerError, RequestTimeout, Disconnected:
                 return None
             su = data.get("series_url") or data.get("url") or manga_url_or_id
@@ -194,13 +212,52 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             await interaction.followup.send(embed=_error_embed("Unknown folder."), ephemeral=True)
             return
 
-        resolved = await self._resolve_series(manga_url_or_id)
+        progress: ProgressEmbedState | None = None
+        progress_edit_lock = asyncio.Lock()
+        terminal_started = False
+
+        if manga_url_or_id.startswith("http"):
+            request_id = uuid.uuid4().hex
+            progress = ProgressEmbedState(command_name="/bookmark new", request_id=request_id)
+            progress.add("Sent request to crawler.")
+            await interaction.edit_original_response(embed=progress.to_embed())
+
+            async def on_progress(event: object) -> None:
+                async with progress_edit_lock:
+                    if terminal_started:
+                        return
+                    message, severity = progress_event_message(event)
+                    progress.add(message, severity=severity)
+                    await interaction.edit_original_response(embed=progress.to_embed())
+
+        else:
+            request_id = None
+            on_progress = None
+
+        async def respond_final(**kwargs) -> None:
+            nonlocal terminal_started
+            if progress is None:
+                await interaction.followup.send(**kwargs, ephemeral=True)
+                return
+            terminal_started = True
+            async with progress_edit_lock:
+                await interaction.edit_original_response(**kwargs)
+
+        resolved = await self._resolve_series(
+            manga_url_or_id,
+            request_id=request_id,
+            on_progress=on_progress,
+        )
         if resolved is None:
-            await interaction.followup.send(
+            message = "Couldn't resolve that series. Use the autocomplete or paste a series URL."
+            if progress is not None:
+                progress.add(message, severity="error")
+                history = progress.to_embed(final_error=True).description or ""
+                message = f"{message}\n\nProgress:\n{history}"
+            await respond_final(
                 embed=_error_embed(
-                    "Couldn't resolve that series. Use the autocomplete or paste a series URL."
-                ),
-                ephemeral=True,
+                    message,
+                )
             )
             return
         website_key, url_name, series_url = resolved
@@ -210,17 +267,15 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 "chapters", website_key=website_key, url=series_url or url_name
             )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(
+            await respond_final(
                 embed=_shared_error_embed(f"Couldn't fetch chapters: {exc}", source=SOURCE_CRAWLER),
-                ephemeral=True,
             )
             return
 
         chapters: list[dict] = data.get("chapters") or []
         if not chapters:
-            await interaction.followup.send(
+            await respond_final(
                 embed=_error_embed("No chapters available for this series."),
-                ephemeral=True,
             )
             return
 
@@ -261,9 +316,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             is_completed=is_completed,
             bot=self.bot,
         )
-        await interaction.followup.send(
-            f"Successfully bookmarked {title}", embed=embed, ephemeral=True
-        )
+        await respond_final(content=f"Successfully bookmarked {title}", embed=embed)
 
     # -- /bookmark view -------------------------------------------------
 
