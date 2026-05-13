@@ -123,6 +123,39 @@ class _FailingCrawler:
         return {"chapters": [{"name": "Chapter 1"}]}
 
 
+class _FastFailingChaptersCrawler:
+    async def request_with_progress(self, type_, *, on_progress, **_kwargs):
+        assert type_ == "info"
+        try:
+            await asyncio.sleep(0.05)
+        except asyncio.CancelledError:
+            await on_progress(
+                SimpleNamespace(
+                    title="Late info progress",
+                    detail="Should not overwrite final error",
+                    status="running",
+                )
+            )
+            raise
+        await on_progress(
+            SimpleNamespace(
+                title="Late info progress",
+                detail="Should not overwrite final error",
+                status="running",
+            )
+        )
+        return {"title": "Too Late"}
+
+    async def request(self, type_, **_kwargs):
+        assert type_ == "chapters"
+        await asyncio.sleep(0.01)
+        raise CrawlerError(
+            code="chapters_failed",
+            message="chapters failed quickly",
+            request_id="chapters-request",
+        )
+
+
 async def _resolved_input(_series: str) -> tuple[str, str]:
     return "asura", "https://asurascans.example/series/test"
 
@@ -174,5 +207,32 @@ def test_info_edits_original_response_with_progress_history_on_crawler_error() -
         assert "[crawler_timeout] crawler took too long" in (final_embed.description or "")
         assert "Sent request to crawler" in (final_embed.description or "")
         assert "Retrying scrape: Temporary crawler timeout" in (final_embed.description or "")
+
+    asyncio.run(_run())
+
+
+def test_info_chapters_error_remains_final_edit_when_info_emits_late_progress() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = CatalogCog(_FakeBot(_FastFailingChaptersCrawler()))
+        cog._resolve_series_input = _resolved_input  # type: ignore[method-assign]
+        cog._resolve_url_name = _url_name  # type: ignore[method-assign]
+
+        await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
+        await asyncio.sleep(0.1)
+
+        assert interaction.followup.sends == []
+        assert interaction.original_edits[-1]["embed"].title == "Crawler Error"
+        assert "[chapters_failed] chapters failed quickly" in (
+            interaction.original_edits[-1]["embed"].description or ""
+        )
+        assert all(
+            edit["embed"].title != "Running /info"
+            for edit in interaction.original_edits[1:]
+            if edit is not interaction.original_edits[-1]
+        )
+        assert "Late info progress" not in (
+            interaction.original_edits[-1]["embed"].description or ""
+        )
 
     asyncio.run(_run())

@@ -259,41 +259,58 @@ class CatalogCog(commands.Cog, name="Catalog"):
         progress = ProgressEmbedState(command_name="/info", request_id=request_id)
         progress.add("Sent request to crawler.")
         await interaction.edit_original_response(embed=progress.to_embed())
+        terminal_started = False
+        progress_edit_lock = asyncio.Lock()
 
         async def on_progress(event: object) -> None:
-            message, severity = progress_event_message(event)
-            progress.add(message, severity=severity)
-            await interaction.edit_original_response(embed=progress.to_embed())
+            async with progress_edit_lock:
+                if terminal_started:
+                    return
+                message, severity = progress_event_message(event)
+                progress.add(message, severity=severity)
+                await interaction.edit_original_response(embed=progress.to_embed())
 
-        info_task = self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
-            "info",
-            website_key=website_key,
-            url=identifier,
-            request_id=request_id,
-            on_progress=on_progress,
+        info_task = asyncio.create_task(
+            self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                "info",
+                website_key=website_key,
+                url=identifier,
+                request_id=request_id,
+                on_progress=on_progress,
+            )
         )
-        chapters_task = self.bot.crawler.request(  # type: ignore[attr-defined]
-            "chapters", website_key=website_key, url=identifier
+        chapters_task = asyncio.create_task(
+            self.bot.crawler.request(  # type: ignore[attr-defined]
+                "chapters", website_key=website_key, url=identifier
+            )
         )
         try:
             info_data, chapters_data = await asyncio.gather(info_task, chapters_task)
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
+            terminal_started = True
+            for task in (info_task, chapters_task):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(info_task, chapters_task, return_exceptions=True)
             progress.add(str(exc), severity="error")
             history = progress.to_embed(final_error=True).description or ""
-            await interaction.edit_original_response(
-                embed=_shared_error_embed(
-                    f"{exc}\n\nProgress:\n{history}",
-                    source=SOURCE_CRAWLER,
+            async with progress_edit_lock:
+                await interaction.edit_original_response(
+                    embed=_shared_error_embed(
+                        f"{exc}\n\nProgress:\n{history}",
+                        source=SOURCE_CRAWLER,
+                    )
                 )
-            )
             return
 
         if not info_data:
+            terminal_started = True
             progress.add("No data returned for that series.", severity="error")
             history = progress.to_embed(final_error=True).description or ""
-            await interaction.edit_original_response(
-                embed=_error_embed(f"No data returned for that series.\n\nProgress:\n{history}")
-            )
+            async with progress_edit_lock:
+                await interaction.edit_original_response(
+                    embed=_error_embed(f"No data returned for that series.\n\nProgress:\n{history}")
+                )
             return
 
         chapters_list = (chapters_data or {}).get("chapters") or []
@@ -320,7 +337,9 @@ class CatalogCog(commands.Cog, name="Catalog"):
             show_track_button=True,
             show_bookmark_button=True,
         )
-        await interaction.edit_original_response(embed=embed, view=view)
+        terminal_started = True
+        async with progress_edit_lock:
+            await interaction.edit_original_response(embed=embed, view=view)
 
     async def _resolve_url_name(self, website_key: str, identifier: str) -> str | None:
         """Best-effort lookup: convert a series URL into a stored ``url_name``.
