@@ -115,6 +115,7 @@ class CrawlerClient:
         *,
         timeout: float | None = None,
         request_id: str | None = None,
+        on_progress: ProgressCallback | None = None,
         progress_callback: ProgressCallback | None = None,
         **fields: Any,
     ) -> dict[str, Any]:
@@ -123,7 +124,7 @@ class CrawlerClient:
             type_,
             timeout=timeout,
             request_id=request_id,
-            progress_callback=progress_callback,
+            progress_callback=on_progress or progress_callback,
             **fields,
         )
 

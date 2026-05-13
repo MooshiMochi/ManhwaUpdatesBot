@@ -219,6 +219,7 @@ def test_request_with_progress_routes_events_before_final_result() -> None:
             async for msg in ws:
                 if msg.type == WSMsgType.TEXT:
                     payload = json.loads(msg.data)
+                    assert "on_progress" not in payload
                     request_id = payload["request_id"]
                     for sequence, event in enumerate(
                         ("scrape_started", "scrape_succeeded"), start=1
@@ -259,7 +260,7 @@ def test_request_with_progress_routes_events_before_final_result() -> None:
             data = await client.request_with_progress(
                 "scrape_series",
                 url_name="solo-leveling",
-                progress_callback=on_progress,
+                on_progress=on_progress,
             )
             assert [event.sequence for event in received] == [1, 2]
             assert [event.event for event in received] == ["scrape_started", "scrape_succeeded"]
