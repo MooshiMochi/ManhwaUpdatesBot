@@ -290,6 +290,18 @@ class CrawlerClient:
         except ValueError:
             _log.exception("crawler sent invalid progress event; ignoring")
             return
+        task = asyncio.create_task(
+            self._safe_progress_callback(callback, event),
+            name=f"progress-{rid}",
+        )
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
+    async def _safe_progress_callback(
+        self,
+        callback: ProgressCallback,
+        event: CrawlerProgressEvent,
+    ) -> None:
         try:
             result = callback(event)
             if inspect.isawaitable(result):
