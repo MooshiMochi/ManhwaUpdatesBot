@@ -42,6 +42,7 @@ class CrawlerClient:
         self._send_lock = asyncio.Lock()
         self._pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self._progress_callbacks: dict[str, ProgressCallback] = {}
+        self._progress_tasks_by_request: dict[str, asyncio.Task[None]] = {}
         self._push_handlers: dict[str, list[PushHandler]] = {}
         self._connected_event = asyncio.Event()
         self._stopping = False
@@ -91,6 +92,7 @@ class CrawlerClient:
         if background_tasks:
             await asyncio.gather(*background_tasks, return_exceptions=True)
             self._background_tasks.difference_update(background_tasks)
+        self._progress_tasks_by_request.clear()
         if self._session is not None:
             await self._session.close()
             self._session = None
@@ -155,6 +157,7 @@ class CrawlerClient:
         if progress_callback is not None:
             self._progress_callbacks[rid] = progress_callback
         envelope = {"type": type_, "request_id": rid, **fields}
+        response_received = False
         try:
             async with self._send_lock:
                 if self._ws is None or self._ws.closed:
@@ -162,11 +165,20 @@ class CrawlerClient:
                 await self._ws.send_str(json.dumps(envelope))
             try:
                 response = await asyncio.wait_for(fut, timeout=timeout_s)
+                response_received = True
             except TimeoutError as exc:
                 raise RequestTimeout(request_id=rid) from exc
+            progress_task = self._progress_tasks_by_request.pop(rid, None)
+            if progress_task is not None:
+                await self._drain_progress_task(progress_task)
         finally:
             self._pending.pop(rid, None)
             self._progress_callbacks.pop(rid, None)
+            if not response_received:
+                progress_task = self._progress_tasks_by_request.pop(rid, None)
+                if progress_task is not None:
+                    progress_task.cancel()
+                    await self._drain_progress_task(progress_task)
         if not response.get("ok", False):
             err = response.get("error") or {}
             raise CrawlerError(
@@ -298,12 +310,27 @@ class CrawlerClient:
         except ValueError:
             _log.exception("crawler sent invalid progress event; ignoring")
             return
+        previous = self._progress_tasks_by_request.get(rid)
         task = asyncio.create_task(
-            self._safe_progress_callback(callback, event),
+            self._run_progress_chain(previous, callback, event),
             name=f"progress-{rid}",
         )
+        self._progress_tasks_by_request[rid] = task
         self._background_tasks.add(task)
         task.add_done_callback(self._background_tasks.discard)
+
+    async def _run_progress_chain(
+        self,
+        previous: asyncio.Task[None] | None,
+        callback: ProgressCallback,
+        event: CrawlerProgressEvent,
+    ) -> None:
+        if previous is not None:
+            await asyncio.gather(previous, return_exceptions=True)
+        await self._safe_progress_callback(callback, event)
+
+    async def _drain_progress_task(self, task: asyncio.Task[None]) -> None:
+        await asyncio.gather(task, return_exceptions=True)
 
     async def _safe_progress_callback(
         self,
