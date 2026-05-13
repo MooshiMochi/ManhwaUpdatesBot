@@ -430,6 +430,72 @@ def test_cancelled_progress_callback_does_not_fail_request_or_disconnect() -> No
     asyncio.run(_run())
 
 
+def test_stop_cancels_and_drains_progress_callback_tasks() -> None:
+    async def _run() -> None:
+        async def handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    payload = json.loads(msg.data)
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "type": "request_progress",
+                                "request_id": payload["request_id"],
+                                "event": "scrape_started",
+                                "sequence": 1,
+                                "title": "Starting scrape",
+                                "status": "running",
+                            }
+                        )
+                    )
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": payload["request_id"],
+                                "type": f"{payload['type']}_result",
+                                "ok": True,
+                                "data": {"done": True},
+                            }
+                        )
+                    )
+            return ws
+
+        runner, url = await _start_server(handler)
+        client = CrawlerClient(_config(url))
+        callback_started = asyncio.Event()
+        callback_cancelled = asyncio.Event()
+        callback_completed = asyncio.Event()
+        stopped = False
+
+        async def on_progress(_event: CrawlerProgressEvent) -> None:
+            callback_started.set()
+            try:
+                await asyncio.sleep(0.2)
+            except asyncio.CancelledError:
+                callback_cancelled.set()
+                raise
+            callback_completed.set()
+
+        try:
+            await client.start()
+            data = await client.request_with_progress("scrape_series", on_progress=on_progress)
+            assert data == {"done": True}
+            await asyncio.wait_for(callback_started.wait(), timeout=0.2)
+            await client.stop()
+            stopped = True
+            assert callback_cancelled.is_set()
+            await asyncio.sleep(0.25)
+            assert not callback_completed.is_set()
+        finally:
+            if not stopped:
+                await client.stop()
+            await runner.cleanup()
+
+    asyncio.run(_run())
+
+
 def test_progress_callback_failure_is_logged_and_request_continues(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

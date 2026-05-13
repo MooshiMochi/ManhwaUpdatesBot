@@ -83,6 +83,14 @@ class CrawlerClient:
             except asyncio.CancelledError, Exception:
                 pass
             self._connect_task = None
+        background_tasks = [
+            task for task in self._background_tasks if task is not asyncio.current_task()
+        ]
+        for task in background_tasks:
+            task.cancel()
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+            self._background_tasks.difference_update(background_tasks)
         if self._session is not None:
             await self._session.close()
             self._session = None
