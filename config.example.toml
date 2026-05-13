@@ -20,6 +20,8 @@ ws_url = "ws://127.0.0.1:8000/ws"
 http_base_url = "http://127.0.0.1:8000"
 # Per-request timeout for synchronous WS calls.
 request_timeout_seconds = 30.0
+# Transport watchdog for progress-enabled crawler calls. Scrape retry/timeout decisions live in crawler_backend.
+transport_watchdog_seconds = 180.0
 # Reconnect tuning.
 reconnect_initial_delay_seconds = 1.0
 reconnect_max_delay_seconds = 60.0

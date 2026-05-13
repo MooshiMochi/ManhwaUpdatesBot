@@ -130,9 +130,10 @@ class CrawlerClient:
         **fields: Any,
     ) -> dict[str, Any]:
         """Send a correlated request and route progress updates to a callback."""
+        timeout_s = timeout if timeout is not None else self._config.transport_watchdog_seconds
         return await self._request(
             type_,
-            timeout=timeout,
+            timeout=timeout_s,
             request_id=request_id,
             progress_callback=on_progress or progress_callback,
             **fields,

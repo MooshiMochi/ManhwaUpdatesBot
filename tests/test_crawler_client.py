@@ -17,11 +17,17 @@ from manhwa_bot.crawler.errors import CrawlerError, RequestTimeout
 from manhwa_bot.crawler.progress import CrawlerProgressEvent, parse_progress_event
 
 
-def _config(ws_url: str, *, request_timeout: float = 5.0) -> CrawlerConfig:
+def _config(
+    ws_url: str,
+    *,
+    request_timeout: float = 5.0,
+    transport_watchdog: float = 10.0,
+) -> CrawlerConfig:
     return CrawlerConfig(
         ws_url=ws_url,
         http_base_url="http://unused",
         request_timeout_seconds=request_timeout,
+        transport_watchdog_seconds=transport_watchdog,
         reconnect_initial_delay_seconds=0.05,
         reconnect_max_delay_seconds=0.2,
         reconnect_jitter_seconds=0.0,
@@ -207,6 +213,40 @@ def test_request_timeout() -> None:
             await client.start()
             with pytest.raises(RequestTimeout):
                 await client.request("search", query="x")
+        finally:
+            await client.stop()
+            await runner.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_request_with_progress_uses_transport_watchdog_by_default() -> None:
+    async def _run() -> None:
+        async def handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    payload = json.loads(msg.data)
+                    await asyncio.sleep(0.2)
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": payload["request_id"],
+                                "type": f"{payload['type']}_result",
+                                "ok": True,
+                                "data": {"done": True},
+                            }
+                        )
+                    )
+            return ws
+
+        runner, url = await _start_server(handler)
+        client = CrawlerClient(_config(url, request_timeout=0.05, transport_watchdog=0.5))
+        try:
+            await client.start()
+            data = await client.request_with_progress("info")
+            assert data == {"done": True}
         finally:
             await client.stop()
             await runner.cleanup()

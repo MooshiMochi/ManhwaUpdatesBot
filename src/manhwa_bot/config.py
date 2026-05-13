@@ -31,6 +31,7 @@ class CrawlerConfig:
     ws_url: str
     http_base_url: str
     request_timeout_seconds: float
+    transport_watchdog_seconds: float
     reconnect_initial_delay_seconds: float
     reconnect_max_delay_seconds: float
     reconnect_jitter_seconds: float
@@ -217,6 +218,12 @@ def load_config(
             _env_override(
                 "MANHWABOT_CRAWLER_REQUEST_TIMEOUT",
                 crawler_section.get("request_timeout_seconds", 30.0),
+            )
+        ),
+        transport_watchdog_seconds=float(
+            _env_override(
+                "MANHWABOT_CRAWLER_TRANSPORT_WATCHDOG",
+                crawler_section.get("transport_watchdog_seconds", 180.0),
             )
         ),
         reconnect_initial_delay_seconds=float(
