@@ -115,6 +115,15 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 progress.add(message, severity=severity)
                 await interaction.edit_original_response(embed=progress.to_embed())
 
+        async def try_terminal_edit(**kwargs) -> bool:
+            async with progress_edit_lock:
+                try:
+                    await interaction.edit_original_response(**kwargs)
+                except Exception:
+                    _log.exception("track_new terminal response edit failed")
+                    return False
+            return True
+
         try:
             data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
                 "track_series",
@@ -128,25 +137,23 @@ class TrackingCog(commands.Cog, name="Tracking"):
             terminal_started = True
             progress.add(friendly, severity="error")
             history = progress.to_embed(final_error=True).description or ""
-            async with progress_edit_lock:
-                await interaction.edit_original_response(
-                    embed=_shared_error_embed(
-                        f"{friendly}\n\nProgress:\n{history}",
-                        source=SOURCE_CRAWLER,
-                    )
+            await try_terminal_edit(
+                embed=_shared_error_embed(
+                    f"{friendly}\n\nProgress:\n{history}",
+                    source=SOURCE_CRAWLER,
                 )
+            )
             return
         except (RequestTimeout, Disconnected) as exc:
             terminal_started = True
             progress.add(str(exc), severity="error")
             history = progress.to_embed(final_error=True).description or ""
-            async with progress_edit_lock:
-                await interaction.edit_original_response(
-                    embed=_shared_error_embed(
-                        f"{exc}\n\nProgress:\n{history}",
-                        source=SOURCE_CRAWLER,
-                    )
+            await try_terminal_edit(
+                embed=_shared_error_embed(
+                    f"{exc}\n\nProgress:\n{history}",
+                    source=SOURCE_CRAWLER,
                 )
+            )
             return
 
         try:
@@ -190,18 +197,14 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 bot=self.bot,
             )
             terminal_started = True
-            async with progress_edit_lock:
-                await interaction.edit_original_response(embed=embed)
+            await try_terminal_edit(embed=embed)
         except Exception as exc:
             _log.exception("track_new post-crawler success path failed")
             terminal_started = True
             message = f"Failed to finish tracking setup after crawler completed: {exc}"
             progress.add(message, severity="error")
             history = progress.to_embed(final_error=True).description or ""
-            async with progress_edit_lock:
-                await interaction.edit_original_response(
-                    embed=_shared_error_embed(f"{message}\n\nProgress:\n{history}")
-                )
+            await try_terminal_edit(embed=_shared_error_embed(f"{message}\n\nProgress:\n{history}"))
 
     async def _resolve_notifications_channel(
         self, guild: discord.Guild, website_key: str

@@ -38,6 +38,14 @@ class _FakeInteraction:
         self.original_edits.append(kwargs)
 
 
+class _TerminalEditFailingInteraction(_FakeInteraction):
+    async def edit_original_response(self, **kwargs) -> None:
+        embed = kwargs.get("embed")
+        if embed is not None and embed.title != "Running /track new":
+            raise RuntimeError("discord edit rejected")
+        await super().edit_original_response(**kwargs)
+
+
 class _FakeChannel:
     mention = "#updates"
 
@@ -216,6 +224,29 @@ def test_track_new_post_crawler_failure_edits_original_response_with_error() -> 
         assert "database unavailable" in (final_embed.description or "")
         assert "Sent request to crawler" in (final_embed.description or "")
         assert "Fetching series: Reading latest chapters" in (final_embed.description or "")
+
+    asyncio.run(_run())
+
+
+def test_track_new_final_success_edit_failure_does_not_send_followup() -> None:
+    async def _run() -> None:
+        interaction = _TerminalEditFailingInteraction()
+        cog = TrackingCog(_FakeBot())
+        tracked = _FakeTrackedStore()
+        cog._tracked = tracked  # type: ignore[method-assign]
+
+        await TrackingCog.track_new.callback(  # type: ignore[attr-defined]
+            cog,
+            interaction,
+            "asura|https://asurascans.example/series/solo-leveling",
+        )
+
+        assert interaction.followup.sends == []
+        assert tracked.upserts
+        assert tracked.guild_adds
+        assert all(
+            edit["embed"].title == "Running /track new" for edit in interaction.original_edits
+        )
 
     asyncio.run(_run())
 
