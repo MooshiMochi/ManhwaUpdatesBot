@@ -31,7 +31,7 @@ class ProgressEmbedState:
     max_visible_events: int = 10
     _events: list[_ProgressEvent] = field(default_factory=list, init=False, repr=False)
 
-    def add(self, message: str, *, severity: ProgressSeverity = "info") -> None:
+    def add(self, message: str, severity: ProgressSeverity = "info") -> None:
         self._events.append(
             _ProgressEvent(
                 message=_normalize_message(message),
@@ -56,14 +56,7 @@ class ProgressEmbedState:
         if event_count <= max_visible_events:
             return [(index, event.message) for index, event in enumerate(self._events, start=1)]
 
-        if max_visible_events == 1:
-            omitted_count = event_count - 1
-            return [
-                (None, f"... {omitted_count} earlier updates omitted."),
-                (event_count, self._events[-1].message),
-            ]
-
-        tail_count = max_visible_events - 1
+        tail_count = max(1, max_visible_events - 1)
         omitted_count = event_count - 1 - tail_count
         tail_start = event_count - tail_count + 1
         visible: list[tuple[int | None, str]] = [(1, self._events[0].message)]

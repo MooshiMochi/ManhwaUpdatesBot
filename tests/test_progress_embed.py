@@ -34,6 +34,17 @@ def test_warning_latest_event_uses_gold_color() -> None:
     assert embed.colour == discord.Colour.gold()
 
 
+def test_warning_severity_can_be_positional() -> None:
+    state = ProgressEmbedState(command_name="/info", request_id="abc123")
+
+    state.add("Retrying", "warning")
+
+    embed = state.to_embed()
+
+    assert embed.description == "1. Retrying..."
+    assert embed.colour == discord.Colour.gold()
+
+
 def test_final_error_uses_red_color_and_no_active_suffix() -> None:
     state = ProgressEmbedState(command_name="/info", request_id="abc123")
 
@@ -60,6 +71,19 @@ def test_bounded_history_preserves_first_omitted_marker_and_newest_events() -> N
         "6. Progress update 6.\n"
         "7. Progress update 7.\n"
         "8. Progress update 8..."
+    )
+
+
+def test_max_visible_events_one_preserves_first_omitted_marker_and_newest_event() -> None:
+    state = ProgressEmbedState(command_name="/info", request_id="abc123", max_visible_events=1)
+
+    for index in range(1, 5):
+        state.add(f"Progress update {index}")
+
+    embed = state.to_embed()
+
+    assert embed.description == (
+        "1. Progress update 1.\n... 2 earlier updates omitted.\n4. Progress update 4..."
     )
 
 
