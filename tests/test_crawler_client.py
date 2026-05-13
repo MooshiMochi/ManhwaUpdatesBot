@@ -14,6 +14,7 @@ from aiohttp import WSMsgType, web
 from manhwa_bot.config import CrawlerConfig
 from manhwa_bot.crawler.client import CrawlerClient
 from manhwa_bot.crawler.errors import CrawlerError, RequestTimeout
+from manhwa_bot.crawler.progress import CrawlerProgressEvent, parse_progress_event
 
 
 def _config(ws_url: str, *, request_timeout: float = 5.0) -> CrawlerConfig:
@@ -27,6 +28,45 @@ def _config(ws_url: str, *, request_timeout: float = 5.0) -> CrawlerConfig:
         consumer_key="test",
         api_key="test-key",
     )
+
+
+def test_parse_progress_event_tolerates_missing_and_unknown_optional_fields() -> None:
+    event = parse_progress_event(
+        {
+            "type": "request_progress",
+            "request_id": "req-1",
+            "event": "scrape_retry",
+            "sequence": 2,
+            "title": "Retrying scrape",
+            "status": "retrying",
+            "retry_attempt": 1,
+            "unknown": {"ignored": True},
+        }
+    )
+
+    assert event.request_id == "req-1"
+    assert event.event == "scrape_retry"
+    assert event.sequence == 2
+    assert event.title == "Retrying scrape"
+    assert event.status == "retrying"
+    assert event.retry_attempt == 1
+    assert event.detail is None
+
+
+def test_parse_progress_event_rejects_missing_required_fields() -> None:
+    base_payload = {
+        "type": "request_progress",
+        "request_id": "req-1",
+        "event": "scrape_started",
+        "sequence": 1,
+        "title": "Starting scrape",
+        "status": "running",
+    }
+    for key in ("request_id", "event", "sequence", "title", "status"):
+        payload = dict(base_payload)
+        payload.pop(key)
+        with pytest.raises(ValueError):
+            parse_progress_event(payload)
 
 
 async def _start_server(handler) -> tuple[web.AppRunner, str]:
@@ -164,6 +204,173 @@ def test_push_handler_routing() -> None:
                 await asyncio.sleep(0.05)
             assert received, "expected a notification_event push"
             assert received[0]["data"]["notification"]["id"] == 42
+        finally:
+            await client.stop()
+            await runner.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_request_with_progress_routes_events_before_final_result() -> None:
+    async def _run() -> None:
+        async def handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    payload = json.loads(msg.data)
+                    request_id = payload["request_id"]
+                    for sequence, event in enumerate(
+                        ("scrape_started", "scrape_succeeded"), start=1
+                    ):
+                        await ws.send_str(
+                            json.dumps(
+                                {
+                                    "type": "request_progress",
+                                    "request_id": request_id,
+                                    "event": event,
+                                    "sequence": sequence,
+                                    "title": event.replace("_", " "),
+                                    "status": "running" if sequence == 1 else "succeeded",
+                                }
+                            )
+                        )
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": request_id,
+                                "type": f"{payload['type']}_result",
+                                "ok": True,
+                                "data": {"series": payload.get("url_name")},
+                            }
+                        )
+                    )
+            return ws
+
+        runner, url = await _start_server(handler)
+        client = CrawlerClient(_config(url))
+        received: list[CrawlerProgressEvent] = []
+
+        async def on_progress(event: CrawlerProgressEvent) -> None:
+            received.append(event)
+
+        try:
+            await client.start()
+            data = await client.request_with_progress(
+                "scrape_series",
+                url_name="solo-leveling",
+                progress_callback=on_progress,
+            )
+            assert [event.sequence for event in received] == [1, 2]
+            assert [event.event for event in received] == ["scrape_started", "scrape_succeeded"]
+            assert data == {"series": "solo-leveling"}
+        finally:
+            await client.stop()
+            await runner.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_unrelated_progress_is_ignored_and_request_still_resolves() -> None:
+    async def _run() -> None:
+        async def handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    payload = json.loads(msg.data)
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "type": "request_progress",
+                                "request_id": "other-request",
+                                "event": "scrape_started",
+                                "sequence": 1,
+                                "title": "Starting scrape",
+                                "status": "running",
+                            }
+                        )
+                    )
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": payload["request_id"],
+                                "type": f"{payload['type']}_result",
+                                "ok": True,
+                                "data": {"ok": True},
+                            }
+                        )
+                    )
+            return ws
+
+        runner, url = await _start_server(handler)
+        client = CrawlerClient(_config(url))
+        received: list[CrawlerProgressEvent] = []
+
+        try:
+            await client.start()
+            data = await client.request_with_progress(
+                "scrape_series",
+                progress_callback=received.append,
+            )
+            assert received == []
+            assert data == {"ok": True}
+        finally:
+            await client.stop()
+            await runner.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_progress_callback_failure_is_logged_and_request_continues(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def _run() -> None:
+        async def handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    payload = json.loads(msg.data)
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "type": "request_progress",
+                                "request_id": payload["request_id"],
+                                "event": "scrape_failed",
+                                "sequence": 1,
+                                "title": "Scrape failed",
+                                "status": "failed",
+                                "error_code": "boom",
+                            }
+                        )
+                    )
+                    await ws.send_str(
+                        json.dumps(
+                            {
+                                "request_id": payload["request_id"],
+                                "type": f"{payload['type']}_result",
+                                "ok": True,
+                                "data": {"continued": True},
+                            }
+                        )
+                    )
+            return ws
+
+        runner, url = await _start_server(handler)
+        client = CrawlerClient(_config(url))
+
+        def on_progress(_event: CrawlerProgressEvent) -> None:
+            raise RuntimeError("callback exploded")
+
+        try:
+            await client.start()
+            data = await client.request_with_progress(
+                "scrape_series",
+                progress_callback=on_progress,
+            )
+            assert data == {"continued": True}
+            assert "crawler progress callback failed" in caplog.text
         finally:
             await client.stop()
             await runner.cleanup()
