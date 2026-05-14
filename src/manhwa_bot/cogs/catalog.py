@@ -390,20 +390,52 @@ class CatalogCog(commands.Cog, name="Catalog"):
             return
 
         website_key, identifier = resolved
+
+        request_id = uuid.uuid4().hex
+        progress = ProgressEmbedState(command_name="/chapters", request_id=request_id)
+        progress.add("Sent request to crawler.")
+        progress_message = await interaction.followup.send(
+            embed=progress.to_embed(),
+            ephemeral=True,
+            wait=True,
+        )
+        terminal_started = False
+        progress_edit_lock = asyncio.Lock()
+
+        async def on_progress(event: object) -> None:
+            async with progress_edit_lock:
+                if terminal_started:
+                    return
+                message, severity = progress_event_message(event)
+                progress.add(message, severity=severity)
+                await progress_message.edit(embed=progress.to_embed())
+
         try:
-            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "chapters", website_key=website_key, url=identifier
+            info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                "info",
+                website_key=website_key,
+                url=identifier,
+                request_id=request_id,
+                on_progress=on_progress,
             )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(
-                embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
-                ephemeral=True,
-            )
+            terminal_started = True
+            progress.add(str(exc), severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            async with progress_edit_lock:
+                await progress_message.edit(
+                    embed=_shared_error_embed(
+                        f"{exc}\n\nProgress:\n{history}",
+                        source=SOURCE_CRAWLER,
+                    )
+                )
             return
 
-        chapter_list: list[dict] = data.get("chapters") or []
-        series_title = data.get("title") or identifier
-        series_url = data.get("series_url")
+        chapter_list: list[dict] = (
+            info_data.get("chapters") or info_data.get("latest_chapters") or []
+        )
+        series_title = info_data.get("title") or identifier
+        series_url = info_data.get("url")
 
         embeds = chapters_embeds_v1(
             chapter_list,
@@ -412,11 +444,18 @@ class CatalogCog(commands.Cog, name="Catalog"):
             bot=self.bot,
         )
 
-        if len(embeds) == 1:
-            await interaction.followup.send(embed=embeds[0], ephemeral=True)
-        else:
-            paginator = Paginator(embeds, invoker_id=interaction.user.id)
-            await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
+        if not embeds:
+            terminal_started = True
+            async with progress_edit_lock:
+                await progress_message.edit(
+                    embed=_error_embed(f"No chapters found for **{series_title}**.")
+                )
+            return
+
+        paginator = Paginator(embeds, invoker_id=interaction.user.id)
+        terminal_started = True
+        async with progress_edit_lock:
+            await progress_message.edit(embed=embeds[0], view=paginator)
 
     # -- /supported_websites --------------------------------------------
 

@@ -108,6 +108,10 @@ class _SuccessfulCrawler:
             "status": "Ongoing",
             "synopsis": "A test synopsis.",
             "chapter_count": 2,
+            "chapters": [
+                {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
+                {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
+            ],
             "latest_chapters": [
                 {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
                 {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
@@ -115,15 +119,8 @@ class _SuccessfulCrawler:
         }
 
     async def request(self, type_, **kwargs):
-        assert type_ == "chapters"
-        assert kwargs["website_key"] == "asura"
-        assert kwargs["url"] == "https://asurascans.example/series/test"
-        return {
-            "chapters": [
-                {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
-                {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
-            ]
-        }
+        # /chapters no longer calls request("chapters", ...) — relax assertion.
+        return {}
 
 
 class _SuccessfulSearchCrawler:
@@ -201,8 +198,8 @@ class _FailingCrawler:
         )
 
     async def request(self, type_, **_kwargs):
-        assert type_ == "chapters"
-        return {"chapters": [{"name": "Chapter 1"}]}
+        # /chapters no longer calls request("chapters", ...) — relax assertion.
+        return {}
 
 
 class _SlowInfoCrawler:
@@ -445,5 +442,23 @@ def test_info_does_not_request_cached_chapters_after_live_info() -> None:
         assert progress_message.initial["embed"].title == "Running /info"
         assert progress_message.edits[-1]["embed"].title == "Test Series"
         assert "Num of Chapters:** 1" in (progress_message.edits[-1]["embed"].description or "")
+
+    asyncio.run(_run())
+
+
+def test_chapters_uses_unified_info_with_progress() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = CatalogCog(_FakeBot(_SuccessfulCrawler()))
+        cog._resolve_series_input = _resolved_input  # type: ignore[method-assign]
+
+        await CatalogCog.chapters.callback(cog, interaction, "asura|test")  # type: ignore[misc]
+
+        progress_message = interaction.followup.messages[0]
+        first = progress_message.initial["embed"]
+        assert first.title == "Running /chapters"
+        last = progress_message.edits[-1]
+        # Last edit attaches a paginator (view) on success.
+        assert last.get("view") is not None
 
     asyncio.run(_run())
