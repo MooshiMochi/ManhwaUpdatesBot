@@ -32,7 +32,7 @@ async def run() -> None:
         print(f"[FATAL] Failed to load config: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    log.configure(config.bot.log_level)
+    log.configure(config.bot.log_level, logger_levels=config.bot.logger_levels)
     _log.info("Config loaded, log level=%s", config.bot.log_level)
 
     db = await DbPool.open(config.db.path)

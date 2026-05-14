@@ -22,6 +22,7 @@ class ConfigError(RuntimeError):
 class BotConfig:
     owner_ids: tuple[int, ...]
     log_level: str
+    logger_levels: tuple[tuple[str, str], ...]
     dev_guild_id: int
     command_prefix: str
 
@@ -159,6 +160,12 @@ def _strs(value: object) -> tuple[str, ...]:
     return ()
 
 
+def _logger_levels(value: object) -> tuple[tuple[str, str], ...]:
+    if not isinstance(value, dict) or not value:
+        return (("aiohttp", "WARNING"), ("discord", "WARNING"))
+    return tuple(sorted((str(name), str(level)) for name, level in value.items()))
+
+
 def load_config(
     config_path: str | Path = "config.toml",
     env_path: str | Path = ".env",
@@ -175,6 +182,7 @@ def load_config(
     raw = tomllib.loads(cfg_path.read_text(encoding="utf-8"))
 
     bot_section = _section(raw, "bot")
+    logger_levels_section = _section(raw, "bot", "logger_levels")
     crawler_section = _section(raw, "crawler")
     db_section = _section(raw, "db")
     premium_section = _section(raw, "premium")
@@ -188,6 +196,7 @@ def load_config(
         log_level=str(
             _env_override("MANHWABOT_BOT_LOG_LEVEL", bot_section.get("log_level", "INFO"))
         ),
+        logger_levels=_logger_levels(logger_levels_section),
         dev_guild_id=int(
             _env_override("MANHWABOT_BOT_DEV_GUILD_ID", bot_section.get("dev_guild_id", 0))
         ),

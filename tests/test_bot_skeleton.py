@@ -29,6 +29,7 @@ def _fake_config(command_prefix: str = "?") -> AppConfig:
         bot=BotConfig(
             owner_ids=(123456789,),
             log_level="WARNING",
+            logger_levels=(("discord", "WARNING"),),
             dev_guild_id=0,
             command_prefix=command_prefix,
         ),

@@ -13,6 +13,13 @@ command_prefix = "?"
 # Leave as 0 to allow dev commands in any guild the owner can reach.
 dev_guild_id = 0
 
+[bot.logger_levels]
+# Per-logger thresholds. Useful for keeping noisy libraries quiet while bot.log_level is DEBUG.
+discord = "WARNING"
+aiohttp = "WARNING"
+aiosqlite = "WARNING"
+sqlite3 = "WARNING"
+
 [crawler]
 # WebSocket URL of the crawler service. Bearer token comes from CRAWLER_API_KEY in .env.
 ws_url = "ws://127.0.0.1:8000/ws"

@@ -36,6 +36,7 @@ def _build_config(*, respect_paid_chapter: bool = True) -> AppConfig:
         bot=BotConfig(
             owner_ids=(),
             log_level="INFO",
+            logger_levels=(("discord", "WARNING"),),
             dev_guild_id=0,
             command_prefix="?",
         ),

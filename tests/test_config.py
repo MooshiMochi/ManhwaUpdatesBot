@@ -31,6 +31,32 @@ def test_load_config_defaults_bot_command_prefix(tmp_path, monkeypatch) -> None:
     config = load_config(config_path, env_path=tmp_path / ".env")
 
     assert config.bot.command_prefix == "?"
+    assert config.bot.logger_levels == (("aiohttp", "WARNING"), ("discord", "WARNING"))
+
+
+def test_load_config_reads_bot_logger_levels(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        """
+[bot]
+
+[bot.logger_levels]
+discord = "ERROR"
+aiosqlite = "INFO"
+sqlite3 = "WARNING"
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "fake-token")
+    monkeypatch.setenv("CRAWLER_API_KEY", "fake-crawler-key")
+
+    config = load_config(config_path, env_path=tmp_path / ".env")
+
+    assert config.bot.logger_levels == (
+        ("aiosqlite", "INFO"),
+        ("discord", "ERROR"),
+        ("sqlite3", "WARNING"),
+    )
 
 
 def test_load_config_defaults_crawler_transport_watchdog(tmp_path, monkeypatch) -> None:
