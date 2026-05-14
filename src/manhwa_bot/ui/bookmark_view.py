@@ -45,6 +45,7 @@ def _build_visual_embed(
     cover_url: str | None,
     index: int,
     total: int,
+    tracked_in_guild: bool = True,
 ) -> discord.Embed:
     embed = discord.Embed(
         title=f"Bookmark: {title}",
@@ -58,6 +59,15 @@ def _build_visual_embed(
         inline=True,
     )
     embed.add_field(name="Website", value=bm.website_key, inline=True)
+    if not tracked_in_guild:
+        embed.add_field(
+            name="⚠️ Not tracked",
+            value=(
+                "This manga is not tracked in this server, so you will not be notified "
+                "for updates unless it is tracked."
+            ),
+            inline=False,
+        )
     if cover_url:
         embed.set_thumbnail(url=cover_url)
     embed.set_footer(text=f"Bookmark {index + 1}/{total}")
@@ -159,6 +169,7 @@ class BookmarkView(discord.ui.View):
         tracked: TrackedStore,
         crawler: Any,
         invoker_id: int,
+        guild_id: int | None = None,
         current_folder: str | None = None,
         index: int = 0,
         timeout: float = 300.0,
@@ -169,6 +180,7 @@ class BookmarkView(discord.ui.View):
         self._tracked = tracked
         self._crawler = crawler
         self._invoker_id = invoker_id
+        self._guild_id = guild_id
         self._current_folder = current_folder
         self._mode: Literal["visual", "text"] = "visual"
         # title / series_url / cover_url cache: (website_key, url_name) -> dict
@@ -201,6 +213,15 @@ class BookmarkView(discord.ui.View):
         meta = {"title": title, "series_url": series_url, "cover_url": cover_url}
         self._meta[key] = meta
         return meta
+
+    async def _is_tracked_in_context(self, bm: Bookmark) -> bool:
+        if self._guild_id is None:
+            return True
+        try:
+            rows = await self._tracked.list_guilds_tracking(bm.website_key, bm.url_name)
+        except Exception:
+            return True
+        return any(int(row.guild_id) == int(self._guild_id) for row in rows)
 
     async def _fetch_chapters(self, bm: Bookmark) -> list[dict]:
         """Fetch chapters for a bookmark via the crawler."""
@@ -244,6 +265,7 @@ class BookmarkView(discord.ui.View):
                 cover_url=meta["cover_url"],
                 index=self._index,
                 total=len(self._filtered),
+                tracked_in_guild=await self._is_tracked_in_context(bm),
             )
 
         # text mode

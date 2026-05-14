@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import discord
@@ -12,7 +11,7 @@ from discord.ext import commands
 from .. import autocomplete
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
-from ..crawler.website_detect import detect_website_key
+from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
 from ..db.tracked import TrackedStore
 from ..formatting import (
     chapters_embeds_v1,
@@ -95,6 +94,32 @@ class CatalogCog(commands.Cog, name="Catalog"):
         self.bot = bot
         self._tracked = TrackedStore(bot.db)  # type: ignore[attr-defined]
 
+    async def _fetch_info_and_chapters(
+        self,
+        *,
+        website_key: str,
+        identifier: str,
+    ) -> tuple[dict, list[dict]]:
+        """Fetch live info and use cached chapters when available.
+
+        The crawler's cached chapter list only exists for tracked series. Raw
+        valid URLs can still be scraped live by ``info``, so use its chapter
+        payload when the cache lookup returns not_found.
+        """
+        info_data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+            "info", website_key=website_key, url=identifier
+        )
+        try:
+            chapters_data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+                "chapters", website_key=website_key, url=identifier
+            )
+            chapters = list(chapters_data.get("chapters") or [])
+        except CrawlerError as exc:
+            if exc.code != "not_found":
+                raise
+            chapters = list(info_data.get("chapters") or [])
+        return info_data, chapters
+
     async def _resolve_series_input(self, value: str) -> tuple[str, str] | None:
         """Resolve a slash-command series input into ``(website_key, series_url)``.
 
@@ -113,7 +138,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
         if "|" in value and not value.startswith("http"):
             wk, _, url = value.partition("|")
             if wk and url:
-                return (wk, url)
+                return (wk, series_url_from_maybe_chapter_url(url))
 
         if ":" in value and not value.startswith("http"):
             wk, _, url_name = value.partition(":")
@@ -129,7 +154,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
         if value.startswith("http"):
             wk = await detect_website_key(self.bot, value)
             if wk:
-                return (wk, value)
+                return (wk, series_url_from_maybe_chapter_url(value))
 
         return None
 
@@ -230,7 +255,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
     @app_commands.command(name="info", description="Display info about a manhwa.")
     @app_commands.describe(series="The name of the manhwa you want to get info for.")
-    @app_commands.autocomplete(series=autocomplete.tracked_manga_in_guild)
+    @app_commands.autocomplete(series=autocomplete.all_manga)
     @app_commands.rename(series="manhwa")
     @has_premium(dm_only=True)
     async def info(
@@ -253,14 +278,11 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
         website_key, identifier = resolved
 
-        info_task = self.bot.crawler.request(  # type: ignore[attr-defined]
-            "info", website_key=website_key, url=identifier
-        )
-        chapters_task = self.bot.crawler.request(  # type: ignore[attr-defined]
-            "chapters", website_key=website_key, url=identifier
-        )
         try:
-            info_data, chapters_data = await asyncio.gather(info_task, chapters_task)
+            info_data, chapters_list = await self._fetch_info_and_chapters(
+                website_key=website_key,
+                identifier=identifier,
+            )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             await interaction.followup.send(
                 embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
@@ -274,7 +296,6 @@ class CatalogCog(commands.Cog, name="Catalog"):
             )
             return
 
-        chapters_list = (chapters_data or {}).get("chapters") or []
         merged: dict = dict(info_data)
         merged.setdefault("series_url", info_data.get("url") or identifier)
         merged["website_key"] = website_key
@@ -290,7 +311,11 @@ class CatalogCog(commands.Cog, name="Catalog"):
             bot=self.bot,
         )
 
-        url_name = await self._resolve_url_name(website_key, identifier)
+        url_name = (
+            merged.get("url_name")
+            or await self._resolve_url_name(website_key, str(merged["series_url"]))
+            or await self._resolve_url_name(website_key, identifier)
+        )
         view = SubscribeView(
             website_key=website_key,
             url_name=url_name or identifier,
@@ -347,16 +372,27 @@ class CatalogCog(commands.Cog, name="Catalog"):
             data = await self.bot.crawler.request(  # type: ignore[attr-defined]
                 "chapters", website_key=website_key, url=identifier
             )
-        except (CrawlerError, RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(
-                embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
-                ephemeral=True,
-            )
-            return
+        except CrawlerError as exc:
+            if exc.code != "not_found":
+                await interaction.followup.send(
+                    embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
+                    ephemeral=True,
+                )
+                return
+            try:
+                data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+                    "info", website_key=website_key, url=identifier
+                )
+            except CrawlerError as fallback_exc:
+                await interaction.followup.send(
+                    embed=_shared_error_embed(str(fallback_exc), source=SOURCE_CRAWLER),
+                    ephemeral=True,
+                )
+                return
 
         chapter_list: list[dict] = data.get("chapters") or []
         series_title = data.get("title") or identifier
-        series_url = data.get("series_url")
+        series_url = data.get("series_url") or data.get("url")
 
         embeds = chapters_embeds_v1(
             chapter_list,

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import discord
 
+from manhwa_bot.cogs.bookmarks import _BookmarkSuccessView
 from manhwa_bot.db.bookmarks import Bookmark
 from manhwa_bot.ui.bookmark_view import BookmarkView
 
@@ -21,6 +22,14 @@ class _Tracked:
             series_url="https://example.test/solo-leveling",
             cover_url="https://example.test/cover.jpg",
         )
+
+    async def list_guilds_tracking(self, website_key: str, url_name: str) -> list[SimpleNamespace]:
+        return [SimpleNamespace(guild_id=100)]
+
+
+class _Untracked(_Tracked):
+    async def list_guilds_tracking(self, website_key: str, url_name: str) -> list[SimpleNamespace]:
+        return []
 
 
 class _Crawler:
@@ -51,12 +60,41 @@ def _view() -> BookmarkView:
     )
 
 
+def _guild_view(tracked: object) -> BookmarkView:
+    return BookmarkView(
+        [_bookmark()],
+        store=_Store(),
+        tracked=tracked,  # type: ignore[arg-type]
+        crawler=_Crawler(),
+        invoker_id=200,
+        guild_id=100,
+    )
+
+
 def test_bookmark_visual_embed_uses_v1_title() -> None:
     view = _view()
 
     embed = asyncio.run(view.initial_embed())
 
     assert embed.title == "Bookmark: Solo Leveling"
+
+
+def test_bookmark_visual_embed_warns_when_not_tracked_in_guild() -> None:
+    view = _guild_view(_Untracked())
+
+    embed = asyncio.run(view.initial_embed())
+
+    fields = {field.name: field.value for field in embed.fields}
+    assert "⚠️ Not tracked" in fields
+    assert "will not be notified" in fields["⚠️ Not tracked"]
+
+
+def test_bookmark_visual_embed_omits_warning_when_tracked_in_guild() -> None:
+    view = _guild_view(_Tracked())
+
+    embed = asyncio.run(view.initial_embed())
+
+    assert "⚠️ Not tracked" not in {field.name for field in embed.fields}
 
 
 def test_bookmark_visual_components_match_v1_shape() -> None:
@@ -81,4 +119,21 @@ def test_bookmark_visual_components_match_v1_shape() -> None:
     assert [select.placeholder for select in selects] == [
         "Select view type.",
         "Select folder.",
+    ]
+
+
+def test_bookmark_success_view_has_view_bookmark_button() -> None:
+    view = _BookmarkSuccessView(
+        bookmark=_bookmark(),
+        store=_Store(),
+        tracked=_Tracked(),  # type: ignore[arg-type]
+        crawler=_Crawler(),
+        invoker_id=200,
+        guild_id=100,
+    )
+
+    buttons = [child for child in view.children if isinstance(child, discord.ui.Button)]
+
+    assert [(button.label, button.style) for button in buttons] == [
+        ("View Bookmark", discord.ButtonStyle.blurple)
     ]

@@ -4,7 +4,33 @@ supported-websites cache."""
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
+
+
+def series_url_from_maybe_chapter_url(url: str) -> str:
+    """Best-effort conversion of common chapter URLs into series URLs."""
+    raw = str(url or "").strip()
+    if not raw:
+        return raw
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return raw
+    segments = [segment for segment in parsed.path.split("/") if segment]
+    if len(segments) < 2:
+        return raw
+
+    cut_at: int | None = None
+    for idx, segment in enumerate(segments):
+        lowered = segment.lower()
+        if lowered == "chapter" or lowered == "chapters" or lowered.startswith("chapter-"):
+            cut_at = idx
+            break
+    if cut_at is None or cut_at == 0:
+        return raw
+
+    path = "/" + "/".join(segments[:cut_at]) + "/"
+    return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
 
 
 async def detect_website_key(bot: Any, url: str) -> str | None:

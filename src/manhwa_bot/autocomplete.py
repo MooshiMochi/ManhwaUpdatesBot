@@ -265,3 +265,24 @@ async def track_new_url_or_search(
     except Exception:
         _log.exception("track_new_url_or_search autocomplete failed")
         return []
+
+
+async def all_manga(
+    interaction: discord.Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    """Autocomplete across all series known to the crawler catalog."""
+    try:
+        if current.startswith("http://") or current.startswith("https://"):
+            return [app_commands.Choice(name=current[:100], value=current[:100])]
+
+        bot: Any = interaction.client
+        query, cache_key = _normalize_track_new_query(current)
+        return await _track_new_choices_from_cache_or_crawler(
+            bot,
+            query=query,
+            cache_key=f"all:{cache_key}",
+        )
+    except Exception:
+        _log.exception("all_manga autocomplete failed")
+        return []

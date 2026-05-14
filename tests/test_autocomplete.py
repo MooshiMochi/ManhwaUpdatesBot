@@ -113,6 +113,37 @@ def test_track_new_autocomplete_queries_crawler_for_empty_input() -> None:
     asyncio.run(_run())
 
 
+def test_all_manga_autocomplete_queries_crawler_catalog() -> None:
+    async def _run() -> None:
+        calls: list[dict[str, Any]] = []
+
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                calls.append({"type": type_, **fields})
+                return {
+                    "results": [
+                        {
+                            "website_key": "toongod",
+                            "series_url": "https://www.toongod.org/webtoon/someone-stop-her-uncensored/",
+                            "title": "Someone Stop Her",
+                        }
+                    ]
+                }
+
+        autocomplete.clear_track_new_autocomplete_cache()
+        choices = await autocomplete.all_manga(_interaction(crawler=Crawler()), "someone")
+
+        assert calls == [{"type": "autocomplete", "query": "someone", "limit": 10}]
+        assert [(choice.name, choice.value) for choice in choices] == [
+            (
+                "(toongod) Someone Stop Her",
+                "toongod|https://www.toongod.org/webtoon/someone-stop-her-uncensored/",
+            )
+        ]
+
+    asyncio.run(_run())
+
+
 def test_track_new_autocomplete_reuses_cached_results() -> None:
     async def _run() -> None:
         calls: list[str] = []

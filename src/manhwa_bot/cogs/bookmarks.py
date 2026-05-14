@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 import discord
@@ -12,8 +13,8 @@ from discord.ext import commands
 from .. import autocomplete, formatting
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
-from ..crawler.website_detect import detect_website_key
-from ..db.bookmarks import BookmarkStore
+from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
+from ..db.bookmarks import Bookmark, BookmarkStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
 from ..ui.bookmark_view import BOOKMARK_FOLDERS, BookmarkView
@@ -26,6 +27,60 @@ _DEFAULT_FOLDER = "Reading"
 _COMPLETED_STATUSES = {"completed", "ended", "finished", "dropped", "cancelled"}
 
 _FOLDER_CHOICES = [app_commands.Choice(name=f, value=f) for f in BOOKMARK_FOLDERS]
+
+
+@dataclass(frozen=True)
+class _ResolvedSeries:
+    website_key: str
+    url_name: str
+    series_url: str
+    info: dict[str, Any]
+
+
+class _BookmarkSuccessView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        bookmark: Bookmark,
+        store: BookmarkStore,
+        tracked: TrackedStore,
+        crawler: Any,
+        invoker_id: int,
+        guild_id: int | None,
+        timeout: float = 300.0,
+    ) -> None:
+        super().__init__(timeout=timeout)
+        self._bookmark = bookmark
+        self._store = store
+        self._tracked = tracked
+        self._crawler = crawler
+        self._invoker_id = invoker_id
+        self._guild_id = guild_id
+
+        button = discord.ui.Button(label="View Bookmark", style=discord.ButtonStyle.blurple)
+        button.callback = self._on_view_bookmark  # type: ignore[assignment]
+        self.add_item(button)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self._invoker_id:
+            await interaction.response.send_message(
+                "Only the person who ran this command can view this bookmark.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def _on_view_bookmark(self, interaction: discord.Interaction) -> None:
+        view = BookmarkView(
+            [self._bookmark],
+            store=self._store,
+            tracked=self._tracked,
+            crawler=self._crawler,
+            invoker_id=self._invoker_id,
+            guild_id=self._guild_id,
+        )
+        embed = await view.initial_embed()
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
 def _error_embed(message: str) -> discord.Embed:
@@ -86,8 +141,8 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
 
     # -- internal helpers -----------------------------------------------
 
-    async def _resolve_series(self, manga_url_or_id: str) -> tuple[str, str, str] | None:
-        """Return ``(website_key, url_name, series_url)`` or None.
+    async def _resolve_series(self, manga_url_or_id: str) -> _ResolvedSeries | None:
+        """Return resolved series identity and any live info payload.
 
         Tries the autocomplete value format first, then falls back to a
         crawler ``info`` lookup when given a raw URL.
@@ -97,7 +152,17 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             website_key, url_name = parsed
             tracked = await self._tracked.find(website_key, url_name)
             if tracked is not None:
-                return (website_key, url_name, tracked.series_url)
+                return _ResolvedSeries(
+                    website_key=website_key,
+                    url_name=url_name,
+                    series_url=tracked.series_url,
+                    info={
+                        "title": tracked.title,
+                        "url": tracked.series_url,
+                        "cover_url": tracked.cover_url,
+                        "status": tracked.status,
+                    },
+                )
             # Not yet tracked; canonicalize via the crawler so we know the
             # series_url (used by /bookmark new for the chapters call). The
             # crawler needs a full series URL — passing a bare url_name fails
@@ -111,18 +176,52 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             wk = await detect_website_key(self.bot, manga_url_or_id)
             if not wk:
                 return None
+            series_url = series_url_from_maybe_chapter_url(manga_url_or_id)
             try:
                 data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                    "info", website_key=wk, url=manga_url_or_id
+                    "info", website_key=wk, url=series_url
                 )
             except CrawlerError, RequestTimeout, Disconnected:
                 return None
-            su = data.get("series_url") or data.get("url") or manga_url_or_id
+            su = data.get("series_url") or data.get("url") or series_url
             un = data.get("url_name") or _url_name_from_url(su)
             if not un:
                 return None
-            return (wk, un, su)
+            return _ResolvedSeries(wk, un, su, data)
         return None
+
+    async def _fetch_chapters_for(self, resolved: _ResolvedSeries) -> list[dict]:
+        """Use live info chapters first, then fall back to cached crawler chapters."""
+        chapters = resolved.info.get("chapters")
+        if isinstance(chapters, list) and chapters:
+            return list(chapters)
+        data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+            "chapters", website_key=resolved.website_key, url=resolved.series_url
+        )
+        return list(data.get("chapters") or [])
+
+    async def _cache_series_metadata(
+        self,
+        resolved: _ResolvedSeries,
+        chapters: list[dict],
+    ) -> tuple[str, str | None, str]:
+        """Persist best-effort metadata without marking the series tracked in a guild."""
+        info = resolved.info
+        title = str(info.get("title") or resolved.url_name)
+        cover_url = info.get("cover_url")
+        status = str(info.get("status") or "Unknown")
+        latest = chapters[0] if chapters else {}
+        await self._tracked.upsert_series(
+            resolved.website_key,
+            resolved.url_name,
+            resolved.series_url,
+            title,
+            cover_url=cover_url,
+            status=status,
+            last_chapter_text=_chapter_label(latest, 0) if latest else None,
+            last_chapter_url=latest.get("url") or latest.get("chapter_url") if latest else None,
+        )
+        return title, cover_url, status
 
     async def _maybe_auto_subscribe(
         self,
@@ -203,12 +302,14 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 ephemeral=True,
             )
             return
-        website_key, url_name, series_url = resolved
+        website_key, url_name, series_url = (
+            resolved.website_key,
+            resolved.url_name,
+            resolved.series_url,
+        )
 
         try:
-            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "chapters", website_key=website_key, url=series_url or url_name
-            )
+            chapters = await self._fetch_chapters_for(resolved)
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             await interaction.followup.send(
                 embed=_shared_error_embed(f"Couldn't fetch chapters: {exc}", source=SOURCE_CRAWLER),
@@ -216,7 +317,6 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             )
             return
 
-        chapters: list[dict] = data.get("chapters") or []
         if not chapters:
             await interaction.followup.send(
                 embed=_error_embed("No chapters available for this series."),
@@ -233,12 +333,10 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             last_read_chapter=first_label,
             last_read_index=0,
         )
+        bookmark = await self._bookmarks.get_bookmark(interaction.user.id, website_key, url_name)
 
-        title = data.get("title") or url_name
+        title, cover_url, status = await self._cache_series_metadata(resolved, chapters)
         site_meta = await self._site_metadata(website_key)
-        tracked = await self._tracked.find(website_key, url_name)
-        cover_url = (tracked.cover_url if tracked else None) or data.get("cover_url")
-        status = data.get("status") or (tracked.status if tracked else None) or "Unknown"
         is_completed = (status or "").strip().lower() in _COMPLETED_STATUSES
 
         first_md = _chapter_markdown(chapters[0], 0)
@@ -261,8 +359,23 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             is_completed=is_completed,
             bot=self.bot,
         )
+        success_view = (
+            _BookmarkSuccessView(
+                bookmark=bookmark,
+                store=self._bookmarks,
+                tracked=self._tracked,
+                crawler=self.bot.crawler,  # type: ignore[attr-defined]
+                invoker_id=interaction.user.id,
+                guild_id=interaction.guild_id,
+            )
+            if bookmark is not None
+            else None
+        )
         await interaction.followup.send(
-            f"Successfully bookmarked {title}", embed=embed, ephemeral=True
+            f"Successfully bookmarked {title}",
+            embed=embed,
+            view=success_view,
+            ephemeral=True,
         )
 
     # -- /bookmark view -------------------------------------------------
@@ -332,6 +445,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             tracked=self._tracked,
             crawler=self.bot.crawler,  # type: ignore[attr-defined]
             invoker_id=interaction.user.id,
+            guild_id=interaction.guild_id,
             current_folder=folder_value,
             index=jump_index,
         )

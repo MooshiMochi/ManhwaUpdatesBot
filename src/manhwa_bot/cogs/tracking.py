@@ -12,7 +12,7 @@ from discord.ext import commands
 from .. import autocomplete, formatting
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
-from ..crawler.website_detect import detect_website_key
+from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
 from ..db.guild_settings import GuildSettingsStore
 from ..db.tracked import TrackedStore
 from ..ui.error import SOURCE_CRAWLER
@@ -145,6 +145,15 @@ class TrackingCog(commands.Cog, name="Tracking"):
             guild_id, website_key, url_name, ping_role.id if ping_role else None
         )
 
+        immediate_check_failed = False
+        try:
+            await self.bot.crawler.request(  # type: ignore[attr-defined]
+                "check_series", website_key=website_key, url_name=url_name
+            )
+        except CrawlerError, RequestTimeout, Disconnected:
+            immediate_check_failed = True
+            _log.exception("immediate check_series failed for %s:%s", website_key, url_name)
+
         embed = formatting.tracking_success_embed(
             title=title,
             series_url=series_url,
@@ -154,6 +163,12 @@ class TrackingCog(commands.Cog, name="Tracking"):
             is_dm=interaction.guild_id is None,
             bot=self.bot,
         )
+        if immediate_check_failed:
+            embed.add_field(
+                name="⚠️ Update check",
+                value="Tracking was saved, but the immediate update check failed. The scheduler will retry later.",
+                inline=False,
+            )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def _resolve_notifications_channel(
@@ -422,7 +437,7 @@ def _parse_new_url(manga_url: str) -> tuple[str, str] | None:
     if "|" in manga_url and not manga_url.startswith("http"):
         parts = manga_url.split("|", 1)
         if len(parts) == 2 and parts[0] and parts[1]:
-            return (parts[0], parts[1])
+            return (parts[0], series_url_from_maybe_chapter_url(parts[1]))
     return None
 
 
@@ -439,7 +454,7 @@ async def _resolve_track_input(bot: Any, manga_url: str) -> tuple[str, str] | No
     if manga_url and manga_url.startswith("http"):
         wk = await detect_website_key(bot, manga_url)
         if wk:
-            return (wk, manga_url)
+            return (wk, series_url_from_maybe_chapter_url(manga_url))
     return None
 
 
