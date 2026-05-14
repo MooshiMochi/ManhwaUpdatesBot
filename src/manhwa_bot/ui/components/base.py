@@ -105,6 +105,46 @@ def series_header_section(
     return discord.ui.TextDisplay(body)
 
 
+def chapter_label(chapter: object, fallback_idx: int | None = None) -> str:
+    if not isinstance(chapter, dict):
+        return str(chapter)
+    fallback = "?" if fallback_idx is None else f"#{fallback_idx}"
+    return str(
+        chapter.get("chapter")
+        or chapter.get("name")
+        or chapter.get("text")
+        or chapter.get("chapter_number")
+        or fallback
+    )
+
+
+def chapter_url(chapter: object) -> str:
+    if not isinstance(chapter, dict):
+        return ""
+    return str(chapter.get("url") or chapter.get("chapter_url") or "")
+
+
+def chapter_is_premium(chapter: object) -> bool:
+    if not isinstance(chapter, dict):
+        return False
+    return bool(
+        chapter.get("is_premium")
+        or chapter.get("premium")
+        or chapter.get("is_paid")
+        or chapter.get("paid")
+        or chapter.get("is_locked")
+        or chapter.get("locked")
+    )
+
+
+def chapter_markdown(chapter: object, fallback_idx: int | None = None) -> str:
+    label = chapter_label(chapter, fallback_idx)
+    if chapter_is_premium(chapter):
+        label = f"{emojis.LOCK} {label}"
+    url = chapter_url(chapter)
+    return f"[{label}]({url})" if url else label
+
+
 def hero_cover_gallery(
     cover_url: str | None,
     *,

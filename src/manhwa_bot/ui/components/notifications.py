@@ -6,6 +6,8 @@ import discord
 
 from .base import (
     BaseLayoutView,
+    chapter_is_premium,
+    chapter_markdown,
     footer_section,
     hero_cover_gallery,
     small_separator,
@@ -24,25 +26,20 @@ def build_chapter_update_view(
     series_title = payload.get("series_title") or payload.get("url_name") or "New chapter"
     series_url = payload.get("series_url") or None
     chapter = payload.get("chapter") or {}
-    chapter_name = chapter.get("name") or f"Chapter {chapter.get('index', '?')}"
-    chapter_url = chapter.get("url") or series_url or ""
-    is_premium = bool(chapter.get("is_premium"))
+    is_premium = chapter_is_premium(chapter)
     cover_url = payload.get("cover_url")
     website_key = payload.get("website_key")
 
     accent = discord.Colour.gold() if is_premium else discord.Colour.green()
     glyph = "🥇" if is_premium else "📖"
-    suffix = " (premium)" if is_premium else ""
 
     header = (
         f"## {glyph}  [{series_title}]({series_url})"
         if series_url
         else f"## {glyph}  {series_title}"
     )
-    if chapter_url:
-        body = f"**New chapter:** [{chapter_name}{suffix}]({chapter_url})"
-    else:
-        body = f"**New chapter:** {chapter_name}{suffix}"
+    chapter_display = chapter_markdown(chapter, chapter.get("index"))
+    body = f"**New chapter:** {chapter_display}"
 
     container = discord.ui.Container(accent_colour=accent)
     gallery = hero_cover_gallery(cover_url)

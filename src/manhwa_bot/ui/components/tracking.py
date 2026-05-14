@@ -16,6 +16,7 @@ from .base import (
     LIST_MAX,
     TEXT_MAX,
     BaseLayoutView,
+    chapter_markdown,
     footer_section,
     hero_cover_gallery,
     large_separator,
@@ -239,10 +240,15 @@ def build_grouped_list_views(
         url = str(item.get("url") or "")
         last_chapter = item.get("last_chapter")
         last_chapter_url = item.get("last_chapter_url")
+        last_chapter_is_premium = item.get("last_chapter_is_premium")
 
         if last_chapter:
-            chapter_part = (
-                f"[{last_chapter}]({last_chapter_url})" if last_chapter_url else str(last_chapter)
+            chapter_part = chapter_markdown(
+                {
+                    "name": last_chapter,
+                    "url": last_chapter_url,
+                    "is_premium": last_chapter_is_premium,
+                }
             )
             line = f"**{line_index}.** [{item_title}]({url}) • {chapter_part}"
         else:

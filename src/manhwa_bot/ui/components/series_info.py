@@ -17,6 +17,7 @@ from .. import emojis
 from .base import (
     SYNOPSIS_MAX,
     BaseLayoutView,
+    chapter_markdown,
     footer_section,
     hero_cover_gallery,
     large_separator,
@@ -168,9 +169,7 @@ class SeriesActionRow(discord.ui.ActionRow):
 
 
 def _chapter_label(ch: object) -> str:
-    if isinstance(ch, dict):
-        return str(ch.get("name") or ch.get("chapter") or ch.get("text") or "?")
-    return str(ch)
+    return chapter_markdown(ch)
 
 
 def build_info_view(

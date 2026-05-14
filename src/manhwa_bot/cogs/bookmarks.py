@@ -19,6 +19,7 @@ from ..crawler.website_detect import detect_website_key, series_url_from_maybe_c
 from ..db.bookmarks import BookmarkStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
+from ..ui.components.base import chapter_label, chapter_markdown
 from ..ui.components.bookmark import (
     BOOKMARK_FOLDERS,
     BookmarkBrowserView,
@@ -73,19 +74,11 @@ def _url_name_from_url(url: str) -> str | None:
 
 
 def _chapter_label(ch: dict, fallback_idx: int) -> str:
-    return (
-        ch.get("chapter")
-        or ch.get("name")
-        or ch.get("text")
-        or ch.get("chapter_number")
-        or f"#{ch.get('index', fallback_idx)}"
-    )
+    return chapter_label(ch, ch.get("index", fallback_idx))
 
 
 def _chapter_markdown(ch: dict, fallback_idx: int) -> str:
-    label = _chapter_label(ch, fallback_idx)
-    url = ch.get("url") or ch.get("chapter_url") or ""
-    return f"[{label}]({url})" if url else str(label)
+    return chapter_markdown(ch, ch.get("index", fallback_idx))
 
 
 class BookmarksCog(commands.Cog, name="Bookmarks"):
@@ -604,7 +597,9 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     )
                 return
 
-            label = _chapter_label(chapters[chapter_index], chapter_index)
+            chapter = chapters[chapter_index]
+            label = _chapter_label(chapter, chapter_index)
+            chapter_display = _chapter_markdown(chapter, chapter_index)
             await self._bookmarks.update_last_read(
                 interaction.user.id,
                 website_key,
@@ -612,7 +607,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 chapter_text=label,
                 chapter_index=chapter_index,
             )
-            new_chapter_label = label
+            new_chapter_label = chapter_display
 
             suffix = await self._maybe_auto_subscribe(
                 user_id=interaction.user.id,

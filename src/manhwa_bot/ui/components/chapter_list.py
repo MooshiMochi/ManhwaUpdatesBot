@@ -7,6 +7,7 @@ import discord
 from .base import (
     LIST_MAX,
     BaseLayoutView,
+    chapter_markdown,
     footer_section,
     large_separator,
     safe_truncate,
@@ -15,10 +16,7 @@ from .base import (
 
 
 def _format_chapter_line(idx: int, ch: dict) -> str:
-    label = ch.get("chapter") or ch.get("name") or ch.get("text") or f"#{idx}"
-    url = ch.get("url") or ch.get("chapter_url") or ""
-    entry = f"[{label}]({url})" if url else str(label)
-    return f"`{idx:>3}.` {entry}"
+    return f"`{idx:>3}.` {chapter_markdown(ch, idx)}"
 
 
 def build_chapter_list_views(
