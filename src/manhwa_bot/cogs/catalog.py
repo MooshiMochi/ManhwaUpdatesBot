@@ -273,7 +273,11 @@ class CatalogCog(commands.Cog, name="Catalog"):
         request_id = uuid.uuid4().hex
         progress = ProgressEmbedState(command_name="/info", request_id=request_id)
         progress.add("Sent request to crawler.")
-        await interaction.edit_original_response(embed=progress.to_embed())
+        progress_message = await interaction.followup.send(
+            embed=progress.to_embed(),
+            ephemeral=True,
+            wait=True,
+        )
         terminal_started = False
         progress_edit_lock = asyncio.Lock()
 
@@ -283,57 +287,24 @@ class CatalogCog(commands.Cog, name="Catalog"):
                     return
                 message, severity = progress_event_message(event)
                 progress.add(message, severity=severity)
-                await interaction.edit_original_response(embed=progress.to_embed())
+                await progress_message.edit(embed=progress.to_embed())
 
-        info_task = asyncio.create_task(
-            self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+        try:
+            info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
                 "info",
                 website_key=website_key,
                 url=identifier,
                 request_id=request_id,
                 on_progress=on_progress,
             )
-        )
-        chapters_task = asyncio.create_task(
-            self.bot.crawler.request(  # type: ignore[attr-defined]
-                "chapters", website_key=website_key, url=identifier
-            )
-        )
-        info_data: dict | None = None
-        chapters_data: dict = {}
-        terminal_exc: CrawlerError | RequestTimeout | Disconnected | None = None
-        pending: set[asyncio.Task] = {info_task, chapters_task}
-        while pending and terminal_exc is None:
-            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                try:
-                    task_data = task.result()
-                except CrawlerError as exc:
-                    if task is chapters_task and exc.code == "not_found":
-                        chapters_data = {}
-                        continue
-                    terminal_exc = exc
-                    break
-                except (RequestTimeout, Disconnected) as exc:
-                    terminal_exc = exc
-                    break
-                if task is info_task:
-                    info_data = task_data
-                else:
-                    chapters_data = task_data
-
-        if terminal_exc is not None:
+        except (CrawlerError, RequestTimeout, Disconnected) as exc:
             terminal_started = True
-            for pending_task in pending:
-                if not pending_task.done():
-                    pending_task.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
-            progress.add(str(terminal_exc), severity="error")
+            progress.add(str(exc), severity="error")
             history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
-                await interaction.edit_original_response(
+                await progress_message.edit(
                     embed=_shared_error_embed(
-                        f"{terminal_exc}\n\nProgress:\n{history}",
+                        f"{exc}\n\nProgress:\n{history}",
                         source=SOURCE_CRAWLER,
                     )
                 )
@@ -344,21 +315,16 @@ class CatalogCog(commands.Cog, name="Catalog"):
             progress.add("No data returned for that series.", severity="error")
             history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
-                await interaction.edit_original_response(
+                await progress_message.edit(
                     embed=_error_embed(f"No data returned for that series.\n\nProgress:\n{history}")
                 )
             return
 
-        chapters_list = (chapters_data or {}).get("chapters") or []
         merged: dict = dict(info_data)
         merged.setdefault("series_url", info_data.get("url") or identifier)
         merged["website_key"] = website_key
-        if chapters_list:
-            merged["chapters"] = chapters_list
-            merged["chapter_count"] = len(chapters_list)
-        else:
-            merged.setdefault("chapters", merged.get("latest_chapters") or [])
-            merged.setdefault("chapter_count", len(merged["chapters"]) if merged["chapters"] else 0)
+        merged.setdefault("chapters", merged.get("latest_chapters") or [])
+        merged.setdefault("chapter_count", len(merged["chapters"]) if merged["chapters"] else 0)
 
         websites_lookup = await _get_websites_lookup(self.bot)
         site_meta = websites_lookup.get(website_key, {})
@@ -379,7 +345,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
         )
         terminal_started = True
         async with progress_edit_lock:
-            await interaction.edit_original_response(embed=embed, view=view)
+            await progress_message.edit(embed=embed, view=view)
 
     async def _resolve_url_name(self, website_key: str, identifier: str) -> str | None:
         """Best-effort lookup: convert a series URL into a stored ``url_name``.

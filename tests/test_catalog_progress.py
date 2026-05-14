@@ -25,9 +25,24 @@ class _FakeResponse:
 class _FakeFollowup:
     def __init__(self) -> None:
         self.sends: list[dict] = []
+        self.messages: list[_FakeFollowupMessage] = []
 
     async def send(self, **kwargs) -> None:
         self.sends.append(kwargs)
+        if kwargs.get("wait"):
+            message = _FakeFollowupMessage(kwargs)
+            self.messages.append(message)
+            return message
+        return None
+
+
+class _FakeFollowupMessage:
+    def __init__(self, initial: dict) -> None:
+        self.initial = initial
+        self.edits: list[dict] = []
+
+    async def edit(self, **kwargs) -> None:
+        self.edits.append(kwargs)
 
 
 class _FakeInteraction:
@@ -92,6 +107,11 @@ class _SuccessfulCrawler:
             "url": "https://asurascans.example/series/test",
             "status": "Ongoing",
             "synopsis": "A test synopsis.",
+            "chapter_count": 2,
+            "latest_chapters": [
+                {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
+                {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
+            ],
         }
 
     async def request(self, type_, **kwargs):
@@ -185,7 +205,7 @@ class _FailingCrawler:
         return {"chapters": [{"name": "Chapter 1"}]}
 
 
-class _FastFailingChaptersCrawler:
+class _SlowInfoCrawler:
     async def request_with_progress(self, type_, *, on_progress, **_kwargs):
         assert type_ == "info"
         try:
@@ -209,13 +229,7 @@ class _FastFailingChaptersCrawler:
         return {"title": "Too Late"}
 
     async def request(self, type_, **_kwargs):
-        assert type_ == "chapters"
-        await asyncio.sleep(0.01)
-        raise CrawlerError(
-            code="chapters_failed",
-            message="chapters failed quickly",
-            request_id="chapters-request",
-        )
+        raise AssertionError(f"/info should not request cached {type_}")
 
 
 class _InfoFoundChaptersNotFoundCrawler:
@@ -251,6 +265,33 @@ class _InfoFoundChaptersNotFoundCrawler:
         )
 
 
+class _InfoOnlyCrawler:
+    async def request_with_progress(self, type_, *, request_id, on_progress, **kwargs):
+        assert type_ == "info"
+        assert request_id
+        await on_progress(
+            SimpleNamespace(
+                title="Fetched series info",
+                detail="Parsing metadata",
+                status="running",
+            )
+        )
+        return {
+            "title": "Test Series",
+            "url": "https://asurascans.example/series/test",
+            "status": "Ongoing",
+            "chapter_count": 1,
+            "latest_chapters": [
+                {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
+            ],
+        }
+
+    async def request(self, type_, **_kwargs):
+        if type_ == "supported_websites":
+            return {"websites": []}
+        raise AssertionError(f"/info should not request cached {type_}")
+
+
 async def _resolved_input(_series: str) -> tuple[str, str]:
     return "asura", "https://asurascans.example/series/test"
 
@@ -269,17 +310,20 @@ def test_info_edits_original_response_with_progress_then_final_embed() -> None:
         await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
 
         assert interaction.response.deferred == [{"thinking": True, "ephemeral": True}]
-        assert interaction.followup.sends == []
+        assert len(interaction.followup.sends) == 1
+        assert interaction.followup.sends[0]["ephemeral"] is True
+        assert interaction.followup.sends[0]["wait"] is True
 
-        first_embed = interaction.original_edits[0]["embed"]
+        progress_message = interaction.followup.messages[0]
+        first_embed = progress_message.initial["embed"]
         assert first_embed.title == "Running /info"
         assert "Sent request to crawler" in (first_embed.description or "")
 
-        progress_embed = interaction.original_edits[1]["embed"]
+        progress_embed = progress_message.edits[0]["embed"]
         assert progress_embed.title == "Running /info"
         assert "Retrying scrape: Temporary crawler timeout" in (progress_embed.description or "")
 
-        final_edit = interaction.original_edits[-1]
+        final_edit = progress_message.edits[-1]
         assert final_edit["embed"].title == "Test Series"
         assert "Num of Chapters:** 2" in (final_edit["embed"].description or "")
         assert isinstance(final_edit["view"], SubscribeView)
@@ -341,8 +385,8 @@ def test_info_edits_original_response_with_progress_history_on_crawler_error() -
 
         await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
 
-        assert interaction.followup.sends == []
-        final_embed = interaction.original_edits[-1]["embed"]
+        progress_message = interaction.followup.messages[0]
+        final_embed = progress_message.edits[-1]["embed"]
         assert final_embed.title == "Crawler Error"
         assert "[crawler_timeout] crawler took too long" in (final_embed.description or "")
         assert "Sent request to crawler" in (final_embed.description or "")
@@ -351,29 +395,19 @@ def test_info_edits_original_response_with_progress_history_on_crawler_error() -
     asyncio.run(_run())
 
 
-def test_info_chapters_error_remains_final_edit_when_info_emits_late_progress() -> None:
+def test_info_late_progress_does_not_overwrite_final_embed() -> None:
     async def _run() -> None:
         interaction = _FakeInteraction()
-        cog = CatalogCog(_FakeBot(_FastFailingChaptersCrawler()))
+        cog = CatalogCog(_FakeBot(_SlowInfoCrawler()))
         cog._resolve_series_input = _resolved_input  # type: ignore[method-assign]
         cog._resolve_url_name = _url_name  # type: ignore[method-assign]
 
         await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
         await asyncio.sleep(0.1)
 
-        assert interaction.followup.sends == []
-        assert interaction.original_edits[-1]["embed"].title == "Crawler Error"
-        assert "[chapters_failed] chapters failed quickly" in (
-            interaction.original_edits[-1]["embed"].description or ""
-        )
-        assert all(
-            edit["embed"].title != "Running /info"
-            for edit in interaction.original_edits[1:]
-            if edit is not interaction.original_edits[-1]
-        )
-        assert "Late info progress" not in (
-            interaction.original_edits[-1]["embed"].description or ""
-        )
+        progress_message = interaction.followup.messages[0]
+        assert progress_message.edits[-1]["embed"].title == "Too Late"
+        assert "Late info progress" not in (progress_message.edits[-1]["embed"].description or "")
 
     asyncio.run(_run())
 
@@ -387,12 +421,29 @@ def test_info_uses_live_info_when_cached_chapters_are_not_found() -> None:
 
         await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
 
-        assert interaction.followup.sends == []
-        assert interaction.original_edits[0]["embed"].title == "Running /info"
-        final_edit = interaction.original_edits[-1]
+        progress_message = interaction.followup.messages[0]
+        assert progress_message.initial["embed"].title == "Running /info"
+        final_edit = progress_message.edits[-1]
         assert final_edit["embed"].title == "Test Series"
         assert "Num of Chapters:** 55" in (final_edit["embed"].description or "")
         assert "Latest Chapter:** Chapter 55" in (final_edit["embed"].description or "")
         assert isinstance(final_edit["view"], SubscribeView)
+
+    asyncio.run(_run())
+
+
+def test_info_does_not_request_cached_chapters_after_live_info() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = CatalogCog(_FakeBot(_InfoOnlyCrawler()))
+        cog._resolve_series_input = _resolved_input  # type: ignore[method-assign]
+        cog._resolve_url_name = _url_name  # type: ignore[method-assign]
+
+        await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
+
+        progress_message = interaction.followup.messages[0]
+        assert progress_message.initial["embed"].title == "Running /info"
+        assert progress_message.edits[-1]["embed"].title == "Test Series"
+        assert "Num of Chapters:** 1" in (progress_message.edits[-1]["embed"].description or "")
 
     asyncio.run(_run())
