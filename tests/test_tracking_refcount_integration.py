@@ -9,9 +9,9 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from src.manhwa_bot.db.migrate import apply_pending
-from src.manhwa_bot.db.pool import DbPool
-from src.manhwa_bot.db.tracked import TrackedStore
+from manhwa_bot.db.migrate import apply_pending
+from manhwa_bot.db.pool import DbPool
+from manhwa_bot.db.tracked import TrackedStore
 
 
 class _StubCrawler:

@@ -4,8 +4,8 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from src.manhwa_bot.db.migrate import _MIGRATIONS_DIR, apply_pending
-from src.manhwa_bot.db.pool import DbPool
+from manhwa_bot.db.migrate import _MIGRATIONS_DIR, apply_pending
+from manhwa_bot.db.pool import DbPool
 
 _EXPECTED_MIGRATIONS = sorted(p.name for p in _MIGRATIONS_DIR.glob("*.sql"))
 

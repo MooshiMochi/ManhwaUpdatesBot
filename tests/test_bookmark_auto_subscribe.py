@@ -7,11 +7,11 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
-from src.manhwa_bot.cogs.bookmarks import BookmarksCog
-from src.manhwa_bot.db.migrate import apply_pending
-from src.manhwa_bot.db.pool import DbPool
-from src.manhwa_bot.db.subscriptions import SubscriptionStore
-from src.manhwa_bot.db.tracked import TrackedStore
+from manhwa_bot.cogs.bookmarks import BookmarksCog
+from manhwa_bot.db.migrate import apply_pending
+from manhwa_bot.db.pool import DbPool
+from manhwa_bot.db.subscriptions import SubscriptionStore
+from manhwa_bot.db.tracked import TrackedStore
 
 
 async def _make_cog(tmp: str) -> tuple[DbPool, BookmarksCog]:
