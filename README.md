@@ -42,6 +42,25 @@ python main.py
 
 The crawler must be running before the bot can answer crawler-backed commands such as `/search`, `/info`, `/chapters`, `/track new`, and `/supported_websites`.
 
+## Running from a git worktree
+
+If you've created a worktree (e.g. `.worktrees/my-feature`) to work on a feature branch in isolation, **always invoke that worktree's own venv** when starting the bot:
+
+```powershell
+cd "<path-to-worktree>"
+.\.venv\Scripts\python.exe main.py
+```
+
+Each worktree has its own `.venv` with `manhwa_bot` installed editable from that worktree's `src/`. Running the worktree's `main.py` with the **main** repo's venv loads two copies of `manhwa_bot` into `sys.modules` (the main src via the editable install, and the worktree src via cwd on sys.path), which silently breaks `isinstance` checks on `CrawlerError` and other classes — `except CrawlerError` in a cog fails to catch errors raised by the client.
+
+To set up a fresh worktree's venv:
+
+```powershell
+cd "<path-to-worktree>"
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
+```
+
 ## Configuration walkthrough
 
 Secrets live in `.env`, which is gitignored:
