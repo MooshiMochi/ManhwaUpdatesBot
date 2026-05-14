@@ -34,7 +34,10 @@ class _Untracked(_Tracked):
 
 class _Crawler:
     async def request(self, *args, **kwargs) -> dict:
-        return {"chapters": []}
+        return {"chapters": [], "latest_chapters": []}
+
+    async def request_with_progress(self, *args, **kwargs) -> dict:
+        return {"chapters": [], "latest_chapters": []}
 
 
 def _bookmark() -> Bookmark:

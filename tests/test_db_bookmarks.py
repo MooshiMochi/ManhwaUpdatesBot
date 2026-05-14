@@ -4,9 +4,9 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from src.manhwa_bot.db.bookmarks import BookmarkStore
-from src.manhwa_bot.db.migrate import apply_pending
-from src.manhwa_bot.db.pool import DbPool
+from manhwa_bot.db.bookmarks import BookmarkStore
+from manhwa_bot.db.migrate import apply_pending
+from manhwa_bot.db.pool import DbPool
 
 
 async def _make_store(tmp: str) -> tuple[DbPool, BookmarkStore]:

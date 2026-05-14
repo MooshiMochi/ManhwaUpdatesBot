@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import uuid
 from typing import Any
 
 import discord
@@ -12,12 +14,13 @@ from discord.ext import commands
 from .. import autocomplete, formatting
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
-from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
+from ..crawler.website_detect import detect_website_key
 from ..db.guild_settings import GuildSettingsStore
 from ..db.tracked import TrackedStore
 from ..ui.error import SOURCE_CRAWLER
 from ..ui.error import error_embed as _shared_error_embed
 from ..ui.paginator import Paginator
+from ..ui.progress_embed import ProgressEmbedState, progress_event_message
 
 _log = logging.getLogger(__name__)
 
@@ -97,79 +100,133 @@ class TrackingCog(commands.Cog, name="Tracking"):
         else:
             channel = None
 
+        request_id = uuid.uuid4().hex
+        progress = ProgressEmbedState(command_name="/track new", request_id=request_id)
+        progress.add("Sent request to crawler.")
+        await interaction.edit_original_response(embed=progress.to_embed())
+        terminal_started = False
+        progress_edit_lock = asyncio.Lock()
+
+        async def on_progress(event: object) -> None:
+            async with progress_edit_lock:
+                if terminal_started:
+                    return
+                message, severity = progress_event_message(event)
+                progress.add(message, severity=severity)
+                await interaction.edit_original_response(embed=progress.to_embed())
+
+        async def try_terminal_edit(**kwargs) -> bool:
+            async with progress_edit_lock:
+                try:
+                    await interaction.edit_original_response(**kwargs)
+                except Exception:
+                    _log.exception("track_new terminal response edit failed")
+                    return False
+            return True
+
         try:
-            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "track_series", website_key=website_key, series_url=series_url
+            data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                "track_series",
+                request_id=request_id,
+                on_progress=on_progress,
+                website_key=website_key,
+                series_url=series_url,
             )
         except CrawlerError as exc:
             friendly = _FRIENDLY_ERRORS.get(exc.code, f"[{exc.code}] {exc.message}")
-            await interaction.followup.send(
-                embed=_shared_error_embed(friendly, source=SOURCE_CRAWLER),
-                ephemeral=True,
+            terminal_started = True
+            progress.add(friendly, severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            await try_terminal_edit(
+                embed=_shared_error_embed(
+                    f"{friendly}\n\nProgress:\n{history}",
+                    source=SOURCE_CRAWLER,
+                )
             )
             return
         except (RequestTimeout, Disconnected) as exc:
-            await interaction.followup.send(
-                embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
-                ephemeral=True,
+            terminal_started = True
+            progress.add(str(exc), severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            await try_terminal_edit(
+                embed=_shared_error_embed(
+                    f"{exc}\n\nProgress:\n{history}",
+                    source=SOURCE_CRAWLER,
+                )
             )
             return
 
-        website_key = data["website_key"]
-        url_name = data["url_name"]
-        series_url = data["series_url"]
-        series_data: dict = data.get("series") or {}
-        title: str = series_data.get("title") or url_name
-        status: str | None = series_data.get("status")
-        cover_url: str | None = series_data.get("cover_url")
-
-        latest_chapters = series_data.get("latest_chapters") or []
-        latest_text: str | None = None
-        latest_url: str | None = None
-        if latest_chapters:
-            first = latest_chapters[0] or {}
-            latest_text = first.get("name") or first.get("text")
-            latest_url = first.get("url")
-
-        await self._tracked.upsert_series(
-            website_key,
-            url_name,
-            series_url,
-            title,
-            cover_url=cover_url,
-            status=status,
-            last_chapter_text=latest_text,
-            last_chapter_url=latest_url,
-        )
-        await self._tracked.add_to_guild(
-            guild_id, website_key, url_name, ping_role.id if ping_role else None
-        )
-
-        immediate_check_failed = False
         try:
-            await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "check_series", website_key=website_key, url_name=url_name
-            )
-        except CrawlerError, RequestTimeout, Disconnected:
-            immediate_check_failed = True
-            _log.exception("immediate check_series failed for %s:%s", website_key, url_name)
+            website_key = data["website_key"]
+            url_name = data["url_name"]
+            series_url = data["series_url"]
+            series_data: dict = data.get("series") or {}
+            title: str = series_data.get("title") or url_name
+            status: str | None = series_data.get("status")
+            cover_url: str | None = series_data.get("cover_url")
 
-        embed = formatting.tracking_success_embed(
-            title=title,
-            series_url=series_url,
-            ping_role=ping_role,
-            notif_channel=channel,
-            cover_url=cover_url,
-            is_dm=interaction.guild_id is None,
-            bot=self.bot,
-        )
-        if immediate_check_failed:
-            embed.add_field(
-                name="⚠️ Update check",
-                value="Tracking was saved, but the immediate update check failed. The scheduler will retry later.",
-                inline=False,
+            latest_chapters = series_data.get("latest_chapters") or []
+            latest_text: str | None = None
+            latest_url: str | None = None
+            if latest_chapters:
+                first = latest_chapters[0] or {}
+                latest_text = first.get("name") or first.get("text")
+                latest_url = first.get("url")
+
+            await self._tracked.upsert_series(
+                website_key,
+                url_name,
+                series_url,
+                title,
+                cover_url=cover_url,
+                status=status,
+                last_chapter_text=latest_text,
+                last_chapter_url=latest_url,
             )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+            await self._tracked.add_to_guild(
+                guild_id, website_key, url_name, ping_role.id if ping_role else None
+            )
+
+            immediate_check_failed = False
+            try:
+                request = getattr(self.bot.crawler, "request", None)  # type: ignore[attr-defined]
+                if request is not None:
+                    await request(
+                        "check_series",
+                        website_key=website_key,
+                        url_name=url_name,
+                    )
+            except CrawlerError, RequestTimeout, Disconnected:
+                immediate_check_failed = True
+                _log.exception("immediate check_series failed for %s:%s", website_key, url_name)
+
+            embed = formatting.tracking_success_embed(
+                title=title,
+                series_url=series_url,
+                ping_role=ping_role,
+                notif_channel=channel,
+                cover_url=cover_url,
+                is_dm=interaction.guild_id is None,
+                bot=self.bot,
+            )
+            if immediate_check_failed:
+                embed.add_field(
+                    name="⚠️ Update check",
+                    value=(
+                        "Tracking was saved, but the immediate update check failed. "
+                        "The scheduler will retry later."
+                    ),
+                    inline=False,
+                )
+            terminal_started = True
+            await try_terminal_edit(embed=embed)
+        except Exception as exc:
+            _log.exception("track_new post-crawler success path failed")
+            terminal_started = True
+            message = f"Failed to finish tracking setup after crawler completed: {exc}"
+            progress.add(message, severity="error")
+            history = progress.to_embed(final_error=True).description or ""
+            await try_terminal_edit(embed=_shared_error_embed(f"{message}\n\nProgress:\n{history}"))
 
     async def _resolve_notifications_channel(
         self, guild: discord.Guild, website_key: str
@@ -315,8 +372,12 @@ class TrackingCog(commands.Cog, name="Tracking"):
         crawler_untracked = False
         if was_last:
             try:
-                await self.bot.crawler.request(  # type: ignore[attr-defined]
-                    "untrack_series", website_key=website_key, url_name=url_name
+                await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                    "untrack_series",
+                    request_id=None,
+                    on_progress=None,
+                    website_key=website_key,
+                    url_name=url_name,
                 )
                 crawler_untracked = True
             except CrawlerError, RequestTimeout, Disconnected:
@@ -437,7 +498,7 @@ def _parse_new_url(manga_url: str) -> tuple[str, str] | None:
     if "|" in manga_url and not manga_url.startswith("http"):
         parts = manga_url.split("|", 1)
         if len(parts) == 2 and parts[0] and parts[1]:
-            return (parts[0], series_url_from_maybe_chapter_url(parts[1]))
+            return (parts[0], parts[1])
     return None
 
 
@@ -454,7 +515,7 @@ async def _resolve_track_input(bot: Any, manga_url: str) -> tuple[str, str] | No
     if manga_url and manga_url.startswith("http"):
         wk = await detect_website_key(bot, manga_url)
         if wk:
-            return (wk, series_url_from_maybe_chapter_url(manga_url))
+            return (wk, manga_url)
     return None
 
 

@@ -36,6 +36,7 @@ class CrawlerConfig:
     reconnect_jitter_seconds: float
     consumer_key: str
     api_key: str
+    transport_watchdog_seconds: float = 180.0
 
 
 @dataclass(frozen=True)
@@ -217,6 +218,12 @@ def load_config(
             _env_override(
                 "MANHWABOT_CRAWLER_REQUEST_TIMEOUT",
                 crawler_section.get("request_timeout_seconds", 30.0),
+            )
+        ),
+        transport_watchdog_seconds=float(
+            _env_override(
+                "MANHWABOT_CRAWLER_TRANSPORT_WATCHDOG",
+                crawler_section.get("transport_watchdog_seconds", 180.0),
             )
         ),
         reconnect_initial_delay_seconds=float(

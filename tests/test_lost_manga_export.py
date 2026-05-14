@@ -6,10 +6,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from src.manhwa_bot.cogs.general import _build_tsv, _get_lost_entries
-from src.manhwa_bot.db.migrate import apply_pending
-from src.manhwa_bot.db.pool import DbPool
-from src.manhwa_bot.db.tracked import TrackedStore
+from manhwa_bot.cogs.general import _build_tsv, _get_lost_entries
+from manhwa_bot.db.migrate import apply_pending
+from manhwa_bot.db.pool import DbPool
+from manhwa_bot.db.tracked import TrackedStore
 
 
 async def _make_pool(tmp: str) -> DbPool:
