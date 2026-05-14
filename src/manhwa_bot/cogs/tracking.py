@@ -350,11 +350,15 @@ class TrackingCog(commands.Cog, name="Tracking"):
         crawler_untracked = False
         if was_last:
             try:
-                await self.bot.crawler.request(  # type: ignore[attr-defined]
-                    "untrack_series", website_key=website_key, url_name=url_name
+                await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                    "untrack_series",
+                    request_id=None,
+                    on_progress=None,
+                    website_key=website_key,
+                    url_name=url_name,
                 )
                 crawler_untracked = True
-            except CrawlerError, RequestTimeout, Disconnected:
+            except (CrawlerError, RequestTimeout, Disconnected):
                 _log.exception(
                     "untrack_series call failed for %s:%s — series removed from bot DB anyway",
                     website_key,
