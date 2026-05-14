@@ -299,20 +299,41 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 "chapters", website_key=website_key, url=identifier
             )
         )
-        try:
-            info_data, chapters_data = await asyncio.gather(info_task, chapters_task)
-        except (CrawlerError, RequestTimeout, Disconnected) as exc:
+        info_data: dict | None = None
+        chapters_data: dict = {}
+        terminal_exc: CrawlerError | RequestTimeout | Disconnected | None = None
+        pending: set[asyncio.Task] = {info_task, chapters_task}
+        while pending and terminal_exc is None:
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                try:
+                    task_data = task.result()
+                except CrawlerError as exc:
+                    if task is chapters_task and exc.code == "not_found":
+                        chapters_data = {}
+                        continue
+                    terminal_exc = exc
+                    break
+                except (RequestTimeout, Disconnected) as exc:
+                    terminal_exc = exc
+                    break
+                if task is info_task:
+                    info_data = task_data
+                else:
+                    chapters_data = task_data
+
+        if terminal_exc is not None:
             terminal_started = True
-            for task in (info_task, chapters_task):
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(info_task, chapters_task, return_exceptions=True)
-            progress.add(str(exc), severity="error")
+            for pending_task in pending:
+                if not pending_task.done():
+                    pending_task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            progress.add(str(terminal_exc), severity="error")
             history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
                 await interaction.edit_original_response(
                     embed=_shared_error_embed(
-                        f"{exc}\n\nProgress:\n{history}",
+                        f"{terminal_exc}\n\nProgress:\n{history}",
                         source=SOURCE_CRAWLER,
                     )
                 )
@@ -332,8 +353,12 @@ class CatalogCog(commands.Cog, name="Catalog"):
         merged: dict = dict(info_data)
         merged.setdefault("series_url", info_data.get("url") or identifier)
         merged["website_key"] = website_key
-        merged["chapters"] = chapters_list
-        merged["chapter_count"] = len(chapters_list)
+        if chapters_list:
+            merged["chapters"] = chapters_list
+            merged["chapter_count"] = len(chapters_list)
+        else:
+            merged.setdefault("chapters", merged.get("latest_chapters") or [])
+            merged.setdefault("chapter_count", len(merged["chapters"]) if merged["chapters"] else 0)
 
         websites_lookup = await _get_websites_lookup(self.bot)
         site_meta = websites_lookup.get(website_key, {})

@@ -218,6 +218,39 @@ class _FastFailingChaptersCrawler:
         )
 
 
+class _InfoFoundChaptersNotFoundCrawler:
+    async def request_with_progress(self, type_, *, request_id, on_progress, **kwargs):
+        assert type_ == "info"
+        assert request_id
+        assert kwargs["website_key"] == "asura"
+        assert kwargs["url"] == "https://asurascans.example/series/test"
+        await on_progress(
+            SimpleNamespace(
+                title="Fetched series info",
+                detail="Parsing metadata",
+                status="running",
+            )
+        )
+        return {
+            "title": "Test Series",
+            "url": "https://asurascans.example/series/test",
+            "status": "Ongoing",
+            "chapter_count": 55,
+            "latest_chapters": [
+                {"name": "Chapter 55", "url": "https://asurascans.example/chapter/55"},
+                {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
+            ],
+        }
+
+    async def request(self, type_, **_kwargs):
+        assert type_ == "chapters"
+        raise CrawlerError(
+            code="not_found",
+            message="series not found in cache",
+            request_id="chapters-request",
+        )
+
+
 async def _resolved_input(_series: str) -> tuple[str, str]:
     return "asura", "https://asurascans.example/series/test"
 
@@ -341,5 +374,25 @@ def test_info_chapters_error_remains_final_edit_when_info_emits_late_progress() 
         assert "Late info progress" not in (
             interaction.original_edits[-1]["embed"].description or ""
         )
+
+    asyncio.run(_run())
+
+
+def test_info_uses_live_info_when_cached_chapters_are_not_found() -> None:
+    async def _run() -> None:
+        interaction = _FakeInteraction()
+        cog = CatalogCog(_FakeBot(_InfoFoundChaptersNotFoundCrawler()))
+        cog._resolve_series_input = _resolved_input  # type: ignore[method-assign]
+        cog._resolve_url_name = _url_name  # type: ignore[method-assign]
+
+        await CatalogCog.info.callback(cog, interaction, "asura|test")  # type: ignore[misc]
+
+        assert interaction.followup.sends == []
+        assert interaction.original_edits[0]["embed"].title == "Running /info"
+        final_edit = interaction.original_edits[-1]
+        assert final_edit["embed"].title == "Test Series"
+        assert "Num of Chapters:** 55" in (final_edit["embed"].description or "")
+        assert "Latest Chapter:** Chapter 55" in (final_edit["embed"].description or "")
+        assert isinstance(final_edit["view"], SubscribeView)
 
     asyncio.run(_run())
