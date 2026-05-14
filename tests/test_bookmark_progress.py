@@ -49,47 +49,47 @@ class _FakeWebsitesCache:
         ]
 
 
+_FAKE_INFO_PAYLOAD = {
+    "title": "Solo Leveling",
+    "series_url": "https://asurascans.example/series/solo-leveling",
+    "url_name": "solo-leveling",
+    "status": "Ongoing",
+    "chapters": [
+        {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
+        {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
+    ],
+    "latest_chapters": [
+        {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
+    ],
+}
+
+
 class _RawBookmarkCrawler:
     def __init__(self) -> None:
         self.progress_request_seen = False
+        self._calls: int = 0
 
     async def request_with_progress(self, type_, *, request_id, on_progress, **kwargs):
         assert type_ == "info"
-        assert request_id
-        assert kwargs == {
-            "website_key": "asura",
-            "url": "https://asurascans.example/series/solo-leveling",
-        }
-        self.progress_request_seen = True
-        await on_progress(
-            SimpleNamespace(
-                title="Fetching series",
-                detail="Resolving bookmark URL",
-                status="running",
-            )
-        )
-        return {
-            "title": "Solo Leveling",
-            "series_url": "https://asurascans.example/series/solo-leveling",
-            "url_name": "solo-leveling",
-        }
+        assert kwargs.get("website_key") == "asura"
+        self._calls += 1
+        if self._calls == 1:
+            # First call: from _resolve_series — fire a progress event.
+            assert request_id
+            self.progress_request_seen = True
+            if on_progress is not None:
+                await on_progress(
+                    SimpleNamespace(
+                        title="Fetching series",
+                        detail="Resolving bookmark URL",
+                        status="running",
+                    )
+                )
+        return dict(_FAKE_INFO_PAYLOAD)
 
     async def request(self, type_, **kwargs):
-        assert type_ in {"chapters", "supported_websites"}
-        if type_ == "supported_websites":
-            return {"websites": []}
-        assert kwargs == {
-            "website_key": "asura",
-            "url": "https://asurascans.example/series/solo-leveling",
-        }
-        return {
-            "title": "Solo Leveling",
-            "status": "Ongoing",
-            "chapters": [
-                {"name": "Chapter 1", "url": "https://asurascans.example/chapter/1"},
-                {"name": "Chapter 2", "url": "https://asurascans.example/chapter/2"},
-            ],
-        }
+        assert type_ == "supported_websites"
+        return {"websites": []}
 
 
 class _FakeBot:

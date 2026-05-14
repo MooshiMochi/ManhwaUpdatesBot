@@ -206,8 +206,10 @@ class BookmarkView(discord.ui.View):
         """Fetch chapters for a bookmark via the crawler."""
         meta = await self._meta_for(bm)
         identifier = meta["series_url"] or bm.url_name
-        data = await self._crawler.request("chapters", website_key=bm.website_key, url=identifier)
-        return list(data.get("chapters") or [])
+        data = await self._crawler.request_with_progress(
+            "info", website_key=bm.website_key, url=identifier, on_progress=None
+        )
+        return list(data.get("chapters") or data.get("latest_chapters") or [])
 
     # -- discord.ui.View API --------------------------------------------
 

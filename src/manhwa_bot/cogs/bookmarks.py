@@ -121,19 +121,14 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             if not wk:
                 return None
             try:
-                if on_progress is not None and request_id is not None:
-                    data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
-                        "info",
-                        website_key=wk,
-                        url=manga_url_or_id,
-                        request_id=request_id,
-                        on_progress=on_progress,
-                    )
-                else:
-                    data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                        "info", website_key=wk, url=manga_url_or_id
-                    )
-            except CrawlerError, RequestTimeout, Disconnected:
+                data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                    "info",
+                    website_key=wk,
+                    url=manga_url_or_id,
+                    request_id=request_id,
+                    on_progress=on_progress,
+                )
+            except (CrawlerError, RequestTimeout, Disconnected):
                 return None
             su = data.get("series_url") or data.get("url") or manga_url_or_id
             un = data.get("url_name") or _url_name_from_url(su)
@@ -263,16 +258,21 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         website_key, url_name, series_url = resolved
 
         try:
-            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                "chapters", website_key=website_key, url=series_url or url_name
+            info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                "info",
+                website_key=website_key,
+                url=series_url or url_name,
+                request_id=request_id,
+                on_progress=on_progress,
             )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             await respond_final(
                 embed=_shared_error_embed(f"Couldn't fetch chapters: {exc}", source=SOURCE_CRAWLER),
             )
             return
+        data = info_data
 
-        chapters: list[dict] = data.get("chapters") or []
+        chapters: list[dict] = info_data.get("chapters") or info_data.get("latest_chapters") or []
         if not chapters:
             await respond_final(
                 embed=_error_embed("No chapters available for this series."),
@@ -487,30 +487,63 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         if chapter_index is not None:
             tracked = await self._tracked.find(website_key, url_name)
             identifier = tracked.series_url if tracked else url_name
+
+            upd_request_id = uuid.uuid4().hex
+            upd_progress = ProgressEmbedState(
+                command_name="/bookmark update", request_id=upd_request_id
+            )
+            upd_progress.add("Sent request to crawler.")
+            upd_progress_message = await interaction.followup.send(
+                embed=upd_progress.to_embed(), ephemeral=True, wait=True
+            )
+            upd_terminal_started = False
+            upd_progress_edit_lock = asyncio.Lock()
+
+            async def on_upd_progress(event: object) -> None:
+                nonlocal upd_terminal_started
+                async with upd_progress_edit_lock:
+                    if upd_terminal_started:
+                        return
+                    msg, severity = progress_event_message(event)
+                    upd_progress.add(msg, severity=severity)
+                    await upd_progress_message.edit(embed=upd_progress.to_embed())
+
             try:
-                data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-                    "chapters", website_key=website_key, url=identifier
+                info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
+                    "info",
+                    website_key=website_key,
+                    url=identifier,
+                    request_id=upd_request_id,
+                    on_progress=on_upd_progress,
                 )
             except (CrawlerError, RequestTimeout, Disconnected) as exc:
-                await interaction.followup.send(
-                    embed=_shared_error_embed(
-                        f"Couldn't fetch chapters: {exc}", source=SOURCE_CRAWLER
-                    ),
-                    ephemeral=True,
-                )
+                upd_terminal_started = True
+                upd_progress.add(str(exc), severity="error")
+                history = upd_progress.to_embed(final_error=True).description or ""
+                async with upd_progress_edit_lock:
+                    await upd_progress_message.edit(
+                        embed=_shared_error_embed(
+                            f"Couldn't fetch chapters: {exc}\n\nProgress:\n{history}",
+                            source=SOURCE_CRAWLER,
+                        )
+                    )
                 return
-            chapters: list[dict] = data.get("chapters") or []
+            upd_terminal_started = True
+            data = info_data
+            chapters: list[dict] = info_data.get("chapters") or info_data.get("latest_chapters") or []
             if not chapters:
-                await interaction.followup.send(
-                    embed=_error_embed("No chapters available for this series."),
-                    ephemeral=True,
-                )
+                async with upd_progress_edit_lock:
+                    await upd_progress_message.edit(
+                        embed=_error_embed("No chapters available for this series.")
+                    )
                 return
             if not (0 <= chapter_index < len(chapters)):
-                await interaction.followup.send(
-                    embed=_error_embed(f"Chapter index out of range (0 - {len(chapters) - 1})."),
-                    ephemeral=True,
-                )
+                async with upd_progress_edit_lock:
+                    await upd_progress_message.edit(
+                        embed=_error_embed(
+                            f"Chapter index out of range (0 - {len(chapters) - 1})."
+                        )
+                    )
                 return
 
             label = _chapter_label(chapters[chapter_index], chapter_index)
@@ -551,7 +584,12 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             auto_subscribed_title=auto_subscribed_title,
             should_track=should_track,
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        if chapter_index is not None:
+            # Replace the progress message with the final success embed.
+            async with upd_progress_edit_lock:
+                await upd_progress_message.edit(embed=embed)
+        else:
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
     # -- /bookmark delete -----------------------------------------------
 
