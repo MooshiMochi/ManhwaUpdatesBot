@@ -1,4 +1,9 @@
-"""Reusable Discord embed state for crawler-backed command progress."""
+"""Components V2 replacement for ProgressEmbedState.
+
+Renders crawler-backed command progress as a single LayoutView that the caller
+edits in place. Severity drives the Container accent colour; events render as a
+numbered TextDisplay with the same tail-follow logic as the legacy embed.
+"""
 
 from __future__ import annotations
 
@@ -9,10 +14,13 @@ from typing import Any, Literal
 
 import discord
 
+from .. import emojis
+from .base import BaseLayoutView, footer_section, severity_accent
+
 ProgressSeverity = Literal["info", "warning", "error"]
 
 _ACTIVE_SUFFIX = "..."
-_MAX_DESCRIPTION_LENGTH = 4096
+_MAX_TEXT_LENGTH = 3800
 _MAX_MESSAGE_LENGTH = 240
 _SENTENCE_PUNCTUATION = ".!?"
 
@@ -24,12 +32,13 @@ class _ProgressEvent:
 
 
 @dataclass(slots=True)
-class ProgressEmbedState:
-    """Accumulates progress events and renders a single Discord embed."""
+class ProgressLayoutState:
+    """Accumulates progress events and renders a LayoutView per snapshot."""
 
     command_name: str
     request_id: str
     max_visible_events: int = 10
+    bot: discord.Client | None = None
     _events: list[_ProgressEvent] = field(default_factory=list, init=False, repr=False)
 
     def add(self, message: str, severity: ProgressSeverity = "info") -> None:
@@ -40,36 +49,55 @@ class ProgressEmbedState:
             )
         )
 
-    def to_embed(self, *, final_error: bool = False) -> discord.Embed:
+    def to_view(self, *, final_error: bool = False) -> discord.ui.LayoutView:
         visible_events = self._visible_events()
-        latest_severity = self._events[-1].severity if self._events else "info"
-        embed = discord.Embed(
-            title=f"Running {self.command_name}",
-            description=self._description(visible_events, final_error=final_error),
-            colour=_colour_for(latest_severity, final_error=final_error),
+        latest_severity: ProgressSeverity = self._events[-1].severity if self._events else "info"
+        accent_level = (
+            "error"
+            if final_error or latest_severity == "error"
+            else ("warning" if latest_severity == "warning" else "info")
         )
-        embed.set_footer(text=f"Request ID: {self.request_id}")
-        return embed
+        glyph = (
+            emojis.ERROR
+            if accent_level == "error"
+            else emojis.WARNING
+            if accent_level == "warning"
+            else emojis.LOADING
+        )
+        body = self._body_text(visible_events, final_error=final_error)
+
+        container = discord.ui.Container(
+            discord.ui.TextDisplay(f"## {glyph}  Running `{self.command_name}`"),
+            discord.ui.Separator(spacing=discord.SeparatorSpacing.small),
+            discord.ui.TextDisplay(body),
+            discord.ui.Separator(spacing=discord.SeparatorSpacing.small),
+            footer_section(self.bot, extra=f"req: {self.request_id}"),
+            accent_colour=severity_accent(accent_level),  # type: ignore[arg-type]
+        )
+
+        view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
+        view.add_item(container)
+        return view
 
     def _visible_events(self) -> list[tuple[int | None, str]]:
         event_count = len(self._events)
         max_visible_events = max(1, self.max_visible_events)
         if event_count <= max_visible_events:
-            return [(index, event.message) for index, event in enumerate(self._events, start=1)]
+            return [(index, ev.message) for index, ev in enumerate(self._events, start=1)]
 
         tail_count = max(1, max_visible_events - 1)
         omitted_count = event_count - 1 - tail_count
         tail_start = event_count - tail_count + 1
         visible: list[tuple[int | None, str]] = [(1, self._events[0].message)]
         if omitted_count > 0:
-            visible.append((None, f"... {omitted_count} earlier updates omitted."))
+            visible.append((None, f"… {omitted_count} earlier updates omitted."))
         visible.extend(
-            (index, event.message)
-            for index, event in enumerate(self._events[-tail_count:], start=tail_start)
+            (index, ev.message)
+            for index, ev in enumerate(self._events[-tail_count:], start=tail_start)
         )
         return visible
 
-    def _description(
+    def _body_text(
         self,
         visible_events: list[tuple[int | None, str]],
         *,
@@ -79,19 +107,18 @@ class ProgressEmbedState:
         latest_number = len(self._events)
         for number, message in visible_events:
             if number is None:
-                lines.append(message)
+                lines.append(f"*{message}*")
                 continue
 
-            rendered_message = message
+            rendered = message
             if not final_error and number == latest_number:
-                rendered_message = _active_message(message)
-            lines.append(f"{number}. {rendered_message}")
-        return _bounded_description(lines)
+                rendered = _active_message(message)
+            lines.append(f"**{number}.** {rendered}")
+        return _bounded_text(lines)
 
 
 def progress_event_message(event: object) -> tuple[str, ProgressSeverity]:
     """Convert crawler progress event-like objects into display text and severity."""
-
     title = _event_value(event, "title")
     detail = _event_value(event, "detail")
     status = _event_value(event, "status")
@@ -115,23 +142,23 @@ def _event_value(event: object, key: str) -> str | None:
     return stripped or None
 
 
-def _bounded_description(lines: list[str]) -> str:
-    description = "\n".join(lines)
-    if len(description) <= _MAX_DESCRIPTION_LENGTH:
-        return description
+def _bounded_text(lines: list[str]) -> str:
+    text = "\n".join(lines)
+    if len(text) <= _MAX_TEXT_LENGTH:
+        return text
 
-    marker = "... earlier visible updates truncated."
+    marker = "*… earlier updates truncated.*"
     kept_tail: list[str] = []
     for line in reversed(lines[1:]):
         candidate = [lines[0], marker, line, *kept_tail]
-        if len("\n".join(candidate)) > _MAX_DESCRIPTION_LENGTH:
+        if len("\n".join(candidate)) > _MAX_TEXT_LENGTH:
             break
         kept_tail.insert(0, line)
 
     bounded = "\n".join([lines[0], marker, *kept_tail])
-    if len(bounded) <= _MAX_DESCRIPTION_LENGTH:
+    if len(bounded) <= _MAX_TEXT_LENGTH:
         return bounded
-    return bounded[: _MAX_DESCRIPTION_LENGTH - len(_ACTIVE_SUFFIX)].rstrip() + _ACTIVE_SUFFIX
+    return bounded[: _MAX_TEXT_LENGTH - len(_ACTIVE_SUFFIX)].rstrip() + _ACTIVE_SUFFIX
 
 
 def _severity_for_status(status: str | None) -> ProgressSeverity:
@@ -140,14 +167,6 @@ def _severity_for_status(status: str | None) -> ProgressSeverity:
     if status == "retrying":
         return "warning"
     return "info"
-
-
-def _colour_for(severity: ProgressSeverity, *, final_error: bool) -> discord.Colour:
-    if final_error or severity == "error":
-        return discord.Colour.red()
-    if severity == "warning":
-        return discord.Colour.gold()
-    return discord.Colour.blurple()
 
 
 def _normalize_message(message: str) -> str:

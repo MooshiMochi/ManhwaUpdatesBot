@@ -11,16 +11,23 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .. import autocomplete, formatting
+from .. import autocomplete
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..crawler.website_detect import detect_website_key
 from ..db.guild_settings import GuildSettingsStore
 from ..db.tracked import TrackedStore
-from ..ui.error import SOURCE_CRAWLER
-from ..ui.error import error_embed as _shared_error_embed
-from ..ui.paginator import Paginator
-from ..ui.progress_embed import ProgressEmbedState, progress_event_message
+from ..ui.components.error import SOURCE_CRAWLER, build_error_view
+from ..ui.components.paginator import LayoutPaginator
+from ..ui.components.progress import ProgressLayoutState, progress_event_message
+from ..ui.components.tracking import (
+    build_grouped_list_views,
+    build_role_hierarchy_view,
+    build_role_managed_view,
+    build_track_remove_view,
+    build_track_update_view,
+    build_tracking_success_view,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -72,10 +79,11 @@ class TrackingCog(commands.Cog, name="Tracking"):
         parsed = await _resolve_track_input(self.bot, manga_url)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed(
+                view=build_error_view(
                     "Couldn't resolve that URL.\n"
                     "Use the autocomplete to search by title, or paste a full series "
-                    "URL from a supported website."
+                    "URL from a supported website.",
+                    bot=self.bot,
                 ),
                 ephemeral=True,
             )
@@ -88,11 +96,12 @@ class TrackingCog(commands.Cog, name="Tracking"):
             channel = await self._resolve_notifications_channel(interaction.guild, website_key)
             if channel is None:
                 await interaction.followup.send(
-                    embed=_error_embed(
+                    view=build_error_view(
                         "**No updates channel configured for this server.**\n\n"
                         "Set one with `/settings` → Notifications channel "
                         "(or per-scanlator override) before tracking series. "
-                        "Without a channel I have nowhere to post chapter updates."
+                        "Without a channel I have nowhere to post chapter updates.",
+                        bot=self.bot,
                     ),
                     ephemeral=True,
                 )
@@ -101,9 +110,11 @@ class TrackingCog(commands.Cog, name="Tracking"):
             channel = None
 
         request_id = uuid.uuid4().hex
-        progress = ProgressEmbedState(command_name="/track new", request_id=request_id)
+        progress = ProgressLayoutState(
+            command_name="/track new", request_id=request_id, bot=self.bot
+        )
         progress.add("Sent request to crawler.")
-        await interaction.edit_original_response(embed=progress.to_embed())
+        await interaction.edit_original_response(view=progress.to_view())
         terminal_started = False
         progress_edit_lock = asyncio.Lock()
 
@@ -113,12 +124,12 @@ class TrackingCog(commands.Cog, name="Tracking"):
                     return
                 message, severity = progress_event_message(event)
                 progress.add(message, severity=severity)
-                await interaction.edit_original_response(embed=progress.to_embed())
+                await interaction.edit_original_response(view=progress.to_view())
 
-        async def try_terminal_edit(**kwargs) -> bool:
+        async def try_terminal_edit(view: discord.ui.LayoutView) -> bool:
             async with progress_edit_lock:
                 try:
-                    await interaction.edit_original_response(**kwargs)
+                    await interaction.edit_original_response(view=view)
                 except Exception:
                     _log.exception("track_new terminal response edit failed")
                     return False
@@ -136,24 +147,12 @@ class TrackingCog(commands.Cog, name="Tracking"):
             friendly = _FRIENDLY_ERRORS.get(exc.code, f"[{exc.code}] {exc.message}")
             terminal_started = True
             progress.add(friendly, severity="error")
-            history = progress.to_embed(final_error=True).description or ""
-            await try_terminal_edit(
-                embed=_shared_error_embed(
-                    f"{friendly}\n\nProgress:\n{history}",
-                    source=SOURCE_CRAWLER,
-                )
-            )
+            await try_terminal_edit(build_error_view(friendly, source=SOURCE_CRAWLER, bot=self.bot))
             return
         except (RequestTimeout, Disconnected) as exc:
             terminal_started = True
             progress.add(str(exc), severity="error")
-            history = progress.to_embed(final_error=True).description or ""
-            await try_terminal_edit(
-                embed=_shared_error_embed(
-                    f"{exc}\n\nProgress:\n{history}",
-                    source=SOURCE_CRAWLER,
-                )
-            )
+            await try_terminal_edit(build_error_view(str(exc), source=SOURCE_CRAWLER, bot=self.bot))
             return
 
         try:
@@ -200,33 +199,30 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 immediate_check_failed = True
                 _log.exception("immediate check_series failed for %s:%s", website_key, url_name)
 
-            embed = formatting.tracking_success_embed(
+            warning = None
+            if immediate_check_failed:
+                warning = (
+                    "Tracking was saved, but the immediate update check failed. "
+                    "The scheduler will retry later."
+                )
+            view = build_tracking_success_view(
                 title=title,
                 series_url=series_url,
                 ping_role=ping_role,
                 notif_channel=channel,
                 cover_url=cover_url,
                 is_dm=interaction.guild_id is None,
+                warning=warning,
                 bot=self.bot,
             )
-            if immediate_check_failed:
-                embed.add_field(
-                    name="⚠️ Update check",
-                    value=(
-                        "Tracking was saved, but the immediate update check failed. "
-                        "The scheduler will retry later."
-                    ),
-                    inline=False,
-                )
             terminal_started = True
-            await try_terminal_edit(embed=embed)
+            await try_terminal_edit(view)
         except Exception as exc:
             _log.exception("track_new post-crawler success path failed")
             terminal_started = True
             message = f"Failed to finish tracking setup after crawler completed: {exc}"
             progress.add(message, severity="error")
-            history = progress.to_embed(final_error=True).description or ""
-            await try_terminal_edit(embed=_shared_error_embed(f"{message}\n\nProgress:\n{history}"))
+            await try_terminal_edit(build_error_view(message, bot=self.bot))
 
     async def _resolve_notifications_channel(
         self, guild: discord.Guild, website_key: str
@@ -272,7 +268,9 @@ class TrackingCog(commands.Cog, name="Tracking"):
         parsed = _parse_manga_id(manga_id)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed("Couldn't parse that manga ID. Use the autocomplete."),
+                view=build_error_view(
+                    "Couldn't parse that manga ID. Use the autocomplete.", bot=self.bot
+                ),
                 ephemeral=True,
             )
             return
@@ -280,33 +278,16 @@ class TrackingCog(commands.Cog, name="Tracking"):
         website_key, url_name = parsed
         guild_id = interaction.guild_id  # type: ignore[union-attr]
 
-        # V1 validates the role against bot permissions/hierarchy.
         if role is not None and interaction.guild is not None:
             me = interaction.guild.me
             if role.is_bot_managed():
                 await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Error",
-                        description=(
-                            "The role you provided is managed by a bot.\n"
-                            "Please provide a role that is not managed by a bot and try again."
-                        ),
-                        colour=discord.Colour.red(),
-                    ),
-                    ephemeral=True,
+                    view=build_role_managed_view(bot=self.bot), ephemeral=True
                 )
                 return
             if me is not None and role >= me.top_role:
                 await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Error",
-                        description=(
-                            "The role you provided is higher than my top role.\n"
-                            "Please move the role below my top role and try again."
-                        ),
-                        colour=discord.Colour.red(),
-                    ),
-                    ephemeral=True,
+                    view=build_role_hierarchy_view(bot=self.bot), ephemeral=True
                 )
                 return
 
@@ -319,14 +300,13 @@ class TrackingCog(commands.Cog, name="Tracking"):
         cover_url = series.cover_url if series else None
         role_text = role.mention if role else "nothing"
 
-        embed = discord.Embed(
-            title="Success",
-            description=f"The role for **{title}** has been updated to {role_text}.",
-            colour=discord.Colour.green(),
+        view = build_track_update_view(
+            title=title,
+            role_text=role_text,
+            cover_url=cover_url,
+            bot=self.bot,
         )
-        if cover_url:
-            embed.set_image(url=cover_url)
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     # -- /track remove ------------------------------------------------------
 
@@ -349,7 +329,9 @@ class TrackingCog(commands.Cog, name="Tracking"):
         parsed = _parse_manga_id(manga_id)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed("Couldn't parse that manga ID. Use the autocomplete."),
+                view=build_error_view(
+                    "Couldn't parse that manga ID. Use the autocomplete.", bot=self.bot
+                ),
                 ephemeral=True,
             )
             return
@@ -411,35 +393,15 @@ class TrackingCog(commands.Cog, name="Tracking"):
                     _log.warning("failed to delete ping role %s for %s", captured_role_id, title)
                     deleted_role_name = None
 
-        # V1 layout: title "Success", green, plain description.
-        url_for_link = series.series_url if series else None
-
-        if url_for_link:
-            description = f"Successfully stopped tracking **[{title}]({url_for_link})**"
-        else:
-            description = f"Successfully stopped tracking **{title}**"
-        if deleted_role_name:
-            description += f" and deleted the @{deleted_role_name} role"
-        description += "."
-
-        embed = discord.Embed(
-            title="Success",
-            description=description,
-            colour=discord.Colour.green(),
+        view = build_track_remove_view(
+            title=title,
+            series_url=series.series_url if series else None,
+            deleted_role_name=deleted_role_name,
+            crawler_warning=was_last and not crawler_untracked,
+            role_warning=delete_role and not role_deleted and bool(captured_role_id),
+            bot=self.bot,
         )
-        if was_last and not crawler_untracked:
-            embed.add_field(
-                name="⚠️ Crawler",
-                value="Could not notify the crawler (error — see logs).",
-                inline=False,
-            )
-        if delete_role and not role_deleted and captured_role_id:
-            embed.add_field(
-                name="⚠️ Role",
-                value="Failed to delete the role (see logs).",
-                inline=False,
-            )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     # -- /track list --------------------------------------------------------
 
@@ -454,7 +416,6 @@ class TrackingCog(commands.Cog, name="Tracking"):
         guild_id = interaction.guild_id  # type: ignore[union-attr]
         rows = await self._tracked.list_for_guild(guild_id, limit=_LIST_FETCH_LIMIT)
 
-        # Sort alphabetically by title (the helper groups by website_key internally).
         sorted_rows = sorted(rows, key=lambda r: r.title.lower())
         items = [
             {
@@ -466,7 +427,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
             }
             for r in sorted_rows
         ]
-        embeds = formatting.grouped_list_embeds(
+        pages = build_grouped_list_views(
             items,
             title=f"Tracked Manhwa ({len(items)})",
             bot=self.bot,
@@ -476,13 +437,17 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 if interaction.guild_id is not None
                 else "You are not tracking any manga."
             ),
+            invoker_id=interaction.user.id,
         )
 
-        if len(embeds) == 1:
-            await interaction.followup.send(embed=embeds[0], ephemeral=True)
-        else:
-            paginator = Paginator(embeds, invoker_id=interaction.user.id)
-            await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
+        if len(pages) == 1:
+            await interaction.followup.send(view=pages[0], ephemeral=True)
+            return
+        paginator = LayoutPaginator(pages, invoker_id=interaction.user.id)
+        msg = await interaction.followup.send(
+            view=paginator.current_view, ephemeral=True, wait=True
+        )
+        paginator.bind_message(msg)
 
 
 # -- module helpers ---------------------------------------------------------
@@ -503,12 +468,7 @@ def _parse_new_url(manga_url: str) -> tuple[str, str] | None:
 
 
 async def _resolve_track_input(bot: Any, manga_url: str) -> tuple[str, str] | None:
-    """Return ``(website_key, series_url)`` for /track new input.
-
-    Accepts:
-    - ``"website_key|https://…"`` (search-as-you-type autocomplete value)
-    - bare ``https://…`` URL (website_key inferred from host)
-    """
+    """Return ``(website_key, series_url)`` for /track new input."""
     parsed = _parse_new_url(manga_url)
     if parsed is not None:
         return parsed
@@ -526,10 +486,6 @@ def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
         if len(parts) == 2 and parts[0] and parts[1]:
             return (parts[0], parts[1])
     return None
-
-
-def _error_embed(message: str) -> discord.Embed:
-    return discord.Embed(title="Error", description=message, colour=discord.Colour.red())
 
 
 async def setup(bot: commands.Bot) -> None:

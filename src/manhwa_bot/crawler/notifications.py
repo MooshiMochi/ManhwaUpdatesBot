@@ -208,5 +208,5 @@ def _record_id(record: dict[str, Any]) -> int | None:
         return None
     try:
         return int(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None

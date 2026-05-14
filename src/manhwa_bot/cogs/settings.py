@@ -1,4 +1,4 @@
-"""Settings cog — /settings command with ephemeral SettingsView."""
+"""Settings cog — /settings command with ephemeral SettingsLayoutView."""
 
 from __future__ import annotations
 
@@ -10,11 +10,10 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..db.guild_settings import GuildSettingsStore
-from ..ui.settings_view import (
-    DmSettingsView,
-    SettingsView,
-    _build_settings_embed,
-    _collect_warnings,
+from ..ui.components.settings import (
+    DmSettingsLayoutView,
+    SettingsLayoutView,
+    collect_warnings,
 )
 
 _log = logging.getLogger(__name__)
@@ -64,11 +63,11 @@ class SettingsCog(commands.Cog, name="Settings"):
         gs = await self._store.get(guild_id)
         scanlator_overrides = await self._store.list_scanlator_channels(guild_id)
 
-        warnings = _collect_warnings(gs, guild, guild.me)
-        embed = _build_settings_embed(gs, scanlator_overrides, warnings)
-        view = SettingsView(self.bot, guild_id, gs, scanlator_overrides)
+        warnings = collect_warnings(gs, guild, guild.me)
+        view = SettingsLayoutView(self.bot, guild_id, gs, scanlator_overrides)
+        view.set_warnings(warnings)
 
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.response.send_message(view=view, ephemeral=True)
 
     async def _handle_dm(self, interaction: discord.Interaction) -> None:
         bot: Any = self.bot
@@ -87,9 +86,9 @@ class SettingsCog(commands.Cog, name="Settings"):
             )
             return
 
-        view = DmSettingsView(bot, interaction.user.id)
+        view = DmSettingsLayoutView(bot, interaction.user.id)
         await view.initialize()
-        await interaction.response.send_message(embed=view.build_embed(), view=view, ephemeral=True)
+        await interaction.response.send_message(view=view, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

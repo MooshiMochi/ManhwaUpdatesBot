@@ -15,13 +15,13 @@ from typing import TYPE_CHECKING, Any
 import discord
 from discord.ext import commands
 
-from .. import formatting
 from ..crawler.notifications import NotificationConsumer
 from ..db.consumer_state import ConsumerStateStore
 from ..db.dm_settings import DmSettingsStore
 from ..db.guild_settings import GuildSettingsStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
+from ..ui.components.notifications import build_chapter_update_view
 
 if TYPE_CHECKING:
     from ..bot import ManhwaBot
@@ -86,22 +86,20 @@ class UpdatesCog(commands.Cog, name="Updates"):
         except Exception:
             _log.exception("failed to persist latest chapter for %s:%s", website_key, url_name)
 
-        embed = formatting.chapter_update_embed(payload)
-
         guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)
         user_ids = await self._subs.list_subscribers_for_series(website_key, url_name)
 
         guild_tasks = [
-            self._dispatch_to_guild(row, embed, is_premium, website_key) for row in guild_rows
+            self._dispatch_to_guild(row, payload, is_premium, website_key) for row in guild_rows
         ]
-        dm_tasks = [self._dispatch_to_user(uid, embed, is_premium) for uid in user_ids]
+        dm_tasks = [self._dispatch_to_user(uid, payload, is_premium) for uid in user_ids]
 
         await asyncio.gather(*guild_tasks, *dm_tasks, return_exceptions=True)
 
     async def _dispatch_to_guild(
         self,
         row: Any,
-        embed: discord.Embed,
+        payload: dict,
         is_premium: bool,
         website_key: str,
     ) -> None:
@@ -132,12 +130,23 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     return
 
                 content = self._compose_ping(row, settings)
+                view = build_chapter_update_view(payload, bot=self.bot)
 
-                await channel.send(
-                    content=content or None,
-                    embed=embed,
-                    allowed_mentions=discord.AllowedMentions(roles=True),
-                )
+                # V2 messages cannot have `content`; send the ping as a separate
+                # tiny message immediately before the view so role pings still
+                # fire. The view itself is the canonical chapter notification.
+                if content:
+                    try:
+                        await channel.send(
+                            content=content,
+                            allowed_mentions=discord.AllowedMentions(roles=True),
+                        )
+                    except discord.HTTPException:
+                        _log.exception(
+                            "guild %s ping prefix send failed; continuing with view",
+                            getattr(row, "guild_id", "?"),
+                        )
+                await channel.send(view=view)
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.warning(
                     "guild %s send failed (%s); skipping",
@@ -182,7 +191,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
     async def _dispatch_to_user(
         self,
         user_id: int,
-        embed: discord.Embed,
+        payload: dict,
         is_premium: bool,
     ) -> None:
         async with self._dm_sem:
@@ -198,7 +207,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 ):
                     return
                 user = await self.bot.fetch_user(user_id)
-                await user.send(embed=embed)
+                await user.send(view=build_chapter_update_view(payload, bot=self.bot))
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("DM to user %s skipped (%s)", user_id, exc.__class__.__name__)
             except discord.HTTPException:

@@ -258,9 +258,11 @@ def test_ping_role_resolution_uses_row_ping_role() -> None:
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
 
             await cog.dispatch(_payload())
-            assert channel.send.await_count == 1
-            kwargs = channel.send.await_args.kwargs
-            assert kwargs["content"] == "<@&42>"
+            # Components V2 messages can't carry `content`, so the ping prefix
+            # is sent as its own message before the chapter-update view.
+            assert channel.send.await_count == 2
+            first_kwargs = channel.send.await_args_list[0].kwargs
+            assert first_kwargs["content"] == "<@&42>"
         finally:
             await bot.db.close()
             tmp.cleanup()
@@ -281,8 +283,8 @@ def test_ping_role_falls_back_to_default() -> None:
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
 
             await cog.dispatch(_payload())
-            kwargs = channel.send.await_args.kwargs
-            assert kwargs["content"] == "<@&99>"
+            first_kwargs = channel.send.await_args_list[0].kwargs
+            assert first_kwargs["content"] == "<@&99>"
         finally:
             await bot.db.close()
             tmp.cleanup()

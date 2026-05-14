@@ -25,7 +25,16 @@ from discord.ext import commands
 
 from ..crawler.errors import CrawlerError
 from ..dev_helpers import duration_parser, eval_runner, shell_runner, sql_runner
-from ..ui.paginator import Paginator
+from ..ui import emojis
+from ..ui.components.confirm import ConfirmLayoutView
+from ..ui.components.dev import (
+    build_diagnostic_pages,
+    build_diagnostic_view,
+    build_g_update_view,
+    build_premium_check_view,
+    build_premium_list_views,
+)
+from ..ui.components.paginator import LayoutPaginator
 
 if TYPE_CHECKING:
     from ..bot import ManhwaBot
@@ -80,36 +89,6 @@ _DEV_COMMAND_DESCRIPTIONS = {
     "premium patreon refresh": "Refresh Patreon premium grants.",
     "premium patreon link": "Link a Discord user to a Patreon user ID.",
 }
-
-
-class _ConfirmView(discord.ui.View):
-    """Simple Confirm/Cancel prompt locked to the invoking user."""
-
-    def __init__(self, invoker_id: int, *, timeout: float = 30.0) -> None:
-        super().__init__(timeout=timeout)
-        self.invoker_id = invoker_id
-        self.result: bool | None = None
-        self.message: discord.Message | None = None
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self.invoker_id:
-            await interaction.response.send_message(
-                "Only the invoker can answer this prompt.", ephemeral=True
-            )
-            return False
-        return True
-
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
-    async def confirm(self, interaction: discord.Interaction, _: discord.ui.Button[Any]) -> None:
-        self.result = True
-        await interaction.response.defer()
-        self.stop()
-
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
-    async def cancel(self, interaction: discord.Interaction, _: discord.ui.Button[Any]) -> None:
-        self.result = False
-        await interaction.response.defer()
-        self.stop()
 
 
 def _split_text(text: str, *, chunk: int = _DISCORD_LIMIT) -> list[str]:
@@ -178,9 +157,11 @@ class DevCog(commands.Cog, name="Dev"):
     @developer.command(name="restart")
     async def restart(self, ctx: commands.Context) -> None:
         msg = await ctx.send(
-            embed=discord.Embed(
-                description="⚠️ `Restarting the bot.`",
-                color=discord.Color.dark_theme(),
+            view=build_diagnostic_view(
+                title=f"{emojis.WARNING}  Restarting the bot",
+                body="Restarting now.",
+                accent=discord.Color.dark_theme(),
+                bot=self.bot,
             )
         )
         log_dir = Path("logs")
@@ -244,10 +225,12 @@ class DevCog(commands.Cog, name="Dev"):
         stdout, stderr, rc = await shell_runner.run(["git", "pull", "--ff-only"], timeout=60.0)
         out = (stdout or stderr).strip() or f"(rc={rc})"
         await ctx.send(
-            embed=discord.Embed(
+            view=build_diagnostic_view(
                 title="git pull",
-                description=_code_block(out, "py"),
-                color=discord.Color.green() if rc == 0 else discord.Color.red(),
+                body=out,
+                lang="py",
+                accent=discord.Color.green() if rc == 0 else discord.Color.red(),
+                bot=self.bot,
             )
         )
         if "Already up to date" in stdout:
@@ -269,10 +252,12 @@ class DevCog(commands.Cog, name="Dev"):
         cogs = list(self.bot.cogs.keys())
         body = "\n- ".join(cogs) if cogs else "(none)"
         await ctx.send(
-            embed=discord.Embed(
+            view=build_diagnostic_view(
                 title="Loaded cogs",
-                description=_code_block(f"- {body}", "diff"),
-                color=discord.Color.red(),
+                body=f"- {body}",
+                lang="diff",
+                accent=discord.Color.red(),
+                bot=self.bot,
             )
         )
 
@@ -288,13 +273,13 @@ class DevCog(commands.Cog, name="Dev"):
                 return
         if stderr:
             try:
-                await ctx.message.add_reaction("❌")
+                await ctx.message.add_reaction(emojis.ERROR)
             except discord.HTTPException:
                 pass
             text = f"stdout:\n{stdout}\nstderr:\n{stderr}\n(rc={rc})"
         else:
             try:
-                await ctx.message.add_reaction("✅")
+                await ctx.message.add_reaction(emojis.CHECK)
             except discord.HTTPException:
                 pass
             text = stdout or f"(rc={rc})"
@@ -340,7 +325,7 @@ class DevCog(commands.Cog, name="Dev"):
             return
         try:
             src = inspect.getsource(obj.callback)
-        except (OSError, TypeError):
+        except OSError, TypeError:
             await ctx.send("Could not load source.")
             return
         if len(src) > _DISCORD_LIMIT:
@@ -543,16 +528,20 @@ class DevCog(commands.Cog, name="Dev"):
             return
         rows = data.get("websites") or data.get("results") or []
         disabled = [r for r in rows if isinstance(r, dict) and r.get("works") is False]
-        embed = discord.Embed(
-            title="Disabled scanlators",
-            color=discord.Color.red(),
-        )
         if not disabled:
-            embed.description = _code_block("+ None +", "diff")
+            body = "+ None +"
         else:
             keys = "\n- ".join(str(r.get("website_key", "?")) for r in disabled)
-            embed.description = _code_block(f"- {keys}", "diff")
-        await ctx.send(embed=embed)
+            body = f"- {keys}"
+        await ctx.send(
+            view=build_diagnostic_view(
+                title="Disabled scanlators",
+                body=body,
+                lang="diff",
+                accent=discord.Color.red(),
+                bot=self.bot,
+            )
+        )
 
     # -- g_update -------------------------------------------------------
 
@@ -580,24 +569,26 @@ class DevCog(commands.Cog, name="Dev"):
             await ctx.send("No viable system-alerts channels found.")
             return
 
-        body = (
-            f"{message}\n\n*If you have any questions, please join the support server "
-            "and ping the maintainers.*"
+        # Show the alert preview + confirm prompt as two messages (V2 messages
+        # can't combine content with a view in one send).
+        preview_msg = await ctx.send(view=build_g_update_view(message=message, bot=self.bot))
+        confirm = ConfirmLayoutView(
+            author_id=ctx.author.id,
+            prompt=f"Send to **{len(viable)}** guilds?",
+            prompt_title="Confirm broadcast",
+            bot=self.bot,
         )
-        embed = discord.Embed(
-            title="⚠️ Important Update ⚠️",
-            description=body,
-            color=discord.Color.red(),
-        )
-        embed.set_footer(text="Sent by the bot owner.")
-
-        view = _ConfirmView(invoker_id=ctx.author.id)
-        view.message = await ctx.send(f"Send to **{len(viable)}** guilds?", embed=embed, view=view)
-        await view.wait()
-        if not view.result:
-            await view.message.edit(content="Cancelled.", embed=None, view=None)
+        confirm_msg = await ctx.send(view=confirm)
+        confirm.bind_message(confirm_msg)
+        await confirm.wait()
+        if confirm.value is not True:
+            await confirm_msg.edit(content="Cancelled.", view=None)
+            try:
+                await preview_msg.delete()
+            except discord.HTTPException:
+                pass
             return
-        await view.message.edit(content=f"Sending to {len(viable)}…", view=None)
+        await confirm_msg.edit(content=f"Sending to {len(viable)}…", view=None)
 
         ok = 0
         for _guild_id, channel_id in viable:
@@ -606,13 +597,13 @@ class DevCog(commands.Cog, name="Dev"):
                 continue
             try:
                 await channel.send(
-                    embed=embed,
+                    view=build_g_update_view(message=message, bot=self.bot),
                     allowed_mentions=discord.AllowedMentions(roles=True),
                 )
                 ok += 1
             except discord.HTTPException:
                 pass
-        await view.message.edit(content=f"Sent to {ok}/{len(viable)}.")
+        await confirm_msg.edit(content=f"Sent to {ok}/{len(viable)}.")
 
     # -- test_update ----------------------------------------------------
 
@@ -643,7 +634,7 @@ class DevCog(commands.Cog, name="Dev"):
         except Exception:
             await self._send_long_text(ctx, tb.format_exc(), lang="py")
             return
-        await ctx.message.add_reaction("✅")
+        await ctx.message.add_reaction(emojis.CHECK)
 
     # -- crawler subgroup ----------------------------------------------
 
@@ -758,7 +749,7 @@ class DevCog(commands.Cog, name="Dev"):
         )
         expiry_msg = expires_at or "permanent"
         await ctx.send(
-            f"✅ Granted premium (`{scope}` `{target_id}`) — id=`{grant_id}` "
+            f"{emojis.CHECK} Granted premium (`{scope}` `{target_id}`) — id=`{grant_id}` "
             f"expires=`{expiry_msg}`."
         )
 
@@ -779,16 +770,20 @@ class DevCog(commands.Cog, name="Dev"):
             except ValueError:
                 await ctx.send("target id must be an integer")
                 return
-            view = _ConfirmView(invoker_id=ctx.author.id)
-            view.message = await ctx.send(
-                f"Revoke ALL active grants for `{first}` `{target_id}`?", view=view
+            confirm = ConfirmLayoutView(
+                author_id=ctx.author.id,
+                prompt=f"Revoke **ALL active grants** for `{first}` `{target_id}`?",
+                prompt_title="Revoke grants",
+                bot=self.bot,
             )
-            await view.wait()
-            if not view.result:
-                await view.message.edit(content="Cancelled.", view=None)
+            confirm_msg = await ctx.send(view=confirm)
+            confirm.bind_message(confirm_msg)
+            await confirm.wait()
+            if confirm.value is not True:
+                await confirm_msg.edit(content="Cancelled.", view=None)
                 return
             await self.bot.premium.grants.store.revoke_for_target(first, target_id)
-            await view.message.edit(content="✅ Revoked.", view=None)
+            await confirm_msg.edit(content=f"{emojis.CHECK} Revoked.", view=None)
             return
         try:
             grant_id = int(first)
@@ -796,7 +791,7 @@ class DevCog(commands.Cog, name="Dev"):
             await ctx.send("expected `<grant_id>` or `<user|guild> <id>`")
             return
         await self.bot.premium.grants.store.revoke(grant_id)
-        await ctx.send(f"✅ Revoked grant `{grant_id}`.")
+        await ctx.send(f"{emojis.CHECK} Revoked grant `{grant_id}`.")
 
     @premium.command(name="list")
     async def premium_list(
@@ -812,27 +807,13 @@ class DevCog(commands.Cog, name="Dev"):
         if not rows:
             await ctx.send("(no grants)")
             return
-        page_size = 10
-        embeds: list[discord.Embed] = []
-        for i in range(0, len(rows), page_size):
-            chunk = rows[i : i + page_size]
-            lines = []
-            for g in chunk:
-                expiry = g.expires_at or "permanent"
-                revoked = f" revoked={g.revoked_at}" if g.revoked_at else ""
-                lines.append(
-                    f"`{g.id}` {g.scope}={g.target_id} expires={expiry}{revoked} "
-                    f"reason={g.reason or '-'}"
-                )
-            embeds.append(
-                discord.Embed(
-                    title=f"Premium grants ({i + 1}-{i + len(chunk)} / {len(rows)})",
-                    description="\n".join(lines),
-                    color=discord.Color.gold(),
-                )
-            )
-        view = Paginator(embeds, invoker_id=ctx.author.id)
-        await ctx.send(embed=embeds[0], view=view)
+        pages = build_premium_list_views(rows, bot=self.bot, invoker_id=ctx.author.id)
+        if len(pages) == 1:
+            await ctx.send(view=pages[0])
+            return
+        paginator = LayoutPaginator(pages, invoker_id=ctx.author.id)
+        msg = await ctx.send(view=paginator.current_view)
+        paginator.bind_message(msg)
 
     @premium.command(name="check")
     async def premium_check(self, ctx: commands.Context, user: discord.User) -> None:
@@ -846,16 +827,11 @@ class DevCog(commands.Cog, name="Dev"):
             sources.append("patreon")
         if self.bot.premium.discord_ents.is_user_premium(user.id):
             sources.append("discord_user")
-        embed = discord.Embed(
-            title=f"Premium check — {user}",
-            description=(
-                f"**ok**: `{ok}`\n"
-                f"**consolidated reason**: `{reason or '-'}`\n"
-                f"**qualifying sources**: {', '.join(sources) if sources else '(none)'}"
-            ),
-            color=discord.Color.green() if ok else discord.Color.red(),
+        await ctx.send(
+            view=build_premium_check_view(
+                user=user, ok=ok, reason=reason, sources=sources, bot=self.bot
+            )
         )
-        await ctx.send(embed=embed)
 
     @premium.group(name="patreon", invoke_without_command=True)
     async def premium_patreon(self, ctx: commands.Context) -> None:
@@ -871,7 +847,7 @@ class DevCog(commands.Cog, name="Dev"):
         except Exception:
             await self._send_long_text(ctx, tb.format_exc(), lang="py")
             return
-        await ctx.send(f"✅ Patreon refresh wrote `{count}` active patrons.")
+        await ctx.send(f"{emojis.CHECK} Patreon refresh wrote `{count}` active patrons.")
 
     @premium_patreon.command(name="link")
     async def premium_patreon_link(
@@ -891,30 +867,33 @@ class DevCog(commands.Cog, name="Dev"):
             expires_at=(now + timedelta(days=1)).strftime(fmt),
         )
         await ctx.send(
-            f"✅ Linked `{user}` → patreon `{patreon_user_id}` (expires in 24h; "
+            f"{emojis.CHECK} Linked `{user}` → patreon `{patreon_user_id}` (expires in 24h; "
             "advanced on next poll)."
         )
 
     # -- helpers --------------------------------------------------------
 
     async def _send_long_text(self, ctx: commands.Context, text: str, *, lang: str = "") -> None:
-        chunks = _split_text(text)
-        if len(chunks) == 1:
-            await ctx.send(_code_block(chunks[0], lang))
+        if not text:
+            text = "(no output)"
+        if len(text) <= _DISCORD_LIMIT:
+            await ctx.send(
+                view=build_diagnostic_view(title="Output", body=text, lang=lang, bot=self.bot)
+            )
             return
-        if sum(len(c) for c in chunks) > _DISCORD_LIMIT * 4:
+        if len(text) > _DISCORD_LIMIT * 4:
             buf = io.BytesIO(text.encode("utf-8"))
             await ctx.send(file=discord.File(buf, filename="output.txt"))
             return
-        embeds = [
-            discord.Embed(
-                description=_code_block(c, lang),
-                color=discord.Color.dark_grey(),
-            )
-            for c in chunks
-        ]
-        view = Paginator(embeds, invoker_id=ctx.author.id)
-        await ctx.send(embed=embeds[0], view=view)
+        pages = build_diagnostic_pages(
+            text, title="Output", lang=lang, bot=self.bot, invoker_id=ctx.author.id
+        )
+        if len(pages) == 1:
+            await ctx.send(view=pages[0])
+            return
+        paginator = LayoutPaginator(pages, invoker_id=ctx.author.id)
+        msg = await ctx.send(view=paginator.current_view)
+        paginator.bind_message(msg)
 
     async def _send_dev_help(self, ctx: commands.Context) -> None:
         prefix = getattr(ctx, "clean_prefix", "?")
@@ -922,14 +901,22 @@ class DevCog(commands.Cog, name="Dev"):
         base = f"{prefix}{invoked_with}"
         fields = _dev_help_fields(self.developer, base)
 
-        embed = discord.Embed(
-            title="Dev commands",
-            description=f"Owner-only prefix commands. Use `{base} <command>`.",
-            color=discord.Color.dark_grey(),
+        from ..ui.components.base import BaseLayoutView, footer_section, small_separator
+
+        container = discord.ui.Container(
+            discord.ui.TextDisplay("# 🛠️  Dev commands"),
+            small_separator(),
+            discord.ui.TextDisplay(f"Owner-only prefix commands. Use `{base} <command>`."),
+            accent_colour=discord.Color.dark_grey(),
         )
         for name, value in fields:
-            embed.add_field(name=name, value=value, inline=False)
-        await ctx.send(embed=embed)
+            container.add_item(small_separator())
+            container.add_item(discord.ui.TextDisplay(f"**{name}**\n{value}"))
+        container.add_item(small_separator())
+        container.add_item(footer_section(self.bot))
+        view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
+        view.add_item(container)
+        await ctx.send(view=view)
 
 
 def _dev_help_fields(group: commands.Group, base: str) -> list[tuple[str, str]]:

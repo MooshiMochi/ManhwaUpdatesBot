@@ -41,8 +41,7 @@ class DiscordEntitlementsService:
     @property
     def enabled(self) -> bool:
         return bool(
-            self._config.enabled
-            and (self._config.user_sku_ids or self._config.guild_sku_ids)
+            self._config.enabled and (self._config.user_sku_ids or self._config.guild_sku_ids)
         )
 
     def cache_size(self) -> int:
@@ -55,14 +54,10 @@ class DiscordEntitlementsService:
         try:
             skus = [s for s in await bot.fetch_skus()]
             known_ids = {sku.id for sku in skus}
-            configured = set(self._config.user_sku_ids) | set(
-                self._config.guild_sku_ids
-            )
+            configured = set(self._config.user_sku_ids) | set(self._config.guild_sku_ids)
             unknown = configured - known_ids
             if unknown:
-                _log.warning(
-                    "Configured premium SKUs not present on the app: %s", unknown
-                )
+                _log.warning("Configured premium SKUs not present on the app: %s", unknown)
         except Exception:
             _log.exception("Failed to fetch SKUs from Discord")
 
@@ -125,11 +120,7 @@ class DiscordEntitlementsService:
         for ent in ents:
             if not _is_active(ent):
                 continue
-            if (
-                user_skus
-                and ent.sku_id in user_skus
-                and getattr(ent, "user_id", None) == user_id
-            ):
+            if user_skus and ent.sku_id in user_skus and getattr(ent, "user_id", None) == user_id:
                 return (True, "discord_user")
             if (
                 not dm_only

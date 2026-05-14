@@ -1,11 +1,4 @@
-"""SettingsView — ephemeral guild config UI for /settings.
-
-Layout matches the v1 bot's main-menu pattern:
-  Row 0  — Select: pick which setting to edit (8 options).
-  Row 1  — Dynamic component (ChannelSelect / RoleSelect / Boolean Select)
-           swapped based on row 0 selection.
-  Row 2  — Per-Scanlator Channels button + DM toggles button (premium only when in DMs).
-"""
+"""Settings cog LayoutView replacements (guild settings + DM settings)."""
 
 from __future__ import annotations
 
@@ -14,8 +7,16 @@ from typing import Any
 
 import discord
 
-from ..db.dm_settings import DmSettingsStore
-from ..db.guild_settings import GuildSettings, GuildSettingsStore
+from ...db.dm_settings import DmSettingsStore
+from ...db.guild_settings import GuildSettings, GuildSettingsStore
+from .. import emojis
+from .base import (
+    LIST_MAX,
+    BaseLayoutView,
+    footer_section,
+    safe_truncate,
+    small_separator,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ _REQUIRED_CHANNEL_PERMS = discord.Permissions(
 )
 
 
-def _collect_warnings(
+def collect_warnings(
     settings: GuildSettings | None,
     guild: discord.Guild,
     me: discord.Member,
@@ -47,7 +48,9 @@ def _collect_warnings(
         if getattr(_REQUIRED_GUILD_PERMS, name, False) and not has_it
     ]
     if missing_guild:
-        warnings.append(f"❌ Bot missing guild permissions: `{', '.join(missing_guild)}`")
+        warnings.append(
+            f"{emojis.ERROR} Bot missing guild permissions: `{', '.join(missing_guild)}`"
+        )
 
     if settings is None:
         return warnings
@@ -61,7 +64,7 @@ def _collect_warnings(
             continue
         ch = guild.get_channel(ch_id)
         if ch is None:
-            warnings.append(f"⚠️ {label} not found — it may have been deleted.")
+            warnings.append(f"{emojis.WARNING} {label} not found — it may have been deleted.")
         elif isinstance(ch, discord.TextChannel):
             my_perms = ch.permissions_for(me)
             missing = [
@@ -70,7 +73,10 @@ def _collect_warnings(
                 if getattr(_REQUIRED_CHANNEL_PERMS, name, False) and not has_it
             ]
             if missing:
-                warnings.append(f"❌ Missing permissions in {ch.mention}: `{', '.join(missing)}`")
+                warnings.append(
+                    f"{emojis.ERROR} Missing permissions in {ch.mention}: "
+                    f"`{', '.join(missing)}`"
+                )
 
     for attr, label in (
         ("default_ping_role_id", "Default ping role"),
@@ -81,26 +87,31 @@ def _collect_warnings(
             continue
         role = guild.get_role(role_id)
         if role is None:
-            warnings.append(f"⚠️ {label} not found — it may have been deleted.")
+            warnings.append(f"{emojis.WARNING} {label} not found — it may have been deleted.")
         elif role.managed:
-            warnings.append(f"⚠️ {label} is bot-managed and cannot be assigned by this bot.")
+            warnings.append(
+                f"{emojis.WARNING} {label} is bot-managed and cannot be assigned by this bot."
+            )
         elif role >= me.top_role:
             warnings.append(
-                f"⚠️ {label} is higher than the bot's top role — the bot can't assign it."
+                f"{emojis.WARNING} {label} is higher than the bot's top role — "
+                "the bot can't assign it."
             )
 
     return warnings
 
 
 def _bool_emoji(value: bool) -> str:
-    return "✅" if value else "❌"
+    return emojis.CHECK if value else emojis.ERROR
 
 
-def _build_settings_embed(
+def _build_settings_container(
     settings: GuildSettings | None,
     scanlator_overrides: list[dict],
     warnings: list[str],
-) -> discord.Embed:
+    *,
+    bot: discord.Client | None,
+) -> discord.ui.Container:
     notif_ch = (
         f"<#{settings.notifications_channel_id}>"
         if settings and settings.notifications_channel_id
@@ -128,35 +139,46 @@ def _build_settings_embed(
     override_lines = [
         f"• **{r['website_key']}** → <#{r['channel_id']}>" for r in scanlator_overrides
     ]
-    overrides_text = "\n".join(override_lines) if override_lines else "None"
+    overrides_text = "\n".join(override_lines) if override_lines else "*None*"
 
-    desc = (
+    body = (
         f"**#️⃣ Notifications Channel:** {notif_ch}\n"
-        f"​ ​ ​ **^** `Chapter update notifications are sent here.`\n"
+        f"-# Chapter update notifications are sent here.\n\n"
         f"**❗ System Alerts Channel:** {alerts_ch}\n"
-        f"​ ​ ​ **^** `Critical bot alerts are sent here.`\n"
+        f"-# Critical bot alerts are sent here.\n\n"
         f"**🔔 Default Ping Role:** {ping_role}\n"
-        f"​ ​ ​ **^** `Pinged for chapter updates when a tracked manga has no role of its own.`\n"
+        f"-# Pinged for chapter updates when a tracked manga has no role of its own.\n\n"
         f"**🛡️ Bot Manager Role:** {manager_role}\n"
-        f"​ ​ ​ **^** `Members with this role can use admin commands without Manage Server.`\n"
+        f"-# Members with this role can use admin commands without Manage Server.\n\n"
         f"**🪄 Auto-Create Role:** {auto_create}\n"
-        f"​ ​ ​ **^** `Automatically create a role when /track new is used without a ping_role.`\n"
+        f"-# Automatically create a role when /track new is used without a ping_role.\n\n"
         f"**🔘 Show Update Buttons:** {show_buttons}\n"
-        f"​ ​ ​ **^** `Show 'Mark Read' buttons on chapter update notifications.`\n"
+        f"-# Show 'Mark Read' buttons on chapter update notifications.\n\n"
         f"**💰 Paid Chapter Notifs:** {paid}\n"
-        f"​ ​ ​ **^** `Notify subscribers about premium / locked chapters.`\n"
-        f"**🗨️ Per-Scanlator Channels:**\n{overrides_text}"
+        f"-# Notify subscribers about premium / locked chapters."
     )
+    overrides_section = f"**🗨️ Per-Scanlator Channels:**\n{overrides_text}"
 
-    colour = discord.Colour.red() if warnings else discord.Colour.blurple()
-    embed = discord.Embed(title="Server Settings", description=desc, colour=colour)
+    accent = discord.Colour.red() if warnings else discord.Colour.blurple()
+    container = discord.ui.Container(
+        discord.ui.TextDisplay("# ⚙️  Server Settings"),
+        small_separator(),
+        discord.ui.TextDisplay(safe_truncate(body, LIST_MAX)),
+        small_separator(),
+        discord.ui.TextDisplay(overrides_section),
+        accent_colour=accent,
+    )
     if warnings:
-        embed.add_field(name="⚠️ Warnings", value="\n".join(warnings), inline=False)
-    return embed
+        container.add_item(small_separator())
+        container.add_item(
+            discord.ui.TextDisplay(f"**{emojis.WARNING} Warnings**\n" + "\n".join(warnings))
+        )
+    container.add_item(small_separator())
+    container.add_item(footer_section(bot))
+    return container
 
 
-# Main-menu setting keys. Used both as the Select option `value`s and as a switch
-# in `_apply_main_select` to determine which dynamic component to render in row 1.
+# Main-menu setting keys.
 _SETTING_NOTIFICATIONS_CHANNEL = "notifications_channel"
 _SETTING_SYSTEM_ALERTS_CHANNEL = "system_alerts_channel"
 _SETTING_DEFAULT_PING_ROLE = "default_ping_role"
@@ -175,7 +197,6 @@ _BOOL_SETTINGS = frozenset(
 )
 _CHANNEL_SETTINGS = frozenset({_SETTING_NOTIFICATIONS_CHANNEL, _SETTING_SYSTEM_ALERTS_CHANNEL})
 _ROLE_SETTINGS = frozenset({_SETTING_DEFAULT_PING_ROLE, _SETTING_BOT_MANAGER_ROLE})
-
 
 _MAIN_OPTIONS: list[discord.SelectOption] = [
     discord.SelectOption(
@@ -229,8 +250,8 @@ _MAIN_OPTIONS: list[discord.SelectOption] = [
 ]
 
 
-class SettingsView(discord.ui.View):
-    """Main ephemeral settings view with v1-style menu navigation."""
+class SettingsLayoutView(BaseLayoutView):
+    """V2 guild-settings panel."""
 
     def __init__(
         self,
@@ -239,7 +260,7 @@ class SettingsView(discord.ui.View):
         settings: GuildSettings | None,
         scanlator_overrides: list[dict],
     ) -> None:
-        super().__init__(timeout=2 * 24 * 60 * 60)  # 2-day timeout
+        super().__init__(invoker_id=None, lock=False, timeout=2 * 24 * 60 * 60)
         self._bot = bot
         self._guild_id = guild_id
         self._store = GuildSettingsStore(bot.db)
@@ -247,44 +268,15 @@ class SettingsView(discord.ui.View):
         self._scanlator_overrides = scanlator_overrides
         self._selected_setting: str | None = None
         self._delete_mode = False
+        self._dynamic_row: discord.ui.ActionRow | None = None
+        self._warnings: list[str] = []
+        self._rebuild()
 
-        self._main_select: discord.ui.Select = discord.ui.Select(
-            placeholder="Select the option to edit.",
-            options=_MAIN_OPTIONS,
-            min_values=1,
-            max_values=1,
-            row=0,
-        )
-        self._main_select.callback = self._on_main_select
-        self.add_item(self._main_select)
+    # ---- public ---------------------------------------------------------
 
-        self._dynamic_item: discord.ui.Item[Any] | None = None
-
-        save_btn = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, row=4)
-        save_btn.callback = self._on_save
-        self.add_item(save_btn)
-
-        cancel_btn = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.blurple, row=4)
-        cancel_btn.callback = self._on_cancel
-        self.add_item(cancel_btn)
-
-        delete_mode_btn = discord.ui.Button(
-            label="Delete Mode: Off",
-            emoji="⚠️",
-            style=discord.ButtonStyle.green,
-            row=4,
-        )
-        delete_mode_btn.callback = self._on_delete_mode
-        self.add_item(delete_mode_btn)
-
-        delete_config_btn = discord.ui.Button(
-            label="Delete config",
-            emoji="🗑️",
-            style=discord.ButtonStyle.red,
-            row=4,
-        )
-        delete_config_btn.callback = self._on_delete_config
-        self.add_item(delete_config_btn)
+    def set_warnings(self, warnings: list[str]) -> None:
+        self._warnings = warnings
+        self._rebuild()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
@@ -303,24 +295,75 @@ class SettingsView(discord.ui.View):
         )
         return False
 
+    # ---- rebuild --------------------------------------------------------
+
+    def _rebuild(self) -> None:
+        self.clear_items()
+        container = _build_settings_container(
+            self._settings, self._scanlator_overrides, self._warnings, bot=self._bot
+        )
+        self.add_item(container)
+
+        # Row: main select
+        main_row = discord.ui.ActionRow()
+        main_select = discord.ui.Select(
+            placeholder="Select the option to edit.",
+            options=_MAIN_OPTIONS,
+            min_values=1,
+            max_values=1,
+        )
+        main_select.callback = self._on_main_select  # type: ignore[assignment]
+        main_row.add_item(main_select)
+        self.add_item(main_row)
+        self._main_select = main_select
+
+        # Row: dynamic component (placeholder None until a setting is picked)
+        if self._dynamic_row is not None:
+            self.add_item(self._dynamic_row)
+
+        # Final row: Save / Cancel / Delete Mode / Delete Config
+        action_row = discord.ui.ActionRow()
+        save_btn = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, emoji="💾")
+        save_btn.callback = self._on_save  # type: ignore[assignment]
+        action_row.add_item(save_btn)
+
+        cancel_btn = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.grey)
+        cancel_btn.callback = self._on_cancel  # type: ignore[assignment]
+        action_row.add_item(cancel_btn)
+
+        delete_mode_btn = discord.ui.Button(
+            label=f"Delete Mode: {'On' if self._delete_mode else 'Off'}",
+            emoji=emojis.WARNING,
+            style=discord.ButtonStyle.red if self._delete_mode else discord.ButtonStyle.green,
+        )
+        delete_mode_btn.callback = self._on_delete_mode  # type: ignore[assignment]
+        action_row.add_item(delete_mode_btn)
+
+        delete_btn = discord.ui.Button(
+            label="Delete config", emoji="🗑️", style=discord.ButtonStyle.red
+        )
+        delete_btn.callback = self._on_delete_config  # type: ignore[assignment]
+        action_row.add_item(delete_btn)
+        self.add_item(action_row)
+
     async def _refresh(self, interaction: discord.Interaction) -> None:
         self._settings = await self._store.get(self._guild_id)
         self._scanlator_overrides = await self._store.list_scanlator_channels(self._guild_id)
         guild = interaction.guild
         me = guild.me if guild else None
-        warnings = _collect_warnings(self._settings, guild, me) if guild and me else []
-        embed = _build_settings_embed(self._settings, self._scanlator_overrides, warnings)
-        await interaction.response.edit_message(embed=embed, view=self)
+        self._warnings = collect_warnings(self._settings, guild, me) if guild and me else []
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
+
+    # ---- main-select callback ------------------------------------------
 
     def _set_dynamic(self, item: discord.ui.Item[Any] | None) -> None:
-        if self._dynamic_item is not None:
-            try:
-                self.remove_item(self._dynamic_item)
-            except ValueError:
-                pass
-        self._dynamic_item = item
-        if item is not None:
-            self.add_item(item)
+        if item is None:
+            self._dynamic_row = None
+            return
+        row = discord.ui.ActionRow()
+        row.add_item(item)
+        self._dynamic_row = row
 
     async def _on_main_select(self, interaction: discord.Interaction) -> None:
         value = self._main_select.values[0]
@@ -335,9 +378,8 @@ class SettingsView(discord.ui.View):
             ch_select = discord.ui.ChannelSelect(
                 placeholder=placeholder,
                 channel_types=[discord.ChannelType.text],
-                row=1,
             )
-            ch_select.callback = self._on_channel_picked
+            ch_select.callback = self._on_channel_picked  # type: ignore[assignment]
             self._set_dynamic(ch_select)
         elif value in _ROLE_SETTINGS:
             placeholder = (
@@ -345,8 +387,8 @@ class SettingsView(discord.ui.View):
                 if value == _SETTING_DEFAULT_PING_ROLE
                 else "🛡️ Pick the bot manager role…"
             )
-            role_select = discord.ui.RoleSelect(placeholder=placeholder, row=1)
-            role_select.callback = self._on_role_picked
+            role_select = discord.ui.RoleSelect(placeholder=placeholder)
+            role_select.callback = self._on_role_picked  # type: ignore[assignment]
             self._set_dynamic(role_select)
         elif value in _BOOL_SETTINGS:
             current = self._read_bool(value)
@@ -354,23 +396,16 @@ class SettingsView(discord.ui.View):
                 placeholder="Choose: enable or disable",
                 options=[
                     discord.SelectOption(
-                        label="Enabled",
-                        value="1",
-                        emoji="✅",
-                        default=current,
+                        label="Enabled", value="1", emoji=emojis.CHECK, default=current
                     ),
                     discord.SelectOption(
-                        label="Disabled",
-                        value="0",
-                        emoji="❌",
-                        default=not current,
+                        label="Disabled", value="0", emoji=emojis.ERROR, default=not current
                     ),
                 ],
                 min_values=1,
                 max_values=1,
-                row=1,
             )
-            bool_select.callback = self._on_bool_picked
+            bool_select.callback = self._on_bool_picked  # type: ignore[assignment]
             self._set_dynamic(bool_select)
         elif value == _SETTING_SCANLATOR_CHANNELS:
             await self._open_scanlator_channels(interaction)
@@ -380,13 +415,13 @@ class SettingsView(discord.ui.View):
 
         guild = interaction.guild
         me = guild.me if guild else None
-        warnings = _collect_warnings(self._settings, guild, me) if guild and me else []
-        embed = _build_settings_embed(self._settings, self._scanlator_overrides, warnings)
-        await interaction.response.edit_message(embed=embed, view=self)
+        self._warnings = collect_warnings(self._settings, guild, me) if guild and me else []
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
 
     def _read_bool(self, setting: str) -> bool:
         if self._settings is None:
-            return setting == _SETTING_SHOW_UPDATE_BUTTONS  # default-on for buttons
+            return setting == _SETTING_SHOW_UPDATE_BUTTONS
         if setting == _SETTING_AUTO_CREATE_ROLE:
             return self._settings.auto_create_role
         if setting == _SETTING_SHOW_UPDATE_BUTTONS:
@@ -395,8 +430,16 @@ class SettingsView(discord.ui.View):
             return self._settings.paid_chapter_notifs
         return False
 
+    # ---- dynamic picker callbacks --------------------------------------
+
+    def _current_dynamic_item(self) -> discord.ui.Item[Any] | None:
+        if self._dynamic_row is None:
+            return None
+        children = list(self._dynamic_row.children)
+        return children[0] if children else None
+
     async def _on_channel_picked(self, interaction: discord.Interaction) -> None:
-        item = self._dynamic_item
+        item = self._current_dynamic_item()
         if not isinstance(item, discord.ui.ChannelSelect):
             await interaction.response.defer()
             return
@@ -408,7 +451,7 @@ class SettingsView(discord.ui.View):
         await self._refresh(interaction)
 
     async def _on_role_picked(self, interaction: discord.Interaction) -> None:
-        item = self._dynamic_item
+        item = self._current_dynamic_item()
         if not isinstance(item, discord.ui.RoleSelect):
             await interaction.response.defer()
             return
@@ -418,13 +461,14 @@ class SettingsView(discord.ui.View):
         if me is not None:
             if role.managed:
                 await interaction.response.send_message(
-                    f"❌ `{role.name}` is bot-managed and can't be assigned by this bot.",
+                    f"{emojis.ERROR} `{role.name}` is bot-managed and can't be assigned by this bot.",
                     ephemeral=True,
                 )
                 return
             if role >= me.top_role:
                 await interaction.response.send_message(
-                    f"❌ `{role.name}` is higher than the bot's top role; pick a lower role.",
+                    f"{emojis.ERROR} `{role.name}` is higher than the bot's top role; "
+                    "pick a lower role.",
                     ephemeral=True,
                 )
                 return
@@ -435,7 +479,7 @@ class SettingsView(discord.ui.View):
         await self._refresh(interaction)
 
     async def _on_bool_picked(self, interaction: discord.Interaction) -> None:
-        item = self._dynamic_item
+        item = self._current_dynamic_item()
         if not isinstance(item, discord.ui.Select):
             await interaction.response.defer()
             return
@@ -450,51 +494,45 @@ class SettingsView(discord.ui.View):
 
     async def _open_scanlator_channels(self, interaction: discord.Interaction) -> None:
         overrides = await self._store.list_scanlator_channels(self._guild_id)
-        view = ScanlatorChannelsView(self._bot, self._guild_id, overrides, parent=self)
-        await interaction.response.edit_message(embed=view.build_embed(), view=view)
+        view = ScanlatorChannelsLayoutView(self._bot, self._guild_id, overrides, parent=self)
+        await interaction.response.edit_message(view=view)
 
     async def _on_save(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message(view=None)
-        await interaction.followup.send(
-            embed=discord.Embed(
-                title="Settings Saved",
+        # Switch to a small success view inline.
+        from .error import build_success_view
+
+        await interaction.response.edit_message(
+            view=build_success_view(
+                title="Settings saved",
                 description="Your settings have been saved.",
-                colour=discord.Colour.green(),
-            ),
-            ephemeral=True,
+                bot=self._bot,
+            )
         )
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        from .tracking import build_simple_status_view
+
         await interaction.response.edit_message(
-            embed=discord.Embed(
-                title="Operation cancelled!",
+            view=build_simple_status_view(
+                title=f"{emojis.ERROR}  Operation cancelled",
                 description="No changes were made.",
-                colour=discord.Colour.red(),
-            ),
-            view=None,
+                accent=discord.Colour.red(),
+                bot=self._bot,
+            )
         )
 
-    async def _on_delete_mode(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _on_delete_mode(self, interaction: discord.Interaction) -> None:
         self._delete_mode = not self._delete_mode
-        button.label = f"Delete Mode: {'On' if self._delete_mode else 'Off'}"
-        button.style = discord.ButtonStyle.red if self._delete_mode else discord.ButtonStyle.green
         guild = interaction.guild
         me = guild.me if guild else None
-        warnings = _collect_warnings(self._settings, guild, me) if guild and me else []
-        embed = _build_settings_embed(self._settings, self._scanlator_overrides, warnings)
-        await interaction.response.edit_message(embed=embed, view=self)
+        self._warnings = collect_warnings(self._settings, guild, me) if guild and me else []
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
 
     async def _on_delete_config(self, interaction: discord.Interaction) -> None:
         if not self._delete_mode:
             await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="Delete Mode is Off",
-                    description="Turn on delete mode before deleting the config.",
-                    colour=discord.Colour.red(),
-                ),
-                ephemeral=True,
+                "Turn on **Delete Mode** before deleting the config.", ephemeral=True
             )
             return
 
@@ -508,94 +546,90 @@ class SettingsView(discord.ui.View):
                 "DELETE FROM guild_settings WHERE guild_id = ?",
                 (self._guild_id,),
             )
+        from .error import build_success_view
+
         await interaction.response.edit_message(
-            embed=discord.Embed(
-                title="Config Deleted",
+            view=build_success_view(
+                title="Config deleted",
                 description="The server config has been deleted.",
-                colour=discord.Colour.green(),
-            ),
-            view=None,
+                bot=self._bot,
+            )
         )
 
 
-class _RemoveButton(discord.ui.Button["ScanlatorChannelsView"]):
-    """Dynamic remove button for one scanlator override entry."""
+# ---------------------------------------------------------------------------
+# Scanlator channel overrides sub-view
+# ---------------------------------------------------------------------------
 
-    def __init__(self, parent_view: ScanlatorChannelsView, website_key: str, *, row: int) -> None:
-        super().__init__(
-            label=f"✕ {website_key}",
-            style=discord.ButtonStyle.danger,
-            row=row,
-        )
-        self._scanlator_view = parent_view
+
+class _RemoveButton(discord.ui.Button):
+    def __init__(self, parent: ScanlatorChannelsLayoutView, website_key: str) -> None:
+        super().__init__(label=f"✕ {website_key}", style=discord.ButtonStyle.danger)
+        self._parent = parent
         self._website_key = website_key
 
-    async def callback(self, interaction: discord.Interaction) -> None:
-        await self._scanlator_view._store.clear_scanlator_channel(
-            self._scanlator_view._guild_id, self._website_key
-        )
-        overrides = await self._scanlator_view._store.list_scanlator_channels(
-            self._scanlator_view._guild_id
-        )
-        self._scanlator_view._overrides = overrides
-        self._scanlator_view._rebuild_items()
-        await interaction.response.edit_message(
-            embed=self._scanlator_view.build_embed(), view=self._scanlator_view
-        )
+    async def callback(self, interaction: discord.Interaction) -> None:  # type: ignore[override]
+        await self._parent._store.clear_scanlator_channel(self._parent._guild_id, self._website_key)
+        overrides = await self._parent._store.list_scanlator_channels(self._parent._guild_id)
+        self._parent._overrides = overrides
+        self._parent._rebuild()
+        await interaction.response.edit_message(view=self._parent)
 
 
-class ScanlatorChannelsView(discord.ui.View):
-    """Sub-view listing per-scanlator channel overrides with remove + add buttons."""
-
+class ScanlatorChannelsLayoutView(BaseLayoutView):
     def __init__(
         self,
         bot: Any,
         guild_id: int,
         overrides: list[dict],
         *,
-        parent: SettingsView,
+        parent: SettingsLayoutView,
     ) -> None:
-        super().__init__(timeout=2 * 24 * 60 * 60)
+        super().__init__(invoker_id=None, lock=False, timeout=2 * 24 * 60 * 60)
         self._bot = bot
         self._guild_id = guild_id
         self._overrides = overrides
         self._parent = parent
         self._store = GuildSettingsStore(bot.db)
-        self._rebuild_items()
+        self._rebuild()
 
-    def build_embed(self) -> discord.Embed:
+    def _container(self) -> discord.ui.Container:
         if not self._overrides:
-            desc = "No per-scanlator overrides set.\nUse **+ Add Override** to add one."
+            desc = "*No per-scanlator overrides set.*\nUse **+ Add Override** to add one."
         else:
             lines = [f"• **{r['website_key']}** → <#{r['channel_id']}>" for r in self._overrides]
             desc = "\n".join(lines)
-        return discord.Embed(
-            title="Per-Scanlator Channel Overrides",
-            description=desc,
-            colour=discord.Colour.blurple(),
+        return discord.ui.Container(
+            discord.ui.TextDisplay("## 🗨️  Per-Scanlator Channel Overrides"),
+            small_separator(),
+            discord.ui.TextDisplay(safe_truncate(desc, LIST_MAX)),
+            small_separator(),
+            footer_section(self._bot),
+            accent_colour=discord.Colour.blurple(),
         )
 
-    def _rebuild_items(self) -> None:
+    def _rebuild(self) -> None:
         self.clear_items()
-        # Up to 20 overrides across rows 0-3 (5 per row); row 4 reserved for Add + Back
-        for i, row in enumerate(self._overrides[:20]):
-            self.add_item(_RemoveButton(self, row["website_key"], row=i // 5))
+        self.add_item(self._container())
+        # Up to 20 remove buttons across 4 rows of 5.
+        if self._overrides:
+            for chunk_start in range(0, min(20, len(self._overrides)), 5):
+                row = discord.ui.ActionRow()
+                for r in self._overrides[chunk_start : chunk_start + 5]:
+                    row.add_item(_RemoveButton(self, r["website_key"]))
+                self.add_item(row)
 
+        action_row = discord.ui.ActionRow()
         add_btn = discord.ui.Button(
-            label="+ Add Override",
-            style=discord.ButtonStyle.success,
-            row=4,
+            label="Add Override", emoji="➕", style=discord.ButtonStyle.success
         )
-        add_btn.callback = self._on_add_override
-        self.add_item(add_btn)
+        add_btn.callback = self._on_add_override  # type: ignore[assignment]
+        action_row.add_item(add_btn)
 
-        back_btn = discord.ui.Button(
-            label="← Back",
-            style=discord.ButtonStyle.secondary,
-            row=4,
-        )
-        back_btn.callback = self._on_back
-        self.add_item(back_btn)
+        back_btn = discord.ui.Button(label="Back", emoji="↩️", style=discord.ButtonStyle.secondary)
+        back_btn.callback = self._on_back  # type: ignore[assignment]
+        action_row.add_item(back_btn)
+        self.add_item(action_row)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
@@ -632,30 +666,21 @@ class ScanlatorChannelsView(discord.ui.View):
             )
             return
 
-        view = ScanlatorAddView(bot, self._guild_id, keys, parent=self)
-        embed = discord.Embed(
-            title="Add Per-Scanlator Override",
-            description=(
-                "1️⃣ Select a **website / scanlator** from the first dropdown.\n"
-                "2️⃣ Select the **channel** to route its notifications to.\n"
-                "3️⃣ Click **Save**."
-            ),
-            colour=discord.Colour.green(),
-        )
-        await interaction.response.edit_message(embed=embed, view=view)
+        view = ScanlatorAddLayoutView(bot, self._guild_id, keys, parent=self)
+        await interaction.response.edit_message(view=view)
 
     async def _on_back(self, interaction: discord.Interaction) -> None:
         parent = self._parent
         parent._scanlator_overrides = self._overrides
         guild = interaction.guild
         me = guild.me if guild else None
-        warnings = _collect_warnings(parent._settings, guild, me) if guild and me else []
-        embed = _build_settings_embed(parent._settings, parent._scanlator_overrides, warnings)
-        await interaction.response.edit_message(embed=embed, view=parent)
+        parent._warnings = collect_warnings(parent._settings, guild, me) if guild and me else []
+        parent._rebuild()
+        await interaction.response.edit_message(view=parent)
 
 
-class ScanlatorAddView(discord.ui.View):
-    """Transient view for selecting website key + channel when adding a scanlator override."""
+class ScanlatorAddLayoutView(BaseLayoutView):
+    """Transient: pick website + channel, then Save."""
 
     def __init__(
         self,
@@ -663,55 +688,70 @@ class ScanlatorAddView(discord.ui.View):
         guild_id: int,
         website_keys: list[str],
         *,
-        parent: ScanlatorChannelsView,
+        parent: ScanlatorChannelsLayoutView,
     ) -> None:
-        super().__init__(timeout=300)
+        super().__init__(invoker_id=None, lock=False, timeout=300)
         self._bot = bot
         self._guild_id = guild_id
         self._parent = parent
         self._store = GuildSettingsStore(bot.db)
+        self._website_keys = website_keys
         self._selected_key: str | None = None
         self._selected_channel_id: int | None = None
+        self._rebuild()
 
-        options = [discord.SelectOption(label=k, value=k) for k in website_keys[:25]]
-        self._key_select: discord.ui.Select = discord.ui.Select(
-            placeholder="Select a website / scanlator…",
-            options=options,
-            row=0,
-        )
-        self._key_select.callback = self._on_key_selected
-        self.add_item(self._key_select)
-
-        self._ch_select: discord.ui.ChannelSelect = discord.ui.ChannelSelect(
-            placeholder="Select a channel…",
-            channel_types=[discord.ChannelType.text],
-            row=1,
-        )
-        self._ch_select.callback = self._on_channel_selected
-        self.add_item(self._ch_select)
-
-        save_btn = discord.ui.Button(label="Save", style=discord.ButtonStyle.success, row=2)
-        save_btn.callback = self._on_save
-        self.add_item(save_btn)
-
-        cancel_btn = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary, row=2)
-        cancel_btn.callback = self._on_cancel
-        self.add_item(cancel_btn)
-
-    def _status_embed(self) -> discord.Embed:
-        key_text = f"**{self._selected_key}**" if self._selected_key else "_not selected_"
+    def _status_container(self) -> discord.ui.Container:
+        key_text = f"**{self._selected_key}**" if self._selected_key else "*not selected*"
         ch_text = (
-            f"<#{self._selected_channel_id}>" if self._selected_channel_id else "_not selected_"
+            f"<#{self._selected_channel_id}>" if self._selected_channel_id else "*not selected*"
         )
-        return discord.Embed(
-            title="Add Per-Scanlator Override",
-            description=(
-                f"**Website:** {key_text}\n"
-                f"**Channel:** {ch_text}\n\n"
+        return discord.ui.Container(
+            discord.ui.TextDisplay("## ➕  Add Per-Scanlator Override"),
+            small_separator(),
+            discord.ui.TextDisplay(
+                f"**Website:** {key_text}\n**Channel:** {ch_text}\n\n"
                 "Select both, then click **Save**."
             ),
-            colour=discord.Colour.green(),
+            small_separator(),
+            footer_section(self._bot),
+            accent_colour=discord.Colour.green(),
         )
+
+    def _rebuild(self) -> None:
+        self.clear_items()
+        self.add_item(self._status_container())
+
+        key_options = [
+            discord.SelectOption(label=k, value=k, default=(k == self._selected_key))
+            for k in self._website_keys[:25]
+        ]
+        key_row = discord.ui.ActionRow()
+        key_select = discord.ui.Select(
+            placeholder="Select a website / scanlator…", options=key_options
+        )
+        key_select.callback = self._on_key_selected  # type: ignore[assignment]
+        key_row.add_item(key_select)
+        self.add_item(key_row)
+        self._key_select = key_select
+
+        ch_row = discord.ui.ActionRow()
+        ch_select = discord.ui.ChannelSelect(
+            placeholder="Select a channel…",
+            channel_types=[discord.ChannelType.text],
+        )
+        ch_select.callback = self._on_channel_selected  # type: ignore[assignment]
+        ch_row.add_item(ch_select)
+        self.add_item(ch_row)
+        self._ch_select = ch_select
+
+        action_row = discord.ui.ActionRow()
+        save_btn = discord.ui.Button(label="Save", style=discord.ButtonStyle.success, emoji="💾")
+        save_btn.callback = self._on_save  # type: ignore[assignment]
+        action_row.add_item(save_btn)
+        cancel_btn = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary)
+        cancel_btn.callback = self._on_cancel  # type: ignore[assignment]
+        action_row.add_item(cancel_btn)
+        self.add_item(action_row)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
@@ -726,11 +766,13 @@ class ScanlatorAddView(discord.ui.View):
 
     async def _on_key_selected(self, interaction: discord.Interaction) -> None:
         self._selected_key = self._key_select.values[0]
-        await interaction.response.edit_message(embed=self._status_embed(), view=self)
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
 
     async def _on_channel_selected(self, interaction: discord.Interaction) -> None:
         self._selected_channel_id = self._ch_select.values[0].id
-        await interaction.response.edit_message(embed=self._status_embed(), view=self)
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
 
     async def _on_save(self, interaction: discord.Interaction) -> None:
         if not self._selected_key or not self._selected_channel_id:
@@ -743,48 +785,27 @@ class ScanlatorAddView(discord.ui.View):
         )
         overrides = await self._store.list_scanlator_channels(self._guild_id)
         self._parent._overrides = overrides
-        self._parent._rebuild_items()
-        await interaction.response.edit_message(embed=self._parent.build_embed(), view=self._parent)
+        self._parent._rebuild()
+        await interaction.response.edit_message(view=self._parent)
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message(embed=self._parent.build_embed(), view=self._parent)
+        await interaction.response.edit_message(view=self._parent)
 
 
-# -- DM settings ----------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# DM settings
+# ---------------------------------------------------------------------------
 
 
-def _build_dm_settings_embed(
-    paid_chapter_notifs: bool,
-    show_update_buttons: bool,
-    notifications_enabled: bool,
-) -> discord.Embed:
-    desc = (
-        f"**🔔 DM Notifications:** {_bool_emoji(notifications_enabled)}\n"
-        f"​ ​ ​ **^** `Receive personal chapter update DMs from the bot.`\n"
-        f"**🔘 Show Update Buttons:** {_bool_emoji(show_update_buttons)}\n"
-        f"​ ​ ​ **^** `Show 'Mark Read' buttons on chapter updates in DMs.`\n"
-        f"**💰 Paid Chapter Notifs:** {_bool_emoji(paid_chapter_notifs)}\n"
-        f"​ ​ ​ **^** `Notify me about premium / locked chapters.`\n"
-    )
-    return discord.Embed(
-        title="DM Settings",
-        description=desc,
-        colour=discord.Colour.blurple(),
-    )
-
-
-class DmSettingsView(discord.ui.View):
-    """Personal DM-context settings view (premium-only)."""
-
+class DmSettingsLayoutView(BaseLayoutView):
     def __init__(self, bot: Any, user_id: int) -> None:
-        super().__init__(timeout=2 * 24 * 60 * 60)
+        super().__init__(invoker_id=user_id, timeout=2 * 24 * 60 * 60)
         self._bot = bot
         self._user_id = user_id
         self._store = DmSettingsStore(bot.db)
         self._notifications_enabled = True
         self._paid_chapter_notifs = True
         self._show_update_buttons = True
-        self._sync_button_labels()
 
     async def initialize(self) -> None:
         record = await self._store.get(self._user_id)
@@ -792,64 +813,67 @@ class DmSettingsView(discord.ui.View):
             self._notifications_enabled = record.notifications_enabled
             self._paid_chapter_notifs = record.paid_chapter_notifs
             self._show_update_buttons = record.show_update_buttons
-        self._sync_button_labels()
+        self._rebuild()
 
-    def build_embed(self) -> discord.Embed:
-        return _build_dm_settings_embed(
-            paid_chapter_notifs=self._paid_chapter_notifs,
-            show_update_buttons=self._show_update_buttons,
-            notifications_enabled=self._notifications_enabled,
+    def _container(self) -> discord.ui.Container:
+        body = (
+            f"**🔔 DM Notifications:** {_bool_emoji(self._notifications_enabled)}\n"
+            "-# Receive personal chapter update DMs from the bot.\n\n"
+            f"**🔘 Show Update Buttons:** {_bool_emoji(self._show_update_buttons)}\n"
+            "-# Show 'Mark Read' buttons on chapter updates in DMs.\n\n"
+            f"**💰 Paid Chapter Notifs:** {_bool_emoji(self._paid_chapter_notifs)}\n"
+            "-# Notify me about premium / locked chapters."
+        )
+        return discord.ui.Container(
+            discord.ui.TextDisplay("## ⚙️  DM Settings"),
+            small_separator(),
+            discord.ui.TextDisplay(body),
+            small_separator(),
+            footer_section(self._bot),
+            accent_colour=discord.Colour.blurple(),
         )
 
-    def _sync_button_labels(self) -> None:
-        for item in self.children:
-            if not isinstance(item, discord.ui.Button):
-                continue
-            if item.custom_id == "dm_toggle_notifs":
-                item.label = f"🔔 DM Notifications: {_bool_emoji(self._notifications_enabled)}"
-            elif item.custom_id == "dm_toggle_buttons":
-                item.label = f"🔘 Update Buttons: {_bool_emoji(self._show_update_buttons)}"
-            elif item.custom_id == "dm_toggle_paid":
-                item.label = f"💰 Paid Chapters: {_bool_emoji(self._paid_chapter_notifs)}"
+    def _rebuild(self) -> None:
+        self.clear_items()
+        self.add_item(self._container())
 
-    @discord.ui.button(
-        label="🔔 DM Notifications: ✅",
-        style=discord.ButtonStyle.secondary,
-        custom_id="dm_toggle_notifs",
-        row=0,
-    )
-    async def _toggle_notifs(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+        row = discord.ui.ActionRow()
+        notifs_btn = discord.ui.Button(
+            label=f"🔔 DM Notifications: {_bool_emoji(self._notifications_enabled)}",
+            style=discord.ButtonStyle.secondary,
+        )
+        notifs_btn.callback = self._toggle_notifs  # type: ignore[assignment]
+        row.add_item(notifs_btn)
+
+        buttons_btn = discord.ui.Button(
+            label=f"🔘 Update Buttons: {_bool_emoji(self._show_update_buttons)}",
+            style=discord.ButtonStyle.secondary,
+        )
+        buttons_btn.callback = self._toggle_buttons  # type: ignore[assignment]
+        row.add_item(buttons_btn)
+
+        paid_btn = discord.ui.Button(
+            label=f"💰 Paid Chapters: {_bool_emoji(self._paid_chapter_notifs)}",
+            style=discord.ButtonStyle.secondary,
+        )
+        paid_btn.callback = self._toggle_paid  # type: ignore[assignment]
+        row.add_item(paid_btn)
+        self.add_item(row)
+
+    async def _toggle_notifs(self, interaction: discord.Interaction) -> None:
         self._notifications_enabled = not self._notifications_enabled
         await self._store.set_notifications_enabled(self._user_id, self._notifications_enabled)
-        self._sync_button_labels()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(
-        label="🔘 Update Buttons: ✅",
-        style=discord.ButtonStyle.secondary,
-        custom_id="dm_toggle_buttons",
-        row=0,
-    )
-    async def _toggle_buttons(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _toggle_buttons(self, interaction: discord.Interaction) -> None:
         self._show_update_buttons = not self._show_update_buttons
         await self._store.set_show_update_buttons(self._user_id, self._show_update_buttons)
-        self._sync_button_labels()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(
-        label="💰 Paid Chapters: ✅",
-        style=discord.ButtonStyle.secondary,
-        custom_id="dm_toggle_paid",
-        row=0,
-    )
-    async def _toggle_paid(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _toggle_paid(self, interaction: discord.Interaction) -> None:
         self._paid_chapter_notifs = not self._paid_chapter_notifs
         await self._store.set_paid_chapter_notifs(self._user_id, self._paid_chapter_notifs)
-        self._sync_button_labels()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self._rebuild()
+        await interaction.response.edit_message(view=self)

@@ -8,26 +8,26 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .. import autocomplete, formatting
+from .. import autocomplete
 from ..checks import has_premium
 from ..db.guild_settings import GuildSettingsStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
-from ..ui.confirm_view import ConfirmView
-from ..ui.paginator import Paginator
+from ..ui import emojis
+from ..ui.components.confirm import ConfirmLayoutView
+from ..ui.components.error import build_error_view
+from ..ui.components.paginator import LayoutPaginator
+from ..ui.components.tracking import (
+    build_bulk_subscribe_result_view,
+    build_grouped_list_views,
+    build_simple_status_view,
+    build_subscribe_success_view,
+    build_unsubscribe_view,
+)
 
 _log = logging.getLogger(__name__)
 
 _LIST_PAGE_SIZE = 15
-
-
-def _error_embed(description: str) -> discord.Embed:
-    """Build a red error embed."""
-    return discord.Embed(
-        title="Error",
-        description=description,
-        colour=discord.Colour.red(),
-    )
 
 
 def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
@@ -75,23 +75,22 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
         guild_id = interaction.guild_id or 0
 
-        # Handle wildcard: subscribe to all tracked series
         if manga_id == "*":
             await self._handle_subscribe_all(interaction, guild_id)
             return
 
-        # Parse manga_id
         parsed = _parse_manga_id(manga_id)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed("Invalid manga ID format. Use autocomplete to select."),
+                view=build_error_view(
+                    "Invalid manga ID format. Use autocomplete to select.", bot=self.bot
+                ),
                 ephemeral=True,
             )
             return
 
         website_key, url_name = parsed
 
-        # Verify series is tracked in guild (defensive check)
         tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
         series_match = None
         for series in tracked_list:
@@ -101,51 +100,48 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
         if series_match is None:
             await interaction.followup.send(
-                embed=_error_embed("That series is not tracked in this guild."),
+                view=build_error_view("That series is not tracked in this guild.", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        # Check if already subscribed
         is_sub = await self._subs.is_subscribed(
             interaction.user.id, guild_id, website_key, url_name
         )
         if is_sub:
             await interaction.followup.send(
-                embed=_error_embed("You're already subscribed to that manga."),
+                view=build_error_view("You're already subscribed to that manga.", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        # Subscribe
         try:
             await self._subs.subscribe(interaction.user.id, guild_id, website_key, url_name)
         except Exception as exc:
             _log.exception("subscribe failed")
             await interaction.followup.send(
-                embed=_error_embed(f"Failed to subscribe: {exc}"),
+                view=build_error_view(f"Failed to subscribe: {exc}", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        # V1-style success embed
         gs = await self._guild_settings.get(guild_id) if guild_id else None
         notif_channel = None
         if gs and gs.notifications_channel_id and interaction.guild:
             notif_channel = interaction.guild.get_channel(gs.notifications_channel_id)
-        embed = formatting.subscribe_success_embed(
+        view = build_subscribe_success_view(
             title=series_match.title,
             series_url=series_match.series_url,
-            ping_role=None,  # ping_role lookup is part of /track update; v1 also resolves via guild
+            ping_role=None,
             notif_channel=notif_channel,
             cover_url=series_match.cover_url,
             is_dm=interaction.guild_id is None,
             bot=self.bot,
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     async def _handle_subscribe_all(self, interaction: discord.Interaction, guild_id: int) -> None:
-        """Handle /subscribe new manga_id=*. Prompts via ConfirmView like v1."""
+        """Handle /subscribe new manga_id=*."""
         try:
             tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
             existing_subs = await self._subs.list_for_user(
@@ -158,34 +154,37 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
             if not to_subscribe:
                 await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Already subscribed",
+                    view=build_simple_status_view(
+                        title=f"{emojis.CHECK}  Already subscribed",
                         description="You're already subscribed to every tracked series here.",
-                        colour=discord.Colour.green(),
+                        accent=discord.Colour.green(),
+                        bot=self.bot,
                     ),
                     ephemeral=True,
                 )
                 return
 
-            prompt = discord.Embed(
-                description=(
+            confirm = ConfirmLayoutView(
+                author_id=interaction.user.id,
+                prompt=(
                     f"You are about to subscribe to an additional **{len(to_subscribe)}** "
-                    f"tracked series from this server.\n\n**Do you wish to continue?**"
+                    "tracked series from this server.\n\n**Do you wish to continue?**"
                 ),
-                colour=discord.Colour.blurple(),
+                prompt_title="Subscribe to all?",
+                bot=self.bot,
             )
-            confirm = ConfirmView(author_id=interaction.user.id)
-            confirm.message = await interaction.followup.send(
-                embed=prompt, view=confirm, ephemeral=True, wait=True
-            )
+            confirm_msg = await interaction.followup.send(view=confirm, ephemeral=True, wait=True)
+            confirm.bind_message(confirm_msg)
             await confirm.wait()
 
             if confirm.value is not True:
                 await interaction.edit_original_response(
-                    embed=discord.Embed(
-                        title="Operation cancelled!", colour=discord.Colour.green()
+                    view=build_simple_status_view(
+                        title="Operation cancelled",
+                        description="No subscriptions were created.",
+                        accent=discord.Colour.greyple(),
+                        bot=self.bot,
                     ),
-                    view=None,
                 )
                 return
 
@@ -203,21 +202,15 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
                     )
                     fails += 1
 
-            description = f"You have successfully subscribed to {successes} series!"
-            if fails:
-                description += (
-                    f"\n\n**Note:** I was unable to subscribe to {fails} series. "
-                    "Double check my permissions and try again!"
-                )
-            colour = discord.Colour.orange() if fails else discord.Colour.green()
             await interaction.edit_original_response(
-                embed=discord.Embed(title="Subscribed", description=description, colour=colour),
-                view=None,
+                view=build_bulk_subscribe_result_view(
+                    successes=successes, fails=fails, action="subscribe", bot=self.bot
+                ),
             )
         except Exception as exc:
             _log.exception("batch subscribe failed")
             await interaction.followup.send(
-                embed=_error_embed(f"Batch subscribe failed: {exc}"),
+                view=build_error_view(f"Batch subscribe failed: {exc}", bot=self.bot),
                 ephemeral=True,
             )
 
@@ -239,45 +232,40 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
 
         guild_id = interaction.guild_id or 0
 
-        # Handle wildcard: unsubscribe from all
         if manga_id == "*":
             await self._handle_unsubscribe_all(interaction, guild_id)
             return
 
-        # Parse manga_id
         parsed = _parse_manga_id(manga_id)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed("Invalid manga ID format."),
+                view=build_error_view("Invalid manga ID format.", bot=self.bot),
                 ephemeral=True,
             )
             return
 
         website_key, url_name = parsed
 
-        # Check if subscribed
         is_sub = await self._subs.is_subscribed(
             interaction.user.id, guild_id, website_key, url_name
         )
         if not is_sub:
             await interaction.followup.send(
-                embed=_error_embed("You're not subscribed to that manga."),
+                view=build_error_view("You're not subscribed to that manga.", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        # Unsubscribe
         try:
             await self._subs.unsubscribe(interaction.user.id, guild_id, website_key, url_name)
         except Exception as exc:
             _log.exception("unsubscribe failed")
             await interaction.followup.send(
-                embed=_error_embed(f"Failed to unsubscribe: {exc}"),
+                view=build_error_view(f"Failed to unsubscribe: {exc}", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        # V1-style "Unsubscribed" embed.
         tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
         series_match = next(
             (s for s in tracked_list if s.website_key == website_key and s.url_name == url_name),
@@ -285,55 +273,48 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         )
         title = series_match.title if series_match else f"{website_key}:{url_name}"
         url = series_match.series_url if series_match else None
-        if url:
-            description = f"Successfully unsubscribed from **[{title}]({url})**."
-        else:
-            description = f"Successfully unsubscribed from **{title}**."
-
-        embed = discord.Embed(
-            title="Unsubscribed",
-            description=description,
-            colour=discord.Colour.green(),
-        )
-        formatting._set_mu_footer(embed, self.bot)
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        view = build_unsubscribe_view(title=title, series_url=url, bot=self.bot)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     async def _handle_unsubscribe_all(
         self, interaction: discord.Interaction, guild_id: int
     ) -> None:
-        """Handle /subscribe delete manga_id=*. Prompts via ConfirmView like v1."""
+        """Handle /subscribe delete manga_id=*."""
         try:
             subs = await self._subs.list_for_user(interaction.user.id, guild_id=guild_id, limit=500)
             if not subs:
                 await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Nothing to unsubscribe from",
+                    view=build_simple_status_view(
+                        title=f"{emojis.CHECK}  Nothing to unsubscribe from",
                         description="You have no subscriptions in this server.",
-                        colour=discord.Colour.green(),
+                        accent=discord.Colour.green(),
+                        bot=self.bot,
                     ),
                     ephemeral=True,
                 )
                 return
 
-            prompt = discord.Embed(
-                description=(
-                    f"You are about to unsubscribe from **{len(subs)}** subbed series "
-                    f"from this server.\n\n**Do you wish to continue?**"
+            confirm = ConfirmLayoutView(
+                author_id=interaction.user.id,
+                prompt=(
+                    f"You are about to unsubscribe from **{len(subs)}** subscribed series "
+                    "from this server.\n\n**Do you wish to continue?**"
                 ),
-                colour=discord.Colour.blurple(),
+                prompt_title="Unsubscribe from all?",
+                bot=self.bot,
             )
-            confirm = ConfirmView(author_id=interaction.user.id)
-            confirm.message = await interaction.followup.send(
-                embed=prompt, view=confirm, ephemeral=True, wait=True
-            )
+            confirm_msg = await interaction.followup.send(view=confirm, ephemeral=True, wait=True)
+            confirm.bind_message(confirm_msg)
             await confirm.wait()
 
             if confirm.value is not True:
                 await interaction.edit_original_response(
-                    embed=discord.Embed(
-                        title="Operation cancelled!", colour=discord.Colour.green()
+                    view=build_simple_status_view(
+                        title="Operation cancelled",
+                        description="No subscriptions were removed.",
+                        accent=discord.Colour.greyple(),
+                        bot=self.bot,
                     ),
-                    view=None,
                 )
                 return
 
@@ -353,21 +334,15 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
                     )
                     fails += 1
 
-            description = f"You have successfully unsubscribed from {successes} series!"
-            if fails:
-                description += (
-                    f"\n\n**Note:** I was unable to unsubscribe you from {fails} series. "
-                    "Double check my permissions and try again!"
-                )
-            colour = discord.Colour.orange() if fails else discord.Colour.green()
             await interaction.edit_original_response(
-                embed=discord.Embed(title="Unsubscribed", description=description, colour=colour),
-                view=None,
+                view=build_bulk_subscribe_result_view(
+                    successes=successes, fails=fails, action="unsubscribe", bot=self.bot
+                ),
             )
         except Exception as exc:
             _log.exception("batch unsubscribe failed")
             await interaction.followup.send(
-                embed=_error_embed(f"Batch unsubscribe failed: {exc}"),
+                view=build_error_view(f"Batch unsubscribe failed: {exc}", bot=self.bot),
                 ephemeral=True,
             )
 
@@ -403,23 +378,28 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             ]
             count = len(items)
             title_prefix = "Your (Global) Subscriptions" if _global else "Your Subscriptions"
-            embeds = formatting.grouped_list_embeds(
+            pages = build_grouped_list_views(
                 items,
                 title=f"{title_prefix} ({count})",
                 bot=self.bot,
                 empty_title="No Subscriptions",
                 empty_description="You have no subscriptions.",
+                invoker_id=interaction.user.id,
             )
 
-            if len(embeds) == 1:
-                await interaction.followup.send(embed=embeds[0], ephemeral=True)
-            else:
-                paginator = Paginator(embeds, invoker_id=interaction.user.id)
-                await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
+            if len(pages) == 1:
+                await interaction.followup.send(view=pages[0], ephemeral=True)
+                return
+
+            paginator = LayoutPaginator(pages, invoker_id=interaction.user.id)
+            msg = await interaction.followup.send(
+                view=paginator.current_view, ephemeral=True, wait=True
+            )
+            paginator.bind_message(msg)
         except Exception as exc:
             _log.exception("list subscriptions failed")
             await interaction.followup.send(
-                embed=_error_embed(f"Failed to list subscriptions: {exc}"),
+                view=build_error_view(f"Failed to list subscriptions: {exc}", bot=self.bot),
                 ephemeral=True,
             )
 

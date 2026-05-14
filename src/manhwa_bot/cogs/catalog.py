@@ -15,21 +15,19 @@ from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
 from ..db.tracked import TrackedStore
-from ..formatting import (
-    chapters_embeds_v1,
-    failed_websites_field,
-    info_display_embed,
-    supported_websites_embeds_v1,
+from ..ui.components.chapter_list import build_chapter_list_views, build_supported_websites_views
+from ..ui.components.error import SOURCE_CRAWLER, build_error_view
+from ..ui.components.paginator import LayoutPaginator
+from ..ui.components.progress import ProgressLayoutState, progress_event_message
+from ..ui.components.series_info import (
+    SeriesActionRow,
+    build_info_view,
+    build_no_results_view,
+    build_search_result_view,
 )
-from ..ui.error import SOURCE_CRAWLER
-from ..ui.error import error_embed as _shared_error_embed
-from ..ui.paginator import Paginator
-from ..ui.progress_embed import ProgressEmbedState, progress_event_message
-from ..ui.subscribe_view import SubscribeView
 
 _log = logging.getLogger(__name__)
 
-_SEARCH_PAGE_SIZE = 1  # v1 shows one result per page (rich embed with cover)
 _SEARCH_LIMIT = 20
 _SEARCH_TIMEOUT_MS = 15_000
 
@@ -52,44 +50,6 @@ async def _get_websites_lookup(bot) -> dict[str, dict]:
         for w in websites
         if w.get("key") or w.get("website_key")
     }
-
-
-def _search_result_embed(item: dict, *, websites: dict[str, dict]) -> discord.Embed:
-    """V1-style per-result embed for /search."""
-    title = str(item.get("title") or "Unknown")
-    series_url = item.get("series_url") or item.get("url") or None
-    cover_url = item.get("cover_url") or item.get("cover") or None
-    website_key = str(item.get("website_key") or "")
-    status = item.get("status") or ""
-
-    embed = discord.Embed(
-        title=title,
-        url=series_url,
-        colour=discord.Colour.blurple(),
-    )
-    if cover_url:
-        embed.set_image(url=cover_url)
-
-    site_meta = websites.get(website_key, {})
-    scanlator_name = site_meta.get("name") or website_key.title() if website_key else None
-    base_url = site_meta.get("base_url") or None
-    icon_url = site_meta.get("icon_url") or None
-    if scanlator_name:
-        embed.set_author(
-            name=scanlator_name,
-            url=base_url,
-            icon_url=icon_url,
-        )
-
-    desc_lines: list[str] = []
-    if status:
-        desc_lines.append(f"**Status:** {status}")
-    if website_key and base_url:
-        desc_lines.append(f"**Scanlator:** [{website_key.title()}]({base_url})")
-    elif website_key:
-        desc_lines.append(f"**Scanlator:** {website_key.title()}")
-    embed.description = "\n".join(desc_lines) if desc_lines else None
-    return embed
 
 
 class CatalogCog(commands.Cog, name="Catalog"):
@@ -148,9 +108,6 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 tracked = await self._tracked.find(wk, url_name)
                 if tracked is not None and tracked.series_url:
                     return (wk, tracked.series_url)
-                # Fall through: we have no series_url cached. Letting the
-                # crawler render the URL from the schema template would fail
-                # for many sites, so surface a clear error instead.
                 return None
 
         if value.startswith("http"):
@@ -180,9 +137,9 @@ class CatalogCog(commands.Cog, name="Catalog"):
         scanlator_website: str | None = None,
     ) -> None:
         request_id = uuid.uuid4().hex
-        progress = ProgressEmbedState(command_name="/search", request_id=request_id)
+        progress = ProgressLayoutState(command_name="/search", request_id=request_id, bot=self.bot)
         progress.add("Sent request to crawler.")
-        await interaction.response.send_message(embed=progress.to_embed(), ephemeral=True)
+        await interaction.response.send_message(view=progress.to_view(), ephemeral=True)
         terminal_started = False
         progress_edit_lock = asyncio.Lock()
 
@@ -192,7 +149,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
                     return
                 message, severity = progress_event_message(event)
                 progress.add(message, severity=severity)
-                await interaction.edit_original_response(embed=progress.to_embed())
+                await interaction.edit_original_response(view=progress.to_view())
 
         try:
             kwargs: dict = {"query": query, "limit": _SEARCH_LIMIT}
@@ -208,13 +165,9 @@ class CatalogCog(commands.Cog, name="Catalog"):
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             terminal_started = True
             progress.add(str(exc), severity="error")
-            history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
                 await interaction.edit_original_response(
-                    embed=_shared_error_embed(
-                        f"{exc}\n\nProgress:\n{history}",
-                        source=SOURCE_CRAWLER,
-                    )
+                    view=build_error_view(str(exc), source=SOURCE_CRAWLER, bot=self.bot),
                 )
             return
 
@@ -223,50 +176,50 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
         if not results:
             terminal_started = True
-            embed = discord.Embed(
-                title=f'No results for "{query}"',
-                colour=discord.Colour.red(),
-            )
-            field = failed_websites_field(failed)
-            if field:
-                embed.add_field(name=field[0], value=field[1], inline=False)
             async with progress_edit_lock:
-                await interaction.edit_original_response(embed=embed)
+                await interaction.edit_original_response(
+                    view=build_no_results_view(query=query, failed_websites=failed, bot=self.bot),
+                )
             return
 
         websites_lookup = await _get_websites_lookup(self.bot)
-        embeds = [_search_result_embed(r, websites=websites_lookup) for r in results]
-        field = failed_websites_field(failed)
-        if field:
-            for e in embeds:
-                e.add_field(name=field[0], value=field[1], inline=False)
 
-        def _subscribe_items(page: int) -> list[discord.ui.Item]:
-            if page >= len(results):
-                return []
-            item = results[page]
-            wk = item.get("website_key") or ""
-            un = item.get("url_name") or ""
+        pages: list[discord.ui.LayoutView] = []
+        total = len(results)
+        for i, item in enumerate(results):
+            wk = str(item.get("website_key") or "")
+            un = str(item.get("url_name") or "")
             su = item.get("series_url") or item.get("url") or None
-            if not wk or not un:
-                return []
-            view = SubscribeView(
-                website_key=wk,
-                url_name=un,
-                series_url=su,
-                show_info_button=True,
-                show_bookmark_button=True,
+            action_row: SeriesActionRow | None = None
+            if wk and un:
+                action_row = SeriesActionRow(
+                    website_key=wk,
+                    url_name=un,
+                    series_url=su,
+                    show_info_button=True,
+                    show_bookmark_button=True,
+                )
+            pages.append(
+                build_search_result_view(
+                    item,
+                    site_meta=websites_lookup.get(wk, {}),
+                    page=i + 1,
+                    total_pages=total,
+                    failed_websites=failed if i == 0 else None,
+                    action_row=action_row,
+                    bot=self.bot,
+                    invoker_id=interaction.user.id,
+                )
             )
-            return list(view.children)
 
-        paginator = Paginator(
-            embeds,
-            invoker_id=interaction.user.id,
-            items_factory=_subscribe_items,
-        )
         terminal_started = True
+        paginator = LayoutPaginator(pages, invoker_id=interaction.user.id)
         async with progress_edit_lock:
-            await interaction.edit_original_response(embed=embeds[0], view=paginator)
+            await interaction.edit_original_response(view=paginator.current_view)
+        try:
+            paginator.bind_message(await interaction.original_response())
+        except discord.HTTPException:
+            pass
 
     # -- /info -----------------------------------------------------------
 
@@ -285,9 +238,10 @@ class CatalogCog(commands.Cog, name="Catalog"):
         resolved = await self._resolve_series_input(series)
         if resolved is None:
             await interaction.followup.send(
-                embed=_error_embed(
+                view=build_error_view(
                     "Couldn't resolve that series. Use the autocomplete or paste a "
-                    "full series URL from a supported website."
+                    "full series URL from a supported website.",
+                    bot=self.bot,
                 ),
                 ephemeral=True,
             )
@@ -296,10 +250,10 @@ class CatalogCog(commands.Cog, name="Catalog"):
         website_key, identifier = resolved
 
         request_id = uuid.uuid4().hex
-        progress = ProgressEmbedState(command_name="/info", request_id=request_id)
+        progress = ProgressLayoutState(command_name="/info", request_id=request_id, bot=self.bot)
         progress.add("Sent request to crawler.")
         progress_message = await interaction.followup.send(
-            embed=progress.to_embed(),
+            view=progress.to_view(),
             ephemeral=True,
             wait=True,
         )
@@ -312,7 +266,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
                     return
                 message, severity = progress_event_message(event)
                 progress.add(message, severity=severity)
-                await progress_message.edit(embed=progress.to_embed())
+                await progress_message.edit(view=progress.to_view())
 
         try:
             info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
@@ -325,23 +279,17 @@ class CatalogCog(commands.Cog, name="Catalog"):
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             terminal_started = True
             progress.add(str(exc), severity="error")
-            history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
                 await progress_message.edit(
-                    embed=_shared_error_embed(
-                        f"{exc}\n\nProgress:\n{history}",
-                        source=SOURCE_CRAWLER,
-                    )
+                    view=build_error_view(str(exc), source=SOURCE_CRAWLER, bot=self.bot),
                 )
             return
 
         if not info_data:
             terminal_started = True
-            progress.add("No data returned for that series.", severity="error")
-            history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
                 await progress_message.edit(
-                    embed=_error_embed(f"No data returned for that series.\n\nProgress:\n{history}")
+                    view=build_error_view("No data returned for that series.", bot=self.bot),
                 )
             return
 
@@ -353,35 +301,33 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
         websites_lookup = await _get_websites_lookup(self.bot)
         site_meta = websites_lookup.get(website_key, {})
-        embed = info_display_embed(
-            merged,
-            scanlator_icon_url=site_meta.get("icon_url"),
-            scanlator_base_url=site_meta.get("base_url"),
-            bot=self.bot,
-        )
 
         url_name = (
             merged.get("url_name")
             or await self._resolve_url_name(website_key, str(merged["series_url"]))
             or await self._resolve_url_name(website_key, identifier)
         )
-        view = SubscribeView(
+        action_row = SeriesActionRow(
             website_key=website_key,
             url_name=url_name or identifier,
-            series_url=merged["series_url"],
-            show_track_button=True,
+            series_url=merged.get("series_url"),
             show_bookmark_button=True,
+        )
+
+        view = build_info_view(
+            merged,
+            site_meta=site_meta,
+            request_id=request_id,
+            action_row=action_row,
+            bot=self.bot,
+            invoker_id=interaction.user.id,
         )
         terminal_started = True
         async with progress_edit_lock:
-            await progress_message.edit(embed=embed, view=view)
+            await progress_message.edit(view=view)
 
     async def _resolve_url_name(self, website_key: str, identifier: str) -> str | None:
-        """Best-effort lookup: convert a series URL into a stored ``url_name``.
-
-        We search the local tracked store by ``series_url`` first; if not
-        found, return ``None`` and let callers fall back to the URL itself.
-        """
+        """Best-effort lookup: convert a series URL into a stored ``url_name``."""
         if not identifier.startswith("http"):
             return identifier
         try:
@@ -410,9 +356,10 @@ class CatalogCog(commands.Cog, name="Catalog"):
         resolved = await self._resolve_series_input(series)
         if resolved is None:
             await interaction.followup.send(
-                embed=_error_embed(
+                view=build_error_view(
                     "Couldn't resolve that series. Use the autocomplete or paste a "
-                    "full series URL from a supported website."
+                    "full series URL from a supported website.",
+                    bot=self.bot,
                 ),
                 ephemeral=True,
             )
@@ -421,10 +368,12 @@ class CatalogCog(commands.Cog, name="Catalog"):
         website_key, identifier = resolved
 
         request_id = uuid.uuid4().hex
-        progress = ProgressEmbedState(command_name="/chapters", request_id=request_id)
+        progress = ProgressLayoutState(
+            command_name="/chapters", request_id=request_id, bot=self.bot
+        )
         progress.add("Sent request to crawler.")
         progress_message = await interaction.followup.send(
-            embed=progress.to_embed(),
+            view=progress.to_view(),
             ephemeral=True,
             wait=True,
         )
@@ -437,7 +386,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
                     return
                 message, severity = progress_event_message(event)
                 progress.add(message, severity=severity)
-                await progress_message.edit(embed=progress.to_embed())
+                await progress_message.edit(view=progress.to_view())
 
         try:
             info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
@@ -450,13 +399,9 @@ class CatalogCog(commands.Cog, name="Catalog"):
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             terminal_started = True
             progress.add(str(exc), severity="error")
-            history = progress.to_embed(final_error=True).description or ""
             async with progress_edit_lock:
                 await progress_message.edit(
-                    embed=_shared_error_embed(
-                        f"{exc}\n\nProgress:\n{history}",
-                        source=SOURCE_CRAWLER,
-                    )
+                    view=build_error_view(str(exc), source=SOURCE_CRAWLER, bot=self.bot),
                 )
             return
 
@@ -466,25 +411,29 @@ class CatalogCog(commands.Cog, name="Catalog"):
         series_title = info_data.get("title") or identifier
         series_url = info_data.get("url")
 
-        embeds = chapters_embeds_v1(
+        pages = build_chapter_list_views(
             chapter_list,
             manga_title=str(series_title),
             manga_url=series_url,
             bot=self.bot,
+            invoker_id=interaction.user.id,
         )
 
-        if not embeds:
+        if not pages:
             terminal_started = True
             async with progress_edit_lock:
                 await progress_message.edit(
-                    embed=_error_embed(f"No chapters found for **{series_title}**.")
+                    view=build_error_view(
+                        f"No chapters found for **{series_title}**.", bot=self.bot
+                    ),
                 )
             return
 
-        paginator = Paginator(embeds, invoker_id=interaction.user.id)
         terminal_started = True
+        paginator = LayoutPaginator(pages, invoker_id=interaction.user.id)
         async with progress_edit_lock:
-            await progress_message.edit(embed=embeds[0], view=paginator)
+            await progress_message.edit(view=paginator.current_view)
+        paginator.bind_message(progress_message)
 
     # -- /supported_websites --------------------------------------------
 
@@ -503,31 +452,26 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 websites = d.get("websites") or []
             except (CrawlerError, RequestTimeout, Disconnected) as exc:
                 await interaction.followup.send(
-                    embed=_shared_error_embed(str(exc), source=SOURCE_CRAWLER),
+                    view=build_error_view(str(exc), source=SOURCE_CRAWLER, bot=self.bot),
                     ephemeral=True,
                 )
                 return
         else:
             websites = list(websites_lookup.values())
 
-        embeds = supported_websites_embeds_v1(websites, bot=bot)
+        pages = build_supported_websites_views(
+            websites, bot=self.bot, invoker_id=interaction.user.id
+        )
 
-        if len(embeds) == 1:
-            await interaction.followup.send(embed=embeds[0], ephemeral=True)
-        else:
-            paginator = Paginator(embeds, invoker_id=interaction.user.id)
-            await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
+        if len(pages) == 1:
+            await interaction.followup.send(view=pages[0], ephemeral=True)
+            return
 
-
-# -- helpers -------------------------------------------------------------
-
-
-def _error_embed(message: str) -> discord.Embed:
-    return discord.Embed(
-        title="Error",
-        description=message,
-        colour=discord.Colour.red(),
-    )
+        paginator = LayoutPaginator(pages, invoker_id=interaction.user.id)
+        msg = await interaction.followup.send(
+            view=paginator.current_view, ephemeral=True, wait=True
+        )
+        paginator.bind_message(msg)
 
 
 async def setup(bot: commands.Bot) -> None:

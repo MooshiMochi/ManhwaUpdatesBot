@@ -12,17 +12,22 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .. import autocomplete, formatting
+from .. import autocomplete
 from ..checks import has_premium
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
-from ..db.bookmarks import Bookmark, BookmarkStore
+from ..db.bookmarks import BookmarkStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
-from ..ui.bookmark_view import BOOKMARK_FOLDERS, BookmarkView
-from ..ui.error import SOURCE_CRAWLER
-from ..ui.error import error_embed as _shared_error_embed
-from ..ui.progress_embed import ProgressEmbedState, progress_event_message
+from ..ui.components.bookmark import (
+    BOOKMARK_FOLDERS,
+    BookmarkBrowserView,
+    build_bookmark_detail_view,
+    build_bookmark_update_success_view,
+    view_bookmark_action_row,
+)
+from ..ui.components.error import SOURCE_CRAWLER, build_error_view
+from ..ui.components.progress import ProgressLayoutState, progress_event_message
 
 _log = logging.getLogger(__name__)
 
@@ -43,60 +48,6 @@ class _ResolvedSeries:
         yield self.website_key
         yield self.url_name
         yield self.series_url
-
-
-class _BookmarkSuccessView(discord.ui.View):
-    def __init__(
-        self,
-        *,
-        bookmark: Bookmark,
-        store: BookmarkStore,
-        tracked: TrackedStore,
-        crawler: Any,
-        invoker_id: int,
-        guild_id: int | None,
-        timeout: float = 300.0,
-    ) -> None:
-        super().__init__(timeout=timeout)
-        self._bookmark = bookmark
-        self._store = store
-        self._tracked = tracked
-        self._crawler = crawler
-        self._invoker_id = invoker_id
-        self._guild_id = guild_id
-
-        button = discord.ui.Button(label="View Bookmark", style=discord.ButtonStyle.blurple)
-        button.callback = self._on_view_bookmark  # type: ignore[assignment]
-        self.add_item(button)
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self._invoker_id:
-            await interaction.response.send_message(
-                "Only the person who ran this command can view this bookmark.",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    async def _on_view_bookmark(self, interaction: discord.Interaction) -> None:
-        view = BookmarkView(
-            [self._bookmark],
-            store=self._store,
-            tracked=self._tracked,
-            crawler=self._crawler,
-            invoker_id=self._invoker_id,
-            guild_id=self._guild_id,
-        )
-        embed = await view.initial_embed()
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-
-
-def _error_embed(message: str) -> discord.Embed:
-    return discord.Embed(title="Error", description=message, colour=discord.Colour.red())
-
-
-def _ok_embed(title: str, description: str) -> discord.Embed:
-    return discord.Embed(title=title, description=description, colour=discord.Colour.green())
 
 
 def _split_series_id(series_id: str) -> tuple[str, str] | None:
@@ -132,7 +83,6 @@ def _chapter_label(ch: dict, fallback_idx: int) -> str:
 
 
 def _chapter_markdown(ch: dict, fallback_idx: int) -> str:
-    """Hyperlinked chapter label, or the bare label when no URL is present."""
     label = _chapter_label(ch, fallback_idx)
     url = ch.get("url") or ch.get("chapter_url") or ""
     return f"[{label}]({url})" if url else str(label)
@@ -156,26 +106,14 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         request_id: str | None = None,
         on_progress: Any | None = None,
     ) -> _ResolvedSeries | None:
-        """Return ``(website_key, url_name, series_url)`` or None.
-
-        Tries the autocomplete value format first, then falls back to a
-        crawler ``info`` lookup when given a raw URL.
-        """
         parsed = _split_series_id(manga_url_or_id)
         if parsed is not None:
             website_key, url_name = parsed
             tracked = await self._tracked.find(website_key, url_name)
             if tracked is not None:
                 return _ResolvedSeries(website_key, url_name, tracked.series_url, {})
-            # Not yet tracked; canonicalize via the crawler so we know the
-            # series_url (used by /bookmark new for the chapters call). The
-            # crawler needs a full series URL — passing a bare url_name fails
-            # the schema URL-template rebuild for many sites, so don't try.
             return None
 
-        # Fallback: treat as a URL. Detect the website_key locally; the
-        # ``info`` endpoint doesn't return ``url_name``, so derive it from the
-        # URL path (last non-empty segment, ignoring trailing slashes).
         if manga_url_or_id.startswith("http"):
             wk = await detect_website_key(self.bot, manga_url_or_id)
             if not wk:
@@ -206,7 +144,6 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         return None
 
     async def _fetch_chapters_for(self, resolved: _ResolvedSeries) -> list[dict]:
-        """Use live info chapters first, then fall back to cached crawler chapters."""
         chapters = resolved.info.get("chapters")
         if isinstance(chapters, list) and chapters:
             return list(chapters)
@@ -236,7 +173,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             cover_url=cover_url,
             status=status,
             last_chapter_text=_chapter_label(latest, 0) if latest else None,
-            last_chapter_url=latest.get("url") or latest.get("chapter_url") if latest else None,
+            last_chapter_url=(latest.get("url") or latest.get("chapter_url")) if latest else None,
         )
         return title, cover_url, status
 
@@ -251,13 +188,6 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         total_chapters: int,
         status: str | None,
     ) -> str | None:
-        """Run the auto-subscribe gate; return a suffix to append, or None.
-
-        Mirrors v1: only fires on the final chapter of an ongoing series
-        that's tracked in the invoking guild and not yet subscribed by the
-        user. Returns a "subscribed" message on success, or a "ask an admin"
-        hint when the series isn't tracked. Skipped entirely in DMs.
-        """
         if guild_id is None or total_chapters <= 0:
             return None
         if chapter_index != total_chapters - 1:
@@ -307,18 +237,24 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
 
         folder_value = folder.value if folder else _DEFAULT_FOLDER
         if folder_value not in BOOKMARK_FOLDERS:
-            await interaction.followup.send(embed=_error_embed("Unknown folder."), ephemeral=True)
+            await interaction.followup.send(
+                view=build_error_view("Unknown folder.", bot=self.bot), ephemeral=True
+            )
             return
 
-        progress: ProgressEmbedState | None = None
+        progress: ProgressLayoutState | None = None
         progress_edit_lock = asyncio.Lock()
         terminal_started = False
+        on_progress = None
+        request_id = None
 
         if manga_url_or_id.startswith("http"):
             request_id = uuid.uuid4().hex
-            progress = ProgressEmbedState(command_name="/bookmark new", request_id=request_id)
+            progress = ProgressLayoutState(
+                command_name="/bookmark new", request_id=request_id, bot=self.bot
+            )
             progress.add("Sent request to crawler.")
-            await interaction.edit_original_response(embed=progress.to_embed())
+            await interaction.edit_original_response(view=progress.to_view())
 
             async def on_progress(event: object) -> None:
                 async with progress_edit_lock:
@@ -326,20 +262,16 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                         return
                     message, severity = progress_event_message(event)
                     progress.add(message, severity=severity)
-                    await interaction.edit_original_response(embed=progress.to_embed())
+                    await interaction.edit_original_response(view=progress.to_view())
 
-        else:
-            request_id = None
-            on_progress = None
-
-        async def respond_final(**kwargs) -> None:
+        async def respond_final(view: discord.ui.LayoutView) -> None:
             nonlocal terminal_started
             if progress is None:
-                await interaction.followup.send(**kwargs, ephemeral=True)
+                await interaction.followup.send(view=view, ephemeral=True)
                 return
             terminal_started = True
             async with progress_edit_lock:
-                await interaction.edit_original_response(**kwargs)
+                await interaction.edit_original_response(view=view)
 
         resolved = await self._resolve_series(
             manga_url_or_id,
@@ -347,14 +279,10 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             on_progress=on_progress,
         )
         if resolved is None:
-            message = "Couldn't resolve that series. Use the autocomplete or paste a series URL."
-            if progress is not None:
-                progress.add(message, severity="error")
-                history = progress.to_embed(final_error=True).description or ""
-                message = f"{message}\n\nProgress:\n{history}"
             await respond_final(
-                embed=_error_embed(
-                    message,
+                build_error_view(
+                    "Couldn't resolve that series. Use the autocomplete or paste a series URL.",
+                    bot=self.bot,
                 )
             )
             return
@@ -370,15 +298,16 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             await respond_final(
-                embed=_shared_error_embed(f"Couldn't fetch chapters: {exc}", source=SOURCE_CRAWLER),
+                build_error_view(
+                    f"Couldn't fetch chapters: {exc}", source=SOURCE_CRAWLER, bot=self.bot
+                )
             )
             return
-        data = info_data
 
         chapters: list[dict] = info_data.get("chapters") or info_data.get("latest_chapters") or []
         if not chapters:
             await respond_final(
-                embed=_error_embed("No chapters available for this series."),
+                build_error_view("No chapters available for this series.", bot=self.bot)
             )
             return
 
@@ -391,31 +320,45 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             last_read_chapter=first_label,
             last_read_index=0,
         )
-        get_bookmark = getattr(self._bookmarks, "get_bookmark", None)
-        bookmark = (
-            await get_bookmark(interaction.user.id, website_key, url_name)
-            if get_bookmark is not None
-            else None
-        )
+        bookmark = await self._bookmarks.get_bookmark(interaction.user.id, website_key, url_name)
 
-        title = data.get("title") or url_name
+        title = info_data.get("title") or url_name
         site_meta = await self._site_metadata(website_key)
         tracked = await self._tracked.find(website_key, url_name)
-        cover_url = (tracked.cover_url if tracked else None) or data.get("cover_url")
-        status = data.get("status") or (tracked.status if tracked else None) or "Unknown"
+        cover_url = (tracked.cover_url if tracked else None) or info_data.get("cover_url")
+        status = info_data.get("status") or (tracked.status if tracked else None) or "Unknown"
         is_completed = (status or "").strip().lower() in _COMPLETED_STATUSES
 
         first_md = _chapter_markdown(chapters[0], 0)
         latest_md = _chapter_markdown(chapters[-1], len(chapters) - 1)
         next_md = _chapter_markdown(chapters[1], 1) if len(chapters) > 1 else None
 
-        embed = formatting.bookmark_embed_v1(
+        action_row = None
+        if bookmark is not None:
+            invoker_id = interaction.user.id
+            guild_id = interaction.guild_id
+
+            async def _open_browser() -> discord.ui.LayoutView:
+                view = BookmarkBrowserView(
+                    [bookmark],
+                    store=self._bookmarks,
+                    tracked=self._tracked,
+                    crawler=self.bot.crawler,  # type: ignore[attr-defined]
+                    invoker_id=invoker_id,
+                    guild_id=guild_id,
+                    bot=self.bot,
+                )
+                await view.initial_render()
+                return view
+
+            action_row = view_bookmark_action_row(_open_browser)
+
+        view = build_bookmark_detail_view(
             title=str(title),
             series_url=series_url or "",
             website_key=website_key,
             cover_url=cover_url,
             scanlator_base_url=site_meta.get("base_url"),
-            scanlator_icon_url=site_meta.get("icon_url"),
             last_read_chapter=first_md,
             next_chapter=next_md,
             folder=folder_value,
@@ -424,24 +367,10 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             status=str(status),
             is_completed=is_completed,
             bot=self.bot,
+            invoker_id=interaction.user.id,
+            extra_action_row=action_row,
         )
-        success_view = (
-            _BookmarkSuccessView(
-                bookmark=bookmark,
-                store=self._bookmarks,
-                tracked=self._tracked,
-                crawler=self.bot.crawler,  # type: ignore[attr-defined]
-                invoker_id=interaction.user.id,
-                guild_id=interaction.guild_id,
-            )
-            if bookmark is not None
-            else None
-        )
-        await respond_final(
-            content=f"Successfully bookmarked {title}",
-            embed=embed,
-            view=success_view,
-        )
+        await respond_final(view)
 
     # -- /bookmark view -------------------------------------------------
 
@@ -467,29 +396,23 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             interaction.user.id, folder=folder_value, limit=500
         )
 
-        # Drop entries whose website is no longer supported.
         supported = await self._supported_websites_keys()
         if supported:
             bookmarks = [b for b in bookmarks if b.website_key in supported]
 
         if not bookmarks:
             await interaction.followup.send(
-                embed=discord.Embed(
-                    title="No Bookmarks",
-                    description="You have no bookmarks.",
-                    colour=discord.Colour.red(),
-                ),
+                view=build_error_view("You have no bookmarks.", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        # Optional jump-to.
         jump_index = 0
         if series:
             parsed = _split_series_id(series)
             if parsed is None:
                 await interaction.followup.send(
-                    embed=_error_embed("Invalid series id."), ephemeral=True
+                    view=build_error_view("Invalid series id.", bot=self.bot), ephemeral=True
                 )
                 return
             wk, un = parsed
@@ -499,12 +422,14 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     break
             else:
                 await interaction.followup.send(
-                    embed=_error_embed("That bookmark wasn't found in the current view."),
+                    view=build_error_view(
+                        "That bookmark wasn't found in the current view.", bot=self.bot
+                    ),
                     ephemeral=True,
                 )
                 return
 
-        view = BookmarkView(
+        view = BookmarkBrowserView(
             bookmarks,
             store=self._bookmarks,
             tracked=self._tracked,
@@ -513,12 +438,13 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             guild_id=interaction.guild_id,
             current_folder=folder_value,
             index=jump_index,
+            bot=self.bot,
         )
-        embed = await view.initial_embed()
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        await view.initial_render()
+        msg = await interaction.followup.send(view=view, ephemeral=True, wait=True)
+        view.bind_message(msg)
 
     async def _site_metadata(self, website_key: str) -> dict:
-        """Return cached metadata dict for *website_key*, or {} on error."""
         try:
             bot: Any = self.bot
             ttl = bot.config.supported_websites_cache.ttl_seconds
@@ -538,7 +464,6 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         return {}
 
     async def _supported_websites_keys(self) -> set[str]:
-        """Return the cached set of supported website keys, or empty set on error."""
         try:
             bot: Any = self.bot
             ttl = bot.config.supported_websites_cache.ttl_seconds
@@ -583,7 +508,9 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
 
         if chapter_index is None and folder is None:
             await interaction.followup.send(
-                embed=_error_embed("Specify at least one of `chapter_index` or `folder`."),
+                view=build_error_view(
+                    "Specify at least one of `chapter_index` or `folder`.", bot=self.bot
+                ),
                 ephemeral=True,
             )
             return
@@ -591,7 +518,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         parsed = _split_series_id(series)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed("Invalid series id."), ephemeral=True
+                view=build_error_view("Invalid series id.", bot=self.bot), ephemeral=True
             )
             return
         website_key, url_name = parsed
@@ -599,8 +526,9 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         existing = await self._bookmarks.get_bookmark(interaction.user.id, website_key, url_name)
         if existing is None:
             await interaction.followup.send(
-                embed=_error_embed(
-                    "You don't have a bookmark for that series — use `/bookmark new` first."
+                view=build_error_view(
+                    "You don't have a bookmark for that series — use `/bookmark new` first.",
+                    bot=self.bot,
                 ),
                 ephemeral=True,
             )
@@ -609,21 +537,22 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         new_chapter_label: str | None = None
         auto_subscribed_title: str | None = None
         should_track = False
+        upd_progress_message = None
+        upd_progress_edit_lock = asyncio.Lock()
 
         if chapter_index is not None:
             tracked = await self._tracked.find(website_key, url_name)
             identifier = tracked.series_url if tracked else url_name
 
             upd_request_id = uuid.uuid4().hex
-            upd_progress = ProgressEmbedState(
-                command_name="/bookmark update", request_id=upd_request_id
+            upd_progress = ProgressLayoutState(
+                command_name="/bookmark update", request_id=upd_request_id, bot=self.bot
             )
             upd_progress.add("Sent request to crawler.")
             upd_progress_message = await interaction.followup.send(
-                embed=upd_progress.to_embed(), ephemeral=True, wait=True
+                view=upd_progress.to_view(), ephemeral=True, wait=True
             )
             upd_terminal_started = False
-            upd_progress_edit_lock = asyncio.Lock()
 
             async def on_upd_progress(event: object) -> None:
                 nonlocal upd_terminal_started
@@ -632,7 +561,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                         return
                     msg, severity = progress_event_message(event)
                     upd_progress.add(msg, severity=severity)
-                    await upd_progress_message.edit(embed=upd_progress.to_embed())
+                    await upd_progress_message.edit(view=upd_progress.to_view())
 
             try:
                 info_data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
@@ -644,31 +573,34 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 )
             except (CrawlerError, RequestTimeout, Disconnected) as exc:
                 upd_terminal_started = True
-                upd_progress.add(str(exc), severity="error")
-                history = upd_progress.to_embed(final_error=True).description or ""
                 async with upd_progress_edit_lock:
                     await upd_progress_message.edit(
-                        embed=_shared_error_embed(
-                            f"Couldn't fetch chapters: {exc}\n\nProgress:\n{history}",
+                        view=build_error_view(
+                            f"Couldn't fetch chapters: {exc}",
                             source=SOURCE_CRAWLER,
+                            bot=self.bot,
                         )
                     )
                 return
             upd_terminal_started = True
-            data = info_data
             chapters: list[dict] = (
                 info_data.get("chapters") or info_data.get("latest_chapters") or []
             )
             if not chapters:
                 async with upd_progress_edit_lock:
                     await upd_progress_message.edit(
-                        embed=_error_embed("No chapters available for this series.")
+                        view=build_error_view(
+                            "No chapters available for this series.", bot=self.bot
+                        )
                     )
                 return
             if not (0 <= chapter_index < len(chapters)):
                 async with upd_progress_edit_lock:
                     await upd_progress_message.edit(
-                        embed=_error_embed(f"Chapter index out of range (0 - {len(chapters) - 1}).")
+                        view=build_error_view(
+                            f"Chapter index out of range (0 - {len(chapters) - 1}).",
+                            bot=self.bot,
+                        )
                     )
                 return
 
@@ -689,12 +621,12 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 url_name=url_name,
                 chapter_index=chapter_index,
                 total_chapters=len(chapters),
-                status=data.get("status"),
+                status=info_data.get("status"),
             )
             if suffix:
                 if "Auto-subscribed" in suffix:
                     auto_subscribed_title = (
-                        tracked.title if tracked else (data.get("title") or url_name)
+                        tracked.title if tracked else (info_data.get("title") or url_name)
                     )
                 else:
                     should_track = True
@@ -704,18 +636,18 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 interaction.user.id, website_key, url_name, folder.value
             )
 
-        embed = formatting.bookmark_update_success_embed(
+        view = build_bookmark_update_success_view(
             moved_folder=folder.value if folder is not None else None,
             new_chapter_label=new_chapter_label,
             auto_subscribed_title=auto_subscribed_title,
             should_track=should_track,
+            bot=self.bot,
         )
-        if chapter_index is not None:
-            # Replace the progress message with the final success embed.
+        if upd_progress_message is not None:
             async with upd_progress_edit_lock:
-                await upd_progress_message.edit(embed=embed)
+                await upd_progress_message.edit(view=view)
         else:
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(view=view, ephemeral=True)
 
     # -- /bookmark delete -----------------------------------------------
 
@@ -734,7 +666,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         parsed = _split_series_id(series)
         if parsed is None:
             await interaction.followup.send(
-                embed=_error_embed("Invalid series id."), ephemeral=True
+                view=build_error_view("Invalid series id.", bot=self.bot), ephemeral=True
             )
             return
         website_key, url_name = parsed
@@ -742,13 +674,22 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         existing = await self._bookmarks.get_bookmark(interaction.user.id, website_key, url_name)
         if existing is None:
             await interaction.followup.send(
-                embed=_error_embed("You don't have a bookmark for that series."),
+                view=build_error_view("You don't have a bookmark for that series.", bot=self.bot),
                 ephemeral=True,
             )
             return
 
         await self._bookmarks.delete_bookmark(interaction.user.id, website_key, url_name)
-        await interaction.followup.send("Successfully deleted bookmark", ephemeral=True)
+        from ..ui.components.error import build_success_view
+
+        await interaction.followup.send(
+            view=build_success_view(
+                title="Bookmark deleted",
+                description=f"Successfully deleted your bookmark for `{website_key}:{url_name}`.",
+                bot=self.bot,
+            ),
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

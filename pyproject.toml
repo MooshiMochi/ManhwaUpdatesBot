@@ -11,7 +11,7 @@ requires-python = ">=3.14"
 license = { file = "LICENSE" }
 authors = [{ name = "MooshiMochi" }]
 dependencies = [
-    "discord.py>=2.4,<3",
+    "discord.py>=2.7,<3",
     "aiohttp>=3.9",
     "aiosqlite>=0.20",
 ]
@@ -44,6 +44,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (formatter handles it)
+    "RUF001",  # ambiguous-unicode-character (decorative emoji glyphs)
 ]
 
 [tool.pytest.ini_options]

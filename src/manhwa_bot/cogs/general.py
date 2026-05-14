@@ -14,13 +14,21 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .. import formatting
 from ..checks import PREMIUM_REQUIRED
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..i18n import google_translate
 from ..i18n.google_translate import TranslateError
-from ..ui.paginator import Paginator
-from ..ui.support_view import PatreonView, SupportView
+from ..ui.components.error import build_error_view
+from ..ui.components.help import (
+    build_help_view,
+    build_lost_manga_view,
+    build_next_update_check_views,
+    build_no_lost_manga_view,
+    build_patreon_view,
+    build_stats_view,
+    build_translation_view,
+)
+from ..ui.components.paginator import LayoutPaginator
 
 if TYPE_CHECKING:
     pass
@@ -42,15 +50,8 @@ async def _premium_dm_only_predicate(interaction: discord.Interaction) -> bool:
     return True
 
 
-def _error_embed(message: str) -> discord.Embed:
-    return discord.Embed(title="Error", description=message, colour=discord.Colour.red())
-
-
 async def _get_lost_entries(bot: Any) -> list[dict]:
-    """Return a list of dicts representing series/bookmarks on unsupported websites.
-
-    Each dict has keys: kind, website_key, url_name, title, series_url, last_read_chapter.
-    """
+    """Return a list of dicts representing series/bookmarks on unsupported websites."""
     ttl = bot.config.supported_websites_cache.ttl_seconds
 
     async def _loader() -> list[dict]:
@@ -83,7 +84,6 @@ async def _get_lost_entries(bot: Any) -> list[dict]:
     entries: list[dict] = []
     seen: set[tuple[str, str, str]] = set()
 
-    # Tracked series on lost websites
     tracked_rows = await pool.fetchall(
         f"SELECT website_key, url_name, title, series_url FROM tracked_series"
         f" WHERE website_key IN ({placeholders})",
@@ -104,7 +104,6 @@ async def _get_lost_entries(bot: Any) -> list[dict]:
                 }
             )
 
-    # Bookmarks on lost websites (LEFT JOIN tracked_series for title/series_url)
     bookmark_rows = await pool.fetchall(
         f"""
         SELECT b.website_key, b.url_name, b.last_read_chapter,
@@ -174,16 +173,16 @@ class _TranslateToModal(discord.ui.Modal, title="Translate to…"):
                 session=self._session_getter(),
             )
         except TranslateError as exc:
-            await interaction.followup.send(embed=_error_embed(str(exc)), ephemeral=True)
+            await interaction.followup.send(view=build_error_view(str(exc)), ephemeral=True)
             return
 
-        embed = _translate_embed(
-            original=self._content,
+        view = build_translation_view(
+            text=self._content,
             translated=translated,
-            source_lang=detected,
-            target_lang=target,
+            lang_from=_resolve_lang_label(detected),
+            lang_to=_resolve_lang_label(target),
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
 
 def _resolve_lang_label(code: str) -> str:
@@ -196,26 +195,11 @@ def _resolve_lang_label(code: str) -> str:
     return name or code
 
 
-def _translate_embed(
-    original: str,
-    translated: str,
-    source_lang: str,
-    target_lang: str,
-) -> discord.Embed:
-    return formatting.translation_embed(
-        text=original,
-        translated=translated,
-        lang_from=_resolve_lang_label(source_lang),
-        lang_to=_resolve_lang_label(target_lang),
-    )
-
-
 class GeneralCog(commands.Cog, name="General"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._http_session: aiohttp.ClientSession | None = None
 
-        # Context menus must be registered on the tree manually (not via cog commands)
         self._translate_ctx = app_commands.ContextMenu(
             name="Translate",
             callback=self._translate_message_ctx,
@@ -224,7 +208,6 @@ class GeneralCog(commands.Cog, name="General"):
             name="Translate to…",
             callback=self._translate_to_ctx_handler,
         )
-        # Apply premium gate to both context menus
         for cm in (self._translate_ctx, self._translate_to_ctx):
             cm.add_check(_premium_dm_only_predicate)
             bot.tree.add_command(cm)
@@ -249,12 +232,8 @@ class GeneralCog(commands.Cog, name="General"):
         support_url = getattr(support_cfg, "invite_url", None) or None
         invite_url = getattr(support_cfg, "invite_bot_url", None) or None
 
-        embed = formatting.help_embed(bot=bot, support_url=support_url)
-        view = SupportView(
-            support_url=support_url,
-            invite_url=invite_url,
-        )
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        view = build_help_view(bot=bot, support_url=support_url, invite_url=invite_url)
+        await interaction.response.send_message(view=view, ephemeral=True)
 
     # -- /stats ----------------------------------------------------------
 
@@ -300,7 +279,7 @@ class GeneralCog(commands.Cog, name="General"):
         )
         start_unix = int(bot.started_at.timestamp())
 
-        embed = formatting.stats_embed(
+        view = build_stats_view(
             bookmarks_count=bookmarks_total,
             tracks_count=tracked_total,
             subs_count=subs_total,
@@ -312,7 +291,7 @@ class GeneralCog(commands.Cog, name="General"):
             bot_created_unix=bot_created_unix,
             bot=bot,
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     # -- /get_lost_manga -------------------------------------------------
 
@@ -327,29 +306,24 @@ class GeneralCog(commands.Cog, name="General"):
 
         if not entries:
             await interaction.followup.send(
-                embed=discord.Embed(
-                    description="No lost entries found — all your series are on supported websites.",
-                    colour=discord.Colour.green(),
-                ),
-                ephemeral=True,
+                view=build_no_lost_manga_view(bot=self.bot), ephemeral=True
             )
             return
 
         lost_websites = len({e["website_key"] for e in entries})
         tsv_bytes = _build_tsv(entries)
 
-        embed = discord.Embed(
-            title="Lost Manga Export",
-            description=(
-                f"**{len(entries)}** entr{'y' if len(entries) == 1 else 'ies'}"
-                f" from **{lost_websites}** lost website{'s' if lost_websites != 1 else ''}."
-                "\nDownload the TSV below to see the full list."
-            ),
-            colour=discord.Colour.orange(),
+        # Send the file first (so it shows above the view), then the view.
+        await interaction.followup.send(
+            file=discord.File(io.BytesIO(tsv_bytes), filename="lost_manga.tsv"),
+            ephemeral=True,
         )
         await interaction.followup.send(
-            embed=embed,
-            file=discord.File(io.BytesIO(tsv_bytes), filename="lost_manga.tsv"),
+            view=build_lost_manga_view(
+                entries_count=len(entries),
+                lost_websites=lost_websites,
+                bot=self.bot,
+            ),
             ephemeral=True,
         )
 
@@ -389,16 +363,16 @@ class GeneralCog(commands.Cog, name="General"):
                 text, target=to, source=from_, session=self._session()
             )
         except TranslateError as exc:
-            await interaction.followup.send(embed=_error_embed(str(exc)), ephemeral=True)
+            await interaction.followup.send(view=build_error_view(str(exc)), ephemeral=True)
             return
 
-        embed = _translate_embed(
-            original=text,
+        view = build_translation_view(
+            text=text,
             translated=translated,
-            source_lang=detected,
-            target_lang=to,
+            lang_from=_resolve_lang_label(detected),
+            lang_to=_resolve_lang_label(to),
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     # -- /patreon --------------------------------------------------------
 
@@ -407,15 +381,8 @@ class GeneralCog(commands.Cog, name="General"):
         description="Help fund the server and manage your current patreon subscription",
     )
     async def patreon(self, interaction: discord.Interaction) -> None:
-        bot: Any = self.bot
-        pledge_url: str = (
-            bot.config.premium.patreon.pledge_url or "https://www.patreon.com/mooshi69"
-        )
-        embed = formatting.patreon_embed(bot=bot)
-        if pledge_url:
-            embed.url = pledge_url
-        view = PatreonView(patreon_url=pledge_url)
-        await interaction.response.send_message(embed=embed, view=view)
+        view = build_patreon_view(bot=self.bot)
+        await interaction.response.send_message(view=view)
 
     # -- /next_update_check ----------------------------------------------
 
@@ -451,7 +418,7 @@ class GeneralCog(commands.Cog, name="General"):
                 if guild_keys:
                     website_keys = guild_keys
                 else:
-                    show_all = True  # nothing tracked yet — fall through to global view
+                    show_all = True
             except Exception:
                 _log.exception("Failed to load tracked website keys for guild")
                 website_keys = None
@@ -463,14 +430,14 @@ class GeneralCog(commands.Cog, name="General"):
                 data = await bot.crawler.request("next_update_check")
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             await interaction.followup.send(
-                embed=_error_embed(f"Couldn't reach the crawler: {exc}"),
+                view=build_error_view(f"Couldn't reach the crawler: {exc}"),
                 ephemeral=True,
             )
             return
 
         websites: list[dict] = data.get("websites") or []
 
-        rows_for_embed: list[tuple[str, int | None]] = []
+        rows_for_view: list[tuple[str, int | None]] = []
         for site in websites:
             key = str(site.get("website_key") or "").strip()
             if not key:
@@ -483,14 +450,19 @@ class GeneralCog(commands.Cog, name="General"):
                     ts = int(dt.timestamp())
                 except ValueError:
                     ts = None
-            rows_for_embed.append((key, ts))
+            rows_for_view.append((key, ts))
 
-        embeds = formatting.next_update_check_embeds_v1(rows_for_embed, bot=bot)
-        if len(embeds) == 1:
-            await interaction.followup.send(embed=embeds[0], ephemeral=True)
-        else:
-            paginator = Paginator(embeds, invoker_id=interaction.user.id)
-            await interaction.followup.send(embed=embeds[0], view=paginator, ephemeral=True)
+        pages = build_next_update_check_views(
+            rows_for_view, bot=bot, invoker_id=interaction.user.id
+        )
+        if len(pages) == 1:
+            await interaction.followup.send(view=pages[0], ephemeral=True)
+            return
+        paginator = LayoutPaginator(pages, invoker_id=interaction.user.id)
+        msg = await interaction.followup.send(
+            view=paginator.current_view, ephemeral=True, wait=True
+        )
+        paginator.bind_message(msg)
 
     # -- Context menus ---------------------------------------------------
 
@@ -500,7 +472,7 @@ class GeneralCog(commands.Cog, name="General"):
         content = message.content.strip()
         if not content:
             await interaction.response.send_message(
-                embed=_error_embed("That message has no text content to translate."),
+                view=build_error_view("That message has no text content to translate."),
                 ephemeral=True,
             )
             return
@@ -511,16 +483,16 @@ class GeneralCog(commands.Cog, name="General"):
                 content, target="en", session=self._session()
             )
         except TranslateError as exc:
-            await interaction.followup.send(embed=_error_embed(str(exc)), ephemeral=True)
+            await interaction.followup.send(view=build_error_view(str(exc)), ephemeral=True)
             return
 
-        embed = _translate_embed(
-            original=content,
+        view = build_translation_view(
+            text=content,
             translated=translated,
-            source_lang=detected,
-            target_lang="en",
+            lang_from=_resolve_lang_label(detected),
+            lang_to=_resolve_lang_label("en"),
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
 
     async def _translate_to_ctx_handler(
         self, interaction: discord.Interaction, message: discord.Message
@@ -528,7 +500,7 @@ class GeneralCog(commands.Cog, name="General"):
         content = message.content.strip()
         if not content:
             await interaction.response.send_message(
-                embed=_error_embed("That message has no text content to translate."),
+                view=build_error_view("That message has no text content to translate."),
                 ephemeral=True,
             )
             return

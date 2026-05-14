@@ -30,14 +30,14 @@ from .premium import (
     PatreonClient,
     PremiumService,
 )
-from .ui.error import (
+from .ui.components.error import (
     SOURCE_BOT,
     SOURCE_COOLDOWN,
     SOURCE_CRAWLER,
     SOURCE_PERMISSION,
-    error_embed,
+    build_error_view,
 )
-from .ui.upgrade_embed import build_upgrade_embed, build_upgrade_view
+from .ui.components.upgrade import build_upgrade_view
 
 if TYPE_CHECKING:
     pass
@@ -146,15 +146,14 @@ class ManhwaBot(commands.Bot):
         error: app_commands.AppCommandError,
     ) -> None:
         if isinstance(error, app_commands.CheckFailure) and str(error) == PREMIUM_REQUIRED:
-            embed = build_upgrade_embed(self.config.premium)
-            view = build_upgrade_view(self.config.premium)
+            view = build_upgrade_view(self.config.premium, bot=self)
             try:
                 if interaction.response.is_done():
-                    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+                    await interaction.followup.send(view=view, ephemeral=True)
                 else:
-                    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+                    await interaction.response.send_message(view=view, ephemeral=True)
             except discord.HTTPException:
-                _log.exception("Failed to send premium upgrade embed")
+                _log.exception("Failed to send premium upgrade view")
             return
 
         original = getattr(error, "original", None) or error
@@ -164,13 +163,13 @@ class ManhwaBot(commands.Bot):
         _log.exception("App command error in /%s", cmd_name, exc_info=original)
 
         try:
-            embed = error_embed(message, source=source)
+            view = build_error_view(message, source=source, bot=self)
             if interaction.response.is_done():
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await interaction.followup.send(view=view, ephemeral=True)
             else:
-                await interaction.response.send_message(embed=embed, ephemeral=True)
+                await interaction.response.send_message(view=view, ephemeral=True)
         except discord.HTTPException:
-            _log.exception("Failed to send error embed for /%s", cmd_name)
+            _log.exception("Failed to send error view for /%s", cmd_name)
 
     async def _on_command_error(
         self,
@@ -178,12 +177,11 @@ class ManhwaBot(commands.Bot):
         error: commands.CommandError,
     ) -> None:
         if isinstance(error, commands.CheckFailure) and str(error) == PREMIUM_REQUIRED:
-            embed = build_upgrade_embed(self.config.premium)
-            view = build_upgrade_view(self.config.premium)
+            view = build_upgrade_view(self.config.premium, bot=self)
             try:
-                await ctx.reply(embed=embed, view=view, mention_author=False)
+                await ctx.reply(view=view, mention_author=False)
             except discord.HTTPException:
-                _log.exception("Failed to send premium upgrade embed")
+                _log.exception("Failed to send premium upgrade view")
 
 
 _CRAWLER_ERROR_MESSAGES: dict[str, str] = {

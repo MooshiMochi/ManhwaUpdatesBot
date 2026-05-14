@@ -62,7 +62,7 @@ class PatreonClient:
         task.cancel()
         try:
             await task
-        except (asyncio.CancelledError, Exception):
+        except asyncio.CancelledError, Exception:
             pass
 
     async def _poll_loop(self) -> None:
@@ -185,7 +185,7 @@ class PatreonClient:
                 continue
             try:
                 discord_user_id = int(discord_user_id_raw)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
 
             cents = int(attrs.get("currently_entitled_amount_cents") or 0)
