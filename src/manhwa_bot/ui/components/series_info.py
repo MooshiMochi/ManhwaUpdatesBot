@@ -249,11 +249,12 @@ def build_info_view(
     container.add_item(small_separator())
     extra = f"req: {request_id}" if request_id else None
     container.add_item(footer_section(bot, extra=extra))
+    if action_row is not None:
+        container.add_item(small_separator())
+        container.add_item(action_row)
 
     view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
     view.add_item(container)
-    if action_row is not None:
-        view.add_item(action_row)
     return view
 
 
@@ -308,11 +309,12 @@ def build_search_result_view(
         )
     container.add_item(small_separator())
     container.add_item(footer_section(bot, extra=f"Result {page}/{total_pages}"))
+    if action_row is not None:
+        container.add_item(small_separator())
+        container.add_item(action_row)
 
     view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
     view.add_item(container)
-    if action_row is not None:
-        view.add_item(action_row)
     return view
 
 

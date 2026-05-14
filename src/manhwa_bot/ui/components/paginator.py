@@ -78,6 +78,14 @@ def _nav_action_row(
     return row
 
 
+def _add_nav_to_page(page: discord.ui.LayoutView, row: discord.ui.ActionRow) -> None:
+    for child in page.children:
+        if isinstance(child, discord.ui.Container):
+            child.add_item(row)
+            return
+    page.add_item(row)
+
+
 class LayoutPaginator:
     """Coordinate navigation across a sequence of pre-built ``LayoutView`` pages.
 
@@ -115,7 +123,7 @@ class LayoutPaginator:
                 if timeout is not None:
                     page.timeout = timeout
             if total > 1:
-                page.add_item(_nav_action_row(self, i, total))
+                _add_nav_to_page(page, _nav_action_row(self, i, total))
 
     @property
     def page(self) -> int:

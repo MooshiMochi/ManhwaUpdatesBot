@@ -74,12 +74,11 @@ def build_upgrade_view(
 
     if has_button:
         container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(row)
 
     if bot is not None:
         container.add_item(footer_section(bot))
 
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
-    if has_button:
-        view.add_item(row)
     return view

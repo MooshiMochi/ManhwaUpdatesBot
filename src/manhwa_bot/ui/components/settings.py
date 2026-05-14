@@ -74,8 +74,7 @@ def collect_warnings(
             ]
             if missing:
                 warnings.append(
-                    f"{emojis.ERROR} Missing permissions in {ch.mention}: "
-                    f"`{', '.join(missing)}`"
+                    f"{emojis.ERROR} Missing permissions in {ch.mention}: `{', '.join(missing)}`"
                 )
 
     for attr, label in (
@@ -344,7 +343,8 @@ class SettingsLayoutView(BaseLayoutView):
         )
         delete_btn.callback = self._on_delete_config  # type: ignore[assignment]
         action_row.add_item(delete_btn)
-        self.add_item(action_row)
+        container.add_item(small_separator())
+        container.add_item(action_row)
 
     async def _refresh(self, interaction: discord.Interaction) -> None:
         self._settings = await self._store.get(self._guild_id)
@@ -610,14 +610,15 @@ class ScanlatorChannelsLayoutView(BaseLayoutView):
 
     def _rebuild(self) -> None:
         self.clear_items()
-        self.add_item(self._container())
+        container = self._container()
         # Up to 20 remove buttons across 4 rows of 5.
         if self._overrides:
             for chunk_start in range(0, min(20, len(self._overrides)), 5):
                 row = discord.ui.ActionRow()
                 for r in self._overrides[chunk_start : chunk_start + 5]:
                     row.add_item(_RemoveButton(self, r["website_key"]))
-                self.add_item(row)
+                container.add_item(small_separator())
+                container.add_item(row)
 
         action_row = discord.ui.ActionRow()
         add_btn = discord.ui.Button(
@@ -629,7 +630,9 @@ class ScanlatorChannelsLayoutView(BaseLayoutView):
         back_btn = discord.ui.Button(label="Back", emoji="↩️", style=discord.ButtonStyle.secondary)
         back_btn.callback = self._on_back  # type: ignore[assignment]
         action_row.add_item(back_btn)
-        self.add_item(action_row)
+        container.add_item(small_separator())
+        container.add_item(action_row)
+        self.add_item(container)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
@@ -719,7 +722,8 @@ class ScanlatorAddLayoutView(BaseLayoutView):
 
     def _rebuild(self) -> None:
         self.clear_items()
-        self.add_item(self._status_container())
+        container = self._status_container()
+        self.add_item(container)
 
         key_options = [
             discord.SelectOption(label=k, value=k, default=(k == self._selected_key))
@@ -751,7 +755,8 @@ class ScanlatorAddLayoutView(BaseLayoutView):
         cancel_btn = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary)
         cancel_btn.callback = self._on_cancel  # type: ignore[assignment]
         action_row.add_item(cancel_btn)
-        self.add_item(action_row)
+        container.add_item(small_separator())
+        container.add_item(action_row)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
@@ -835,7 +840,7 @@ class DmSettingsLayoutView(BaseLayoutView):
 
     def _rebuild(self) -> None:
         self.clear_items()
-        self.add_item(self._container())
+        container = self._container()
 
         row = discord.ui.ActionRow()
         notifs_btn = discord.ui.Button(
@@ -858,7 +863,9 @@ class DmSettingsLayoutView(BaseLayoutView):
         )
         paid_btn.callback = self._toggle_paid  # type: ignore[assignment]
         row.add_item(paid_btn)
-        self.add_item(row)
+        container.add_item(small_separator())
+        container.add_item(row)
+        self.add_item(container)
 
     async def _toggle_notifs(self, interaction: discord.Interaction) -> None:
         self._notifications_enabled = not self._notifications_enabled

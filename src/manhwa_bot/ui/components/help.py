@@ -163,11 +163,12 @@ def build_help_view(
         )
     container.add_item(small_separator())
     container.add_item(footer_section(bot))
+    for row in support_action_rows(support_url=support_url, invite_url=invite_url):
+        container.add_item(small_separator())
+        container.add_item(row)
 
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
-    for row in support_action_rows(support_url=support_url, invite_url=invite_url):
-        view.add_item(row)
     return view
 
 
@@ -271,10 +272,11 @@ def build_patreon_view(*, bot: discord.Client | None) -> discord.ui.LayoutView:
         container.add_item(discord.ui.TextDisplay(f"**{name}**\n{value}"))
     container.add_item(small_separator())
     container.add_item(footer_section(bot))
+    container.add_item(small_separator())
+    container.add_item(patreon_action_row())
 
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
-    view.add_item(patreon_action_row())
     return view
 
 

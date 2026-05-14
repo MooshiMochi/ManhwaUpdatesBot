@@ -30,11 +30,6 @@ class ConfirmLayoutView(BaseLayoutView):
             discord.ui.TextDisplay(prompt),
             accent_colour=discord.Colour.orange(),
         )
-        if bot is not None:
-            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
-            container.add_item(footer_section(bot))
-        self.add_item(container)
-
         row = discord.ui.ActionRow()
         confirm_btn = discord.ui.Button(label="Confirm", style=discord.ButtonStyle.green)
         confirm_btn.callback = self._on_confirm  # type: ignore[assignment]
@@ -42,7 +37,12 @@ class ConfirmLayoutView(BaseLayoutView):
         cancel_btn.callback = self._on_cancel  # type: ignore[assignment]
         row.add_item(confirm_btn)
         row.add_item(cancel_btn)
-        self.add_item(row)
+        container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(row)
+        if bot is not None:
+            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+            container.add_item(footer_section(bot))
+        self.add_item(container)
         self._confirm_btn = confirm_btn
         self._cancel_btn = cancel_btn
 

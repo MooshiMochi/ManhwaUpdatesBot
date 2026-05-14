@@ -94,11 +94,12 @@ def build_bookmark_detail_view(
     container.add_item(discord.ui.TextDisplay(details_block))
     container.add_item(small_separator())
     container.add_item(footer_section(bot))
+    if extra_action_row is not None:
+        container.add_item(small_separator())
+        container.add_item(extra_action_row)
 
     view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
     view.add_item(container)
-    if extra_action_row is not None:
-        view.add_item(extra_action_row)
     return view
 
 
@@ -384,7 +385,6 @@ class BookmarkBrowserView(BaseLayoutView):
         """Reconstruct all top-level children of this view."""
         self.clear_items()
         container = await self._build_container()
-        self.add_item(container)
 
         # Nav row (always)
         nav_row = discord.ui.ActionRow()
@@ -398,7 +398,9 @@ class BookmarkBrowserView(BaseLayoutView):
             btn = discord.ui.Button(label=label, style=style)
             btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
             nav_row.add_item(btn)
-        self.add_item(nav_row)
+        container.add_item(small_separator())
+        container.add_item(nav_row)
+        self.add_item(container)
 
         if not self._filtered:
             return
@@ -452,7 +454,8 @@ class BookmarkBrowserView(BaseLayoutView):
             delete_btn = discord.ui.Button(label="Delete", emoji="🗑️", style=discord.ButtonStyle.red)
             delete_btn.callback = self._on_delete  # type: ignore[assignment]
             action_row.add_item(delete_btn)
-            self.add_item(action_row)
+            container.add_item(small_separator())
+            container.add_item(action_row)
 
         # Folder filter
         folder_row = discord.ui.ActionRow()
