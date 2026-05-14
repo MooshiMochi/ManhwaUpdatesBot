@@ -22,6 +22,13 @@ class _Cache:
 class _Crawler:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict]] = []
+        self.info_chapters: list[dict] = [
+            {
+                "url": "https://www.toongod.org/webtoon/someone-stop-her-uncensored/chapter-54",
+                "text": "Chapter 54",
+            }
+        ]
+        self.chapters_result: list[dict] | None = None
 
     async def request(self, type_: str, **kwargs) -> dict:
         self.calls.append((type_, kwargs))
@@ -33,14 +40,11 @@ class _Crawler:
                 "title": "Someone Stop Her",
                 "cover_url": "https://www.toongod.org/cover.jpg",
                 "status": "Ongoing",
-                "chapters": [
-                    {
-                        "url": "https://www.toongod.org/webtoon/someone-stop-her-uncensored/chapter-54",
-                        "text": "Chapter 54",
-                    }
-                ],
+                "chapters": self.info_chapters,
             }
         if type_ == "chapters":
+            if self.chapters_result is not None:
+                return {"chapters": self.chapters_result}
             raise CrawlerError("not_found", "series not found")
         raise AssertionError(type_)
 
@@ -108,6 +112,34 @@ def test_catalog_info_uses_live_info_chapters_when_cache_misses() -> None:
 
                 assert info["title"] == "Someone Stop Her"
                 assert [chapter["text"] for chapter in chapters] == ["Chapter 54"]
+                assert [call[0] for call in crawler.calls] == ["info", "chapters"]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_catalog_prefers_dedicated_chapters_when_info_chapters_lack_urls() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bot, pool, crawler = await _bot(tmp)
+            try:
+                crawler.info_chapters = [{"text": "Chapter 54"}]
+                crawler.chapters_result = [
+                    {
+                        "text": "Chapter 54",
+                        "url": "https://www.toongod.org/webtoon/someone-stop-her-uncensored/chapter-54",
+                    }
+                ]
+                cog = CatalogCog(bot)  # type: ignore[arg-type]
+
+                info, chapters = await cog._fetch_info_and_chapters(
+                    website_key="toongod",
+                    identifier="https://www.toongod.org/webtoon/someone-stop-her-uncensored/",
+                )
+
+                assert info["chapters"] == [{"text": "Chapter 54"}]
+                assert chapters == crawler.chapters_result
                 assert [call[0] for call in crawler.calls] == ["info", "chapters"]
             finally:
                 await pool.close()

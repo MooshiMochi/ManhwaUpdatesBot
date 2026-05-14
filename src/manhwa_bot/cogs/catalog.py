@@ -69,6 +69,23 @@ class CatalogCog(commands.Cog, name="Catalog"):
             website_key=website_key,
             url=identifier,
         )
+        chapters = await self._fetch_display_chapters(
+            website_key=website_key,
+            identifier=identifier,
+            info_data=info_data,
+            raise_unexpected=True,
+        )
+        return info_data, chapters
+
+    async def _fetch_display_chapters(
+        self,
+        *,
+        website_key: str,
+        identifier: str,
+        info_data: dict,
+        raise_unexpected: bool = False,
+    ) -> list[dict]:
+        """Fetch URL-rich chapter rows, falling back to chapters embedded in info."""
         try:
             chapters_data = await self.bot.crawler.request(  # type: ignore[attr-defined]
                 "chapters",
@@ -76,11 +93,12 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 url=identifier,
             )
             chapters = list(chapters_data.get("chapters") or [])
-        except CrawlerError as exc:
-            if exc.code != "not_found":
+            if chapters:
+                return chapters
+        except (CrawlerError, RequestTimeout, Disconnected) as exc:
+            if raise_unexpected and (not isinstance(exc, CrawlerError) or exc.code != "not_found"):
                 raise
-            chapters = list(info_data.get("chapters") or [])
-        return info_data, chapters
+        return list(info_data.get("chapters") or info_data.get("latest_chapters") or [])
 
     async def _resolve_series_input(self, value: str) -> tuple[str, str] | None:
         """Resolve a slash-command series input into ``(website_key, series_url)``.
@@ -293,11 +311,17 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 )
             return
 
+        chapter_list = await self._fetch_display_chapters(
+            website_key=website_key,
+            identifier=identifier,
+            info_data=info_data,
+        )
+
         merged: dict = dict(info_data)
         merged.setdefault("series_url", info_data.get("url") or identifier)
         merged["website_key"] = website_key
-        merged.setdefault("chapters", merged.get("latest_chapters") or [])
-        merged.setdefault("chapter_count", len(merged["chapters"]) if merged["chapters"] else 0)
+        merged["chapters"] = chapter_list
+        merged.setdefault("chapter_count", len(chapter_list) if chapter_list else 0)
 
         websites_lookup = await _get_websites_lookup(self.bot)
         site_meta = websites_lookup.get(website_key, {})
@@ -405,8 +429,10 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 )
             return
 
-        chapter_list: list[dict] = (
-            info_data.get("chapters") or info_data.get("latest_chapters") or []
+        chapter_list = await self._fetch_display_chapters(
+            website_key=website_key,
+            identifier=identifier,
+            info_data=info_data,
         )
         series_title = info_data.get("title") or identifier
         series_url = info_data.get("url")

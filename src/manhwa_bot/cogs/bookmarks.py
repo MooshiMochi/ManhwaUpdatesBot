@@ -137,15 +137,31 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         return None
 
     async def _fetch_chapters_for(self, resolved: _ResolvedSeries) -> list[dict]:
-        chapters = resolved.info.get("chapters")
-        if isinstance(chapters, list) and chapters:
-            return list(chapters)
-        data = await self.bot.crawler.request(  # type: ignore[attr-defined]
-            "chapters",
+        return await self._fetch_chapters_with_fallback(
             website_key=resolved.website_key,
-            url=resolved.series_url,
+            identifier=resolved.series_url,
+            info_data=resolved.info,
         )
-        return list(data.get("chapters") or [])
+
+    async def _fetch_chapters_with_fallback(
+        self,
+        *,
+        website_key: str,
+        identifier: str,
+        info_data: dict,
+    ) -> list[dict]:
+        try:
+            data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+                "chapters",
+                website_key=website_key,
+                url=identifier,
+            )
+            chapters = list(data.get("chapters") or [])
+            if chapters:
+                return chapters
+        except (CrawlerError, RequestTimeout, Disconnected):
+            pass
+        return list(info_data.get("chapters") or info_data.get("latest_chapters") or [])
 
     async def _cache_series_metadata(
         self,
@@ -297,7 +313,11 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             )
             return
 
-        chapters: list[dict] = info_data.get("chapters") or info_data.get("latest_chapters") or []
+        chapters = await self._fetch_chapters_with_fallback(
+            website_key=website_key,
+            identifier=series_url or url_name,
+            info_data=info_data,
+        )
         if not chapters:
             await respond_final(
                 build_error_view("No chapters available for this series.", bot=self.bot)
@@ -576,8 +596,10 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     )
                 return
             upd_terminal_started = True
-            chapters: list[dict] = (
-                info_data.get("chapters") or info_data.get("latest_chapters") or []
+            chapters = await self._fetch_chapters_with_fallback(
+                website_key=website_key,
+                identifier=identifier,
+                info_data=info_data,
             )
             if not chapters:
                 async with upd_progress_edit_lock:

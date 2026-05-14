@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterable
+from types import SimpleNamespace
 
 import discord
 
 from manhwa_bot.cogs.bookmarks import _chapter_markdown
+from manhwa_bot.cogs.catalog import CatalogCog
 from manhwa_bot.ui import emojis
 from manhwa_bot.ui.components.chapter_list import build_chapter_list_views
 from manhwa_bot.ui.components.notifications import build_chapter_update_view
@@ -108,3 +111,97 @@ def test_bookmark_chapter_markdown_links_premium_chapters_with_lock() -> None:
         )
         == f"[{emojis.LOCK} Chapter 9](https://example.test/chapter-9)"
     )
+
+
+def test_info_command_renders_dedicated_chapter_urls_when_info_payload_lacks_urls() -> None:
+    class FakeResponse:
+        async def defer(self, *, thinking: bool, ephemeral: bool) -> None:
+            self.deferred = (thinking, ephemeral)
+
+    class FakeMessage:
+        def __init__(self) -> None:
+            self.view: discord.ui.LayoutView | None = None
+
+        async def edit(self, *, view: discord.ui.LayoutView) -> None:
+            self.view = view
+
+    class FakeFollowup:
+        def __init__(self, message: FakeMessage) -> None:
+            self._message = message
+
+        async def send(
+            self,
+            *,
+            view: discord.ui.LayoutView,
+            ephemeral: bool,
+            wait: bool = False,
+        ) -> FakeMessage | None:
+            del ephemeral
+            self._message.view = view
+            return self._message if wait else None
+
+    class FakeCrawler:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        async def request_with_progress(self, type_: str, **kwargs) -> dict:
+            del kwargs
+            self.calls.append(type_)
+            assert type_ == "info"
+            return {
+                "title": "Series",
+                "url": "https://example.test/series",
+                "website_key": "site",
+                "chapters": [{"name": "Chapter 9", "is_premium": True}],
+            }
+
+        async def request(self, type_: str, **kwargs) -> dict:
+            del kwargs
+            self.calls.append(type_)
+            if type_ == "chapters":
+                return {
+                    "chapters": [
+                        {
+                            "name": "Chapter 9",
+                            "url": "https://example.test/chapter-9",
+                            "is_premium": True,
+                        }
+                    ]
+                }
+            if type_ == "supported_websites":
+                return {"websites": [{"key": "site", "name": "Site"}]}
+            raise AssertionError(type_)
+
+    class FakeCache:
+        async def get_or_set(self, key, loader, ttl):
+            del key, ttl
+            return await loader()
+
+    async def _run() -> None:
+        message = FakeMessage()
+        crawler = FakeCrawler()
+        bot = SimpleNamespace(
+            db=None,
+            crawler=crawler,
+            websites_cache=FakeCache(),
+            config=SimpleNamespace(supported_websites_cache=SimpleNamespace(ttl_seconds=60)),
+        )
+        interaction = SimpleNamespace(
+            response=FakeResponse(),
+            followup=FakeFollowup(message),
+            user=SimpleNamespace(id=1),
+        )
+        cog = CatalogCog(bot)  # type: ignore[arg-type]
+
+        await CatalogCog.info.callback(
+            cog,
+            interaction,  # type: ignore[arg-type]
+            "site|https://example.test/series",
+        )
+
+        assert message.view is not None
+        text = _view_text(message.view)
+        assert f"**Latest Chapter:** [{emojis.LOCK} Chapter 9](https://example.test/chapter-9)" in text
+        assert crawler.calls == ["info", "chapters", "supported_websites"]
+
+    asyncio.run(_run())

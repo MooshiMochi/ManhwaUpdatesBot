@@ -333,6 +333,15 @@ class BookmarkBrowserView(BaseLayoutView):
     async def _fetch_chapters(self, bm: Bookmark) -> list[dict]:
         meta = await self._meta_for(bm)
         identifier = meta["series_url"] or bm.url_name
+        request = getattr(self._crawler, "request", None)
+        if request is not None:
+            try:
+                data = await request("chapters", website_key=bm.website_key, url=identifier)
+                chapters = list(data.get("chapters") or [])
+                if chapters:
+                    return chapters
+            except Exception:
+                pass
         data = await self._crawler.request_with_progress(
             "info", website_key=bm.website_key, url=identifier, on_progress=None
         )

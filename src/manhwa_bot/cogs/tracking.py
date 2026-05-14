@@ -171,6 +171,20 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 first = latest_chapters[0] or {}
                 latest_text = first.get("name") or first.get("text")
                 latest_url = first.get("url")
+            if not latest_url:
+                try:
+                    chapters_data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+                        "chapters",
+                        website_key=website_key,
+                        url=series_url,
+                    )
+                    chapters = list(chapters_data.get("chapters") or [])
+                except (CrawlerError, RequestTimeout, Disconnected):
+                    chapters = []
+                if chapters:
+                    first = chapters[0] or {}
+                    latest_text = first.get("name") or first.get("text") or latest_text
+                    latest_url = first.get("url") or first.get("chapter_url") or latest_url
 
             await self._tracked.upsert_series(
                 website_key,
