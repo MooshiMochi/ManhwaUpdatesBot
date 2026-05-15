@@ -169,6 +169,15 @@ class _TrackingStatus:
     subscribed: bool
 
 
+@dataclass(frozen=True)
+class _TrackButtonState:
+    """Whether the current user can add tracking for the current bookmark."""
+
+    show: bool
+    enabled: bool
+    reason: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # BookmarkBrowserView
 # ---------------------------------------------------------------------------
@@ -419,6 +428,104 @@ class BookmarkBrowserView(BaseLayoutView):
             update_channel_name=channel_name,
             channel_visible=channel_visible,
             subscribed=subscribed,
+        )
+
+    async def _track_button_state(
+        self, bm: Bookmark, ts: _TrackingStatus | None
+    ) -> _TrackButtonState:
+        """Show Track when the user has no visible mutual tracked server."""
+        if ts is not None and ts.mutual_guild is not None and ts.channel_visible:
+            return _TrackButtonState(show=False, enabled=False)
+
+        guild = self._current_guild()
+        if guild is None:
+            return _TrackButtonState(
+                show=True,
+                enabled=False,
+                reason="Run this from the server where you want to track the series.",
+            )
+
+        member = guild.get_member(int(self._invoker_id or 0))
+        if member is None:
+            return _TrackButtonState(
+                show=True,
+                enabled=False,
+                reason="You need to be in this server to track the series.",
+            )
+
+        channel_id = await self._resolve_channel_id(int(guild.id), bm.website_key)
+        if channel_id is None:
+            return _TrackButtonState(
+                show=True,
+                enabled=False,
+                reason="Configure an updates channel before tracking this series.",
+            )
+        channel = self._channel_for(guild, channel_id)
+        if channel is None:
+            return _TrackButtonState(
+                show=True,
+                enabled=False,
+                reason="The configured updates channel could not be found.",
+            )
+        try:
+            can_see_channel = bool(channel.permissions_for(member).read_messages)
+        except Exception:
+            can_see_channel = False
+        if not can_see_channel:
+            return _TrackButtonState(
+                show=True,
+                enabled=False,
+                reason="You need to be able to see the updates channel to track this series.",
+            )
+
+        if await self._can_manage_tracking(int(guild.id), member):
+            return _TrackButtonState(show=True, enabled=True)
+        return _TrackButtonState(
+            show=True,
+            enabled=False,
+            reason=(
+                "You need Manage Roles, Manage Server, or the configured bot manager role "
+                "to track this series."
+            ),
+        )
+
+    def _current_guild(self) -> discord.Guild | None:
+        if self._guild_id is None or self._bot is None:
+            return None
+        try:
+            return self._bot.get_guild(int(self._guild_id))
+        except Exception:
+            return None
+
+    def _channel_for(
+        self, guild: discord.Guild, channel_id: int
+    ) -> discord.abc.GuildChannel | discord.Thread | None:
+        channel = None
+        try:
+            channel = guild.get_channel(int(channel_id))
+        except Exception:
+            channel = None
+        if channel is None and self._bot is not None:
+            try:
+                channel = self._bot.get_channel(int(channel_id))
+            except Exception:
+                channel = None
+        return channel
+
+    async def _can_manage_tracking(self, guild_id: int, member: discord.Member) -> bool:
+        perms = getattr(member, "guild_permissions", None)
+        if bool(getattr(perms, "manage_roles", False)) or bool(
+            getattr(perms, "manage_guild", False)
+        ):
+            return True
+        try:
+            settings = await self._guild_settings.get(guild_id)
+        except Exception:
+            settings = None
+        manager_role_id = getattr(settings, "bot_manager_role_id", None)
+        return bool(
+            manager_role_id
+            and any(getattr(role, "id", None) == manager_role_id for role in member.roles)
         )
 
     async def _resolve_channel_id(self, guild_id: int, website_key: str) -> int | None:
@@ -721,17 +828,22 @@ class BookmarkBrowserView(BaseLayoutView):
         container = await self._build_container()
 
         ts: _TrackingStatus | None = None
+        track_state: _TrackButtonState | None = None
         if self._filtered and self._mode == "visual":
             try:
                 ts = await self._tracking_status_for(self._filtered[self._index])
             except Exception:
                 ts = None
+            try:
+                track_state = await self._track_button_state(self._filtered[self._index], ts)
+            except Exception:
+                track_state = _TrackButtonState(show=True, enabled=False)
 
         # Per-bookmark action buttons + pagination live inside the container so
         # they share the visual frame.
         if self._filtered:
             container.add_item(small_separator())
-            container.add_item(self._build_action_row(ts))
+            container.add_item(self._build_action_row(ts, track_state))
 
         container.add_item(small_separator())
         container.add_item(self._build_pagination_row())
@@ -750,7 +862,11 @@ class BookmarkBrowserView(BaseLayoutView):
 
         self.add_item(container)
 
-    def _build_action_row(self, ts: _TrackingStatus | None) -> discord.ui.ActionRow:
+    def _build_action_row(
+        self,
+        ts: _TrackingStatus | None,
+        track_state: _TrackButtonState | None,
+    ) -> discord.ui.ActionRow:
         row = discord.ui.ActionRow()
         toggle_btn = discord.ui.Button(
             label="Text mode" if self._mode == "visual" else "Visual mode",
@@ -766,6 +882,18 @@ class BookmarkBrowserView(BaseLayoutView):
             )
             delete_btn.callback = self._on_delete  # type: ignore[assignment]
             row.add_item(delete_btn)
+            if track_state is not None and track_state.show:
+                track_btn = discord.ui.Button(
+                    label="Track",
+                    style=(
+                        discord.ButtonStyle.blurple
+                        if track_state.enabled
+                        else discord.ButtonStyle.secondary
+                    ),
+                    disabled=not track_state.enabled,
+                )
+                track_btn.callback = self._on_track  # type: ignore[assignment]
+                row.add_item(track_btn)
             if ts is not None and ts.mutual_guild is not None and ts.channel_visible:
                 sub_btn = discord.ui.Button(
                     label="Unsubscribe" if ts.subscribed else "Subscribe",
@@ -852,6 +980,60 @@ class BookmarkBrowserView(BaseLayoutView):
             self._index = 0
         else:
             self._index = min(self._index, len(self._filtered) - 1)
+        await self._rebuild()
+        await interaction.response.edit_message(view=self)
+
+    async def _on_track(self, interaction: discord.Interaction) -> None:
+        if not self._filtered:
+            await interaction.response.defer()
+            return
+        bm = self._filtered[self._index]
+        ts = await self._tracking_status_for(bm)
+        state = await self._track_button_state(bm, ts)
+        if not state.enabled:
+            await interaction.response.send_message(
+                state.reason or "You can't track this series from here.",
+                ephemeral=True,
+            )
+            return
+        guild = self._current_guild()
+        if guild is None:
+            await interaction.response.send_message(
+                "Run this from the server where you want to track the series.",
+                ephemeral=True,
+            )
+            return
+
+        meta = await self._meta_for(bm)
+        series_url = str(meta.get("series_url") or bm.url_name)
+        title = str(meta.get("title") or bm.url_name)
+        try:
+            await self._tracked.upsert_series(
+                bm.website_key,
+                bm.url_name,
+                series_url,
+                title,
+                cover_url=meta.get("cover_url"),
+                status=meta.get("status"),
+            )
+            await self._tracked.add_to_guild(int(guild.id), bm.website_key, bm.url_name)
+        except Exception:
+            _log.exception("track button failed")
+            await interaction.response.send_message(
+                "Failed to track this series — please try `/track new`.",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            await self._crawler.request(
+                "check_series",
+                website_key=bm.website_key,
+                url_name=bm.url_name,
+            )
+        except Exception:
+            _log.debug("track button immediate check failed", exc_info=True)
+
         await self._rebuild()
         await interaction.response.edit_message(view=self)
 

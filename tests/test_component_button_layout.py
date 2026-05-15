@@ -239,6 +239,150 @@ def _bookmark_browser(bookmarks: list[Bookmark]) -> bookmark.BookmarkBrowserView
     )
 
 
+class _Role:
+    def __init__(self, role_id: int) -> None:
+        self.id = role_id
+
+
+class _Permissions:
+    def __init__(self, *, read_messages: bool = True, manage_roles: bool = False) -> None:
+        self.read_messages = read_messages
+        self.manage_roles = manage_roles
+        self.manage_guild = False
+
+
+class _Member:
+    def __init__(self, *, roles: list[_Role], manage_roles: bool = False) -> None:
+        self.roles = roles
+        self.guild_permissions = _Permissions(manage_roles=manage_roles)
+
+
+class _Channel:
+    id = 55
+    name = "updates"
+
+    def permissions_for(self, _member: _Member) -> _Permissions:
+        return _Permissions(read_messages=True)
+
+
+class _Guild:
+    def __init__(self, member: _Member) -> None:
+        self.id = 99
+        self.name = "Guild"
+        self._member = member
+        self._channel = _Channel()
+
+    def get_member(self, user_id: int) -> _Member | None:
+        return self._member if user_id == 1 else None
+
+    def get_channel(self, channel_id: int) -> _Channel | None:
+        return self._channel if channel_id == self._channel.id else None
+
+
+class _Bot:
+    def __init__(self, guild: _Guild) -> None:
+        self._guild = guild
+
+    def get_guild(self, guild_id: int) -> _Guild | None:
+        return self._guild if guild_id == self._guild.id else None
+
+    def get_channel(self, channel_id: int) -> _Channel | None:
+        return self._guild.get_channel(channel_id)
+
+
+class _TrackButtonGuildSettingsStore:
+    def __init__(self, *, bot_manager_role_id: int | None) -> None:
+        self._bot_manager_role_id = bot_manager_role_id
+
+    async def list_scanlator_channels(self, _guild_id: int) -> list:
+        return [{"website_key": "site", "channel_id": 55}]
+
+    async def get(self, _guild_id: int):
+        return SimpleNamespace(
+            notifications_channel_id=55,
+            bot_manager_role_id=self._bot_manager_role_id,
+        )
+
+
+class _UntrackedStore:
+    async def find(self, website_key: str, url_name: str) -> None:
+        return None
+
+    async def list_guilds_tracking(self, website_key: str, url_name: str) -> list:
+        return []
+
+
+def _bookmark_browser_with_tracking_context(
+    *,
+    member: _Member,
+    bot_manager_role_id: int | None,
+) -> bookmark.BookmarkBrowserView:
+    guild = _Guild(member)
+    return bookmark.BookmarkBrowserView(
+        [
+            Bookmark(
+                user_id=1,
+                website_key="site",
+                url_name="series",
+                folder="Reading",
+                last_read_chapter="Chapter 2",
+                last_read_index=1,
+                created_at="2026-05-14T00:00:00",
+                updated_at="2026-05-14T00:00:00",
+            )
+        ],
+        store=SimpleNamespace(),
+        tracked=_UntrackedStore(),
+        subscriptions=SimpleNamespace(),
+        guild_settings=_TrackButtonGuildSettingsStore(bot_manager_role_id=bot_manager_role_id),
+        crawler=_FakeBookmarkCrawler(),
+        invoker_id=1,
+        guild_id=guild.id,
+        bot=_Bot(guild),
+    )
+
+
+def test_bookmark_browser_track_button_enabled_for_bot_manager_role() -> None:
+    browser = _bookmark_browser_with_tracking_context(
+        member=_Member(roles=[_Role(123)]),
+        bot_manager_role_id=123,
+    )
+
+    asyncio.run(browser.initial_render())
+
+    container = _first_container(browser)
+    action_row = next(
+        row
+        for row in _action_rows(container)
+        if any(
+            isinstance(child, discord.ui.Button) and child.label == "Track"
+            for child in row.children
+        )
+    )
+    labels = [child.label for child in action_row.children]
+    assert labels == ["Text mode", "Delete bookmark", "Track"]
+    track_button = next(child for child in action_row.children if child.label == "Track")
+    assert track_button.disabled is False
+
+
+def test_bookmark_browser_track_button_disabled_without_permission_or_manager_role() -> None:
+    browser = _bookmark_browser_with_tracking_context(
+        member=_Member(roles=[]),
+        bot_manager_role_id=123,
+    )
+
+    asyncio.run(browser.initial_render())
+
+    container = _first_container(browser)
+    track_button = next(
+        child
+        for row in _action_rows(container)
+        for child in row.children
+        if isinstance(child, discord.ui.Button) and child.label == "Track"
+    )
+    assert track_button.disabled is True
+
+
 def test_bookmark_browser_visual_controls_match_requested_layout() -> None:
     browser = _bookmark_browser(
         [
