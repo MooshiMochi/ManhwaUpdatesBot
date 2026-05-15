@@ -55,20 +55,23 @@ def test_chapter_list_links_premium_chapters_with_lock_only_when_premium() -> No
 
 
 def test_info_view_links_latest_and_first_chapters_with_premium_lock() -> None:
+    # Chapters are passed in ascending order (oldest → newest); the view
+    # picks ``chapters[0]`` for "First Chapter" and ``chapters[-1]`` for
+    # "Latest Chapter".
     view = build_info_view(
         {
             "title": "Series",
             "website_key": "site",
             "chapters": [
                 {
-                    "name": "Chapter 9",
-                    "url": "https://example.test/chapter-9",
-                    "is_premium": True,
-                },
-                {
                     "name": "Chapter 1",
                     "url": "https://example.test/chapter-1",
                     "is_premium": False,
+                },
+                {
+                    "name": "Chapter 9",
+                    "url": "https://example.test/chapter-9",
+                    "is_premium": True,
                 },
             ],
         }
@@ -201,7 +204,9 @@ def test_info_command_renders_dedicated_chapter_urls_when_info_payload_lacks_url
 
         assert message.view is not None
         text = _view_text(message.view)
-        assert f"**Latest Chapter:** [{emojis.LOCK} Chapter 9](https://example.test/chapter-9)" in text
+        assert (
+            f"**Latest Chapter:** [{emojis.LOCK} Chapter 9](https://example.test/chapter-9)" in text
+        )
         assert crawler.calls == ["info", "chapters", "supported_websites"]
 
     asyncio.run(_run())

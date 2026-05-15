@@ -207,8 +207,10 @@ def build_info_view(
         else (scanlator_label or "Unknown")
     )
 
-    latest = _chapter_label(chapters[0]) if chapters else "N/A"
-    first = _chapter_label(chapters[-1]) if chapters else "N/A"
+    # Chapters arrive ascending (oldest → newest): chapters[0] is the first
+    # chapter, chapters[-1] is the latest.
+    latest = _chapter_label(chapters[-1]) if chapters else "N/A"
+    first = _chapter_label(chapters[0]) if chapters else "N/A"
 
     header_block = f"# [{title}]({series_url})" if series_url else f"# {title}"
     sub_parts: list[str] = []

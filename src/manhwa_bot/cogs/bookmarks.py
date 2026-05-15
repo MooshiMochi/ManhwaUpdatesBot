@@ -14,12 +14,13 @@ from discord.ext import commands
 
 from .. import autocomplete
 from ..checks import has_premium
+from ..crawler.chapter import Chapter
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
 from ..db.bookmarks import BookmarkStore
+from ..db.guild_settings import GuildSettingsStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
-from ..ui.components.base import chapter_label, chapter_markdown
 from ..ui.components.bookmark import (
     BOOKMARK_FOLDERS,
     BookmarkBrowserView,
@@ -73,12 +74,16 @@ def _url_name_from_url(url: str) -> str | None:
     return segs[-1] if segs else None
 
 
-def _chapter_label(ch: dict, fallback_idx: int) -> str:
-    return chapter_label(ch, ch.get("index", fallback_idx))
+def _chapter_label(ch: Chapter | dict, fallback_idx: int) -> str:
+    if isinstance(ch, Chapter):
+        return ch.name
+    return Chapter.from_dict(ch, fallback_idx=fallback_idx).name
 
 
-def _chapter_markdown(ch: dict, fallback_idx: int) -> str:
-    return chapter_markdown(ch, ch.get("index", fallback_idx))
+def _chapter_markdown(ch: Chapter | dict, fallback_idx: int) -> str:
+    if isinstance(ch, Chapter):
+        return str(ch)
+    return str(Chapter.from_dict(ch, fallback_idx=fallback_idx))
 
 
 class BookmarksCog(commands.Cog, name="Bookmarks"):
@@ -89,6 +94,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         self._bookmarks = BookmarkStore(bot.db)  # type: ignore[attr-defined]
         self._tracked = TrackedStore(bot.db)  # type: ignore[attr-defined]
         self._subs = SubscriptionStore(bot.db)  # type: ignore[attr-defined]
+        self._guild_settings = GuildSettingsStore(bot.db)  # type: ignore[attr-defined]
 
     # -- internal helpers -----------------------------------------------
 
@@ -136,7 +142,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             return _ResolvedSeries(wk, un, su, data)
         return None
 
-    async def _fetch_chapters_for(self, resolved: _ResolvedSeries) -> list[dict]:
+    async def _fetch_chapters_for(self, resolved: _ResolvedSeries) -> list[Chapter]:
         return await self._fetch_chapters_with_fallback(
             website_key=resolved.website_key,
             identifier=resolved.series_url,
@@ -149,31 +155,33 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         website_key: str,
         identifier: str,
         info_data: dict,
-    ) -> list[dict]:
+    ) -> list[Chapter]:
+        raw_chapters: list = []
         try:
             data = await self.bot.crawler.request(  # type: ignore[attr-defined]
                 "chapters",
                 website_key=website_key,
                 url=identifier,
             )
-            chapters = list(data.get("chapters") or [])
-            if chapters:
-                return chapters
-        except (CrawlerError, RequestTimeout, Disconnected):
+            raw_chapters = list(data.get("chapters") or [])
+        except CrawlerError, RequestTimeout, Disconnected:
             pass
-        return list(info_data.get("chapters") or info_data.get("latest_chapters") or [])
+        if not raw_chapters:
+            raw_chapters = list(info_data.get("chapters") or info_data.get("latest_chapters") or [])
+        return Chapter.list_from_payload({"chapters": raw_chapters})
 
     async def _cache_series_metadata(
         self,
         resolved: _ResolvedSeries,
-        chapters: list[dict],
+        chapters: list[Chapter],
     ) -> tuple[str, str | None, str]:
         """Persist best-effort metadata without marking the series tracked in a guild."""
         info = resolved.info
         title = str(info.get("title") or resolved.url_name)
         cover_url = info.get("cover_url")
         status = str(info.get("status") or "Unknown")
-        latest = chapters[0] if chapters else {}
+        # Chapters arrive ascending (oldest → newest); newest = last entry.
+        latest = chapters[-1] if chapters else None
         await self._tracked.upsert_series(
             resolved.website_key,
             resolved.url_name,
@@ -181,8 +189,8 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             title,
             cover_url=cover_url,
             status=status,
-            last_chapter_text=_chapter_label(latest, 0) if latest else None,
-            last_chapter_url=(latest.get("url") or latest.get("chapter_url")) if latest else None,
+            last_chapter_text=latest.name if latest else None,
+            last_chapter_url=latest.url if latest else None,
         )
         return title, cover_url, status
 
@@ -324,7 +332,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             )
             return
 
-        first_label = _chapter_label(chapters[0], 0)
+        first_label = chapters[0].name
         await self._bookmarks.upsert_bookmark(
             interaction.user.id,
             website_key,
@@ -342,9 +350,9 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         status = info_data.get("status") or (tracked.status if tracked else None) or "Unknown"
         is_completed = (status or "").strip().lower() in _COMPLETED_STATUSES
 
-        first_md = _chapter_markdown(chapters[0], 0)
-        latest_md = _chapter_markdown(chapters[-1], len(chapters) - 1)
-        next_md = _chapter_markdown(chapters[1], 1) if len(chapters) > 1 else None
+        first_md = str(chapters[0])
+        latest_md = str(chapters[-1])
+        next_md = str(chapters[1]) if len(chapters) > 1 else None
 
         action_row = None
         if bookmark is not None:
@@ -356,6 +364,8 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     [bookmark],
                     store=self._bookmarks,
                     tracked=self._tracked,
+                    subscriptions=self._subs,
+                    guild_settings=self._guild_settings,
                     crawler=self.bot.crawler,  # type: ignore[attr-defined]
                     invoker_id=invoker_id,
                     guild_id=guild_id,
@@ -446,6 +456,8 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             bookmarks,
             store=self._bookmarks,
             tracked=self._tracked,
+            subscriptions=self._subs,
+            guild_settings=self._guild_settings,
             crawler=self.bot.crawler,  # type: ignore[attr-defined]
             invoker_id=interaction.user.id,
             guild_id=interaction.guild_id,
@@ -620,8 +632,8 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 return
 
             chapter = chapters[chapter_index]
-            label = _chapter_label(chapter, chapter_index)
-            chapter_display = _chapter_markdown(chapter, chapter_index)
+            label = chapter.name
+            chapter_display = str(chapter)
             await self._bookmarks.update_last_read(
                 interaction.user.id,
                 website_key,

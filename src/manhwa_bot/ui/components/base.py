@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 import discord
 
+from ...crawler.chapter import Chapter
 from .. import emojis
 
 # Limits we treat as "safe" upper bounds when rendering long text. Components
@@ -40,6 +41,37 @@ def status_accent(status: str | None) -> discord.Colour:
     if "dropped" in s or "cancelled" in s:
         return discord.Colour.red()
     return discord.Colour.blurple()
+
+
+def status_ansi(status: str | None) -> str:
+    """Status string → fenced ANSI code block rendering the status in colour."""
+    label = (status or "Unknown").strip() or "Unknown"
+    s = label.lower()
+    if "ongoing" in s or "releasing" in s:
+        code = "1;32"  # bold green
+    elif "completed" in s or "finished" in s:
+        code = "1;34"  # bold blue
+    elif "hiatus" in s or "paused" in s:
+        code = "1;33"  # bold yellow
+    elif "dropped" in s or "cancelled" in s:
+        code = "1;31"  # bold red
+    else:
+        code = "1;37"  # bold white
+    return f"```ansi\n[{code}m{label}[0m\n```"
+
+
+def status_emoji(status: str | None) -> str:
+    """Status string → coloured-circle emoji indicating the series state."""
+    s = (status or "").lower()
+    if "ongoing" in s or "releasing" in s:
+        return "🟢"
+    if "completed" in s or "finished" in s:
+        return "🔵"
+    if "hiatus" in s or "paused" in s:
+        return "🟡"
+    if "dropped" in s or "cancelled" in s:
+        return "🔴"
+    return "⚪"
 
 
 def folder_accent(folder: str) -> discord.Colour:
@@ -106,6 +138,8 @@ def series_header_section(
 
 
 def chapter_label(chapter: object, fallback_idx: int | None = None) -> str:
+    if isinstance(chapter, Chapter):
+        return chapter.name
     if not isinstance(chapter, dict):
         return str(chapter)
     fallback = "?" if fallback_idx is None else f"#{fallback_idx}"
@@ -119,12 +153,16 @@ def chapter_label(chapter: object, fallback_idx: int | None = None) -> str:
 
 
 def chapter_url(chapter: object) -> str:
+    if isinstance(chapter, Chapter):
+        return chapter.url
     if not isinstance(chapter, dict):
         return ""
     return str(chapter.get("url") or chapter.get("chapter_url") or "")
 
 
 def chapter_is_premium(chapter: object) -> bool:
+    if isinstance(chapter, Chapter):
+        return chapter.is_premium
     if not isinstance(chapter, dict):
         return False
     return bool(
@@ -138,6 +176,8 @@ def chapter_is_premium(chapter: object) -> bool:
 
 
 def chapter_markdown(chapter: object, fallback_idx: int | None = None) -> str:
+    if isinstance(chapter, Chapter):
+        return str(chapter)
     label = chapter_label(chapter, fallback_idx)
     if chapter_is_premium(chapter):
         label = f"{emojis.LOCK} {label}"

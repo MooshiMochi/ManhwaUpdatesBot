@@ -19,9 +19,31 @@ import aiohttp
 
 from ..config import CrawlerConfig
 from ..log import get
+from .chapter import Chapter
 from .errors import CrawlerError, Disconnected, RequestTimeout
 from .progress import CrawlerProgressEvent, parse_progress_event
 from .retry import Backoff
+
+_CHAPTER_PAYLOAD_OPS = frozenset({"chapters", "info", "search", "check_series"})
+
+
+def _wrap_chapter_payload(type_: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Replace ``chapters``/``latest_chapters`` arrays with ``list[Chapter]``."""
+    if type_ not in _CHAPTER_PAYLOAD_OPS:
+        return data
+    has_chapters = "chapters" in data
+    has_latest = "latest_chapters" in data
+    if not (has_chapters or has_latest):
+        return data
+    wrapped = dict(data)
+    if has_chapters:
+        wrapped["chapters"] = Chapter.list_from_payload({"chapters": data["chapters"]})
+    if has_latest:
+        wrapped["latest_chapters"] = Chapter.list_from_payload(
+            {"chapters": data["latest_chapters"]}
+        )
+    return wrapped
+
 
 PushHandler = Callable[[dict[str, Any]], Awaitable[None]]
 ProgressCallback = Callable[[CrawlerProgressEvent], Awaitable[None] | None]
@@ -189,7 +211,9 @@ class CrawlerClient:
                 request_id=rid,
             )
         data = response.get("data")
-        return data if isinstance(data, dict) else {}
+        if not isinstance(data, dict):
+            return {}
+        return _wrap_chapter_payload(type_, data)
 
     def on_push(self, type_: str, handler: PushHandler) -> None:
         """Register a handler for unsolicited messages of the given ``type``."""

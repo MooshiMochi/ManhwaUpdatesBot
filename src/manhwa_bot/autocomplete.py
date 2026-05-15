@@ -181,19 +181,19 @@ async def user_bookmarks(
     interaction: discord.Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    """Bookmarks belonging to the invoker."""
+    """Bookmarks belonging to the invoker, labelled with the real series title."""
     try:
         bot: Any = interaction.client
         from .db.bookmarks import BookmarkStore
 
         store = BookmarkStore(bot.db)
-        rows = await store.list_user_bookmarks(interaction.user.id, limit=100)
+        rows = await store.list_user_bookmarks_with_titles(interaction.user.id, limit=100)
         choices: list[app_commands.Choice[str]] = []
-        for bm in rows:
-            label = _manga_choice_name(bm.website_key, bm.url_name)
-            value = f"{bm.website_key}:{bm.url_name}"
-            if not _matches_manga_autocomplete(bm.website_key, bm.url_name, current):
+        for bm, title in rows:
+            if not _matches_manga_autocomplete(bm.website_key, title, current):
                 continue
+            label = _manga_choice_name(bm.website_key, title)
+            value = f"{bm.website_key}:{bm.url_name}"
             choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
             if len(choices) >= 25:
                 break

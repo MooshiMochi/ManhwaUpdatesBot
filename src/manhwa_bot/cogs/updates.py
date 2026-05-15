@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 import discord
 from discord.ext import commands
 
+from ..crawler.chapter import Chapter
 from ..crawler.notifications import NotificationConsumer
 from ..db.consumer_state import ConsumerStateStore
 from ..db.dm_settings import DmSettingsStore
@@ -67,11 +68,14 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 "notification record missing website_key/url_name: id=%s", record.get("id")
             )
             return
-        chapter = payload.get("chapter") or {}
-        is_premium = bool(chapter.get("is_premium"))
+        raw_chapter = payload.get("chapter") or {}
+        chapter = (
+            raw_chapter if isinstance(raw_chapter, Chapter) else Chapter.from_dict(raw_chapter)
+        )
+        # Replace the dict with a Chapter so downstream views can rely on .name/.url/etc.
+        payload["chapter"] = chapter
+        is_premium = chapter.is_premium
 
-        chapter_text = chapter.get("name") or chapter.get("text")
-        chapter_url = chapter.get("url")
         chapter_at = (
             payload.get("released_at") or payload.get("created_at") or record.get("created_at")
         )
@@ -79,8 +83,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
             await self._tracked.update_latest_chapter(
                 website_key,
                 url_name,
-                text=str(chapter_text) if chapter_text else None,
-                url=str(chapter_url) if chapter_url else None,
+                text=chapter.name or None,
+                url=chapter.url or None,
                 at=str(chapter_at) if chapter_at else None,
             )
         except Exception:

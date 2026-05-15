@@ -140,6 +140,26 @@ def test_bookmark_browser_buttons_are_nested_inside_container() -> None:
         async def find(self, website_key: str, url_name: str) -> None:
             return None
 
+        async def list_guilds_tracking(self, website_key: str, url_name: str) -> list:
+            return []
+
+    class FakeSubscriptionStore:
+        async def is_subscribed(self, *_args, **_kwargs) -> bool:
+            return False
+
+        async def subscribe(self, *_args, **_kwargs) -> None:
+            return None
+
+        async def unsubscribe(self, *_args, **_kwargs) -> None:
+            return None
+
+    class FakeGuildSettingsStore:
+        async def list_scanlator_channels(self, _guild_id: int) -> list:
+            return []
+
+        async def get(self, _guild_id: int):
+            return None
+
     browser = bookmark.BookmarkBrowserView(
         [
             Bookmark(
@@ -155,6 +175,8 @@ def test_bookmark_browser_buttons_are_nested_inside_container() -> None:
         ],
         store=SimpleNamespace(),
         tracked=FakeTrackedStore(),
+        subscriptions=FakeSubscriptionStore(),
+        guild_settings=FakeGuildSettingsStore(),
         crawler=SimpleNamespace(),
         invoker_id=1,
     )

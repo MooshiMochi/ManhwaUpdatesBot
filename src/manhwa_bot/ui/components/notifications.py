@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import discord
 
+from ...crawler.chapter import Chapter
 from .base import (
     BaseLayoutView,
-    chapter_is_premium,
     chapter_markdown,
     footer_section,
     hero_cover_gallery,
@@ -25,8 +25,9 @@ def build_chapter_update_view(
     """
     series_title = payload.get("series_title") or payload.get("url_name") or "New chapter"
     series_url = payload.get("series_url") or None
-    chapter = payload.get("chapter") or {}
-    is_premium = chapter_is_premium(chapter)
+    raw_chapter = payload.get("chapter") or {}
+    chapter = raw_chapter if isinstance(raw_chapter, Chapter) else Chapter.from_dict(raw_chapter)
+    is_premium = chapter.is_premium
     cover_url = payload.get("cover_url")
     website_key = payload.get("website_key")
 
@@ -38,7 +39,7 @@ def build_chapter_update_view(
         if series_url
         else f"## {glyph}  {series_title}"
     )
-    chapter_display = chapter_markdown(chapter, chapter.get("index"))
+    chapter_display = chapter_markdown(chapter)
     body = f"**New chapter:** {chapter_display}"
 
     container = discord.ui.Container(accent_colour=accent)

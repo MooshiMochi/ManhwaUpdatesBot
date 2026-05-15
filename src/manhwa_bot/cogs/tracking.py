@@ -13,6 +13,7 @@ from discord.ext import commands
 
 from .. import autocomplete
 from ..checks import has_premium
+from ..crawler.chapter import Chapter
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..crawler.website_detect import detect_website_key
 from ..db.guild_settings import GuildSettingsStore
@@ -164,13 +165,17 @@ class TrackingCog(commands.Cog, name="Tracking"):
             status: str | None = series_data.get("status")
             cover_url: str | None = series_data.get("cover_url")
 
-            latest_chapters = series_data.get("latest_chapters") or []
+            latest_chapters = Chapter.list_from_payload(
+                {"chapters": series_data.get("latest_chapters") or []}
+            )
             latest_text: str | None = None
             latest_url: str | None = None
+            # Chapters arrive ascending (oldest → newest); the newest entry is
+            # last in the list.
             if latest_chapters:
-                first = latest_chapters[0] or {}
-                latest_text = first.get("name") or first.get("text")
-                latest_url = first.get("url")
+                newest = latest_chapters[-1]
+                latest_text = newest.name or latest_text
+                latest_url = newest.url or latest_url
             if not latest_url:
                 try:
                     chapters_data = await self.bot.crawler.request(  # type: ignore[attr-defined]
@@ -179,12 +184,12 @@ class TrackingCog(commands.Cog, name="Tracking"):
                         url=series_url,
                     )
                     chapters = list(chapters_data.get("chapters") or [])
-                except (CrawlerError, RequestTimeout, Disconnected):
+                except CrawlerError, RequestTimeout, Disconnected:
                     chapters = []
                 if chapters:
-                    first = chapters[0] or {}
-                    latest_text = first.get("name") or first.get("text") or latest_text
-                    latest_url = first.get("url") or first.get("chapter_url") or latest_url
+                    newest = chapters[-1]
+                    latest_text = newest.name or latest_text
+                    latest_url = newest.url or latest_url
 
             await self._tracked.upsert_series(
                 website_key,

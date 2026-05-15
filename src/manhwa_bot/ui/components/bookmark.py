@@ -3,22 +3,27 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 import discord
 
+from ...crawler.chapter import Chapter
 from ...db.bookmarks import Bookmark, BookmarkStore
+from ...db.guild_settings import GuildSettingsStore
+from ...db.subscriptions import SubscriptionStore
 from ...db.tracked import TrackedStore
 from .. import emojis
 from .base import (
     BaseLayoutView,
+    chapter_markdown,
     folder_accent,
     footer_section,
     hero_cover_gallery,
     large_separator,
     safe_truncate,
     small_separator,
+    status_emoji,
 )
 
 _log = logging.getLogger(__name__)
@@ -33,6 +38,7 @@ BOOKMARK_FOLDERS: tuple[str, ...] = (
 )
 
 _TEXT_PAGE_SIZE = 10
+_CHAPTER_SELECT_WINDOW = 25
 
 
 # ---------------------------------------------------------------------------
@@ -75,17 +81,16 @@ def build_bookmark_detail_view(
         if scanlator_base_url
         else website_key.title()
     )
-    header_block = f"# 🔖  [{title}]({series_url})" if series_url else f"# 🔖  {title}"
+    header_block = f"## 🔖  [{title}]({series_url})" if series_url else f"## 🔖  {title}"
     details_block = (
-        f"**Scanlator:** {scanlator_link}\n"
+        f"**Scanlator:** {scanlator_link} • **Status:** {status_emoji(status)} {status}\n"
         f"**Folder:** `{folder}`\n"
-        f"**Status:** `{status}`\n"
         f"**Last Read:** {last_read_chapter}\n"
         f"**Next Chapter:** {next_text}\n"
         f"**Available Chapters:** Up to {available}"
     )
 
-    container = discord.ui.Container(accent_colour=folder_accent(folder))
+    container = discord.ui.Container(accent_colour=None)
     gallery = hero_cover_gallery(cover_url)
     if gallery is not None:
         container.add_item(gallery)
@@ -131,7 +136,7 @@ def build_bookmark_update_success_view(
         discord.ui.TextDisplay(body),
         small_separator(),
         footer_section(bot),
-        accent_colour=discord.Colour.green(),
+        accent_colour=None,
     )
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
@@ -139,69 +144,27 @@ def build_bookmark_update_success_view(
 
 
 # ---------------------------------------------------------------------------
-# BookmarkBrowserView — replaces ui/bookmark_view.py BookmarkView
+# Tracking-state helper
 # ---------------------------------------------------------------------------
 
 
-def _visual_container(
-    bm: Bookmark,
-    *,
-    title: str,
-    series_url: str,
-    cover_url: str | None,
-    index: int,
-    total: int,
-    tracked_in_guild: bool,
-) -> discord.ui.Container:
-    header_block = f"# 🔖  [{title}]({series_url})" if series_url else f"# 🔖  {title}"
-    details_block = (
-        f"**Folder:** `{bm.folder}`\n"
-        f"**Website:** `{bm.website_key}`\n"
-        f"**Last Read:** {bm.last_read_chapter or '—'}"
-    )
+@dataclass(frozen=True)
+class _TrackingStatus:
+    """Computed tracking + subscription state for the current user/bookmark."""
 
-    container = discord.ui.Container(accent_colour=folder_accent(bm.folder))
-    gallery = hero_cover_gallery(cover_url)
-    if gallery is not None:
-        container.add_item(gallery)
-    container.add_item(discord.ui.TextDisplay(header_block))
-    container.add_item(small_separator())
-    container.add_item(discord.ui.TextDisplay(details_block))
-    if not tracked_in_guild:
-        container.add_item(small_separator())
-        container.add_item(
-            discord.ui.TextDisplay(
-                f"{emojis.WARNING} **Not tracked here** — you won't get notifications "
-                "until an admin runs `/track new` for this series."
-            )
-        )
-    container.add_item(small_separator())
-    container.add_item(footer_section(None, extra=f"Bookmark {index + 1}/{total}"))
-    return container
+    is_tracked: bool
+    mutual_guild: discord.Guild | None
+    display_guild_name: str | None
+    display_guild_id: int | None
+    update_channel_id: int | None
+    update_channel_name: str | None
+    channel_visible: bool
+    subscribed: bool
 
 
-def _text_container(
-    items: list[tuple[Bookmark, str]],
-    *,
-    page: int,
-    total_pages: int,
-    folder_label: str,
-) -> discord.ui.Container:
-    lines: list[str] = []
-    for bm, display_title in items:
-        last = bm.last_read_chapter or "—"
-        lines.append(f"**{display_title}** · `{bm.folder}` · last: {last}")
-
-    body = "\n".join(lines) if lines else "No bookmarks in this folder."
-    container = discord.ui.Container(
-        discord.ui.TextDisplay("## 🔖  Your bookmarks"),
-        small_separator(),
-        discord.ui.TextDisplay(safe_truncate(body, 3500)),
-        small_separator(),
-        footer_section(None, extra=f"{folder_label} • Page {page + 1}/{max(1, total_pages)}"),
-        accent_colour=discord.Colour.blurple(),
-    )
-    return container
+# ---------------------------------------------------------------------------
+# BookmarkBrowserView
+# ---------------------------------------------------------------------------
 
 
 class _SetLastReadModal(discord.ui.Modal, title="Set last read chapter"):
@@ -233,7 +196,7 @@ class _SetLastReadModal(discord.ui.Modal, title="Set last read chapter"):
             return
 
         try:
-            chapters = await self._view._fetch_chapters(self._bm)
+            chapters = await self._view._get_chapters(self._bm)
         except Exception as exc:
             await interaction.response.send_message(
                 f"Couldn't fetch chapters: {exc}", ephemeral=True
@@ -248,19 +211,18 @@ class _SetLastReadModal(discord.ui.Modal, title="Set last read chapter"):
             return
 
         ch = chapters[idx]
-        chapter_text = ch.get("chapter") or ch.get("chapter_number") or f"#{ch.get('index', idx)}"
         await self._view._store.update_last_read(
             self._bm.user_id,
             self._bm.website_key,
             self._bm.url_name,
-            chapter_text=chapter_text,
+            chapter_text=ch.name,
             chapter_index=idx,
         )
-        await self._view._refresh_current(interaction, chapter_text=chapter_text, chapter_index=idx)
+        await self._view._refresh_current(interaction, chapter_text=ch.name, chapter_index=idx)
 
 
 class BookmarkBrowserView(BaseLayoutView):
-    """V2 bookmark browser. Visual + text modes, folder filter, set-last-read modal."""
+    """V2 bookmark browser. Visual + text modes, folder select, tracking, subscribe."""
 
     def __init__(
         self,
@@ -268,6 +230,8 @@ class BookmarkBrowserView(BaseLayoutView):
         *,
         store: BookmarkStore,
         tracked: TrackedStore,
+        subscriptions: SubscriptionStore,
+        guild_settings: GuildSettingsStore,
         crawler: Any,
         invoker_id: int,
         guild_id: int | None = None,
@@ -280,12 +244,16 @@ class BookmarkBrowserView(BaseLayoutView):
         self._all = list(bookmarks)
         self._store = store
         self._tracked = tracked
+        self._subs = subscriptions
+        self._guild_settings = guild_settings
         self._crawler = crawler
         self._guild_id = guild_id
         self._current_folder = current_folder
         self._mode: Literal["visual", "text"] = "visual"
         self._bot = bot
         self._meta: dict[tuple[str, str], dict[str, Any]] = {}
+        self._chapter_cache: dict[tuple[str, str], list[Chapter]] = {}
+        self._site_meta_cache: dict[str, dict[str, Any]] = {}
         self._filtered = self._apply_folder_filter()
         self._index = max(0, min(index, max(0, len(self._filtered) - 1)))
 
@@ -309,6 +277,7 @@ class BookmarkBrowserView(BaseLayoutView):
         title = bm.url_name
         series_url = ""
         cover_url: str | None = None
+        status: str | None = None
         try:
             tracked = await self._tracked.find(bm.website_key, bm.url_name)
         except Exception:
@@ -317,37 +286,429 @@ class BookmarkBrowserView(BaseLayoutView):
             title = tracked.title
             series_url = tracked.series_url
             cover_url = tracked.cover_url
-        meta = {"title": title, "series_url": series_url, "cover_url": cover_url}
+            status = tracked.status
+        meta = {
+            "title": title,
+            "series_url": series_url,
+            "cover_url": cover_url,
+            "status": status or "Unknown",
+        }
         self._meta[key] = meta
         return meta
 
-    async def _is_tracked_in_context(self, bm: Bookmark) -> bool:
-        if self._guild_id is None:
-            return True
+    async def _site_meta_for(self, website_key: str) -> dict[str, Any]:
+        if website_key in self._site_meta_cache:
+            return self._site_meta_cache[website_key]
+        meta: dict[str, Any] = {}
+        try:
+            data = await self._crawler.request("supported_websites")
+            for w in data.get("websites") or []:
+                key = w.get("key") or w.get("website_key")
+                if key == website_key:
+                    meta = w
+                    break
+        except Exception:
+            _log.debug("supported_websites lookup failed for %s", website_key, exc_info=True)
+        self._site_meta_cache[website_key] = meta
+        return meta
+
+    async def _get_chapters(self, bm: Bookmark) -> list[Chapter]:
+        key = (bm.website_key, bm.url_name)
+        if key in self._chapter_cache:
+            return self._chapter_cache[key]
+        meta = await self._meta_for(bm)
+        identifier = meta["series_url"] or bm.url_name
+        chapters: list[Chapter] = []
+        try:
+            data = await self._crawler.request(
+                "chapters", website_key=bm.website_key, url=identifier
+            )
+            chapters = list(data.get("chapters") or [])
+        except Exception:
+            try:
+                data = await self._crawler.request_with_progress(
+                    "info", website_key=bm.website_key, url=identifier, on_progress=None
+                )
+                chapters = list(data.get("chapters") or data.get("latest_chapters") or [])
+            except Exception:
+                _log.debug("chapter fetch failed for %s:%s", bm.website_key, bm.url_name)
+                chapters = []
+        self._chapter_cache[key] = chapters
+        return chapters
+
+    async def _tracking_status_for(self, bm: Bookmark) -> _TrackingStatus:
         try:
             rows = await self._tracked.list_guilds_tracking(bm.website_key, bm.url_name)
         except Exception:
-            return True
-        return any(int(row.guild_id) == int(self._guild_id) for row in rows)
+            rows = []
+        if not rows:
+            return _TrackingStatus(
+                is_tracked=False,
+                mutual_guild=None,
+                display_guild_name=None,
+                display_guild_id=None,
+                update_channel_id=None,
+                update_channel_name=None,
+                channel_visible=False,
+                subscribed=False,
+            )
 
-    async def _fetch_chapters(self, bm: Bookmark) -> list[dict]:
-        meta = await self._meta_for(bm)
-        identifier = meta["series_url"] or bm.url_name
-        request = getattr(self._crawler, "request", None)
-        if request is not None:
+        mutual_guild: discord.Guild | None = None
+        chosen_row = rows[0]
+        if self._bot is not None:
+            for row in rows:
+                guild = self._bot.get_guild(int(row.guild_id))
+                if guild is None:
+                    continue
+                member = guild.get_member(int(self._invoker_id or 0))
+                if member is not None:
+                    mutual_guild = guild
+                    chosen_row = row
+                    break
+
+        # Always try to resolve channel info for the chosen row so we can
+        # surface "tracked in #X (Server)" even when the user isn't in the
+        # guild or can't see the channel.
+        display_guild_id = int(chosen_row.guild_id)
+        display_guild_name: str | None = None
+        if self._bot is not None:
+            display_guild = mutual_guild or self._bot.get_guild(display_guild_id)
+            if display_guild is not None:
+                display_guild_name = display_guild.name
+
+        channel_id = await self._resolve_channel_id(display_guild_id, bm.website_key)
+        channel_name: str | None = None
+        channel_visible = False
+        if channel_id is not None and self._bot is not None:
+            channel = self._bot.get_channel(int(channel_id))
+            if isinstance(channel, discord.TextChannel | discord.Thread):
+                channel_name = channel.name
+                if mutual_guild is not None:
+                    member = mutual_guild.get_member(int(self._invoker_id or 0))
+                    if member is not None:
+                        try:
+                            channel_visible = channel.permissions_for(member).read_messages
+                        except Exception:
+                            channel_visible = False
+
+        subscribed = False
+        if mutual_guild is not None:
             try:
-                data = await request("chapters", website_key=bm.website_key, url=identifier)
-                chapters = list(data.get("chapters") or [])
-                if chapters:
-                    return chapters
+                subscribed = await self._subs.is_subscribed(
+                    int(self._invoker_id or 0),
+                    int(mutual_guild.id),
+                    bm.website_key,
+                    bm.url_name,
+                )
             except Exception:
-                pass
-        data = await self._crawler.request_with_progress(
-            "info", website_key=bm.website_key, url=identifier, on_progress=None
+                subscribed = False
+
+        return _TrackingStatus(
+            is_tracked=True,
+            mutual_guild=mutual_guild,
+            display_guild_name=display_guild_name,
+            display_guild_id=display_guild_id,
+            update_channel_id=channel_id,
+            update_channel_name=channel_name,
+            channel_visible=channel_visible,
+            subscribed=subscribed,
         )
-        return list(data.get("chapters") or data.get("latest_chapters") or [])
+
+    async def _resolve_channel_id(self, guild_id: int, website_key: str) -> int | None:
+        try:
+            scanlator_rows = await self._guild_settings.list_scanlator_channels(guild_id)
+            for entry in scanlator_rows:
+                if str(entry.get("website_key")) == website_key:
+                    cid = entry.get("channel_id")
+                    if cid is not None:
+                        return int(cid)
+            settings = await self._guild_settings.get(guild_id)
+            if settings is not None and settings.notifications_channel_id is not None:
+                return int(settings.notifications_channel_id)
+        except Exception:
+            return None
+        return None
 
     # ---- rendering ------------------------------------------------------
+
+    def _tracking_lines(self, ts: _TrackingStatus) -> list[str]:
+        """Render the Tracking + Subscribed text rows. The channel is always mentioned."""
+        if not ts.is_tracked:
+            return ["**Tracking:** Not tracked — ask a server admin to `/track new` this series."]
+
+        if ts.update_channel_id is not None:
+            channel_part = f"<#{ts.update_channel_id}>"
+        elif ts.update_channel_name:
+            channel_part = f"#{ts.update_channel_name}"
+        else:
+            channel_part = "*(no channel configured)*"
+        guild_part = f"(**{ts.display_guild_name}**)" if ts.display_guild_name else ""
+        location = f"{channel_part} {guild_part}".strip()
+
+        lines: list[str] = []
+        if ts.mutual_guild is None:
+            lines.append(
+                f"**Tracking:** {emojis.WARNING} Tracked in {location} — "
+                "you aren't in a mutual server, so you won't receive notifications."
+            )
+        elif not ts.channel_visible:
+            lines.append(
+                f"**Tracking:** {emojis.WARNING} Tracked in {location} — "
+                "you can't see this channel, so you won't receive notifications."
+            )
+        else:
+            lines.append(f"**Tracking:** Tracked in {location}")
+            lines.append(f"**Subscribed:** {'Yes' if ts.subscribed else 'No'}")
+        return lines
+
+    async def _visual_container(self, bm: Bookmark) -> tuple[discord.ui.Container, list[Chapter]]:
+        meta = await self._meta_for(bm)
+        title = meta["title"]
+        series_url = meta["series_url"]
+        cover_url = meta["cover_url"]
+        status = meta.get("status") or "Unknown"
+
+        site_meta = await self._site_meta_for(bm.website_key)
+        site_label = site_meta.get("name") or bm.website_key.title()
+        site_base_url = site_meta.get("base_url")
+        site_link = f"[{site_label}]({site_base_url})" if site_base_url else f"**{site_label}**"
+
+        chapters = await self._get_chapters(bm)
+        ts = await self._tracking_status_for(bm)
+
+        header_block = f"## 🔖  [{title}]({series_url})" if series_url else f"## 🔖  {title}"
+
+        # Website + Status share a single line.
+        details_lines = [
+            f"**Website:** {site_link} • **Status:** {status_emoji(status)} {status}",
+            *self._tracking_lines(ts),
+        ]
+        details_block = "\n".join(details_lines)
+
+        container = discord.ui.Container(accent_colour=None)
+        gallery = hero_cover_gallery(cover_url)
+        if gallery is not None:
+            container.add_item(gallery)
+        container.add_item(discord.ui.TextDisplay(header_block))
+        container.add_item(small_separator())
+        container.add_item(discord.ui.TextDisplay(details_block))
+
+        # Folder select for THIS bookmark — moves it across folders.
+        container.add_item(self._build_bookmark_folder_row(bm))
+
+        container.add_item(small_separator())
+
+        # Last-read row: label text + [link button to chapter] + [Mark next].
+        container.add_item(discord.ui.TextDisplay("**Last Read:**"))
+        container.add_item(self._build_last_read_row(bm, chapters))
+
+        # Chapter-window select row ("Mark a specific chapter as read…").
+        chapter_row = self._build_chapter_select_row(bm, chapters)
+        if chapter_row is not None:
+            container.add_item(chapter_row)
+
+        # Folder filter (which folder we are viewing) lives inside the container.
+        container.add_item(small_separator())
+        container.add_item(self._build_folder_filter_row())
+        return container, chapters
+
+    def _build_bookmark_folder_row(self, bm: Bookmark) -> discord.ui.ActionRow:
+        """Select that moves the current bookmark between folders."""
+        select = discord.ui.Select(
+            placeholder=f"Folder: {bm.folder}",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(label=f, value=f, default=bm.folder == f)
+                for f in BOOKMARK_FOLDERS
+            ],
+        )
+        select.callback = self._on_folder_change  # type: ignore[assignment]
+        row = discord.ui.ActionRow()
+        row.add_item(select)
+        return row
+
+    def _build_folder_filter_row(self) -> discord.ui.ActionRow:
+        """Select that filters which folder of bookmarks we are currently viewing."""
+        select = discord.ui.Select(
+            placeholder=(
+                f"Viewing: {self._current_folder}"
+                if self._current_folder is not None
+                else "Viewing: All folders"
+            ),
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(
+                    label="All folders",
+                    value="__all__",
+                    default=self._current_folder is None,
+                )
+            ]
+            + [
+                discord.SelectOption(label=f, value=f, default=self._current_folder == f)
+                for f in BOOKMARK_FOLDERS
+            ],
+        )
+        select.callback = self._on_filter_change  # type: ignore[assignment]
+        row = discord.ui.ActionRow()
+        row.add_item(select)
+        return row
+
+    def _build_last_read_row(self, bm: Bookmark, chapters: list[Chapter]) -> discord.ui.ActionRow:
+        """[Chapter X (link)] [Mark next chapter as read]."""
+        row = discord.ui.ActionRow()
+
+        last_ch: Chapter | None = None
+        if bm.last_read_index is not None and 0 <= bm.last_read_index < len(chapters):
+            last_ch = chapters[bm.last_read_index]
+
+        if last_ch is not None and last_ch.url:
+            label = safe_truncate(last_ch.name or "Last chapter", 80)
+            row.add_item(
+                discord.ui.Button(
+                    label=label,
+                    style=discord.ButtonStyle.link,
+                    url=last_ch.url,
+                )
+            )
+        else:
+            # No URL → render a disabled grey button with the chapter text so
+            # the visual placement stays consistent.
+            label = safe_truncate(
+                (last_ch.name if last_ch else bm.last_read_chapter) or "—",
+                80,
+            )
+            row.add_item(
+                discord.ui.Button(
+                    label=label,
+                    style=discord.ButtonStyle.secondary,
+                    disabled=True,
+                )
+            )
+
+        at_latest = (
+            bm.last_read_index is not None and chapters and bm.last_read_index >= len(chapters) - 1
+        )
+        next_btn = discord.ui.Button(
+            label="Mark next chapter as read",
+            style=discord.ButtonStyle.secondary,
+            disabled=at_latest or not chapters,
+        )
+        next_btn.callback = self._on_mark_next  # type: ignore[assignment]
+        row.add_item(next_btn)
+        return row
+
+    def _build_chapter_select_row(
+        self, bm: Bookmark, chapters: list[Chapter]
+    ) -> discord.ui.ActionRow | None:
+        if not chapters:
+            return None
+        last = bm.last_read_index if bm.last_read_index is not None else 0
+        last = max(0, min(last, len(chapters) - 1))
+        half = _CHAPTER_SELECT_WINDOW // 2
+        start = max(0, last - half)
+        end = min(len(chapters), start + _CHAPTER_SELECT_WINDOW)
+        start = max(0, end - _CHAPTER_SELECT_WINDOW)
+
+        options: list[discord.SelectOption] = []
+        for i in range(start, end):
+            ch = chapters[i]
+            label = ch.name or f"Chapter {i}"
+            prefix = "🔒 " if ch.is_premium else ""
+            label = safe_truncate(f"{prefix}{label}", 100)
+            description = "Current last-read" if i == last else None
+            options.append(
+                discord.SelectOption(
+                    label=label,
+                    value=str(i),
+                    default=(i == last),
+                    description=description,
+                )
+            )
+        if not options:
+            return None
+
+        select = discord.ui.Select(
+            placeholder="Mark a specific chapter as read…",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+        select.callback = self._on_chapter_select  # type: ignore[assignment]
+        row = discord.ui.ActionRow()
+        row.add_item(select)
+        return row
+
+    def _build_pagination_row(self) -> discord.ui.ActionRow:
+        total = max(1, len(self._filtered))
+        if self._mode == "visual":
+            page_x = self._index + 1
+            page_y = total
+        else:
+            page_x = (self._index // _TEXT_PAGE_SIZE) + 1
+            page_y = max(1, (total + _TEXT_PAGE_SIZE - 1) // _TEXT_PAGE_SIZE)
+
+        nav_row = discord.ui.ActionRow()
+        for emoji, target in (("⏮️", "first"), ("⬅️", "prev")):
+            btn = discord.ui.Button(label=emoji, style=discord.ButtonStyle.secondary)
+            btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
+            nav_row.add_item(btn)
+        page_btn = discord.ui.Button(
+            label=f"Page {page_x}/{page_y}",
+            style=discord.ButtonStyle.secondary,
+            disabled=True,
+        )
+        nav_row.add_item(page_btn)
+        for emoji, target in (("➡️", "next"), ("⏭️", "last")):
+            btn = discord.ui.Button(label=emoji, style=discord.ButtonStyle.secondary)
+            btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
+            nav_row.add_item(btn)
+        return nav_row
+
+    def _build_text_container(self) -> discord.ui.Container:
+        page = self._index // _TEXT_PAGE_SIZE
+        total_pages = max(1, (len(self._filtered) + _TEXT_PAGE_SIZE - 1) // _TEXT_PAGE_SIZE)
+        start = page * _TEXT_PAGE_SIZE
+        chunk = self._filtered[start : start + _TEXT_PAGE_SIZE]
+        lines: list[str] = []
+        for bm in chunk:
+            meta = self._meta.get((bm.website_key, bm.url_name)) or {}
+            title = meta.get("title") or bm.url_name
+            series_url = meta.get("series_url") or ""
+            chapters = self._chapter_cache.get((bm.website_key, bm.url_name)) or []
+            last_md = _format_last_read(bm, chapters)
+            title_link = f"[{title}]({series_url})" if series_url else f"**{title}**"
+            lines.append(f"**{title_link}** · `{bm.folder}` · last: {last_md}")
+        body = "\n".join(lines) if lines else "No bookmarks in this folder."
+        folder_label = self._current_folder or "All"
+
+        container = discord.ui.Container(accent_colour=None)
+        container.add_item(discord.ui.TextDisplay("## 🔖  Your bookmarks"))
+        container.add_item(small_separator())
+        container.add_item(discord.ui.TextDisplay(safe_truncate(body, 3500)))
+        container.add_item(small_separator())
+        container.add_item(self._build_folder_filter_row())
+
+        # Sort select (text-mode only) also inside the container.
+        sort_row = discord.ui.ActionRow()
+        sort_select = discord.ui.Select(
+            placeholder="Sort by…",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(label="Last Updated", value="last_updated"),
+                discord.SelectOption(label="Title", value="title"),
+            ],
+        )
+        sort_select.callback = self._on_sort_select  # type: ignore[assignment]
+        sort_row.add_item(sort_select)
+        container.add_item(sort_row)
+
+        # Stash text-mode footer extras so _rebuild can place the footer at the
+        # end of the container, right after the action/pagination rows.
+        self._text_footer_extra = f"{folder_label} • Page {page + 1}/{total_pages}"
+        return container
 
     async def _build_container(self) -> discord.ui.Container:
         if not self._filtered:
@@ -358,133 +719,77 @@ class BookmarkBrowserView(BaseLayoutView):
                 discord.ui.TextDisplay(f"No bookmarks in **{label}**."),
                 large_separator(),
                 footer_section(self._bot),
-                accent_colour=discord.Colour.greyple(),
+                accent_colour=None,
             )
 
         if self._mode == "visual":
-            bm = self._filtered[self._index]
-            meta = await self._meta_for(bm)
-            tracked = await self._is_tracked_in_context(bm)
-            return _visual_container(
-                bm,
-                title=meta["title"],
-                series_url=meta["series_url"],
-                cover_url=meta["cover_url"],
-                index=self._index,
-                total=len(self._filtered),
-                tracked_in_guild=tracked,
-            )
+            container, _ = await self._visual_container(self._filtered[self._index])
+            return container
 
+        # Text mode — prefetch meta for the visible chunk so lines have titles.
         page = self._index // _TEXT_PAGE_SIZE
-        total_pages = max(1, (len(self._filtered) + _TEXT_PAGE_SIZE - 1) // _TEXT_PAGE_SIZE)
         start = page * _TEXT_PAGE_SIZE
-        chunk = self._filtered[start : start + _TEXT_PAGE_SIZE]
-        items: list[tuple[Bookmark, str]] = []
-        for bm in chunk:
-            meta = await self._meta_for(bm)
-            items.append((bm, meta["title"]))
-        return _text_container(
-            items,
-            page=page,
-            total_pages=total_pages,
-            folder_label=self._current_folder or "All",
-        )
+        for bm in self._filtered[start : start + _TEXT_PAGE_SIZE]:
+            await self._meta_for(bm)
+        return self._build_text_container()
 
     async def _rebuild(self) -> None:
         """Reconstruct all top-level children of this view."""
         self.clear_items()
+        self._text_footer_extra: str | None = None
         container = await self._build_container()
 
-        # Nav row (always)
-        nav_row = discord.ui.ActionRow()
-        for label, style, target in (
-            ("⏮️", discord.ButtonStyle.blurple, "first"),
-            ("⬅️", discord.ButtonStyle.blurple, "prev"),
-            ("⏹️", discord.ButtonStyle.red, "stop"),
-            ("➡️", discord.ButtonStyle.blurple, "next"),
-            ("⏭️", discord.ButtonStyle.blurple, "last"),
-        ):
-            btn = discord.ui.Button(label=label, style=style)
-            btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
-            nav_row.add_item(btn)
+        ts: _TrackingStatus | None = None
+        if self._filtered and self._mode == "visual":
+            try:
+                ts = await self._tracking_status_for(self._filtered[self._index])
+            except Exception:
+                ts = None
+
+        # Per-bookmark action buttons + pagination live inside the container so
+        # they share the visual frame.
+        if self._filtered:
+            container.add_item(small_separator())
+            container.add_item(self._build_action_row(ts))
+
         container.add_item(small_separator())
-        container.add_item(nav_row)
+        container.add_item(self._build_pagination_row())
+
+        # Footer at the very bottom of the container.
+        if self._filtered:
+            if self._mode == "visual":
+                footer_extra = f"Bookmark {self._index + 1}/{len(self._filtered)}"
+            else:
+                footer_extra = self._text_footer_extra
+            container.add_item(small_separator())
+            container.add_item(footer_section(self._bot, extra=footer_extra))
+
         self.add_item(container)
 
-        if not self._filtered:
-            return
-
-        # View-mode select row
-        view_row = discord.ui.ActionRow()
-        view_select = discord.ui.Select(
-            placeholder="Select view type.",
-            min_values=1,
-            max_values=1,
-            options=[
-                discord.SelectOption(
-                    label="Visual", value="visual", default=self._mode == "visual"
-                ),
-                discord.SelectOption(label="Text", value="text", default=self._mode == "text"),
-            ],
+    def _build_action_row(self, ts: _TrackingStatus | None) -> discord.ui.ActionRow:
+        row = discord.ui.ActionRow()
+        toggle_btn = discord.ui.Button(
+            label="Text mode" if self._mode == "visual" else "Visual mode",
+            style=discord.ButtonStyle.secondary,
         )
-        view_select.callback = self._on_view_select  # type: ignore[assignment]
-        view_row.add_item(view_select)
-        self.add_item(view_row)
-
-        # Text-mode-only sort select
-        if self._mode == "text":
-            sort_row = discord.ui.ActionRow()
-            sort_select = discord.ui.Select(
-                placeholder="Sort by…",
-                min_values=1,
-                max_values=1,
-                options=[
-                    discord.SelectOption(label="Last Updated", value="last_updated"),
-                    discord.SelectOption(label="Title", value="title"),
-                ],
-            )
-            sort_select.callback = self._on_sort_select  # type: ignore[assignment]
-            sort_row.add_item(sort_select)
-            self.add_item(sort_row)
-
-        # Visual-mode action buttons
+        toggle_btn.callback = self._on_mode_toggle  # type: ignore[assignment]
+        row.add_item(toggle_btn)
         if self._mode == "visual":
-            action_row = discord.ui.ActionRow()
-            update_btn = discord.ui.Button(
-                label="Update", emoji="✏️", style=discord.ButtonStyle.blurple
+            delete_btn = discord.ui.Button(
+                label="Delete bookmark",
+                emoji="🗑️",
+                style=discord.ButtonStyle.danger,
             )
-            update_btn.callback = self._on_set_last_read  # type: ignore[assignment]
-            action_row.add_item(update_btn)
-            search_btn = discord.ui.Button(
-                label="Search", emoji="🔍", style=discord.ButtonStyle.blurple
-            )
-            search_btn.callback = self._on_search  # type: ignore[assignment]
-            action_row.add_item(search_btn)
-            delete_btn = discord.ui.Button(label="Delete", emoji="🗑️", style=discord.ButtonStyle.red)
             delete_btn.callback = self._on_delete  # type: ignore[assignment]
-            action_row.add_item(delete_btn)
-            container.add_item(small_separator())
-            container.add_item(action_row)
-
-        # Folder filter
-        folder_row = discord.ui.ActionRow()
-        folder_select = discord.ui.Select(
-            placeholder="Filter by folder.",
-            min_values=1,
-            max_values=1,
-            options=[
-                discord.SelectOption(
-                    label="All", value="__all__", default=self._current_folder is None
+            row.add_item(delete_btn)
+            if ts is not None and ts.mutual_guild is not None and ts.channel_visible:
+                sub_btn = discord.ui.Button(
+                    label="Unsubscribe" if ts.subscribed else "Subscribe",
+                    style=discord.ButtonStyle.secondary,
                 )
-            ]
-            + [
-                discord.SelectOption(label=f, value=f, default=self._current_folder == f)
-                for f in BOOKMARK_FOLDERS
-            ],
-        )
-        folder_select.callback = self._on_folder_select  # type: ignore[assignment]
-        folder_row.add_item(folder_select)
-        self.add_item(folder_row)
+                sub_btn.callback = self._on_subscribe_toggle  # type: ignore[assignment]
+                row.add_item(sub_btn)
+        return row
 
     # ---- callbacks ------------------------------------------------------
 
@@ -503,18 +808,13 @@ class BookmarkBrowserView(BaseLayoutView):
                 self._index = (self._index + step) % len(self._filtered)
             elif target == "last":
                 self._index = len(self._filtered) - 1
-            elif target == "stop":
-                await interaction.response.edit_message(view=None)
-                self.stop()
-                return
             await self._rebuild()
             await interaction.response.edit_message(view=self)
 
         return cb
 
-    async def _on_view_select(self, interaction: discord.Interaction) -> None:
-        values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
-        self._mode = "text" if values and values[0] == "text" else "visual"
+    async def _on_mode_toggle(self, interaction: discord.Interaction) -> None:
+        self._mode = "text" if self._mode == "visual" else "visual"
         if self._mode == "text":
             self._index = (self._index // _TEXT_PAGE_SIZE) * _TEXT_PAGE_SIZE
         await self._rebuild()
@@ -530,7 +830,7 @@ class BookmarkBrowserView(BaseLayoutView):
         await self._rebuild()
         await interaction.response.edit_message(view=self)
 
-    async def _on_folder_select(self, interaction: discord.Interaction) -> None:
+    async def _on_filter_change(self, interaction: discord.Interaction) -> None:
         values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
         choice = values[0] if values else "__all__"
         self._current_folder = None if choice == "__all__" else choice
@@ -539,22 +839,168 @@ class BookmarkBrowserView(BaseLayoutView):
         await self._rebuild()
         await interaction.response.edit_message(view=self)
 
-    async def _on_set_last_read(self, interaction: discord.Interaction) -> None:
+    async def _on_folder_change(self, interaction: discord.Interaction) -> None:
         if not self._filtered:
-            await interaction.response.send_message("No bookmark selected.", ephemeral=True)
+            await interaction.response.defer()
+            return
+        values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
+        new_folder = values[0] if values else None
+        if new_folder is None or new_folder not in BOOKMARK_FOLDERS:
+            await interaction.response.defer()
             return
         bm = self._filtered[self._index]
-        await interaction.response.send_modal(_SetLastReadModal(self, bm))
+        try:
+            await self._store.update_folder(bm.user_id, bm.website_key, bm.url_name, new_folder)
+        except Exception:
+            _log.exception("update_folder failed")
+            await interaction.response.send_message(
+                "Failed to move bookmark — please try again.", ephemeral=True
+            )
+            return
+        new_bm = replace(bm, folder=new_folder)
+        self._replace_bookmark(bm, new_bm)
+        # If a folder filter is active and the new folder no longer matches, re-apply.
+        self._filtered = self._apply_folder_filter()
+        if not self._filtered:
+            self._index = 0
+        else:
+            self._index = min(self._index, len(self._filtered) - 1)
+        await self._rebuild()
+        await interaction.response.edit_message(view=self)
 
-    async def _on_search(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(
-            "Bookmark search is not available in this view yet.", ephemeral=True
-        )
+    async def _on_chapter_select(self, interaction: discord.Interaction) -> None:
+        if not self._filtered:
+            await interaction.response.defer()
+            return
+        values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
+        if not values:
+            await interaction.response.defer()
+            return
+        try:
+            idx = int(values[0])
+        except TypeError, ValueError:
+            await interaction.response.defer()
+            return
+        bm = self._filtered[self._index]
+        chapters = self._chapter_cache.get((bm.website_key, bm.url_name)) or []
+        if not (0 <= idx < len(chapters)):
+            await interaction.response.send_message(
+                "Chapter selection is no longer valid — refresh and try again.",
+                ephemeral=True,
+            )
+            return
+        ch = chapters[idx]
+        try:
+            await self._store.update_last_read(
+                bm.user_id,
+                bm.website_key,
+                bm.url_name,
+                chapter_text=ch.name,
+                chapter_index=idx,
+            )
+        except Exception:
+            _log.exception("update_last_read failed")
+            await interaction.response.send_message(
+                "Failed to update — please try again.", ephemeral=True
+            )
+            return
+        await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=idx)
+
+    async def _on_mark_next(self, interaction: discord.Interaction) -> None:
+        if not self._filtered:
+            await interaction.response.defer()
+            return
+        bm = self._filtered[self._index]
+        chapters = await self._get_chapters(bm)
+        if not chapters:
+            await interaction.response.send_message(
+                "Couldn't fetch chapters for this series.", ephemeral=True
+            )
+            return
+        current = bm.last_read_index if bm.last_read_index is not None else -1
+        next_idx = current + 1
+        if next_idx >= len(chapters):
+            await interaction.response.send_message(
+                "You're already on the latest chapter.", ephemeral=True
+            )
+            return
+        ch = chapters[next_idx]
+        try:
+            await self._store.update_last_read(
+                bm.user_id,
+                bm.website_key,
+                bm.url_name,
+                chapter_text=ch.name,
+                chapter_index=next_idx,
+            )
+        except Exception:
+            _log.exception("update_last_read failed")
+            await interaction.response.send_message(
+                "Failed to update — please try again.", ephemeral=True
+            )
+            return
+        await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=next_idx)
+
+    async def _on_subscribe_toggle(self, interaction: discord.Interaction) -> None:
+        if not self._filtered:
+            await interaction.response.defer()
+            return
+        bm = self._filtered[self._index]
+        ts = await self._tracking_status_for(bm)
+        if ts.mutual_guild is None or not ts.channel_visible:
+            await interaction.response.send_message(
+                "You can't subscribe here — series isn't tracked in any visible channel for you.",
+                ephemeral=True,
+            )
+            return
+        try:
+            if ts.subscribed:
+                await self._subs.unsubscribe(
+                    int(self._invoker_id or 0),
+                    int(ts.mutual_guild.id),
+                    bm.website_key,
+                    bm.url_name,
+                )
+            else:
+                await self._subs.subscribe(
+                    int(self._invoker_id or 0),
+                    int(ts.mutual_guild.id),
+                    bm.website_key,
+                    bm.url_name,
+                )
+        except Exception:
+            _log.exception("subscribe toggle failed")
+            await interaction.response.send_message(
+                "Failed to update subscription — please try again.", ephemeral=True
+            )
+            return
+        await self._rebuild()
+        await interaction.response.edit_message(view=self)
 
     async def _on_delete(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
             "Use `/bookmark delete` to delete this bookmark.", ephemeral=True
         )
+
+    # ---- mutation helpers ----------------------------------------------
+
+    def _replace_bookmark(self, old: Bookmark, new: Bookmark) -> None:
+        for i, bm in enumerate(self._all):
+            if (
+                bm.user_id == old.user_id
+                and bm.website_key == old.website_key
+                and bm.url_name == old.url_name
+            ):
+                self._all[i] = new
+                break
+        for i, bm in enumerate(self._filtered):
+            if (
+                bm.user_id == old.user_id
+                and bm.website_key == old.website_key
+                and bm.url_name == old.url_name
+            ):
+                self._filtered[i] = new
+                break
 
     async def _refresh_current(
         self,
@@ -567,17 +1013,23 @@ class BookmarkBrowserView(BaseLayoutView):
             return
         bm = self._filtered[self._index]
         new_bm = replace(bm, last_read_chapter=chapter_text, last_read_index=chapter_index)
-        self._filtered[self._index] = new_bm
-        for i, all_bm in enumerate(self._all):
-            if (
-                all_bm.user_id == bm.user_id
-                and all_bm.website_key == bm.website_key
-                and all_bm.url_name == bm.url_name
-            ):
-                self._all[i] = new_bm
-                break
+        self._replace_bookmark(bm, new_bm)
         await self._rebuild()
         await interaction.response.edit_message(view=self)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _format_last_read(bm: Bookmark, chapters: list[Chapter]) -> str:
+    """Format the bookmark's last-read chapter as a hyperlink when possible."""
+    if bm.last_read_index is not None and 0 <= bm.last_read_index < len(chapters):
+        return chapter_markdown(chapters[bm.last_read_index])
+    if bm.last_read_chapter:
+        return bm.last_read_chapter
+    return "—"
 
 
 # ---------------------------------------------------------------------------
@@ -589,7 +1041,7 @@ class _ViewBookmarkButton(discord.ui.Button):
     """Single-button row factory consumer; opens a BookmarkBrowserView."""
 
     def __init__(self, factory):
-        super().__init__(label="View Bookmark", emoji="🔖", style=discord.ButtonStyle.blurple)
+        super().__init__(label="View Bookmark", emoji="🔖", style=discord.ButtonStyle.secondary)
         self._factory = factory
 
     async def callback(self, interaction: discord.Interaction) -> None:  # type: ignore[override]
@@ -608,3 +1060,13 @@ def view_bookmark_action_row(factory) -> discord.ui.ActionRow:
     row = discord.ui.ActionRow()
     row.add_item(_ViewBookmarkButton(factory))
     return row
+
+
+__all__ = [
+    "BOOKMARK_FOLDERS",
+    "BookmarkBrowserView",
+    "build_bookmark_detail_view",
+    "build_bookmark_update_success_view",
+    "folder_accent",
+    "view_bookmark_action_row",
+]

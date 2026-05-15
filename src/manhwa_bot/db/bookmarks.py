@@ -97,6 +97,47 @@ class BookmarkStore:
             )
         return [_row_to_bookmark(r) for r in rows]
 
+    async def list_user_bookmarks_with_titles(
+        self,
+        user_id: int,
+        *,
+        folder: str | None = None,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> list[tuple[Bookmark, str]]:
+        """Like :meth:`list_user_bookmarks` but pairs each row with a display title.
+
+        The title is ``tracked_series.title`` when the series is also tracked; it
+        falls back to the bookmark's ``url_name`` slug otherwise.
+        """
+        if folder is not None:
+            rows = await self._pool.fetchall(
+                """
+                SELECT b.*, COALESCE(t.title, b.url_name) AS display_title
+                FROM bookmarks b
+                LEFT JOIN tracked_series t
+                  ON t.website_key = b.website_key AND t.url_name = b.url_name
+                WHERE b.user_id = ? AND b.folder = ?
+                ORDER BY b.updated_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (user_id, folder, limit, offset),
+            )
+        else:
+            rows = await self._pool.fetchall(
+                """
+                SELECT b.*, COALESCE(t.title, b.url_name) AS display_title
+                FROM bookmarks b
+                LEFT JOIN tracked_series t
+                  ON t.website_key = b.website_key AND t.url_name = b.url_name
+                WHERE b.user_id = ?
+                ORDER BY b.folder, b.updated_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (user_id, limit, offset),
+            )
+        return [(_row_to_bookmark(r), str(r["display_title"])) for r in rows]
+
     async def delete_bookmark(self, user_id: int, website_key: str, url_name: str) -> None:
         await self._pool.execute(
             "DELETE FROM bookmarks WHERE user_id = ? AND website_key = ? AND url_name = ?",
