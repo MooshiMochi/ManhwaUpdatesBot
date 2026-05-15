@@ -284,6 +284,21 @@ class BookmarkBrowserView(BaseLayoutView):
     def _custom_id(self, name: str) -> str:
         return f"bookmark:{self.id}:{name}"
 
+    async def _defer_update(self, interaction: discord.Interaction) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    async def _rebuild_and_edit(self, interaction: discord.Interaction) -> None:
+        await self._defer_update(interaction)
+        await self._rebuild()
+        await interaction.edit_original_response(view=self)
+
+    async def _send_ephemeral(self, interaction: discord.Interaction, message: str) -> None:
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+
     def _apply_folder_filter(self) -> list[Bookmark]:
         if self._current_folder is None:
             return list(self._all)
@@ -937,8 +952,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 self._index = min(max_index, self._index + step)
             elif target == "last":
                 self._index = len(self._filtered) - 1 if self._mode == "visual" else last_text_index
-            await self._rebuild()
-            await interaction.response.edit_message(view=self)
+            await self._rebuild_and_edit(interaction)
 
         return cb
 
@@ -946,8 +960,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._mode = "text" if self._mode == "visual" else "visual"
         if self._mode == "text":
             self._index = (self._index // _TEXT_PAGE_SIZE) * _TEXT_PAGE_SIZE
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
     async def _on_sort_select(self, interaction: discord.Interaction) -> None:
         values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
@@ -956,8 +969,7 @@ class BookmarkBrowserView(BaseLayoutView):
         else:
             self._filtered = sorted(self._filtered, key=lambda bm: bm.updated_at, reverse=True)
         self._index = 0
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
     async def _on_filter_change(self, interaction: discord.Interaction) -> None:
         values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
@@ -965,8 +977,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._current_folder = None if choice == "__all__" else choice
         self._filtered = self._apply_folder_filter()
         self._index = 0
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
     async def _on_folder_change(self, interaction: discord.Interaction) -> None:
         if not self._filtered:
@@ -977,14 +988,13 @@ class BookmarkBrowserView(BaseLayoutView):
         if new_folder is None or new_folder not in BOOKMARK_FOLDERS:
             await interaction.response.defer()
             return
+        await self._defer_update(interaction)
         bm = self._filtered[self._index]
         try:
             await self._store.update_folder(bm.user_id, bm.website_key, bm.url_name, new_folder)
         except Exception:
             _log.exception("update_folder failed")
-            await interaction.response.send_message(
-                "Failed to move bookmark — please try again.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "Failed to move bookmark — please try again.")
             return
         new_bm = replace(bm, folder=new_folder)
         self._replace_bookmark(bm, new_bm)
@@ -994,27 +1004,27 @@ class BookmarkBrowserView(BaseLayoutView):
             self._index = 0
         else:
             self._index = min(self._index, len(self._filtered) - 1)
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
     async def _on_track(self, interaction: discord.Interaction) -> None:
         if not self._filtered:
             await interaction.response.defer()
             return
+        await self._defer_update(interaction)
         bm = self._filtered[self._index]
         ts = await self._tracking_status_for(bm)
         state = await self._track_button_state(bm, ts)
         if not state.enabled:
-            await interaction.response.send_message(
+            await self._send_ephemeral(
+                interaction,
                 state.reason or "You can't track this series from here.",
-                ephemeral=True,
             )
             return
         guild = self._current_guild()
         if guild is None:
-            await interaction.response.send_message(
+            await self._send_ephemeral(
+                interaction,
                 "Run this from the server where you want to track the series.",
-                ephemeral=True,
             )
             return
 
@@ -1033,9 +1043,8 @@ class BookmarkBrowserView(BaseLayoutView):
             await self._tracked.add_to_guild(int(guild.id), bm.website_key, bm.url_name)
         except Exception:
             _log.exception("track button failed")
-            await interaction.response.send_message(
-                "Failed to track this series — please try `/track new`.",
-                ephemeral=True,
+            await self._send_ephemeral(
+                interaction, "Failed to track this series — please try `/track new`."
             )
             return
 
@@ -1048,25 +1057,21 @@ class BookmarkBrowserView(BaseLayoutView):
         except Exception:
             _log.debug("track button immediate check failed", exc_info=True)
 
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
     async def _on_mark_previous(self, interaction: discord.Interaction) -> None:
         if not self._filtered:
             await interaction.response.defer()
             return
+        await self._defer_update(interaction)
         bm = self._filtered[self._index]
         chapters = await self._get_chapters(bm)
         if not chapters:
-            await interaction.response.send_message(
-                "Couldn't fetch chapters for this series.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "Couldn't fetch chapters for this series.")
             return
         current = bm.last_read_index
         if current is None or current <= 0:
-            await interaction.response.send_message(
-                "You're already on the first chapter.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "You're already on the first chapter.")
             return
         prev_idx = current - 1
         ch = chapters[prev_idx]
@@ -1080,9 +1085,7 @@ class BookmarkBrowserView(BaseLayoutView):
             )
         except Exception:
             _log.exception("update_last_read failed")
-            await interaction.response.send_message(
-                "Failed to update — please try again.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "Failed to update — please try again.")
             return
         await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=prev_idx)
 
@@ -1090,19 +1093,16 @@ class BookmarkBrowserView(BaseLayoutView):
         if not self._filtered:
             await interaction.response.defer()
             return
+        await self._defer_update(interaction)
         bm = self._filtered[self._index]
         chapters = await self._get_chapters(bm)
         if not chapters:
-            await interaction.response.send_message(
-                "Couldn't fetch chapters for this series.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "Couldn't fetch chapters for this series.")
             return
         current = bm.last_read_index if bm.last_read_index is not None else -1
         next_idx = current + 1
         if next_idx >= len(chapters):
-            await interaction.response.send_message(
-                "You're already on the latest chapter.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "You're already on the latest chapter.")
             return
         ch = chapters[next_idx]
         try:
@@ -1115,9 +1115,7 @@ class BookmarkBrowserView(BaseLayoutView):
             )
         except Exception:
             _log.exception("update_last_read failed")
-            await interaction.response.send_message(
-                "Failed to update — please try again.", ephemeral=True
-            )
+            await self._send_ephemeral(interaction, "Failed to update — please try again.")
             return
         await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=next_idx)
 
@@ -1125,12 +1123,13 @@ class BookmarkBrowserView(BaseLayoutView):
         if not self._filtered:
             await interaction.response.defer()
             return
+        await self._defer_update(interaction)
         bm = self._filtered[self._index]
         ts = await self._tracking_status_for(bm)
         if ts.mutual_guild is None or not ts.channel_visible:
-            await interaction.response.send_message(
+            await self._send_ephemeral(
+                interaction,
                 "You can't subscribe here — series isn't tracked in any visible channel for you.",
-                ephemeral=True,
             )
             return
         try:
@@ -1150,12 +1149,11 @@ class BookmarkBrowserView(BaseLayoutView):
                 )
         except Exception:
             _log.exception("subscribe toggle failed")
-            await interaction.response.send_message(
-                "Failed to update subscription — please try again.", ephemeral=True
+            await self._send_ephemeral(
+                interaction, "Failed to update subscription — please try again."
             )
             return
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
     async def _on_delete(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
@@ -1194,8 +1192,7 @@ class BookmarkBrowserView(BaseLayoutView):
         bm = self._filtered[self._index]
         new_bm = replace(bm, last_read_chapter=chapter_text, last_read_index=chapter_index)
         self._replace_bookmark(bm, new_bm)
-        await self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await self._rebuild_and_edit(interaction)
 
 
 # ---------------------------------------------------------------------------

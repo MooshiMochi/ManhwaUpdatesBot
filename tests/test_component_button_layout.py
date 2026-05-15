@@ -416,6 +416,70 @@ def test_bookmark_browser_rebuild_keeps_dispatch_custom_ids_stable() -> None:
     asyncio.run(run())
 
 
+def test_bookmark_browser_navigation_defers_before_rebuild() -> None:
+    browser = _bookmark_browser(
+        [
+            Bookmark(
+                user_id=1,
+                website_key="site",
+                url_name=f"series-{i}",
+                folder="Reading",
+                last_read_chapter="Chapter 1",
+                last_read_index=0,
+                created_at="2026-05-14T00:00:00",
+                updated_at=f"2026-05-14T00:00:{i:02d}",
+            )
+            for i in range(2)
+        ]
+    )
+
+    async def run() -> None:
+        await browser.initial_render()
+        next_button = next(
+            item
+            for item in browser.walk_children()
+            if isinstance(item, discord.ui.Button) and item.label == ">"
+        )
+
+        class Response:
+            def __init__(self) -> None:
+                self.deferred = False
+
+            def is_done(self) -> bool:
+                return self.deferred
+
+            async def defer(self) -> None:
+                self.deferred = True
+
+            async def edit_message(self, **_kwargs) -> None:
+                raise AssertionError("navigation must edit through edit_original_response")
+
+        response = Response()
+
+        async def edit_original_response(**kwargs) -> None:
+            interaction.edits.append(kwargs)
+
+        interaction = SimpleNamespace(
+            response=response,
+            edits=[],
+            edit_original_response=edit_original_response,
+        )
+
+        async def rebuild() -> None:
+            assert response.deferred is True
+            await original_rebuild()
+
+        original_rebuild = browser._rebuild
+        browser._rebuild = rebuild  # type: ignore[method-assign]
+
+        await next_button.callback(interaction)
+
+        assert response.deferred is True
+        assert interaction.edits == [{"view": browser}]
+
+    asyncio.run(run())
+
+
 def test_bookmark_browser_visual_controls_match_requested_layout() -> None:
     browser = _bookmark_browser(
         [
@@ -511,13 +575,27 @@ def test_bookmark_browser_text_paginator_clamps_and_uses_plain_labels() -> None:
         await browser._rebuild()
 
         class Response:
+            def __init__(self) -> None:
+                self.deferred = False
+
+            def is_done(self) -> bool:
+                return self.deferred
+
             async def edit_message(self, **_kwargs) -> None:
                 return None
 
             async def defer(self) -> None:
-                return None
+                self.deferred = True
 
-        interaction = SimpleNamespace(response=Response())
+        response = Response()
+
+        async def edit_original_response(**_kwargs) -> None:
+            return None
+
+        interaction = SimpleNamespace(
+            response=response,
+            edit_original_response=edit_original_response,
+        )
 
         container = _first_container(browser)
         pagination = next(
