@@ -281,6 +281,9 @@ class BookmarkBrowserView(BaseLayoutView):
 
     # ---- helpers --------------------------------------------------------
 
+    def _custom_id(self, name: str) -> str:
+        return f"bookmark:{self.id}:{name}"
+
     def _apply_folder_filter(self) -> list[Bookmark]:
         if self._current_folder is None:
             return list(self._all)
@@ -621,6 +624,7 @@ class BookmarkBrowserView(BaseLayoutView):
         """Select that moves the current bookmark between folders."""
         select = discord.ui.Select(
             placeholder=f"Move bookmark: {bm.folder}",
+            custom_id=self._custom_id("move-folder"),
             min_values=1,
             max_values=1,
             options=[
@@ -643,6 +647,7 @@ class BookmarkBrowserView(BaseLayoutView):
         current = self._current_folder or "All folders"
         select = discord.ui.Select(
             placeholder=f"Browsing folder: {current}",
+            custom_id=self._custom_id("browse-folder"),
             min_values=1,
             max_values=1,
             options=[
@@ -681,6 +686,7 @@ class BookmarkBrowserView(BaseLayoutView):
             label="Mark previous chapter as read",
             style=discord.ButtonStyle.secondary,
             disabled=current_idx is None or current_idx <= 0 or not chapters,
+            custom_id=self._custom_id("mark-previous"),
         )
         prev_btn.callback = self._on_mark_previous  # type: ignore[assignment]
         row.add_item(prev_btn)
@@ -714,6 +720,7 @@ class BookmarkBrowserView(BaseLayoutView):
             label="Mark next chapter as read",
             style=discord.ButtonStyle.secondary,
             disabled=at_latest or not chapters,
+            custom_id=self._custom_id("mark-next"),
         )
         next_btn.callback = self._on_mark_next  # type: ignore[assignment]
         row.add_item(next_btn)
@@ -737,6 +744,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 label=label,
                 style=discord.ButtonStyle.secondary,
                 disabled=is_first,
+                custom_id=self._custom_id(f"nav-{target}"),
             )
             btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
             nav_row.add_item(btn)
@@ -751,6 +759,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 label=label,
                 style=discord.ButtonStyle.secondary,
                 disabled=is_last,
+                custom_id=self._custom_id(f"nav-{target}"),
             )
             btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
             nav_row.add_item(btn)
@@ -782,6 +791,7 @@ class BookmarkBrowserView(BaseLayoutView):
         sort_row = discord.ui.ActionRow()
         sort_select = discord.ui.Select(
             placeholder="Sort by…",
+            custom_id=self._custom_id("sort"),
             min_values=1,
             max_values=1,
             options=[
@@ -871,6 +881,7 @@ class BookmarkBrowserView(BaseLayoutView):
         toggle_btn = discord.ui.Button(
             label="Text mode" if self._mode == "visual" else "Visual mode",
             style=discord.ButtonStyle.secondary,
+            custom_id=self._custom_id("toggle-mode"),
         )
         toggle_btn.callback = self._on_mode_toggle  # type: ignore[assignment]
         row.add_item(toggle_btn)
@@ -879,6 +890,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 label="Delete bookmark",
                 emoji="🗑️",
                 style=discord.ButtonStyle.danger,
+                custom_id=self._custom_id("delete"),
             )
             delete_btn.callback = self._on_delete  # type: ignore[assignment]
             row.add_item(delete_btn)
@@ -891,6 +903,7 @@ class BookmarkBrowserView(BaseLayoutView):
                         else discord.ButtonStyle.secondary
                     ),
                     disabled=not track_state.enabled,
+                    custom_id=self._custom_id("track"),
                 )
                 track_btn.callback = self._on_track  # type: ignore[assignment]
                 row.add_item(track_btn)
@@ -898,6 +911,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 sub_btn = discord.ui.Button(
                     label="Unsubscribe" if ts.subscribed else "Subscribe",
                     style=discord.ButtonStyle.secondary,
+                    custom_id=self._custom_id("subscribe"),
                 )
                 sub_btn.callback = self._on_subscribe_toggle  # type: ignore[assignment]
                 row.add_item(sub_btn)

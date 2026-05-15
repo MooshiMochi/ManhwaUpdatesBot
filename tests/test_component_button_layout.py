@@ -194,6 +194,19 @@ def _action_rows(container: discord.ui.Container) -> list[discord.ui.ActionRow]:
     return [item for item in container.children if isinstance(item, discord.ui.ActionRow)]
 
 
+def _dispatchable_controls(view: discord.ui.LayoutView) -> dict[str, str]:
+    controls: dict[str, str] = {}
+    for item in view.walk_children():
+        custom_id = getattr(item, "custom_id", None)
+        if not custom_id:
+            continue
+        label = getattr(item, "label", None)
+        placeholder = getattr(item, "placeholder", None)
+        key = str(label or placeholder or item.__class__.__name__)
+        controls[key] = str(custom_id)
+    return controls
+
+
 class _FakeBookmarkCrawler:
     async def request(self, type_: str, **_kwargs):
         if type_ == "chapters":
@@ -381,6 +394,26 @@ def test_bookmark_browser_track_button_disabled_without_permission_or_manager_ro
         if isinstance(child, discord.ui.Button) and child.label == "Track"
     )
     assert track_button.disabled is True
+
+
+def test_bookmark_browser_rebuild_keeps_dispatch_custom_ids_stable() -> None:
+    browser = _bookmark_browser_with_tracking_context(
+        member=_Member(roles=[_Role(123)]),
+        bot_manager_role_id=123,
+    )
+
+    async def run() -> None:
+        await browser.initial_render()
+        before = _dispatchable_controls(browser)
+        await browser._rebuild()
+        after = _dispatchable_controls(browser)
+
+        assert after["Track"] == before["Track"]
+        assert after[">"] == before[">"]
+        assert after["Browsing folder: All folders"] == before["Browsing folder: All folders"]
+        assert after["Move bookmark: Reading"] == before["Move bookmark: Reading"]
+
+    asyncio.run(run())
 
 
 def test_bookmark_browser_visual_controls_match_requested_layout() -> None:
