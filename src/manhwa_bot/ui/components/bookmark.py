@@ -38,7 +38,14 @@ BOOKMARK_FOLDERS: tuple[str, ...] = (
 )
 
 _TEXT_PAGE_SIZE = 10
-_CHAPTER_SELECT_WINDOW = 25
+_FOLDER_DESCRIPTIONS: dict[str, str] = {
+    "Reading": "Actively reading.",
+    "On Hold": "Paused for now.",
+    "Plan to Read": "Saved for later.",
+    "Re-Reading": "Reading again.",
+    "Completed": "Finished series.",
+    "Dropped": "No longer reading.",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -323,13 +330,13 @@ class BookmarkBrowserView(BaseLayoutView):
             data = await self._crawler.request(
                 "chapters", website_key=bm.website_key, url=identifier
             )
-            chapters = list(data.get("chapters") or [])
+            chapters = Chapter.list_from_payload(data)
         except Exception:
             try:
                 data = await self._crawler.request_with_progress(
                     "info", website_key=bm.website_key, url=identifier, on_progress=None
                 )
-                chapters = list(data.get("chapters") or data.get("latest_chapters") or [])
+                chapters = Chapter.list_from_payload(data)
             except Exception:
                 _log.debug("chapter fetch failed for %s:%s", bm.website_key, bm.url_name)
                 chapters = []
@@ -493,33 +500,29 @@ class BookmarkBrowserView(BaseLayoutView):
         container.add_item(small_separator())
         container.add_item(discord.ui.TextDisplay(details_block))
 
-        # Folder select for THIS bookmark — moves it across folders.
+        # Folder select for THIS bookmark moves it across folders.
         container.add_item(self._build_bookmark_folder_row(bm))
 
         container.add_item(small_separator())
 
-        # Last-read row: label text + [link button to chapter] + [Mark next].
+        # Last-read row: [Mark previous] + [link button to chapter] + [Mark next].
         container.add_item(discord.ui.TextDisplay("**Last Read:**"))
         container.add_item(self._build_last_read_row(bm, chapters))
-
-        # Chapter-window select row ("Mark a specific chapter as read…").
-        chapter_row = self._build_chapter_select_row(bm, chapters)
-        if chapter_row is not None:
-            container.add_item(chapter_row)
-
-        # Folder filter (which folder we are viewing) lives inside the container.
-        container.add_item(small_separator())
-        container.add_item(self._build_folder_filter_row())
         return container, chapters
 
     def _build_bookmark_folder_row(self, bm: Bookmark) -> discord.ui.ActionRow:
         """Select that moves the current bookmark between folders."""
         select = discord.ui.Select(
-            placeholder=f"Folder: {bm.folder}",
+            placeholder=f"Move bookmark: {bm.folder}",
             min_values=1,
             max_values=1,
             options=[
-                discord.SelectOption(label=f, value=f, default=bm.folder == f)
+                discord.SelectOption(
+                    label=f,
+                    value=f,
+                    default=bm.folder == f,
+                    description=f"Move this bookmark to {f}.",
+                )
                 for f in BOOKMARK_FOLDERS
             ],
         )
@@ -530,12 +533,9 @@ class BookmarkBrowserView(BaseLayoutView):
 
     def _build_folder_filter_row(self) -> discord.ui.ActionRow:
         """Select that filters which folder of bookmarks we are currently viewing."""
+        current = self._current_folder or "All folders"
         select = discord.ui.Select(
-            placeholder=(
-                f"Viewing: {self._current_folder}"
-                if self._current_folder is not None
-                else "Viewing: All folders"
-            ),
+            placeholder=f"Browsing folder: {current}",
             min_values=1,
             max_values=1,
             options=[
@@ -543,10 +543,16 @@ class BookmarkBrowserView(BaseLayoutView):
                     label="All folders",
                     value="__all__",
                     default=self._current_folder is None,
+                    description="Show bookmarks from every folder.",
                 )
             ]
             + [
-                discord.SelectOption(label=f, value=f, default=self._current_folder == f)
+                discord.SelectOption(
+                    label=f,
+                    value=f,
+                    default=self._current_folder == f,
+                    description=f"Show bookmarks in {f}. {_FOLDER_DESCRIPTIONS[f]}",
+                )
                 for f in BOOKMARK_FOLDERS
             ],
         )
@@ -556,15 +562,24 @@ class BookmarkBrowserView(BaseLayoutView):
         return row
 
     def _build_last_read_row(self, bm: Bookmark, chapters: list[Chapter]) -> discord.ui.ActionRow:
-        """[Chapter X (link)] [Mark next chapter as read]."""
+        """[Mark previous] [Chapter X (link)] [Mark next]."""
         row = discord.ui.ActionRow()
 
         last_ch: Chapter | None = None
         if bm.last_read_index is not None and 0 <= bm.last_read_index < len(chapters):
             last_ch = chapters[bm.last_read_index]
 
+        current_idx = bm.last_read_index
+        prev_btn = discord.ui.Button(
+            label="Mark previous chapter as read",
+            style=discord.ButtonStyle.secondary,
+            disabled=current_idx is None or current_idx <= 0 or not chapters,
+        )
+        prev_btn.callback = self._on_mark_previous  # type: ignore[assignment]
+        row.add_item(prev_btn)
+
         if last_ch is not None and last_ch.url:
-            label = safe_truncate(last_ch.name or "Last chapter", 80)
+            label = safe_truncate(last_ch.name or "Last chapter", 60)
             row.add_item(
                 discord.ui.Button(
                     label=label,
@@ -577,7 +592,7 @@ class BookmarkBrowserView(BaseLayoutView):
             # the visual placement stays consistent.
             label = safe_truncate(
                 (last_ch.name if last_ch else bm.last_read_chapter) or "—",
-                80,
+                60,
             )
             row.add_item(
                 discord.ui.Button(
@@ -587,9 +602,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 )
             )
 
-        at_latest = (
-            bm.last_read_index is not None and chapters and bm.last_read_index >= len(chapters) - 1
-        )
+        at_latest = current_idx is not None and chapters and current_idx >= len(chapters) - 1
         next_btn = discord.ui.Button(
             label="Mark next chapter as read",
             style=discord.ButtonStyle.secondary,
@@ -597,47 +610,6 @@ class BookmarkBrowserView(BaseLayoutView):
         )
         next_btn.callback = self._on_mark_next  # type: ignore[assignment]
         row.add_item(next_btn)
-        return row
-
-    def _build_chapter_select_row(
-        self, bm: Bookmark, chapters: list[Chapter]
-    ) -> discord.ui.ActionRow | None:
-        if not chapters:
-            return None
-        last = bm.last_read_index if bm.last_read_index is not None else 0
-        last = max(0, min(last, len(chapters) - 1))
-        half = _CHAPTER_SELECT_WINDOW // 2
-        start = max(0, last - half)
-        end = min(len(chapters), start + _CHAPTER_SELECT_WINDOW)
-        start = max(0, end - _CHAPTER_SELECT_WINDOW)
-
-        options: list[discord.SelectOption] = []
-        for i in range(start, end):
-            ch = chapters[i]
-            label = ch.name or f"Chapter {i}"
-            prefix = "🔒 " if ch.is_premium else ""
-            label = safe_truncate(f"{prefix}{label}", 100)
-            description = "Current last-read" if i == last else None
-            options.append(
-                discord.SelectOption(
-                    label=label,
-                    value=str(i),
-                    default=(i == last),
-                    description=description,
-                )
-            )
-        if not options:
-            return None
-
-        select = discord.ui.Select(
-            placeholder="Mark a specific chapter as read…",
-            min_values=1,
-            max_values=1,
-            options=options,
-        )
-        select.callback = self._on_chapter_select  # type: ignore[assignment]
-        row = discord.ui.ActionRow()
-        row.add_item(select)
         return row
 
     def _build_pagination_row(self) -> discord.ui.ActionRow:
@@ -649,9 +621,16 @@ class BookmarkBrowserView(BaseLayoutView):
             page_x = (self._index // _TEXT_PAGE_SIZE) + 1
             page_y = max(1, (total + _TEXT_PAGE_SIZE - 1) // _TEXT_PAGE_SIZE)
 
+        is_first = page_x <= 1
+        is_last = page_x >= page_y
+
         nav_row = discord.ui.ActionRow()
-        for emoji, target in (("⏮️", "first"), ("⬅️", "prev")):
-            btn = discord.ui.Button(label=emoji, style=discord.ButtonStyle.secondary)
+        for label, target in (("<<", "first"), ("<", "prev")):
+            btn = discord.ui.Button(
+                label=label,
+                style=discord.ButtonStyle.secondary,
+                disabled=is_first,
+            )
             btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
             nav_row.add_item(btn)
         page_btn = discord.ui.Button(
@@ -660,8 +639,12 @@ class BookmarkBrowserView(BaseLayoutView):
             disabled=True,
         )
         nav_row.add_item(page_btn)
-        for emoji, target in (("➡️", "next"), ("⏭️", "last")):
-            btn = discord.ui.Button(label=emoji, style=discord.ButtonStyle.secondary)
+        for label, target in ((">", "next"), (">>", "last")):
+            btn = discord.ui.Button(
+                label=label,
+                style=discord.ButtonStyle.secondary,
+                disabled=is_last,
+            )
             btn.callback = self._make_nav_callback(target)  # type: ignore[assignment]
             nav_row.add_item(btn)
         return nav_row
@@ -687,8 +670,6 @@ class BookmarkBrowserView(BaseLayoutView):
         container.add_item(discord.ui.TextDisplay("## 🔖  Your bookmarks"))
         container.add_item(small_separator())
         container.add_item(discord.ui.TextDisplay(safe_truncate(body, 3500)))
-        container.add_item(small_separator())
-        container.add_item(self._build_folder_filter_row())
 
         # Sort select (text-mode only) also inside the container.
         sort_row = discord.ui.ActionRow()
@@ -755,6 +736,9 @@ class BookmarkBrowserView(BaseLayoutView):
         container.add_item(small_separator())
         container.add_item(self._build_pagination_row())
 
+        container.add_item(small_separator())
+        container.add_item(self._build_folder_filter_row())
+
         # Footer at the very bottom of the container.
         if self._filtered:
             if self._mode == "visual":
@@ -798,16 +782,19 @@ class BookmarkBrowserView(BaseLayoutView):
             if not self._filtered:
                 await interaction.response.defer()
                 return
+            total_pages = max(1, (len(self._filtered) + _TEXT_PAGE_SIZE - 1) // _TEXT_PAGE_SIZE)
+            last_text_index = max(0, (total_pages - 1) * _TEXT_PAGE_SIZE)
             if target == "first":
                 self._index = 0
             elif target == "prev":
                 step = 1 if self._mode == "visual" else _TEXT_PAGE_SIZE
-                self._index = (self._index - step) % len(self._filtered)
+                self._index = max(0, self._index - step)
             elif target == "next":
                 step = 1 if self._mode == "visual" else _TEXT_PAGE_SIZE
-                self._index = (self._index + step) % len(self._filtered)
+                max_index = len(self._filtered) - 1 if self._mode == "visual" else last_text_index
+                self._index = min(max_index, self._index + step)
             elif target == "last":
-                self._index = len(self._filtered) - 1
+                self._index = len(self._filtered) - 1 if self._mode == "visual" else last_text_index
             await self._rebuild()
             await interaction.response.edit_message(view=self)
 
@@ -868,35 +855,32 @@ class BookmarkBrowserView(BaseLayoutView):
         await self._rebuild()
         await interaction.response.edit_message(view=self)
 
-    async def _on_chapter_select(self, interaction: discord.Interaction) -> None:
+    async def _on_mark_previous(self, interaction: discord.Interaction) -> None:
         if not self._filtered:
             await interaction.response.defer()
             return
-        values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
-        if not values:
-            await interaction.response.defer()
-            return
-        try:
-            idx = int(values[0])
-        except TypeError, ValueError:
-            await interaction.response.defer()
-            return
         bm = self._filtered[self._index]
-        chapters = self._chapter_cache.get((bm.website_key, bm.url_name)) or []
-        if not (0 <= idx < len(chapters)):
+        chapters = await self._get_chapters(bm)
+        if not chapters:
             await interaction.response.send_message(
-                "Chapter selection is no longer valid — refresh and try again.",
-                ephemeral=True,
+                "Couldn't fetch chapters for this series.", ephemeral=True
             )
             return
-        ch = chapters[idx]
+        current = bm.last_read_index
+        if current is None or current <= 0:
+            await interaction.response.send_message(
+                "You're already on the first chapter.", ephemeral=True
+            )
+            return
+        prev_idx = current - 1
+        ch = chapters[prev_idx]
         try:
             await self._store.update_last_read(
                 bm.user_id,
                 bm.website_key,
                 bm.url_name,
                 chapter_text=ch.name,
-                chapter_index=idx,
+                chapter_index=prev_idx,
             )
         except Exception:
             _log.exception("update_last_read failed")
@@ -904,7 +888,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 "Failed to update — please try again.", ephemeral=True
             )
             return
-        await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=idx)
+        await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=prev_idx)
 
     async def _on_mark_next(self, interaction: discord.Interaction) -> None:
         if not self._filtered:

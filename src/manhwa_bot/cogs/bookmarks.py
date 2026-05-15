@@ -415,9 +415,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         await interaction.response.defer(thinking=True, ephemeral=True)
 
         folder_value = folder.value if folder else None
-        bookmarks = await self._bookmarks.list_user_bookmarks(
-            interaction.user.id, folder=folder_value, limit=500
-        )
+        bookmarks = await self._bookmarks.list_user_bookmarks(interaction.user.id, limit=500)
 
         supported = await self._supported_websites_keys()
         if supported:
@@ -431,6 +429,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             return
 
         jump_index = 0
+        current_folder = folder_value
         if series:
             parsed = _split_series_id(series)
             if parsed is None:
@@ -439,9 +438,10 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 )
                 return
             wk, un = parsed
-            for i, bm in enumerate(bookmarks):
+            selected = None
+            for bm in bookmarks:
                 if bm.website_key == wk and bm.url_name == un:
-                    jump_index = i
+                    selected = bm
                     break
             else:
                 await interaction.followup.send(
@@ -451,6 +451,15 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     ephemeral=True,
                 )
                 return
+            current_folder = selected.folder
+            jump_index = next(
+                (
+                    i
+                    for i, bm in enumerate(b for b in bookmarks if b.folder == current_folder)
+                    if bm.website_key == wk and bm.url_name == un
+                ),
+                0,
+            )
 
         view = BookmarkBrowserView(
             bookmarks,
@@ -461,7 +470,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             crawler=self.bot.crawler,  # type: ignore[attr-defined]
             invoker_id=interaction.user.id,
             guild_id=interaction.guild_id,
-            current_folder=folder_value,
+            current_folder=current_folder,
             index=jump_index,
             bot=self.bot,
         )
