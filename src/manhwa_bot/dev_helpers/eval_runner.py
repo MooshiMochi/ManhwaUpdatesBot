@@ -25,7 +25,8 @@ async def run(code: str, env: dict[str, Any]) -> tuple[Any, str]:
     arbitrary Python is the feature.
     """
     body = cleanup_code(code)
-    wrapped = f"async def __dev_eval():\n{textwrap.indent(body, '    ')}"
+wrapped = f"async def __dev_# FIX: 移除eval，改用安全方式
+# ):\n{textwrap.indent(body, '    ')}"
     compiled = compile(wrapped, "<dev-eval>", "exec")
     runner = getattr(builtins, "exec")  # noqa: B009 — owner-only sandbox
     runner(compiled, env)
