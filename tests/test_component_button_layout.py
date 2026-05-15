@@ -325,6 +325,147 @@ class _UntrackedStore:
         return []
 
 
+class _CountingBookmarkCrawler:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def request(self, type_: str, **kwargs):
+        self.calls.append((type_, str(kwargs.get("url") or "")))
+        if type_ == "chapters":
+            slug = str(kwargs.get("url") or "series")
+            return {
+                "chapters": [
+                    {"name": f"{slug} Chapter 1", "url": f"https://example.test/{slug}/1"},
+                    {"name": f"{slug} Chapter 2", "url": f"https://example.test/{slug}/2"},
+                ]
+            }
+        if type_ == "supported_websites":
+            return {"websites": [{"key": "site", "name": "Site", "base_url": "https://site.test"}]}
+        return {}
+
+
+class _CountingTrackedStore:
+    def __init__(self) -> None:
+        self.find_calls: list[tuple[str, str]] = []
+        self.guild_calls: list[tuple[str, str]] = []
+
+    async def find(self, website_key: str, url_name: str) -> None:
+        self.find_calls.append((website_key, url_name))
+        return None
+
+    async def list_guilds_tracking(self, website_key: str, url_name: str) -> list:
+        self.guild_calls.append((website_key, url_name))
+        return []
+
+
+class _NoopSubscriptionStore:
+    async def is_subscribed(self, *_args, **_kwargs) -> bool:
+        return False
+
+
+class _NoopGuildSettingsStore:
+    async def list_scanlator_channels(self, _guild_id: int) -> list:
+        return []
+
+    async def get(self, _guild_id: int):
+        return None
+
+
+def _bookmark_series(count: int) -> list[Bookmark]:
+    return [
+        Bookmark(
+            user_id=1,
+            website_key="site",
+            url_name=f"series-{i}",
+            folder="Reading",
+            last_read_chapter="Chapter 1",
+            last_read_index=0,
+            created_at="2026-05-14T00:00:00",
+            updated_at=f"2026-05-14T00:00:{i:02d}",
+        )
+        for i in range(count)
+    ]
+
+
+def test_bookmark_browser_initial_render_warms_adjacent_bookmark_data() -> None:
+    crawler = _CountingBookmarkCrawler()
+    tracked = _CountingTrackedStore()
+    browser = bookmark.BookmarkBrowserView(
+        _bookmark_series(3),
+        store=SimpleNamespace(),
+        tracked=tracked,
+        subscriptions=_NoopSubscriptionStore(),
+        guild_settings=_NoopGuildSettingsStore(),
+        crawler=crawler,
+        invoker_id=1,
+    )
+
+    async def run() -> None:
+        await browser.initial_render()
+        assert browser._preload_task is not None
+        await browser._preload_task
+
+    asyncio.run(run())
+
+    assert ("site", "series-0") in browser._chapter_cache
+    assert ("site", "series-1") in browser._chapter_cache
+    assert ("site", "series-0") in browser._tracking_cache
+    assert ("site", "series-1") in browser._tracking_cache
+
+
+def test_bookmark_browser_navigation_to_warmed_bookmark_uses_cache() -> None:
+    crawler = _CountingBookmarkCrawler()
+    tracked = _CountingTrackedStore()
+    browser = bookmark.BookmarkBrowserView(
+        _bookmark_series(3),
+        store=SimpleNamespace(),
+        tracked=tracked,
+        subscriptions=_NoopSubscriptionStore(),
+        guild_settings=_NoopGuildSettingsStore(),
+        crawler=crawler,
+        invoker_id=1,
+    )
+
+    async def run() -> tuple[int, int, int]:
+        await browser.initial_render()
+        assert browser._preload_task is not None
+        await browser._preload_task
+        before = (len(crawler.calls), len(tracked.find_calls), len(tracked.guild_calls))
+
+        class Response:
+            def __init__(self) -> None:
+                self.deferred = False
+
+            def is_done(self) -> bool:
+                return self.deferred
+
+            async def defer(self) -> None:
+                self.deferred = True
+
+        async def edit_original_response(**_kwargs) -> None:
+            return None
+
+        interaction = SimpleNamespace(
+            response=Response(),
+            edit_original_response=edit_original_response,
+        )
+        next_button = next(
+            item
+            for item in browser.walk_children()
+            if isinstance(item, discord.ui.Button) and item.label == ">"
+        )
+        await next_button.callback(interaction)
+        return (
+            len(crawler.calls) - before[0],
+            len(tracked.find_calls) - before[1],
+            len(tracked.guild_calls) - before[2],
+        )
+
+    deltas = asyncio.run(run())
+
+    assert deltas == (0, 0, 0)
+
+
 def _bookmark_browser_with_tracking_context(
     *,
     member: _Member,

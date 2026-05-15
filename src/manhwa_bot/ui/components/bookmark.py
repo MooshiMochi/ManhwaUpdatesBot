@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, replace
 from typing import Any, Literal
@@ -270,6 +271,9 @@ class BookmarkBrowserView(BaseLayoutView):
         self._meta: dict[tuple[str, str], dict[str, Any]] = {}
         self._chapter_cache: dict[tuple[str, str], list[Chapter]] = {}
         self._site_meta_cache: dict[str, dict[str, Any]] = {}
+        self._tracking_cache: dict[tuple[str, str], _TrackingStatus] = {}
+        self._track_button_cache: dict[tuple[str, str], _TrackButtonState] = {}
+        self._preload_task: asyncio.Task[None] | None = None
         self._filtered = self._apply_folder_filter()
         self._index = max(0, min(index, max(0, len(self._filtered) - 1)))
 
@@ -278,6 +282,12 @@ class BookmarkBrowserView(BaseLayoutView):
     async def initial_render(self) -> None:
         """Populate the view with its first render (must be awaited before send)."""
         await self._rebuild()
+        self._schedule_preload()
+
+    async def on_timeout(self) -> None:
+        if self._preload_task is not None and not self._preload_task.done():
+            self._preload_task.cancel()
+        await super().on_timeout()
 
     # ---- helpers --------------------------------------------------------
 
@@ -292,6 +302,7 @@ class BookmarkBrowserView(BaseLayoutView):
         await self._defer_update(interaction)
         await self._rebuild()
         await interaction.edit_original_response(view=self)
+        self._schedule_preload()
 
     async def _send_ephemeral(self, interaction: discord.Interaction, message: str) -> None:
         if interaction.response.is_done():
@@ -304,8 +315,11 @@ class BookmarkBrowserView(BaseLayoutView):
             return list(self._all)
         return [b for b in self._all if b.folder == self._current_folder]
 
+    def _bookmark_key(self, bm: Bookmark) -> tuple[str, str]:
+        return (bm.website_key, bm.url_name)
+
     async def _meta_for(self, bm: Bookmark) -> dict[str, Any]:
-        key = (bm.website_key, bm.url_name)
+        key = self._bookmark_key(bm)
         if key in self._meta:
             return self._meta[key]
         title = bm.url_name
@@ -347,7 +361,7 @@ class BookmarkBrowserView(BaseLayoutView):
         return meta
 
     async def _get_chapters(self, bm: Bookmark) -> list[Chapter]:
-        key = (bm.website_key, bm.url_name)
+        key = self._bookmark_key(bm)
         if key in self._chapter_cache:
             return self._chapter_cache[key]
         meta = await self._meta_for(bm)
@@ -371,12 +385,16 @@ class BookmarkBrowserView(BaseLayoutView):
         return chapters
 
     async def _tracking_status_for(self, bm: Bookmark) -> _TrackingStatus:
+        key = self._bookmark_key(bm)
+        if key in self._tracking_cache:
+            return self._tracking_cache[key]
+
         try:
             rows = await self._tracked.list_guilds_tracking(bm.website_key, bm.url_name)
         except Exception:
             rows = []
         if not rows:
-            return _TrackingStatus(
+            status = _TrackingStatus(
                 is_tracked=False,
                 mutual_guild=None,
                 display_guild_name=None,
@@ -386,6 +404,8 @@ class BookmarkBrowserView(BaseLayoutView):
                 channel_visible=False,
                 subscribed=False,
             )
+            self._tracking_cache[key] = status
+            return status
 
         mutual_guild: discord.Guild | None = None
         chosen_row = rows[0]
@@ -437,7 +457,7 @@ class BookmarkBrowserView(BaseLayoutView):
             except Exception:
                 subscribed = False
 
-        return _TrackingStatus(
+        status = _TrackingStatus(
             is_tracked=True,
             mutual_guild=mutual_guild,
             display_guild_name=display_guild_name,
@@ -447,58 +467,78 @@ class BookmarkBrowserView(BaseLayoutView):
             channel_visible=channel_visible,
             subscribed=subscribed,
         )
+        self._tracking_cache[key] = status
+        return status
 
     async def _track_button_state(
         self, bm: Bookmark, ts: _TrackingStatus | None
     ) -> _TrackButtonState:
         """Show Track when the user has no visible mutual tracked server."""
+        key = self._bookmark_key(bm)
+        if key in self._track_button_cache:
+            return self._track_button_cache[key]
+
         if ts is not None and ts.mutual_guild is not None and ts.channel_visible:
-            return _TrackButtonState(show=False, enabled=False)
+            state = _TrackButtonState(show=False, enabled=False)
+            self._track_button_cache[key] = state
+            return state
 
         guild = self._current_guild()
         if guild is None:
-            return _TrackButtonState(
+            state = _TrackButtonState(
                 show=True,
                 enabled=False,
                 reason="Run this from the server where you want to track the series.",
             )
+            self._track_button_cache[key] = state
+            return state
 
         member = guild.get_member(int(self._invoker_id or 0))
         if member is None:
-            return _TrackButtonState(
+            state = _TrackButtonState(
                 show=True,
                 enabled=False,
                 reason="You need to be in this server to track the series.",
             )
+            self._track_button_cache[key] = state
+            return state
 
         channel_id = await self._resolve_channel_id(int(guild.id), bm.website_key)
         if channel_id is None:
-            return _TrackButtonState(
+            state = _TrackButtonState(
                 show=True,
                 enabled=False,
                 reason="Configure an updates channel before tracking this series.",
             )
+            self._track_button_cache[key] = state
+            return state
         channel = self._channel_for(guild, channel_id)
         if channel is None:
-            return _TrackButtonState(
+            state = _TrackButtonState(
                 show=True,
                 enabled=False,
                 reason="The configured updates channel could not be found.",
             )
+            self._track_button_cache[key] = state
+            return state
         try:
             can_see_channel = bool(channel.permissions_for(member).read_messages)
         except Exception:
             can_see_channel = False
         if not can_see_channel:
-            return _TrackButtonState(
+            state = _TrackButtonState(
                 show=True,
                 enabled=False,
                 reason="You need to be able to see the updates channel to track this series.",
             )
+            self._track_button_cache[key] = state
+            return state
 
         if await self._can_manage_tracking(int(guild.id), member):
-            return _TrackButtonState(show=True, enabled=True)
-        return _TrackButtonState(
+            state = _TrackButtonState(show=True, enabled=True)
+            self._track_button_cache[key] = state
+            return state
+        state = _TrackButtonState(
             show=True,
             enabled=False,
             reason=(
@@ -506,6 +546,104 @@ class BookmarkBrowserView(BaseLayoutView):
                 "to track this series."
             ),
         )
+        self._track_button_cache[key] = state
+        return state
+
+    def _invalidate_status_cache(self, bm: Bookmark) -> None:
+        key = self._bookmark_key(bm)
+        self._tracking_cache.pop(key, None)
+        self._track_button_cache.pop(key, None)
+
+    def _schedule_preload(self) -> None:
+        if not self._filtered:
+            return
+        if self._preload_task is not None and not self._preload_task.done():
+            self._preload_task.cancel()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._preload_task = loop.create_task(
+            self._preload_visible_cache(),
+            name=f"bookmark-preload-{self.id}",
+        )
+        self._preload_task.add_done_callback(self._consume_preload_result)
+
+    def _consume_preload_result(self, task: asyncio.Task[None]) -> None:
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            _log.debug("bookmark preload task failed", exc_info=True)
+
+    def _preload_order(self) -> list[Bookmark]:
+        if not self._filtered:
+            return []
+
+        ordered: list[Bookmark] = []
+        seen: set[tuple[str, str]] = set()
+
+        def add(index: int) -> None:
+            if index < 0 or index >= len(self._filtered):
+                return
+            bm = self._filtered[index]
+            key = self._bookmark_key(bm)
+            if key in seen:
+                return
+            seen.add(key)
+            ordered.append(bm)
+
+        add(self._index)
+        add(self._index + 1)
+        add(self._index - 1)
+        for i in range(len(self._filtered)):
+            add(i)
+        return ordered
+
+    async def _preload_visible_cache(self) -> None:
+        ordered = self._preload_order()
+        for bm in ordered[:3]:
+            await self._warm_bookmark(bm)
+
+        if len(ordered) <= 3:
+            return
+
+        semaphore = asyncio.Semaphore(3)
+
+        async def warm_with_limit(bm: Bookmark) -> None:
+            async with semaphore:
+                await self._warm_bookmark(bm)
+
+        await asyncio.gather(
+            *(warm_with_limit(bm) for bm in ordered[3:]),
+            return_exceptions=True,
+        )
+
+    async def _warm_bookmark(self, bm: Bookmark) -> None:
+        try:
+            await self._meta_for(bm)
+            site_meta_result, chapters_result, tracking_result = await asyncio.gather(
+                self._site_meta_for(bm.website_key),
+                self._get_chapters(bm),
+                self._tracking_status_for(bm),
+                return_exceptions=True,
+            )
+            _ = site_meta_result, chapters_result
+            if isinstance(tracking_result, _TrackingStatus):
+                ts = tracking_result
+            else:
+                ts = await self._tracking_status_for(bm)
+            await self._track_button_state(bm, ts)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _log.debug(
+                "bookmark preload failed for %s:%s",
+                bm.website_key,
+                bm.url_name,
+                exc_info=True,
+            )
 
     def _current_guild(self) -> discord.Guild | None:
         if self._guild_id is None or self._bot is None:
@@ -1047,6 +1185,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 interaction, "Failed to track this series — please try `/track new`."
             )
             return
+        self._invalidate_status_cache(bm)
 
         try:
             await self._crawler.request(
@@ -1153,6 +1292,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 interaction, "Failed to update subscription — please try again."
             )
             return
+        self._invalidate_status_cache(bm)
         await self._rebuild_and_edit(interaction)
 
     async def _on_delete(self, interaction: discord.Interaction) -> None:
