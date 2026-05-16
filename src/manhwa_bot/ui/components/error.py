@@ -97,7 +97,6 @@ def build_info_view(
         discord.ui.TextDisplay(f"## ℹ️  {title}"),
         discord.ui.Separator(spacing=discord.SeparatorSpacing.small),
         discord.ui.TextDisplay(body),
-        accent_colour=severity_accent("info"),
     )
     if bot is not None:
         container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))

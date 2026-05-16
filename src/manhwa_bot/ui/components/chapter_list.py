@@ -42,7 +42,6 @@ def build_chapter_list_views(
             discord.ui.TextDisplay("*No chapters found.*"),
             large_separator(),
             footer_section(bot),
-            accent_colour=discord.Colour.greyple(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -78,7 +77,6 @@ def build_chapter_list_views(
             discord.ui.TextDisplay(body),
             small_separator(),
             footer_section(bot, extra=footer_extra),
-            accent_colour=discord.Colour.green(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -108,7 +106,6 @@ def build_supported_websites_views(
             discord.ui.TextDisplay("*None available.*"),
             large_separator(),
             footer_section(bot),
-            accent_colour=discord.Colour.green(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -148,7 +145,6 @@ def build_supported_websites_views(
             discord.ui.TextDisplay(f"-# {note}"),
             small_separator(),
             footer_section(bot, extra=footer_extra),
-            accent_colour=discord.Colour.green(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)

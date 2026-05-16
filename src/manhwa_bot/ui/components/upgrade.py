@@ -37,7 +37,6 @@ def build_upgrade_view(
         discord.ui.TextDisplay(f"## {emojis.LOCK}  Premium required"),
         discord.ui.Separator(spacing=discord.SeparatorSpacing.small),
         discord.ui.TextDisplay(body),
-        accent_colour=discord.Colour.gold(),
     )
 
     row = discord.ui.ActionRow()

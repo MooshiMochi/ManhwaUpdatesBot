@@ -35,6 +35,9 @@ reconnect_max_delay_seconds = 60.0
 reconnect_jitter_seconds = 1.5
 # Consumer key used for notifications_list / notifications_ack catch-up. Use a stable id per bot deployment.
 consumer_key = "manhwa-bot-default"
+# Stable client id used when submitting series reference sync snapshots to crawler.
+# Leave empty to reuse consumer_key.
+client_id = ""
 
 [db]
 # Path to the SQLite file. Relative paths resolve against the bot's working directory.

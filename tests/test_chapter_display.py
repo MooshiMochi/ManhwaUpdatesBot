@@ -49,7 +49,7 @@ def test_chapter_list_links_premium_chapters_with_lock_only_when_premium() -> No
 
     text = _view_text(view)
 
-    assert f"[{emojis.LOCK} Chapter 2](https://example.test/chapter-2)" in text
+    assert f"[Chapter 2 {emojis.LOCK}](https://example.test/chapter-2)" in text
     assert "[Chapter 1](https://example.test/chapter-1)" in text
     assert f"{emojis.LOCK} Chapter 1" not in text
 
@@ -79,11 +79,11 @@ def test_info_view_links_latest_and_first_chapters_with_premium_lock() -> None:
 
     text = _view_text(view)
 
-    assert f"**Latest Chapter:** [{emojis.LOCK} Chapter 9](https://example.test/chapter-9)" in text
+    assert f"**Latest Chapter:** [Chapter 9 {emojis.LOCK}](https://example.test/chapter-9)" in text
     assert "**First Chapter:** [Chapter 1](https://example.test/chapter-1)" in text
 
 
-def test_update_notification_links_premium_chapter_with_lock_not_suffix() -> None:
+def test_update_notification_links_premium_chapter_with_lock_on_the_right() -> None:
     view = build_chapter_update_view(
         {
             "series_title": "Series",
@@ -98,7 +98,7 @@ def test_update_notification_links_premium_chapter_with_lock_not_suffix() -> Non
 
     text = _view_text(view)
 
-    assert f"**New chapter:** [{emojis.LOCK} Chapter 9](https://example.test/chapter-9)" in text
+    assert f"**New chapter:** [Chapter 9 {emojis.LOCK}](https://example.test/chapter-9)" in text
     assert "(premium)" not in text
 
 
@@ -112,7 +112,7 @@ def test_bookmark_chapter_markdown_links_premium_chapters_with_lock() -> None:
             },
             0,
         )
-        == f"[{emojis.LOCK} Chapter 9](https://example.test/chapter-9)"
+        == f"[Chapter 9 {emojis.LOCK}](https://example.test/chapter-9)"
     )
 
 
@@ -205,7 +205,7 @@ def test_info_command_renders_dedicated_chapter_urls_when_info_payload_lacks_url
         assert message.view is not None
         text = _view_text(message.view)
         assert (
-            f"**Latest Chapter:** [{emojis.LOCK} Chapter 9](https://example.test/chapter-9)" in text
+            f"**Latest Chapter:** [Chapter 9 {emojis.LOCK}](https://example.test/chapter-9)" in text
         )
         assert crawler.calls == ["info", "chapters", "supported_websites"]
 

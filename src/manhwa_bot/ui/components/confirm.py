@@ -28,7 +28,6 @@ class ConfirmLayoutView(BaseLayoutView):
             discord.ui.TextDisplay(f"## {emojis.WARNING}  {prompt_title}"),
             discord.ui.Separator(spacing=discord.SeparatorSpacing.small),
             discord.ui.TextDisplay(prompt),
-            accent_colour=discord.Colour.orange(),
         )
         row = discord.ui.ActionRow()
         confirm_btn = discord.ui.Button(label="Confirm", style=discord.ButtonStyle.green)

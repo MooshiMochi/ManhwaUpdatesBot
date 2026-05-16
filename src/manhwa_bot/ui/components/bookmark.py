@@ -39,6 +39,9 @@ BOOKMARK_FOLDERS: tuple[str, ...] = (
 )
 
 _TEXT_PAGE_SIZE = 10
+_BROWSER_TIMEOUT_SECONDS = 2 * 24 * 60 * 60
+_PRELOAD_CHUNK_SIZE = 10
+_PRELOAD_EDGE_THRESHOLD = 3
 _FOLDER_DESCRIPTIONS: dict[str, str] = {
     "Reading": "Actively reading.",
     "On Hold": "Paused for now.",
@@ -254,7 +257,7 @@ class BookmarkBrowserView(BaseLayoutView):
         guild_id: int | None = None,
         current_folder: str | None = None,
         index: int = 0,
-        timeout: float = 300.0,
+        timeout: float = _BROWSER_TIMEOUT_SECONDS,
         bot: discord.Client | None = None,
     ) -> None:
         super().__init__(invoker_id=invoker_id, timeout=timeout)
@@ -269,6 +272,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._mode: Literal["visual", "text"] = "visual"
         self._bot = bot
         self._meta: dict[tuple[str, str], dict[str, Any]] = {}
+        self._series_data_cache: dict[tuple[str, str], dict[str, Any]] = {}
         self._chapter_cache: dict[tuple[str, str], list[Chapter]] = {}
         self._site_meta_cache: dict[str, dict[str, Any]] = {}
         self._tracking_cache: dict[tuple[str, str], _TrackingStatus] = {}
@@ -276,6 +280,10 @@ class BookmarkBrowserView(BaseLayoutView):
         self._preload_task: asyncio.Task[None] | None = None
         self._filtered = self._apply_folder_filter()
         self._index = max(0, min(index, max(0, len(self._filtered) - 1)))
+        self._preload_start = 0
+        self._preload_end = 0
+        self._reset_preload_window()
+        self._pending_delete_key: tuple[str, str] | None = None
 
     # ---- public ---------------------------------------------------------
 
@@ -326,15 +334,21 @@ class BookmarkBrowserView(BaseLayoutView):
         series_url = ""
         cover_url: str | None = None
         status: str | None = None
+        series_data = await self._series_data_for(bm)
+        if series_data:
+            title = str(series_data.get("title") or title)
+            series_url = str(series_data.get("url") or series_data.get("series_url") or "")
+            cover_url = series_data.get("cover_url")
+            status = series_data.get("status")
         try:
             tracked = await self._tracked.find(bm.website_key, bm.url_name)
         except Exception:
             tracked = None
         if tracked is not None:
-            title = tracked.title
-            series_url = tracked.series_url
-            cover_url = tracked.cover_url
-            status = tracked.status
+            title = title if title != bm.url_name else tracked.title
+            series_url = series_url or tracked.series_url
+            cover_url = cover_url or tracked.cover_url
+            status = status or tracked.status
         meta = {
             "title": title,
             "series_url": series_url,
@@ -344,19 +358,32 @@ class BookmarkBrowserView(BaseLayoutView):
         self._meta[key] = meta
         return meta
 
+    async def _series_data_for(self, bm: Bookmark) -> dict[str, Any]:
+        key = self._bookmark_key(bm)
+        if key in self._series_data_cache:
+            return self._series_data_cache[key]
+        data: dict[str, Any] = {}
+        try:
+            raw = await self._crawler.request(
+                "series_data",
+                website_key=bm.website_key,
+                url_name=bm.url_name,
+                allow_live=False,
+            )
+            if isinstance(raw, dict):
+                data = raw
+                website = raw.get("website")
+                if isinstance(website, dict):
+                    self._site_meta_cache[bm.website_key] = dict(website)
+        except Exception:
+            _log.debug("series_data cache lookup failed for %s:%s", bm.website_key, bm.url_name)
+        self._series_data_cache[key] = data
+        return data
+
     async def _site_meta_for(self, website_key: str) -> dict[str, Any]:
         if website_key in self._site_meta_cache:
             return self._site_meta_cache[website_key]
-        meta: dict[str, Any] = {}
-        try:
-            data = await self._crawler.request("supported_websites")
-            for w in data.get("websites") or []:
-                key = w.get("key") or w.get("website_key")
-                if key == website_key:
-                    meta = w
-                    break
-        except Exception:
-            _log.debug("supported_websites lookup failed for %s", website_key, exc_info=True)
+        meta: dict[str, Any] = {"key": website_key, "name": website_key.title()}
         self._site_meta_cache[website_key] = meta
         return meta
 
@@ -364,23 +391,8 @@ class BookmarkBrowserView(BaseLayoutView):
         key = self._bookmark_key(bm)
         if key in self._chapter_cache:
             return self._chapter_cache[key]
-        meta = await self._meta_for(bm)
-        identifier = meta["series_url"] or bm.url_name
-        chapters: list[Chapter] = []
-        try:
-            data = await self._crawler.request(
-                "chapters", website_key=bm.website_key, url=identifier
-            )
-            chapters = Chapter.list_from_payload(data)
-        except Exception:
-            try:
-                data = await self._crawler.request_with_progress(
-                    "info", website_key=bm.website_key, url=identifier, on_progress=None
-                )
-                chapters = Chapter.list_from_payload(data)
-            except Exception:
-                _log.debug("chapter fetch failed for %s:%s", bm.website_key, bm.url_name)
-                chapters = []
+        data = await self._series_data_for(bm)
+        chapters = Chapter.list_from_payload(data) if data else []
         self._chapter_cache[key] = chapters
         return chapters
 
@@ -554,6 +566,12 @@ class BookmarkBrowserView(BaseLayoutView):
         self._tracking_cache.pop(key, None)
         self._track_button_cache.pop(key, None)
 
+    def _delete_confirmation_active(self) -> bool:
+        return bool(
+            self._filtered
+            and self._pending_delete_key == self._bookmark_key(self._filtered[self._index])
+        )
+
     def _schedule_preload(self) -> None:
         if not self._filtered:
             return
@@ -581,25 +599,38 @@ class BookmarkBrowserView(BaseLayoutView):
         if not self._filtered:
             return []
 
-        ordered: list[Bookmark] = []
-        seen: set[tuple[str, str]] = set()
+        self._ensure_preload_window()
+        indices = range(self._preload_start, self._preload_end)
+        return [
+            self._filtered[i]
+            for i in sorted(indices, key=lambda value: (abs(value - self._index), value))
+        ]
 
-        def add(index: int) -> None:
-            if index < 0 or index >= len(self._filtered):
-                return
-            bm = self._filtered[index]
-            key = self._bookmark_key(bm)
-            if key in seen:
-                return
-            seen.add(key)
-            ordered.append(bm)
+    def _preload_window_for_index(self) -> tuple[int, int]:
+        total = len(self._filtered)
+        if total <= 0:
+            return 0, 0
+        size = min(_PRELOAD_CHUNK_SIZE, total)
+        start = self._index - (size // 2)
+        start = max(0, min(start, total - size))
+        return start, start + size
 
-        add(self._index)
-        add(self._index + 1)
-        add(self._index - 1)
-        for i in range(len(self._filtered)):
-            add(i)
-        return ordered
+    def _reset_preload_window(self) -> None:
+        self._preload_start, self._preload_end = self._preload_window_for_index()
+
+    def _ensure_preload_window(self) -> None:
+        total = len(self._filtered)
+        if total <= 0:
+            self._preload_start = 0
+            self._preload_end = 0
+            return
+        if self._index < self._preload_start or self._index >= self._preload_end:
+            self._reset_preload_window()
+            return
+        if self._index - self._preload_start <= _PRELOAD_EDGE_THRESHOLD:
+            self._preload_start = max(0, self._preload_start - _PRELOAD_CHUNK_SIZE)
+        if (self._preload_end - 1) - self._index <= _PRELOAD_EDGE_THRESHOLD:
+            self._preload_end = min(total, self._preload_end + _PRELOAD_CHUNK_SIZE)
 
     async def _preload_visible_cache(self) -> None:
         ordered = self._preload_order()
@@ -986,7 +1017,6 @@ class BookmarkBrowserView(BaseLayoutView):
 
     async def _rebuild(self) -> None:
         """Reconstruct all top-level children of this view."""
-        self.clear_items()
         self._text_footer_extra: str | None = None
         container = await self._build_container()
 
@@ -1006,6 +1036,13 @@ class BookmarkBrowserView(BaseLayoutView):
         # they share the visual frame.
         if self._filtered:
             container.add_item(small_separator())
+            if self._delete_confirmation_active():
+                container.add_item(
+                    discord.ui.TextDisplay(
+                        f"{emojis.WARNING} Delete this bookmark? This cannot be undone."
+                    )
+                )
+                container.add_item(small_separator())
             container.add_item(self._build_action_row(ts, track_state))
 
         container.add_item(small_separator())
@@ -1023,6 +1060,7 @@ class BookmarkBrowserView(BaseLayoutView):
             container.add_item(small_separator())
             container.add_item(footer_section(self._bot, extra=footer_extra))
 
+        self.clear_items()
         self.add_item(container)
 
     def _build_action_row(
@@ -1039,14 +1077,32 @@ class BookmarkBrowserView(BaseLayoutView):
         toggle_btn.callback = self._on_mode_toggle  # type: ignore[assignment]
         row.add_item(toggle_btn)
         if self._mode == "visual":
-            delete_btn = discord.ui.Button(
-                label="Delete bookmark",
-                emoji="🗑️",
-                style=discord.ButtonStyle.danger,
-                custom_id=self._custom_id("delete"),
-            )
-            delete_btn.callback = self._on_delete  # type: ignore[assignment]
-            row.add_item(delete_btn)
+            if self._delete_confirmation_active():
+                confirm_btn = discord.ui.Button(
+                    label="Confirm delete",
+                    emoji="🗑️",
+                    style=discord.ButtonStyle.danger,
+                    custom_id=self._custom_id("delete-confirm"),
+                )
+                confirm_btn.callback = self._on_delete_confirm  # type: ignore[assignment]
+                row.add_item(confirm_btn)
+
+                cancel_btn = discord.ui.Button(
+                    label="Cancel",
+                    style=discord.ButtonStyle.secondary,
+                    custom_id=self._custom_id("delete-cancel"),
+                )
+                cancel_btn.callback = self._on_delete_cancel  # type: ignore[assignment]
+                row.add_item(cancel_btn)
+            else:
+                delete_btn = discord.ui.Button(
+                    label="Delete bookmark",
+                    emoji="🗑️",
+                    style=discord.ButtonStyle.danger,
+                    custom_id=self._custom_id("delete"),
+                )
+                delete_btn.callback = self._on_delete  # type: ignore[assignment]
+                row.add_item(delete_btn)
             if track_state is not None and track_state.show:
                 track_btn = discord.ui.Button(
                     label="Track",
@@ -1107,6 +1163,7 @@ class BookmarkBrowserView(BaseLayoutView):
         else:
             self._filtered = sorted(self._filtered, key=lambda bm: bm.updated_at, reverse=True)
         self._index = 0
+        self._reset_preload_window()
         await self._rebuild_and_edit(interaction)
 
     async def _on_filter_change(self, interaction: discord.Interaction) -> None:
@@ -1115,6 +1172,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._current_folder = None if choice == "__all__" else choice
         self._filtered = self._apply_folder_filter()
         self._index = 0
+        self._reset_preload_window()
         await self._rebuild_and_edit(interaction)
 
     async def _on_folder_change(self, interaction: discord.Interaction) -> None:
@@ -1142,6 +1200,7 @@ class BookmarkBrowserView(BaseLayoutView):
             self._index = 0
         else:
             self._index = min(self._index, len(self._filtered) - 1)
+        self._reset_preload_window()
         await self._rebuild_and_edit(interaction)
 
     async def _on_track(self, interaction: discord.Interaction) -> None:
@@ -1296,9 +1355,32 @@ class BookmarkBrowserView(BaseLayoutView):
         await self._rebuild_and_edit(interaction)
 
     async def _on_delete(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(
-            "Use `/bookmark delete` to delete this bookmark.", ephemeral=True
-        )
+        if not self._filtered:
+            await interaction.response.defer()
+            return
+        self._pending_delete_key = self._bookmark_key(self._filtered[self._index])
+        await self._rebuild_and_edit(interaction)
+
+    async def _on_delete_cancel(self, interaction: discord.Interaction) -> None:
+        self._pending_delete_key = None
+        await self._rebuild_and_edit(interaction)
+
+    async def _on_delete_confirm(self, interaction: discord.Interaction) -> None:
+        if not self._filtered:
+            await interaction.response.defer()
+            return
+        await self._defer_update(interaction)
+        bm = self._filtered[self._index]
+        try:
+            await self._store.delete_bookmark(bm.user_id, bm.website_key, bm.url_name)
+        except Exception:
+            _log.exception("delete_bookmark failed")
+            await self._send_ephemeral(interaction, "Failed to delete bookmark — please try again.")
+            return
+        self._pending_delete_key = None
+        self._remove_bookmark(bm)
+        self._reset_preload_window()
+        await self._rebuild_and_edit(interaction)
 
     # ---- mutation helpers ----------------------------------------------
 
@@ -1319,6 +1401,20 @@ class BookmarkBrowserView(BaseLayoutView):
             ):
                 self._filtered[i] = new
                 break
+
+    def _remove_bookmark(self, target: Bookmark) -> None:
+        key = self._bookmark_key(target)
+        self._all = [bm for bm in self._all if self._bookmark_key(bm) != key]
+        self._filtered = [bm for bm in self._filtered if self._bookmark_key(bm) != key]
+        self._meta.pop(key, None)
+        self._series_data_cache.pop(key, None)
+        self._chapter_cache.pop(key, None)
+        self._tracking_cache.pop(key, None)
+        self._track_button_cache.pop(key, None)
+        if self._filtered:
+            self._index = min(self._index, len(self._filtered) - 1)
+        else:
+            self._index = 0
 
     async def _refresh_current(
         self,

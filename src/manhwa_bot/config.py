@@ -37,6 +37,7 @@ class CrawlerConfig:
     reconnect_jitter_seconds: float
     consumer_key: str
     api_key: str
+    client_id: str = ""
     transport_watchdog_seconds: float = 180.0
 
 
@@ -257,6 +258,12 @@ def load_config(
             _env_override(
                 "MANHWABOT_CRAWLER_CONSUMER_KEY",
                 crawler_section.get("consumer_key", "manhwa-bot-default"),
+            )
+        ),
+        client_id=str(
+            _env_override(
+                "MANHWABOT_CRAWLER_CLIENT_ID",
+                crawler_section.get("client_id", ""),
             )
         ),
         api_key=crawler_api_key,

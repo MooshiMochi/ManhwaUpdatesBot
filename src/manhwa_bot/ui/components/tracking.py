@@ -205,7 +205,7 @@ def build_grouped_list_views(
     accent_colour: discord.Colour | None = None,
 ) -> list[discord.ui.LayoutView]:
     """Scanlator-grouped numbered list rendered as paginated LayoutViews."""
-    accent = accent_colour or discord.Colour.blurple()
+    del accent_colour
 
     if not items:
         container = discord.ui.Container(
@@ -214,7 +214,6 @@ def build_grouped_list_views(
             discord.ui.TextDisplay(empty_description),
             large_separator(),
             footer_section(bot),
-            accent_colour=discord.Colour.red(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -281,7 +280,6 @@ def build_grouped_list_views(
             discord.ui.TextDisplay(safe_truncate(body, TEXT_MAX)),
             small_separator(),
             footer_section(bot, extra=(f"Page {i}/{total_pages}" if total_pages > 1 else None)),
-            accent_colour=accent,
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -371,7 +369,7 @@ def build_bulk_subscribe_result_view(
             f"\n\n{emojis.WARNING} I was unable to {verb_past.split()[0]} **{fails}** series. "
             "Double-check my permissions and try again."
         )
-    accent = discord.Colour.orange() if fails else discord.Colour.green()
+    accent = None if fails else discord.Colour.green()
     label = "Subscribed" if action == "subscribe" else "Unsubscribed"
     container = discord.ui.Container(
         discord.ui.TextDisplay(f"## {emojis.CHECK}  {label}"),
@@ -400,7 +398,7 @@ def build_simple_status_view(
         discord.ui.TextDisplay(description),
         small_separator(),
         footer_section(bot),
-        accent_colour=accent,
+        accent_colour=accent if accent in (discord.Colour.green(), discord.Colour.red()) else None,
     )
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)

@@ -23,7 +23,6 @@ from .base import (
     large_separator,
     safe_truncate,
     small_separator,
-    status_accent,
 )
 
 _log = logging.getLogger(__name__)
@@ -236,7 +235,7 @@ def build_info_view(
         f"**First Chapter:** {first}"
     )
 
-    container = discord.ui.Container(accent_colour=status_accent(status))
+    container = discord.ui.Container()
     gallery = hero_cover_gallery(cover_url)
     if gallery is not None:
         container.add_item(gallery)
@@ -294,7 +293,7 @@ def build_search_result_view(
         sub_parts.append(f"**Status:** `{status}`")
     sub_line = " • ".join(sub_parts)
 
-    container = discord.ui.Container(accent_colour=status_accent(str(status)))
+    container = discord.ui.Container()
     gallery = hero_cover_gallery(cover_url)
     if gallery is not None:
         container.add_item(gallery)
@@ -331,7 +330,6 @@ def build_no_results_view(
         discord.ui.TextDisplay("## 🔎  No results"),
         small_separator(),
         discord.ui.TextDisplay(body),
-        accent_colour=discord.Colour.red(),
     )
     if failed_websites:
         container.add_item(small_separator())

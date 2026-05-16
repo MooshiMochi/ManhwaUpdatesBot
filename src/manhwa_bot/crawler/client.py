@@ -24,7 +24,7 @@ from .errors import CrawlerError, Disconnected, RequestTimeout
 from .progress import CrawlerProgressEvent, parse_progress_event
 from .retry import Backoff
 
-_CHAPTER_PAYLOAD_OPS = frozenset({"chapters", "info", "search", "check_series"})
+_CHAPTER_PAYLOAD_OPS = frozenset({"chapters", "info", "search", "check_series", "series_data"})
 
 
 def _wrap_chapter_payload(type_: str, data: dict[str, Any]) -> dict[str, Any]:

@@ -20,6 +20,7 @@ from .cogs import COGS
 from .config import AppConfig
 from .crawler.client import CrawlerClient
 from .crawler.errors import CrawlerError, Disconnected, RequestTimeout
+from .crawler.series_sync import register_series_sync_handler
 from .db.migrate import apply_pending
 from .db.patreon_links import PatreonLinkStore
 from .db.pool import DbPool
@@ -116,6 +117,7 @@ class ManhwaBot(commands.Bot):
         _log.info("Premium subsystem initialized")
 
         await self.crawler.start()
+        register_series_sync_handler(self)
         _log.info("Crawler client started")
 
         self.websites_cache: TtlCache[list] = TtlCache()

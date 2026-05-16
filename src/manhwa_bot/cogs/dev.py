@@ -23,7 +23,8 @@ import aiohttp
 import discord
 from discord.ext import commands
 
-from ..crawler.errors import CrawlerError
+from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
+from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
 from ..dev_helpers import duration_parser, eval_runner, shell_runner, sql_runner
 from ..ui import emojis
 from ..ui.components.confirm import ConfirmLayoutView
@@ -73,6 +74,7 @@ _DEV_COMMAND_DESCRIPTIONS = {
     "import_db": "Import a JSON or SQLite database attachment.",
     "sql": "Run a SQL statement against the bot database.",
     "disabled_scanlators": "List crawler websites currently marked as disabled.",
+    "refetch": "Fetch fresh series data and overwrite the crawler DB snapshot.",
     "g_update": "Send a system alert message to configured guild channels.",
     "test_update": "Dispatch a fake update through the update cog.",
     "crawler": "Crawler maintenance commands.",
@@ -160,7 +162,6 @@ class DevCog(commands.Cog, name="Dev"):
             view=build_diagnostic_view(
                 title=f"{emojis.WARNING}  Restarting the bot",
                 body="Restarting now.",
-                accent=discord.Color.dark_theme(),
                 bot=self.bot,
             )
         )
@@ -256,7 +257,6 @@ class DevCog(commands.Cog, name="Dev"):
                 title="Loaded cogs",
                 body=f"- {body}",
                 lang="diff",
-                accent=discord.Color.red(),
                 bot=self.bot,
             )
         )
@@ -538,7 +538,73 @@ class DevCog(commands.Cog, name="Dev"):
                 title="Disabled scanlators",
                 body=body,
                 lang="diff",
-                accent=discord.Color.red(),
+                bot=self.bot,
+            )
+        )
+
+    # -- refetch --------------------------------------------------------
+
+    @developer.command(name="refetch")
+    async def refetch(
+        self,
+        ctx: commands.Context,
+        first: str,
+        second: str | None = None,
+    ) -> None:
+        """Force crawler_backend to refresh and persist one series snapshot."""
+        request: dict[str, Any]
+        if first.startswith(("http://", "https://")):
+            series_url = series_url_from_maybe_chapter_url(first)
+            website_key = await detect_website_key(self.bot, series_url)
+            if not website_key:
+                await ctx.send(
+                    "Could not detect `website_key` for that URL. "
+                    "Use `?d refetch <website_key> <url_name>` instead."
+                )
+                return
+            request = {
+                "website_key": website_key,
+                "url": series_url,
+                "refresh": True,
+                "allow_live": True,
+            }
+        else:
+            website_key = first.strip()
+            url_name = str(second or "").strip()
+            if not website_key or not url_name:
+                await ctx.send(
+                    "Usage: `?d refetch <series_url>` or `?d refetch <website_key> <url_name>`"
+                )
+                return
+            request = {
+                "website_key": website_key,
+                "url_name": url_name,
+                "refresh": True,
+                "allow_live": True,
+            }
+
+        try:
+            data = await self.bot.crawler.request("series_data", **request)
+        except (CrawlerError, RequestTimeout, Disconnected) as exc:
+            await ctx.send(f"crawler error: `{exc}`")
+            return
+
+        body = "\n".join(
+            [
+                f"website_key: {data.get('website_key') or request.get('website_key') or '-'}",
+                f"url_name: {data.get('url_name') or request.get('url_name') or '-'}",
+                f"title: {data.get('title') or '-'}",
+                f"status: {data.get('status') or '-'}",
+                f"chapter_count: {data.get('chapter_count') if data.get('chapter_count') is not None else '-'}",
+                f"source: {data.get('source') or '-'}",
+            ]
+        )
+        await ctx.send(
+            view=build_diagnostic_view(
+                title=f"{emojis.CHECK}  Refetched series",
+                body=body,
+                lang="yaml",
+                accent=discord.Color.green(),
                 bot=self.bot,
             )
         )
@@ -907,7 +973,6 @@ class DevCog(commands.Cog, name="Dev"):
             discord.ui.TextDisplay("# 🛠️  Dev commands"),
             small_separator(),
             discord.ui.TextDisplay(f"Owner-only prefix commands. Use `{base} <command>`."),
-            accent_colour=discord.Color.dark_grey(),
         )
         for name, value in fields:
             container.add_item(small_separator())

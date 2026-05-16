@@ -31,7 +31,6 @@ def build_chapter_update_view(
     cover_url = payload.get("cover_url")
     website_key = payload.get("website_key")
 
-    accent = discord.Colour.gold() if is_premium else discord.Colour.green()
     glyph = "🥇" if is_premium else "📖"
 
     header = (
@@ -42,7 +41,7 @@ def build_chapter_update_view(
     chapter_display = chapter_markdown(chapter)
     body = f"**New chapter:** {chapter_display}"
 
-    container = discord.ui.Container(accent_colour=accent)
+    container = discord.ui.Container()
     gallery = hero_cover_gallery(cover_url)
     if gallery is not None:
         container.add_item(gallery)

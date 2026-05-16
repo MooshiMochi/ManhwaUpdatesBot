@@ -180,3 +180,20 @@ class BookmarkStore:
             (user_id,),
         )
         return row["cnt"] if row else 0
+
+    async def list_distinct_series_refs(self) -> list[dict[str, int | str]]:
+        rows = await self._pool.fetchall(
+            """
+            SELECT website_key, url_name, COUNT(*) AS bookmarks
+            FROM bookmarks
+            GROUP BY website_key, url_name
+            """
+        )
+        return [
+            {
+                "website_key": str(row["website_key"]),
+                "url_name": str(row["url_name"]),
+                "bookmarks": int(row["bookmarks"]),
+            }
+            for row in rows
+        ]

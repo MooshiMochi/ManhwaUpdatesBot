@@ -158,7 +158,7 @@ def _build_settings_container(
     )
     overrides_section = f"**🗨️ Per-Scanlator Channels:**\n{overrides_text}"
 
-    accent = discord.Colour.red() if warnings else discord.Colour.blurple()
+    accent = discord.Colour.red() if any(w.startswith(emojis.ERROR) for w in warnings) else None
     container = discord.ui.Container(
         discord.ui.TextDisplay("# ⚙️  Server Settings"),
         small_separator(),
@@ -565,15 +565,16 @@ class SettingsLayoutView(BaseLayoutView):
 class _RemoveButton(discord.ui.Button):
     def __init__(self, parent: ScanlatorChannelsLayoutView, website_key: str) -> None:
         super().__init__(label=f"✕ {website_key}", style=discord.ButtonStyle.danger)
-        self._parent = parent
+        self._layout_view = parent
         self._website_key = website_key
 
     async def callback(self, interaction: discord.Interaction) -> None:  # type: ignore[override]
-        await self._parent._store.clear_scanlator_channel(self._parent._guild_id, self._website_key)
-        overrides = await self._parent._store.list_scanlator_channels(self._parent._guild_id)
-        self._parent._overrides = overrides
-        self._parent._rebuild()
-        await interaction.response.edit_message(view=self._parent)
+        view = self._layout_view
+        await view._store.clear_scanlator_channel(view._guild_id, self._website_key)
+        overrides = await view._store.list_scanlator_channels(view._guild_id)
+        view._overrides = overrides
+        view._rebuild()
+        await interaction.response.edit_message(view=view)
 
 
 class ScanlatorChannelsLayoutView(BaseLayoutView):
@@ -605,7 +606,6 @@ class ScanlatorChannelsLayoutView(BaseLayoutView):
             discord.ui.TextDisplay(safe_truncate(desc, LIST_MAX)),
             small_separator(),
             footer_section(self._bot),
-            accent_colour=discord.Colour.blurple(),
         )
 
     def _rebuild(self) -> None:
@@ -717,7 +717,6 @@ class ScanlatorAddLayoutView(BaseLayoutView):
             ),
             small_separator(),
             footer_section(self._bot),
-            accent_colour=discord.Colour.green(),
         )
 
     def _rebuild(self) -> None:
@@ -835,7 +834,6 @@ class DmSettingsLayoutView(BaseLayoutView):
             discord.ui.TextDisplay(body),
             small_separator(),
             footer_section(self._bot),
-            accent_colour=discord.Colour.blurple(),
         )
 
     def _rebuild(self) -> None:

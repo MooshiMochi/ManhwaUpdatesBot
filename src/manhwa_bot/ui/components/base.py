@@ -179,9 +179,12 @@ def chapter_markdown(chapter: object, fallback_idx: int | None = None) -> str:
     if isinstance(chapter, Chapter):
         return str(chapter)
     label = chapter_label(chapter, fallback_idx)
-    if chapter_is_premium(chapter):
-        label = f"{emojis.LOCK} {label}"
     url = chapter_url(chapter)
+    if chapter_is_premium(chapter):
+        if url:
+            label = f"{label} {emojis.LOCK}"
+        else:
+            label = f"{emojis.LOCK} {label}"
     return f"[{label}]({url})" if url else label
 
 

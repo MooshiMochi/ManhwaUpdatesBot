@@ -1,8 +1,8 @@
 """Components V2 replacement for ProgressEmbedState.
 
 Renders crawler-backed command progress as a single LayoutView that the caller
-edits in place. Severity drives the Container accent colour; events render as a
-numbered TextDisplay with the same tail-follow logic as the legacy embed.
+edits in place. Failed progress snapshots use an error accent; events render as
+a numbered TextDisplay with the same tail-follow logic as the legacy embed.
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ class ProgressLayoutState:
             discord.ui.TextDisplay(body),
             discord.ui.Separator(spacing=discord.SeparatorSpacing.small),
             footer_section(self.bot, extra=f"req: {self.request_id}"),
-            accent_colour=severity_accent(accent_level),  # type: ignore[arg-type]
+            accent_colour=severity_accent("error") if accent_level == "error" else None,
         )
 
         view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)

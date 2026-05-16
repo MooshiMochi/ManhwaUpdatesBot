@@ -98,7 +98,7 @@ def build_help_view(
     """Section-grouped help view (no embed fields — Sections per topic)."""
     support_url = support_url or DEFAULT_SUPPORT_URL
 
-    container = discord.ui.Container(accent_colour=discord.Colour.green())
+    container = discord.ui.Container()
     container.add_item(discord.ui.TextDisplay("# 📚  Manhwa Updates Bot — Help"))
     container.add_item(small_separator())
 
@@ -209,7 +209,6 @@ def build_stats_view(
         discord.ui.TextDisplay(grid),
         small_separator(),
         footer_section(bot, extra="Stats"),
-        accent_colour=discord.Colour(0x1ABC9C),
     )
 
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
@@ -265,7 +264,6 @@ def build_patreon_view(*, bot: discord.Client | None) -> discord.ui.LayoutView:
         discord.ui.TextDisplay("# 🟧  Patreon"),
         small_separator(),
         discord.ui.TextDisplay(body),
-        accent_colour=discord.Colour.gold(),
     )
     for name, value in tiers:
         container.add_item(small_separator())
@@ -309,7 +307,6 @@ def build_next_update_check_views(
             discord.ui.TextDisplay("*No tracked websites.*"),
             large_separator(),
             footer_section(bot),
-            accent_colour=discord.Colour.green(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -330,7 +327,6 @@ def build_next_update_check_views(
             footer_section(
                 bot, extra=(f"Page {page_num}/{total_pages}" if total_pages > 1 else None)
             ),
-            accent_colour=discord.Colour.green(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -363,7 +359,6 @@ def build_translation_view(
         discord.ui.TextDisplay(f"**📤 Result**\n```{out}```"),
         small_separator(),
         footer_section(bot),
-        accent_colour=discord.Colour.blurple(),
     )
 
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
@@ -394,7 +389,6 @@ def build_lost_manga_view(
         discord.ui.TextDisplay(body),
         small_separator(),
         footer_section(bot),
-        accent_colour=discord.Colour.orange(),
     )
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)

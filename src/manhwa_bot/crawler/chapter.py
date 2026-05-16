@@ -71,5 +71,10 @@ class Chapter:
     def __str__(self) -> str:
         from ..ui import emojis
 
-        label = f"{emojis.LOCK} {self.name}" if self.is_premium else self.name
+        if self.is_premium and self.url:
+            label = f"{self.name} {emojis.LOCK}"
+        elif self.is_premium:
+            label = f"{emojis.LOCK} {self.name}"
+        else:
+            label = self.name
         return f"[{label}]({self.url})" if self.url else label

@@ -104,3 +104,20 @@ class SubscriptionStore:
             (user_id, guild_id, website_key, url_name),
         )
         return row is not None
+
+    async def list_distinct_series_refs(self) -> list[dict[str, int | str]]:
+        rows = await self._pool.fetchall(
+            """
+            SELECT website_key, url_name, COUNT(*) AS subscriptions
+            FROM subscriptions
+            GROUP BY website_key, url_name
+            """
+        )
+        return [
+            {
+                "website_key": str(row["website_key"]),
+                "url_name": str(row["url_name"]),
+                "subscriptions": int(row["subscriptions"]),
+            }
+            for row in rows
+        ]

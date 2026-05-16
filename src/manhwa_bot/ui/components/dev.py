@@ -19,6 +19,12 @@ def _wrap_code(text: str, lang: str = "") -> str:
     return f"```{lang}\n{safe}\n```"
 
 
+def _semantic_accent(accent: discord.Colour | None) -> discord.Colour | None:
+    if accent in (discord.Colour.green(), discord.Colour.red()):
+        return accent
+    return None
+
+
 def build_diagnostic_view(
     *,
     title: str,
@@ -34,7 +40,7 @@ def build_diagnostic_view(
         discord.ui.TextDisplay(_wrap_code(safe_truncate(body, TEXT_MAX - 16), lang)),
         small_separator(),
         footer_section(bot),
-        accent_colour=accent or discord.Colour.dark_grey(),
+        accent_colour=_semantic_accent(accent),
     )
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
@@ -66,7 +72,7 @@ def build_diagnostic_pages(
             discord.ui.TextDisplay(_wrap_code(body, lang)),
             small_separator(),
             footer_section(bot),
-            accent_colour=accent or discord.Colour.dark_grey(),
+            accent_colour=_semantic_accent(accent),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
@@ -89,7 +95,6 @@ def build_g_update_view(
         discord.ui.TextDisplay(body),
         small_separator(),
         footer_section(bot, extra="Sent by the bot owner"),
-        accent_colour=discord.Colour.red(),
     )
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
@@ -148,7 +153,6 @@ def build_premium_list_views(
             discord.ui.TextDisplay("\n".join(lines)),
             small_separator(),
             footer_section(bot),
-            accent_colour=discord.Colour.gold(),
         )
         view = BaseLayoutView(invoker_id=invoker_id, timeout=None, lock=invoker_id is not None)
         view.add_item(container)
