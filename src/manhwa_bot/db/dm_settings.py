@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable
 
+from .guild_settings import _parse_update_buttons, _serialize_update_buttons
 from .pool import DbPool
 
 
@@ -13,7 +14,7 @@ class DmSettings:
     user_id: int
     notifications_enabled: bool
     paid_chapter_notifs: bool
-    show_update_buttons: bool
+    update_buttons: frozenset[str]
     updated_at: str
 
 
@@ -22,7 +23,7 @@ def _row_to_dm_settings(row: Any) -> DmSettings:
         user_id=row["user_id"],
         notifications_enabled=bool(row["notifications_enabled"]),
         paid_chapter_notifs=bool(row["paid_chapter_notifs"]),
-        show_update_buttons=bool(row["show_update_buttons"]),
+        update_buttons=_parse_update_buttons(row["update_buttons"]),
         updated_at=row["updated_at"],
     )
 
@@ -32,26 +33,28 @@ class DmSettingsStore:
         self._pool = pool
 
     async def get(self, user_id: int) -> DmSettings | None:
-        row = await self._pool.fetchone("SELECT * FROM dm_settings WHERE user_id = ?", (user_id,))
+        row = await self._pool.fetchone(
+            "SELECT * FROM dm_settings WHERE user_id = ?", (user_id,)
+        )
         return _row_to_dm_settings(row) if row else None
 
     async def upsert(self, settings: DmSettings) -> None:
         await self._pool.execute(
             """
             INSERT INTO dm_settings
-              (user_id, notifications_enabled, paid_chapter_notifs, show_update_buttons)
+              (user_id, notifications_enabled, paid_chapter_notifs, update_buttons)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
               notifications_enabled = excluded.notifications_enabled,
               paid_chapter_notifs   = excluded.paid_chapter_notifs,
-              show_update_buttons   = excluded.show_update_buttons,
+              update_buttons        = excluded.update_buttons,
               updated_at            = CURRENT_TIMESTAMP
             """,
             (
                 settings.user_id,
                 int(settings.notifications_enabled),
                 int(settings.paid_chapter_notifs),
-                int(settings.show_update_buttons),
+                _serialize_update_buttons(settings.update_buttons),
             ),
         )
 
@@ -79,14 +82,15 @@ class DmSettingsStore:
             (user_id, int(enabled)),
         )
 
-    async def set_show_update_buttons(self, user_id: int, enabled: bool) -> None:
+    async def set_update_buttons(self, user_id: int, keys: Iterable[str]) -> None:
+        encoded = _serialize_update_buttons(keys)
         await self._pool.execute(
             """
-            INSERT INTO dm_settings (user_id, show_update_buttons)
+            INSERT INTO dm_settings (user_id, update_buttons)
             VALUES (?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
-              show_update_buttons = excluded.show_update_buttons,
-              updated_at          = CURRENT_TIMESTAMP
+              update_buttons = excluded.update_buttons,
+              updated_at     = CURRENT_TIMESTAMP
             """,
-            (user_id, int(enabled)),
+            (user_id, encoded),
         )
