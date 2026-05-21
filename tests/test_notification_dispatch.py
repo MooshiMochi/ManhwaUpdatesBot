@@ -23,7 +23,7 @@ from manhwa_bot.config import (
     PremiumConfig,
     SupportedWebsitesCacheConfig,
 )
-from manhwa_bot.db.dm_settings import DmSettings, DmSettingsStore
+from manhwa_bot.db.dm_settings import DmSettingsStore
 from manhwa_bot.db.guild_settings import GuildSettings, GuildSettingsStore
 from manhwa_bot.db.migrate import apply_pending
 from manhwa_bot.db.pool import DbPool
@@ -300,15 +300,7 @@ def test_dm_disabled_user_is_skipped() -> None:
             settings_store = GuildSettingsStore(bot.db)
             await settings_store.set_notifications_channel(1, 100)
             await SubscriptionStore(bot.db).subscribe(42, 1, "comick", "demo")
-            await DmSettingsStore(bot.db).upsert(
-                DmSettings(
-                    user_id=42,
-                    notifications_enabled=False,
-                    paid_chapter_notifs=True,
-                    show_update_buttons=True,
-                    updated_at="",
-                )
-            )
+            await DmSettingsStore(bot.db).set_notifications_enabled(42, False)
 
             channel = _make_channel()
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None

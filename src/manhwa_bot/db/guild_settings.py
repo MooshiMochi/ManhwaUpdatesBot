@@ -3,9 +3,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable
 
 from .pool import DbPool
+
+_VALID_UPDATE_BUTTONS: frozenset[str] = frozenset(
+    {"mark_read", "bookmark", "subscribe", "open_chapter"}
+)
+
+
+def _parse_update_buttons(raw: str | None) -> frozenset[str]:
+    if not raw:
+        return frozenset()
+    return frozenset(
+        token.strip()
+        for token in raw.split(",")
+        if token.strip() in _VALID_UPDATE_BUTTONS
+    )
+
+
+def _serialize_update_buttons(keys: Iterable[str]) -> str:
+    valid = [k for k in keys if k in _VALID_UPDATE_BUTTONS]
+    # Keep canonical insertion order for stable storage.
+    order = ("mark_read", "bookmark", "subscribe", "open_chapter")
+    valid_sorted = [k for k in order if k in valid]
+    return ",".join(valid_sorted)
 
 
 @dataclass(frozen=True)
@@ -17,7 +39,7 @@ class GuildSettings:
     bot_manager_role_id: int | None
     paid_chapter_notifs: bool
     auto_create_role: bool
-    show_update_buttons: bool
+    update_buttons: frozenset[str]
     updated_at: str
 
 
@@ -30,7 +52,7 @@ def _row_to_settings(row: Any) -> GuildSettings:
         bot_manager_role_id=row["bot_manager_role_id"],
         paid_chapter_notifs=bool(row["paid_chapter_notifs"]),
         auto_create_role=bool(row["auto_create_role"]),
-        show_update_buttons=bool(row["show_update_buttons"]),
+        update_buttons=_parse_update_buttons(row["update_buttons"]),
         updated_at=row["updated_at"],
     )
 
@@ -51,7 +73,7 @@ class GuildSettingsStore:
             INSERT INTO guild_settings
               (guild_id, notifications_channel_id, system_alerts_channel_id,
                default_ping_role_id, bot_manager_role_id,
-               paid_chapter_notifs, auto_create_role, show_update_buttons)
+               paid_chapter_notifs, auto_create_role, update_buttons)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
               notifications_channel_id = excluded.notifications_channel_id,
@@ -60,7 +82,7 @@ class GuildSettingsStore:
               bot_manager_role_id      = excluded.bot_manager_role_id,
               paid_chapter_notifs      = excluded.paid_chapter_notifs,
               auto_create_role         = excluded.auto_create_role,
-              show_update_buttons      = excluded.show_update_buttons,
+              update_buttons           = excluded.update_buttons,
               updated_at               = CURRENT_TIMESTAMP
             """,
             (
@@ -71,7 +93,7 @@ class GuildSettingsStore:
                 settings.bot_manager_role_id,
                 int(settings.paid_chapter_notifs),
                 int(settings.auto_create_role),
-                int(settings.show_update_buttons),
+                _serialize_update_buttons(settings.update_buttons),
             ),
         )
 
@@ -147,16 +169,17 @@ class GuildSettingsStore:
             (guild_id, int(enabled)),
         )
 
-    async def set_show_update_buttons(self, guild_id: int, enabled: bool) -> None:
+    async def set_update_buttons(self, guild_id: int, keys: Iterable[str]) -> None:
+        encoded = _serialize_update_buttons(keys)
         await self._pool.execute(
             """
-            INSERT INTO guild_settings (guild_id, show_update_buttons)
+            INSERT INTO guild_settings (guild_id, update_buttons)
             VALUES (?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
-              show_update_buttons = excluded.show_update_buttons,
-              updated_at          = CURRENT_TIMESTAMP
+              update_buttons = excluded.update_buttons,
+              updated_at     = CURRENT_TIMESTAMP
             """,
-            (guild_id, int(enabled)),
+            (guild_id, encoded),
         )
 
     async def set_scanlator_channel(self, guild_id: int, website_key: str, channel_id: int) -> None:

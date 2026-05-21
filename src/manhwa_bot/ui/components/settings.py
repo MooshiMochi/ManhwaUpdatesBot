@@ -8,7 +8,7 @@ from typing import Any
 import discord
 
 from ...db.dm_settings import DmSettingsStore
-from ...db.guild_settings import GuildSettings, GuildSettingsStore
+from ...db.guild_settings import GuildSettings, GuildSettingsStore, _VALID_UPDATE_BUTTONS
 from .. import emojis
 from .base import (
     LIST_MAX,
@@ -132,7 +132,7 @@ def _build_settings_container(
         else "Not set"
     )
     auto_create = _bool_emoji(bool(settings and settings.auto_create_role))
-    show_buttons = _bool_emoji(bool(settings and settings.show_update_buttons))
+    show_buttons = _bool_emoji(bool(settings and settings.update_buttons))
     paid = _bool_emoji(bool(settings and settings.paid_chapter_notifs))
 
     override_lines = [
@@ -425,7 +425,7 @@ class SettingsLayoutView(BaseLayoutView):
         if setting == _SETTING_AUTO_CREATE_ROLE:
             return self._settings.auto_create_role
         if setting == _SETTING_SHOW_UPDATE_BUTTONS:
-            return self._settings.show_update_buttons
+            return bool(self._settings.update_buttons)
         if setting == _SETTING_PAID_CHAPTER_NOTIFS:
             return self._settings.paid_chapter_notifs
         return False
@@ -487,7 +487,8 @@ class SettingsLayoutView(BaseLayoutView):
         if self._selected_setting == _SETTING_AUTO_CREATE_ROLE:
             await self._store.set_auto_create_role(self._guild_id, enabled)
         elif self._selected_setting == _SETTING_SHOW_UPDATE_BUTTONS:
-            await self._store.set_show_update_buttons(self._guild_id, enabled)
+            buttons = list(_VALID_UPDATE_BUTTONS) if enabled else []
+            await self._store.set_update_buttons(self._guild_id, buttons)
         elif self._selected_setting == _SETTING_PAID_CHAPTER_NOTIFS:
             await self._store.set_paid_chapter_notifs(self._guild_id, enabled)
         await self._refresh(interaction)
