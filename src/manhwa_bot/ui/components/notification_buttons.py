@@ -95,8 +95,32 @@ class MarkReadButton(
         return cls(match["wk"], match["un"], int(match["idx"]))
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        # Wired in Task 6.
-        await interaction.response.send_message("Not yet implemented.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        pool = interaction.client.db  # type: ignore[attr-defined]
+        store = BookmarkStore(pool)
+        existing = await store.get_bookmark(
+            interaction.user.id, self.website_key, self.url_name
+        )
+        chapter_index = self.chapter_index
+        # The encoded index is a hint; we don't have a live chapters lookup
+        # here, so trust it for the write. The bookmark browser re-resolves
+        # against current series_data when the user opens it.
+        chapter_text = f"Chapter index {chapter_index}"
+        await store.upsert_bookmark(
+            user_id=interaction.user.id,
+            website_key=self.website_key,
+            url_name=self.url_name,
+            folder=existing.folder if existing else "Reading",
+            last_read_chapter=chapter_text,
+            last_read_index=chapter_index,
+        )
+        msg = (
+            f"✅ Marked **{self.url_name}** chapter index `{chapter_index}` as read."
+            if existing
+            else f"✅ Bookmarked **{self.url_name}** in *Reading* and marked chapter "
+            f"index `{chapter_index}` as read."
+        )
+        await interaction.followup.send(msg, ephemeral=True)
 
 
 class BookmarkButton(
@@ -128,7 +152,26 @@ class BookmarkButton(
         return cls(match["wk"], match["un"])
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message("Not yet implemented.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        pool = interaction.client.db  # type: ignore[attr-defined]
+        store = BookmarkStore(pool)
+        existing = await store.get_bookmark(
+            interaction.user.id, self.website_key, self.url_name
+        )
+        if existing is None:
+            await store.upsert_bookmark(
+                user_id=interaction.user.id,
+                website_key=self.website_key,
+                url_name=self.url_name,
+                folder="Reading",
+            )
+            msg = f"🔖 Bookmarked **{self.url_name}** in *Reading*."
+        else:
+            msg = (
+                f"🔖 You already have **{self.url_name}** bookmarked in "
+                f"*{existing.folder}*."
+            )
+        await interaction.followup.send(msg, ephemeral=True)
 
 
 class SubscribeToggleButton(
@@ -160,7 +203,54 @@ class SubscribeToggleButton(
         return cls(match["wk"], match["un"])
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message("Not yet implemented.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        pool = interaction.client.db  # type: ignore[attr-defined]
+        tracked_store = TrackedStore(pool)
+        guild_rows = await tracked_store.list_guilds_tracking(
+            self.website_key, self.url_name
+        )
+        if not guild_rows:
+            await interaction.followup.send(
+                "This series isn't tracked in any server yet — ask a server admin "
+                "to `/track new` it before subscribing.",
+                ephemeral=True,
+            )
+            return
+        # Prefer the guild the click came from, otherwise the first tracking row.
+        chosen_guild_id: int | None = None
+        for row in guild_rows:
+            if interaction.guild_id is not None and int(row.guild_id) == int(
+                interaction.guild_id
+            ):
+                chosen_guild_id = int(row.guild_id)
+                break
+        if chosen_guild_id is None:
+            chosen_guild_id = int(guild_rows[0].guild_id)
+
+        subs = SubscriptionStore(pool)
+        already = await subs.is_subscribed(
+            interaction.user.id,
+            chosen_guild_id,
+            self.website_key,
+            self.url_name,
+        )
+        if already:
+            await subs.unsubscribe(
+                interaction.user.id,
+                chosen_guild_id,
+                self.website_key,
+                self.url_name,
+            )
+            msg = f"🔔 Unsubscribed from **{self.url_name}**."
+        else:
+            await subs.subscribe(
+                interaction.user.id,
+                chosen_guild_id,
+                self.website_key,
+                self.url_name,
+            )
+            msg = f"🔔 Subscribed to **{self.url_name}**."
+        await interaction.followup.send(msg, ephemeral=True)
 
 
 # Re-exports referenced by stores when Task 6 wires the callbacks.
