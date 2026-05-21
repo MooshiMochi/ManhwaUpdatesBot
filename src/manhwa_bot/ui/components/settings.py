@@ -347,13 +347,15 @@ class SettingsLayoutView(BaseLayoutView):
         container.add_item(action_row)
 
     async def _refresh(self, interaction: discord.Interaction) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer()
         self._settings = await self._store.get(self._guild_id)
         self._scanlator_overrides = await self._store.list_scanlator_channels(self._guild_id)
         guild = interaction.guild
         me = guild.me if guild else None
         self._warnings = collect_warnings(self._settings, guild, me) if guild and me else []
         self._rebuild()
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(view=self)
 
     # ---- main-select callback ------------------------------------------
 
