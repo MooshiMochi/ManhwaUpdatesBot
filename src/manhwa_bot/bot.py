@@ -38,6 +38,11 @@ from .ui.components.error import (
     SOURCE_PERMISSION,
     build_error_view,
 )
+from .ui.components.notification_buttons import (
+    BookmarkButton,
+    MarkReadButton,
+    SubscribeToggleButton,
+)
 from .ui.components.upgrade import build_upgrade_view
 
 if TYPE_CHECKING:
@@ -125,6 +130,11 @@ class ManhwaBot(commands.Bot):
         for cog_path in COGS:
             await self.load_extension(cog_path)
             _log.info("Loaded cog: %s", cog_path)
+
+        self.add_dynamic_items(MarkReadButton, BookmarkButton, SubscribeToggleButton)
+        _log.info(
+            "Registered persistent chapter-update buttons: MarkRead, Bookmark, SubscribeToggle"
+        )
 
     async def on_ready(self) -> None:
         if not self._discord_ents_warmed:
