@@ -8,7 +8,7 @@ from typing import Any
 import discord
 
 from ...db.dm_settings import DmSettingsStore
-from ...db.guild_settings import GuildSettings, GuildSettingsStore, _VALID_UPDATE_BUTTONS
+from ...db.guild_settings import GuildSettings, GuildSettingsStore
 from .. import emojis
 from .base import (
     LIST_MAX,
@@ -17,6 +17,7 @@ from .base import (
     safe_truncate,
     small_separator,
 )
+from .notification_buttons import UPDATE_BUTTON_KEYS, UPDATE_BUTTON_LABELS
 
 _log = logging.getLogger(__name__)
 
@@ -132,8 +133,14 @@ def _build_settings_container(
         else "Not set"
     )
     auto_create = _bool_emoji(bool(settings and settings.auto_create_role))
-    show_buttons = _bool_emoji(bool(settings and settings.update_buttons))
     paid = _bool_emoji(bool(settings and settings.paid_chapter_notifs))
+    if settings is None or not settings.update_buttons:
+        update_buttons_display = "Disabled"
+    else:
+        labels = [
+            UPDATE_BUTTON_LABELS[k][0] for k in UPDATE_BUTTON_KEYS if k in settings.update_buttons
+        ]
+        update_buttons_display = ", ".join(labels)
 
     override_lines = [
         f"• **{r['website_key']}** → <#{r['channel_id']}>" for r in scanlator_overrides
@@ -151,8 +158,8 @@ def _build_settings_container(
         f"-# Members with this role can use admin commands without Manage Server.\n\n"
         f"**🪄 Auto-Create Role:** {auto_create}\n"
         f"-# Automatically create a role when /track new is used without a ping_role.\n\n"
-        f"**🔘 Show Update Buttons:** {show_buttons}\n"
-        f"-# Show 'Mark Read' buttons on chapter update notifications.\n\n"
+        f"**🔘 Update Buttons:** {update_buttons_display}\n"
+        f"-# Pick which buttons appear on update notifications.\n\n"
         f"**💰 Paid Chapter Notifs:** {paid}\n"
         f"-# Notify subscribers about premium / locked chapters."
     )
@@ -183,14 +190,13 @@ _SETTING_SYSTEM_ALERTS_CHANNEL = "system_alerts_channel"
 _SETTING_DEFAULT_PING_ROLE = "default_ping_role"
 _SETTING_BOT_MANAGER_ROLE = "bot_manager_role"
 _SETTING_AUTO_CREATE_ROLE = "auto_create_role"
-_SETTING_SHOW_UPDATE_BUTTONS = "show_update_buttons"
+_SETTING_UPDATE_BUTTONS = "update_buttons"
 _SETTING_PAID_CHAPTER_NOTIFS = "paid_chapter_notifs"
 _SETTING_SCANLATOR_CHANNELS = "scanlator_channels"
 
 _BOOL_SETTINGS = frozenset(
     {
         _SETTING_AUTO_CREATE_ROLE,
-        _SETTING_SHOW_UPDATE_BUTTONS,
         _SETTING_PAID_CHAPTER_NOTIFS,
     }
 )
@@ -229,10 +235,10 @@ _MAIN_OPTIONS: list[discord.SelectOption] = [
         description="Where critical bot alerts are sent.",
     ),
     discord.SelectOption(
-        label="Show buttons for chapter updates",
-        value=_SETTING_SHOW_UPDATE_BUTTONS,
+        label="Buttons shown on chapter updates",
+        value=_SETTING_UPDATE_BUTTONS,
         emoji="🔘",
-        description="Show 'Mark Read' buttons on update notifications.",
+        description="Pick which buttons appear on update notifications.",
     ),
     discord.SelectOption(
         label="Custom Scanlator Channels",
@@ -367,6 +373,25 @@ class SettingsLayoutView(BaseLayoutView):
         row.add_item(item)
         self._dynamic_row = row
 
+    def _build_update_buttons_select(self, current: frozenset[str]) -> discord.ui.Select:
+        select = discord.ui.Select(
+            placeholder="Pick buttons to show on update notifications (or none)...",
+            min_values=0,
+            max_values=len(UPDATE_BUTTON_KEYS),
+            options=[
+                discord.SelectOption(
+                    label=UPDATE_BUTTON_LABELS[k][0],
+                    value=k,
+                    emoji=UPDATE_BUTTON_LABELS[k][1],
+                    description=UPDATE_BUTTON_LABELS[k][2],
+                    default=(k in current),
+                )
+                for k in UPDATE_BUTTON_KEYS
+            ],
+        )
+        select.callback = self._on_buttons_picked  # type: ignore[assignment]
+        return select
+
     async def _on_main_select(self, interaction: discord.Interaction) -> None:
         value = self._main_select.values[0]
         self._selected_setting = value
@@ -409,6 +434,11 @@ class SettingsLayoutView(BaseLayoutView):
             )
             bool_select.callback = self._on_bool_picked  # type: ignore[assignment]
             self._set_dynamic(bool_select)
+        elif value == _SETTING_UPDATE_BUTTONS:
+            current = (
+                self._settings.update_buttons if self._settings else frozenset(UPDATE_BUTTON_KEYS)
+            )
+            self._set_dynamic(self._build_update_buttons_select(current))
         elif value == _SETTING_SCANLATOR_CHANNELS:
             await self._open_scanlator_channels(interaction)
             return
@@ -423,11 +453,9 @@ class SettingsLayoutView(BaseLayoutView):
 
     def _read_bool(self, setting: str) -> bool:
         if self._settings is None:
-            return setting == _SETTING_SHOW_UPDATE_BUTTONS
+            return False
         if setting == _SETTING_AUTO_CREATE_ROLE:
             return self._settings.auto_create_role
-        if setting == _SETTING_SHOW_UPDATE_BUTTONS:
-            return bool(self._settings.update_buttons)
         if setting == _SETTING_PAID_CHAPTER_NOTIFS:
             return self._settings.paid_chapter_notifs
         return False
@@ -488,11 +516,17 @@ class SettingsLayoutView(BaseLayoutView):
         enabled = item.values[0] == "1"
         if self._selected_setting == _SETTING_AUTO_CREATE_ROLE:
             await self._store.set_auto_create_role(self._guild_id, enabled)
-        elif self._selected_setting == _SETTING_SHOW_UPDATE_BUTTONS:
-            buttons = list(_VALID_UPDATE_BUTTONS) if enabled else []
-            await self._store.set_update_buttons(self._guild_id, buttons)
         elif self._selected_setting == _SETTING_PAID_CHAPTER_NOTIFS:
             await self._store.set_paid_chapter_notifs(self._guild_id, enabled)
+        await self._refresh(interaction)
+
+    async def _on_buttons_picked(self, interaction: discord.Interaction) -> None:
+        item = self._current_dynamic_item()
+        if not isinstance(item, discord.ui.Select):
+            await interaction.response.defer()
+            return
+        chosen = [v for v in item.values if v in UPDATE_BUTTON_KEYS]
+        await self._store.set_update_buttons(self._guild_id, chosen)
         await self._refresh(interaction)
 
     async def _open_scanlator_channels(self, interaction: discord.Interaction) -> None:
@@ -812,22 +846,28 @@ class DmSettingsLayoutView(BaseLayoutView):
         self._store = DmSettingsStore(bot.db)
         self._notifications_enabled = True
         self._paid_chapter_notifs = True
-        self._show_update_buttons = True
+        self._update_buttons: frozenset[str] = frozenset(UPDATE_BUTTON_KEYS)
 
     async def initialize(self) -> None:
         record = await self._store.get(self._user_id)
         if record is not None:
             self._notifications_enabled = record.notifications_enabled
             self._paid_chapter_notifs = record.paid_chapter_notifs
-            self._show_update_buttons = record.show_update_buttons
+            self._update_buttons = record.update_buttons
         self._rebuild()
 
     def _container(self) -> discord.ui.Container:
+        if not self._update_buttons:
+            update_buttons_display = "Disabled"
+        else:
+            update_buttons_display = ", ".join(
+                UPDATE_BUTTON_LABELS[k][0] for k in UPDATE_BUTTON_KEYS if k in self._update_buttons
+            )
         body = (
             f"**🔔 DM Notifications:** {_bool_emoji(self._notifications_enabled)}\n"
             "-# Receive personal chapter update DMs from the bot.\n\n"
-            f"**🔘 Show Update Buttons:** {_bool_emoji(self._show_update_buttons)}\n"
-            "-# Show 'Mark Read' buttons on chapter updates in DMs.\n\n"
+            f"**🔘 Update Buttons:** {update_buttons_display}\n"
+            "-# Pick which buttons appear on chapter updates in DMs.\n\n"
             f"**💰 Paid Chapter Notifs:** {_bool_emoji(self._paid_chapter_notifs)}\n"
             "-# Notify me about premium / locked chapters."
         )
@@ -843,29 +883,44 @@ class DmSettingsLayoutView(BaseLayoutView):
         self.clear_items()
         container = self._container()
 
-        row = discord.ui.ActionRow()
+        toggles_row = discord.ui.ActionRow()
         notifs_btn = discord.ui.Button(
             label=f"🔔 DM Notifications: {_bool_emoji(self._notifications_enabled)}",
             style=discord.ButtonStyle.secondary,
         )
         notifs_btn.callback = self._toggle_notifs  # type: ignore[assignment]
-        row.add_item(notifs_btn)
-
-        buttons_btn = discord.ui.Button(
-            label=f"🔘 Update Buttons: {_bool_emoji(self._show_update_buttons)}",
-            style=discord.ButtonStyle.secondary,
-        )
-        buttons_btn.callback = self._toggle_buttons  # type: ignore[assignment]
-        row.add_item(buttons_btn)
+        toggles_row.add_item(notifs_btn)
 
         paid_btn = discord.ui.Button(
             label=f"💰 Paid Chapters: {_bool_emoji(self._paid_chapter_notifs)}",
             style=discord.ButtonStyle.secondary,
         )
         paid_btn.callback = self._toggle_paid  # type: ignore[assignment]
-        row.add_item(paid_btn)
+        toggles_row.add_item(paid_btn)
         container.add_item(small_separator())
-        container.add_item(row)
+        container.add_item(toggles_row)
+
+        buttons_row = discord.ui.ActionRow()
+        select = discord.ui.Select(
+            placeholder="Pick buttons to show on DM update notifications (or none)...",
+            min_values=0,
+            max_values=len(UPDATE_BUTTON_KEYS),
+            options=[
+                discord.SelectOption(
+                    label=UPDATE_BUTTON_LABELS[k][0],
+                    value=k,
+                    emoji=UPDATE_BUTTON_LABELS[k][1],
+                    description=UPDATE_BUTTON_LABELS[k][2],
+                    default=(k in self._update_buttons),
+                )
+                for k in UPDATE_BUTTON_KEYS
+            ],
+        )
+        select.callback = self._on_update_buttons_picked  # type: ignore[assignment]
+        buttons_row.add_item(select)
+        container.add_item(small_separator())
+        container.add_item(buttons_row)
+
         self.add_item(container)
 
     async def _toggle_notifs(self, interaction: discord.Interaction) -> None:
@@ -874,14 +929,25 @@ class DmSettingsLayoutView(BaseLayoutView):
         self._rebuild()
         await interaction.response.edit_message(view=self)
 
-    async def _toggle_buttons(self, interaction: discord.Interaction) -> None:
-        self._show_update_buttons = not self._show_update_buttons
-        await self._store.set_show_update_buttons(self._user_id, self._show_update_buttons)
-        self._rebuild()
-        await interaction.response.edit_message(view=self)
-
     async def _toggle_paid(self, interaction: discord.Interaction) -> None:
         self._paid_chapter_notifs = not self._paid_chapter_notifs
         await self._store.set_paid_chapter_notifs(self._user_id, self._paid_chapter_notifs)
         self._rebuild()
         await interaction.response.edit_message(view=self)
+
+    async def _on_update_buttons_picked(self, interaction: discord.Interaction) -> None:
+        select = next(
+            c
+            for c in self.walk_children()
+            if isinstance(c, discord.ui.Select)
+            and c.placeholder
+            and "buttons" in c.placeholder.lower()
+        )
+        chosen = [v for v in select.values if v in UPDATE_BUTTON_KEYS]
+        await self._store.set_update_buttons(self._user_id, chosen)
+        self._update_buttons = frozenset(chosen)
+        self._rebuild()
+        if not interaction.response.is_done():
+            await interaction.response.edit_message(view=self)
+        else:
+            await interaction.edit_original_response(view=self)
