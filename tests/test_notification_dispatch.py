@@ -344,3 +344,58 @@ def test_default_paid_chapter_setting_allows_premium() -> None:
 
 # Ensure the imports above are not flagged as unused by linters.
 _ = (GuildSettings,)
+
+
+def test_guild_with_no_buttons_setting_sends_view_without_buttons() -> None:
+    import discord
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1])
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+            await settings_store.set_update_buttons(1, [])
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_payload())
+            assert channel.send.await_count == 1
+            view = channel.send.await_args.kwargs["view"]
+            buttons = [
+                c for c in view.walk_children() if isinstance(c, discord.ui.Button)
+            ]
+            assert buttons == []
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_guild_default_settings_sends_view_with_all_buttons() -> None:
+    import discord
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1])
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+            # Don't touch update_buttons — default = all four.
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_payload())
+            view = channel.send.await_args.kwargs["view"]
+            buttons = [
+                c for c in view.walk_children() if isinstance(c, discord.ui.Button)
+            ]
+            assert len(buttons) == 4
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())

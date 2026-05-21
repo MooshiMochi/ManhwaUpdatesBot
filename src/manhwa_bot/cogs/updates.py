@@ -22,7 +22,7 @@ from ..db.dm_settings import DmSettingsStore
 from ..db.guild_settings import GuildSettingsStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
-from ..ui.components.notifications import build_chapter_update_view
+from ..ui.components.notifications import ALL_UPDATE_BUTTONS, build_chapter_update_view
 
 if TYPE_CHECKING:
     from ..bot import ManhwaBot
@@ -134,7 +134,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     return
 
                 content = self._compose_ping(row, settings)
-                view = build_chapter_update_view(payload, bot=self.bot)
+                allowed = settings.update_buttons if settings is not None else ALL_UPDATE_BUTTONS
+                view = build_chapter_update_view(payload, bot=self.bot, allowed_buttons=allowed)
 
                 # V2 messages cannot have `content`; send the ping as a separate
                 # tiny message immediately before the view so role pings still
@@ -211,7 +212,14 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 ):
                     return
                 user = await self.bot.fetch_user(user_id)
-                await user.send(view=build_chapter_update_view(payload, bot=self.bot))
+                allowed = (
+                    dm_settings.update_buttons if dm_settings is not None else ALL_UPDATE_BUTTONS
+                )
+                await user.send(
+                    view=build_chapter_update_view(
+                        payload, bot=self.bot, allowed_buttons=allowed
+                    )
+                )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("DM to user %s skipped (%s)", user_id, exc.__class__.__name__)
             except discord.HTTPException:
