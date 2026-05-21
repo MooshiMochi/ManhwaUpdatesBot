@@ -60,41 +60,15 @@ def _assert_slug(value: str, *, field: str) -> str:
     return value
 
 
-class _TemplateDescriptor:
-    """Descriptor that returns the raw pattern string on class access and the
-    compiled ``re.Pattern`` on instance access.
-
-    This lets tests do ``re.fullmatch(ButtonClass.template, cid)`` (receives a
-    string) while ``self.template`` inside ``DynamicItem.__init__`` still
-    receives the compiled pattern and can call ``.match()``.
-    """
-
-    def __init__(self, pattern: str) -> None:
-        self._pattern = pattern
-        self._compiled = re.compile(pattern)
-
-    def __set_name__(self, owner: type, name: str) -> None:
-        self._name = name
-
-    def __get__(self, obj: object | None, objtype: type | None = None) -> str | re.Pattern[str]:
-        if obj is None:
-            # Class-level access — return the raw string pattern for test round-trips.
-            return self._pattern
-        # Instance-level access — return the compiled pattern so DynamicItem.__init__
-        # can call .match() on it.
-        return self._compiled
-
-
-_MARK_READ_TEMPLATE = r"mu:upd:mr:(?P<wk>[^:]+):(?P<un>[^:]+):(?P<idx>-?\d+)"
-_BOOKMARK_TEMPLATE = r"mu:upd:bm:(?P<wk>[^:]+):(?P<un>[^:]+)"
-_SUBSCRIBE_TEMPLATE = r"mu:upd:sub:(?P<wk>[^:]+):(?P<un>[^:]+)"
+MARK_READ_TEMPLATE = r"mu:upd:mr:(?P<wk>[^:]+):(?P<un>[^:]+):(?P<idx>-?\d+)"
+BOOKMARK_TEMPLATE = r"mu:upd:bm:(?P<wk>[^:]+):(?P<un>[^:]+)"
+SUBSCRIBE_TEMPLATE = r"mu:upd:sub:(?P<wk>[^:]+):(?P<un>[^:]+)"
 
 
 class MarkReadButton(
     discord.ui.DynamicItem[discord.ui.Button],
-    template=_MARK_READ_TEMPLATE,
+    template=MARK_READ_TEMPLATE,
 ):
-    template = _TemplateDescriptor(_MARK_READ_TEMPLATE)  # type: ignore[assignment]
 
     def __init__(self, website_key: str, url_name: str, chapter_index: int) -> None:
         wk = _assert_slug(website_key, field="website_key")
@@ -127,9 +101,8 @@ class MarkReadButton(
 
 class BookmarkButton(
     discord.ui.DynamicItem[discord.ui.Button],
-    template=_BOOKMARK_TEMPLATE,
+    template=BOOKMARK_TEMPLATE,
 ):
-    template = _TemplateDescriptor(_BOOKMARK_TEMPLATE)  # type: ignore[assignment]
 
     def __init__(self, website_key: str, url_name: str) -> None:
         wk = _assert_slug(website_key, field="website_key")
@@ -160,9 +133,8 @@ class BookmarkButton(
 
 class SubscribeToggleButton(
     discord.ui.DynamicItem[discord.ui.Button],
-    template=_SUBSCRIBE_TEMPLATE,
+    template=SUBSCRIBE_TEMPLATE,
 ):
-    template = _TemplateDescriptor(_SUBSCRIBE_TEMPLATE)  # type: ignore[assignment]
 
     def __init__(self, website_key: str, url_name: str) -> None:
         wk = _assert_slug(website_key, field="website_key")
@@ -194,11 +166,14 @@ class SubscribeToggleButton(
 # Re-exports referenced by stores when Task 6 wires the callbacks.
 __all__ = [
     "ALL_UPDATE_BUTTONS",
+    "BOOKMARK_TEMPLATE",
     "BookmarkButton",
     "BookmarkStore",
     "DmSettingsStore",
     "GuildSettingsStore",
+    "MARK_READ_TEMPLATE",
     "MarkReadButton",
+    "SUBSCRIBE_TEMPLATE",
     "SubscribeToggleButton",
     "SubscriptionStore",
     "TrackedStore",
