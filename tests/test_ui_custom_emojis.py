@@ -42,6 +42,18 @@ def test_error_success_and_progress_views_use_custom_status_emojis() -> None:
     assert ERROR in _view_text(state.to_view(final_error=True))
 
 
+def test_progress_history_marks_failed_and_retrying_events() -> None:
+    state = progress.ProgressLayoutState(command_name="track", request_id="abc")
+    state.add("Sent request to crawler")
+    state.add("Crawler request failed", severity="error")
+    state.add("Retrying request", severity="warning")
+
+    text = _view_text(state.to_view())
+
+    assert f"**2.** {ERROR} Crawler request failed." in text
+    assert f"**3.** {WARNING} Retrying request..." in text
+
+
 def test_tracking_warnings_and_role_errors_use_custom_emojis() -> None:
     success_text = _view_text(
         tracking.build_tracking_success_view(

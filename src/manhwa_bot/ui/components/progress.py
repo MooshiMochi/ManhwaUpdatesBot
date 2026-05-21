@@ -79,33 +79,38 @@ class ProgressLayoutState:
         view.add_item(container)
         return view
 
-    def _visible_events(self) -> list[tuple[int | None, str]]:
+    def _visible_events(self) -> list[tuple[int | None, str, ProgressSeverity | None]]:
         event_count = len(self._events)
         max_visible_events = max(1, self.max_visible_events)
         if event_count <= max_visible_events:
-            return [(index, ev.message) for index, ev in enumerate(self._events, start=1)]
+            return [
+                (index, ev.message, ev.severity) for index, ev in enumerate(self._events, start=1)
+            ]
 
         tail_count = max(1, max_visible_events - 1)
         omitted_count = event_count - 1 - tail_count
         tail_start = event_count - tail_count + 1
-        visible: list[tuple[int | None, str]] = [(1, self._events[0].message)]
+        first_event = self._events[0]
+        visible: list[tuple[int | None, str, ProgressSeverity | None]] = [
+            (1, first_event.message, first_event.severity)
+        ]
         if omitted_count > 0:
-            visible.append((None, f"… {omitted_count} earlier updates omitted."))
+            visible.append((None, f"… {omitted_count} earlier updates omitted.", None))
         visible.extend(
-            (index, ev.message)
+            (index, ev.message, ev.severity)
             for index, ev in enumerate(self._events[-tail_count:], start=tail_start)
         )
         return visible
 
     def _body_text(
         self,
-        visible_events: list[tuple[int | None, str]],
+        visible_events: list[tuple[int | None, str, ProgressSeverity | None]],
         *,
         final_error: bool,
     ) -> str:
         lines: list[str] = []
         latest_number = len(self._events)
-        for number, message in visible_events:
+        for number, message, severity in visible_events:
             if number is None:
                 lines.append(f"*{message}*")
                 continue
@@ -113,6 +118,7 @@ class ProgressLayoutState:
             rendered = message
             if not final_error and number == latest_number:
                 rendered = _active_message(message)
+            rendered = _marked_message(rendered, severity)
             lines.append(f"**{number}.** {rendered}")
         return _bounded_text(lines)
 
@@ -167,6 +173,14 @@ def _severity_for_status(status: str | None) -> ProgressSeverity:
     if status == "retrying":
         return "warning"
     return "info"
+
+
+def _marked_message(message: str, severity: ProgressSeverity | None) -> str:
+    if severity == "error":
+        return f"{emojis.ERROR} {message}"
+    if severity == "warning":
+        return f"{emojis.WARNING} {message}"
+    return message
 
 
 def _normalize_message(message: str) -> str:
