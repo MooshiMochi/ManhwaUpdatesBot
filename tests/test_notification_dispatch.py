@@ -363,9 +363,7 @@ def test_guild_with_no_buttons_setting_sends_view_without_buttons() -> None:
             await cog.dispatch(_payload())
             assert channel.send.await_count == 1
             view = channel.send.await_args.kwargs["view"]
-            buttons = [
-                c for c in view.walk_children() if isinstance(c, discord.ui.Button)
-            ]
+            buttons = [c for c in view.walk_children() if isinstance(c, discord.ui.Button)]
             assert buttons == []
         finally:
             await bot.db.close()
@@ -390,9 +388,7 @@ def test_guild_default_settings_sends_view_with_all_buttons() -> None:
 
             await cog.dispatch(_payload())
             view = channel.send.await_args.kwargs["view"]
-            buttons = [
-                c for c in view.walk_children() if isinstance(c, discord.ui.Button)
-            ]
+            buttons = [c for c in view.walk_children() if isinstance(c, discord.ui.Button)]
             assert len(buttons) == 4
         finally:
             await bot.db.close()

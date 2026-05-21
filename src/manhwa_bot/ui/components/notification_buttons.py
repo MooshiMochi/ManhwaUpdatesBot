@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
 
 import discord
 
@@ -91,7 +90,7 @@ class MarkReadButton(
         interaction: discord.Interaction,
         item: discord.ui.Button,
         match: re.Match[str],
-    ) -> "MarkReadButton":
+    ) -> MarkReadButton:
         return cls(match["wk"], match["un"], int(match["idx"]))
 
     async def callback(self, interaction: discord.Interaction) -> None:
@@ -148,7 +147,7 @@ class BookmarkButton(
         interaction: discord.Interaction,
         item: discord.ui.Button,
         match: re.Match[str],
-    ) -> "BookmarkButton":
+    ) -> BookmarkButton:
         return cls(match["wk"], match["un"])
 
     async def callback(self, interaction: discord.Interaction) -> None:
@@ -199,7 +198,7 @@ class SubscribeToggleButton(
         interaction: discord.Interaction,
         item: discord.ui.Button,
         match: re.Match[str],
-    ) -> "SubscribeToggleButton":
+    ) -> SubscribeToggleButton:
         return cls(match["wk"], match["un"])
 
     async def callback(self, interaction: discord.Interaction) -> None:
@@ -257,16 +256,16 @@ class SubscribeToggleButton(
 __all__ = [
     "ALL_UPDATE_BUTTONS",
     "BOOKMARK_TEMPLATE",
+    "MARK_READ_TEMPLATE",
+    "SUBSCRIBE_TEMPLATE",
+    "UPDATE_BUTTON_KEYS",
+    "UPDATE_BUTTON_LABELS",
     "BookmarkButton",
     "BookmarkStore",
     "DmSettingsStore",
     "GuildSettingsStore",
-    "MARK_READ_TEMPLATE",
     "MarkReadButton",
-    "SUBSCRIBE_TEMPLATE",
     "SubscribeToggleButton",
     "SubscriptionStore",
     "TrackedStore",
-    "UPDATE_BUTTON_KEYS",
-    "UPDATE_BUTTON_LABELS",
 ]

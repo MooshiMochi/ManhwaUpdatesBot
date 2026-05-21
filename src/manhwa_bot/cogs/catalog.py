@@ -170,7 +170,11 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 await interaction.edit_original_response(view=progress.to_view())
 
         try:
-            kwargs: dict = {"query": query, "limit": _SEARCH_LIMIT, "timeout_ms": _SEARCH_TIMEOUT_MS}
+            kwargs: dict = {
+                "query": query,
+                "limit": _SEARCH_LIMIT,
+                "timeout_ms": _SEARCH_TIMEOUT_MS,
+            }
             if scanlator_website:
                 kwargs["website_key"] = scanlator_website
             data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]

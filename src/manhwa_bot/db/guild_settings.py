@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from .pool import DbPool
 
@@ -16,9 +17,7 @@ def _parse_update_buttons(raw: str | None) -> frozenset[str]:
     if not raw:
         return frozenset()
     return frozenset(
-        token.strip()
-        for token in raw.split(",")
-        if token.strip() in _VALID_UPDATE_BUTTONS
+        token.strip() for token in raw.split(",") if token.strip() in _VALID_UPDATE_BUTTONS
     )
 
 

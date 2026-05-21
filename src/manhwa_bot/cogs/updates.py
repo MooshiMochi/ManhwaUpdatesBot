@@ -216,9 +216,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     dm_settings.update_buttons if dm_settings is not None else ALL_UPDATE_BUTTONS
                 )
                 await user.send(
-                    view=build_chapter_update_view(
-                        payload, bot=self.bot, allowed_buttons=allowed
-                    )
+                    view=build_chapter_update_view(payload, bot=self.bot, allowed_buttons=allowed)
                 )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("DM to user %s skipped (%s)", user_id, exc.__class__.__name__)

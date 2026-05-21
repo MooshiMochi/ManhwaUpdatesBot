@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from .guild_settings import _parse_update_buttons, _serialize_update_buttons
 from .pool import DbPool

@@ -8,11 +8,6 @@ from manhwa_bot.ui.components.notifications import (
     ALL_UPDATE_BUTTONS,
     build_chapter_update_view,
 )
-from manhwa_bot.ui.components.notification_buttons import (
-    BookmarkButton,
-    MarkReadButton,
-    SubscribeToggleButton,
-)
 
 
 def _payload() -> dict:

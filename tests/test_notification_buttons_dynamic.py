@@ -6,10 +6,10 @@ import re
 
 from manhwa_bot.ui.components.notification_buttons import (
     BOOKMARK_TEMPLATE,
-    BookmarkButton,
     MARK_READ_TEMPLATE,
-    MarkReadButton,
     SUBSCRIBE_TEMPLATE,
+    BookmarkButton,
+    MarkReadButton,
     SubscribeToggleButton,
 )
 
