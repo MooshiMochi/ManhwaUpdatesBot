@@ -211,7 +211,7 @@ def build_info_view(
     latest = _chapter_label(chapters[-1]) if chapters else "N/A"
     first = _chapter_label(chapters[0]) if chapters else "N/A"
 
-    header_block = f"# [{title}]({series_url})" if series_url else f"# {title}"
+    header_block = f"## [{title}]({series_url})" if series_url else f"## {title}"
     sub_parts: list[str] = []
     if scanlator_label:
         sub_parts.append(f"**Scanlator:** {scanlator_link}")
@@ -285,7 +285,7 @@ def build_search_result_view(
         else (scanlator_label or "")
     )
 
-    header_block = f"# [{title}]({series_url})" if series_url else f"# {title}"
+    header_block = f"## [{title}]({series_url})" if series_url else f"## {title}"
     sub_parts: list[str] = []
     if scanlator_link:
         sub_parts.append(f"**Scanlator:** {scanlator_link}")

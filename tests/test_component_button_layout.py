@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import asyncio
+from pathlib import Path
 from types import SimpleNamespace
 
 import discord
@@ -78,6 +80,27 @@ def _assert_containers_unaccented(view: discord.ui.LayoutView) -> None:
     containers = _containers(view)
     assert containers
     assert [container.accent_colour for container in containers] == [None] * len(containers)
+
+
+def test_component_v2_headings_do_not_use_h1_markdown() -> None:
+    components_dir = Path(__file__).parents[1] / "src" / "manhwa_bot" / "ui" / "components"
+    offenders: list[str] = []
+    for path in components_dir.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                if node.value.startswith("# "):
+                    offenders.append(f"{path.name}:{node.lineno}")
+            elif isinstance(node, ast.JoinedStr):
+                first = node.values[0] if node.values else None
+                if (
+                    isinstance(first, ast.Constant)
+                    and isinstance(first.value, str)
+                    and first.value.startswith("# ")
+                ):
+                    offenders.append(f"{path.name}:{node.lineno}")
+
+    assert offenders == []
 
 
 def test_static_component_buttons_are_nested_inside_containers() -> None:

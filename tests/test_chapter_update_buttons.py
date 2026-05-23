@@ -39,6 +39,19 @@ def _buttons(view: discord.ui.LayoutView) -> list[discord.ui.Button]:
     return [c for c in view.walk_children() if isinstance(c, discord.ui.Button)]
 
 
+def test_ping_is_top_level_before_notification_container() -> None:
+    view = build_chapter_update_view(
+        _payload(),
+        bot=None,
+        allowed_buttons=ALL_UPDATE_BUTTONS,
+        ping="<@&42>",
+    )
+
+    assert isinstance(view.children[0], discord.ui.TextDisplay)
+    assert view.children[0].content == "<@&42>"
+    assert isinstance(view.children[1], discord.ui.Container)
+
+
 def test_no_buttons_when_allowed_empty() -> None:
     view = build_chapter_update_view(_payload(), bot=None, allowed_buttons=frozenset())
     assert _action_rows(view) == []
@@ -51,6 +64,8 @@ def test_only_open_chapter_renders_link_button() -> None:
     )
     buttons = _buttons(view)
     assert len(buttons) == 1
+    assert buttons[0].label == "Open Chapter"
+    assert buttons[0].emoji is None
     assert buttons[0].style is discord.ButtonStyle.link
     assert buttons[0].url == "https://example.com/demo/7"
 
@@ -59,12 +74,23 @@ def test_all_buttons_appear_in_canonical_order() -> None:
     view = build_chapter_update_view(_payload(), bot=None, allowed_buttons=ALL_UPDATE_BUTTONS)
     buttons = _buttons(view)
     assert len(buttons) == 4
-    # mark_read, bookmark, subscribe come from DynamicItem.item; open_chapter is a link button.
-    assert buttons[0].custom_id == "mu:upd:mr:comick:demo:7"
-    assert buttons[1].custom_id == "mu:upd:bm:comick:demo"
-    assert buttons[2].custom_id == "mu:upd:sub:comick:demo"
-    assert buttons[3].style is discord.ButtonStyle.link
-    assert buttons[3].url == "https://example.com/demo/7"
+    # Open Chapter is the leading link button; the rest come from DynamicItem.item.
+    assert buttons[0].style is discord.ButtonStyle.link
+    assert buttons[0].url == "https://example.com/demo/7"
+    assert buttons[0].emoji is None
+    assert buttons[1].custom_id == "mu:upd:mr:comick:demo:7"
+    assert buttons[2].custom_id == "mu:upd:bm:comick:demo"
+    assert buttons[3].custom_id == "mu:upd:sub:comick:demo"
+
+
+def test_button_row_is_last_notification_container_child() -> None:
+    view = build_chapter_update_view(_payload(), bot=None, allowed_buttons=ALL_UPDATE_BUTTONS)
+    container = next(c for c in view.children if isinstance(c, discord.ui.Container))
+    children = list(container.children)
+    row_index = next(
+        index for index, child in enumerate(children) if isinstance(child, discord.ui.ActionRow)
+    )
+    assert row_index == len(children) - 1
 
 
 def test_container_has_no_accent_colour() -> None:
@@ -78,9 +104,7 @@ def test_container_has_no_accent_colour() -> None:
 def test_mark_read_falls_back_to_index_when_missing() -> None:
     payload = _payload()
     payload["chapter"].pop("index")
-    view = build_chapter_update_view(
-        payload, bot=None, allowed_buttons=frozenset({"mark_read"})
-    )
+    view = build_chapter_update_view(payload, bot=None, allowed_buttons=frozenset({"mark_read"}))
     buttons = _buttons(view)
     assert len(buttons) == 1
     # -1 sentinel encodes "unknown index" — handler upserts as last_read_index=-1.

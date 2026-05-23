@@ -132,10 +132,11 @@ async def _seed_tracked(
     website_key: str = "comick",
     url_name: str = "demo",
     ping_role_id: int | None = None,
+    cover_url: str | None = None,
 ) -> None:
     tracked = TrackedStore(pool)
     await tracked.upsert_series(
-        website_key, url_name, "https://example.com/demo", "Demo", None, None
+        website_key, url_name, "https://example.com/demo", "Demo", cover_url, None
     )
     for gid in guild_ids:
         await tracked.add_to_guild(gid, website_key, url_name, ping_role_id=ping_role_id)
@@ -146,6 +147,18 @@ def _make_channel() -> MagicMock:
     channel = MagicMock(spec=discord.TextChannel)
     channel.send = AsyncMock()
     return channel
+
+
+def _media_gallery_urls(view: discord.ui.LayoutView) -> list[str]:
+    urls: list[str] = []
+    for item in view.walk_children():
+        if isinstance(item, discord.ui.MediaGallery):
+            urls.extend(gallery_item.media.url for gallery_item in item.items)
+    return urls
+
+
+def _top_level_text(view: discord.ui.LayoutView) -> list[str]:
+    return [item.content for item in view.children if isinstance(item, discord.ui.TextDisplay)]
 
 
 def test_three_guilds_one_missing_channel_skipped() -> None:
@@ -167,6 +180,33 @@ def test_three_guilds_one_missing_channel_skipped() -> None:
             assert channels[200].send.await_count == 1
             # No channel resolved for guild 3 → no extra sends.
             assert sum(c.send.await_count for c in channels.values()) == 2
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_dispatch_uses_tracked_cover_when_notification_payload_lacks_cover() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(
+                bot.db,
+                guild_ids=[1],
+                cover_url="https://example.com/tracked-cover.jpg",
+            )
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_payload())
+
+            assert channel.send.await_count == 1
+            sent_view = channel.send.await_args.kwargs["view"]
+            assert _media_gallery_urls(sent_view) == ["https://example.com/tracked-cover.jpg"]
         finally:
             await bot.db.close()
             tmp.cleanup()
@@ -258,11 +298,11 @@ def test_ping_role_resolution_uses_row_ping_role() -> None:
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
 
             await cog.dispatch(_payload())
-            # Components V2 messages can't carry `content`, so the ping prefix
-            # is sent as its own message before the chapter-update view.
-            assert channel.send.await_count == 2
-            first_kwargs = channel.send.await_args_list[0].kwargs
-            assert first_kwargs["content"] == "<@&42>"
+            assert channel.send.await_count == 1
+            kwargs = channel.send.await_args.kwargs
+            assert "content" not in kwargs
+            assert kwargs["allowed_mentions"].to_dict()["parse"] == ["roles"]
+            assert _top_level_text(kwargs["view"])[0] == "<@&42>"
         finally:
             await bot.db.close()
             tmp.cleanup()
@@ -283,8 +323,11 @@ def test_ping_role_falls_back_to_default() -> None:
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
 
             await cog.dispatch(_payload())
-            first_kwargs = channel.send.await_args_list[0].kwargs
-            assert first_kwargs["content"] == "<@&99>"
+            assert channel.send.await_count == 1
+            kwargs = channel.send.await_args.kwargs
+            assert "content" not in kwargs
+            assert kwargs["allowed_mentions"].to_dict()["parse"] == ["roles"]
+            assert _top_level_text(kwargs["view"])[0] == "<@&99>"
         finally:
             await bot.db.close()
             tmp.cleanup()

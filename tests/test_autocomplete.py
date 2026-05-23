@@ -20,11 +20,17 @@ async def _make_pool(tmp: str) -> DbPool:
     return pool
 
 
-def _interaction(*, pool: DbPool | None = None, crawler: Any | None = None) -> SimpleNamespace:
+def _interaction(
+    *,
+    pool: DbPool | None = None,
+    crawler: Any | None = None,
+    namespace: Any | None = None,
+) -> SimpleNamespace:
     return SimpleNamespace(
         guild=SimpleNamespace(id=100),
         user=SimpleNamespace(id=200),
         client=SimpleNamespace(db=pool, crawler=crawler),
+        namespace=namespace or SimpleNamespace(),
     )
 
 
@@ -242,5 +248,240 @@ def test_track_new_autocomplete_does_not_sleep_before_different_queries(
         assert await autocomplete.track_new_url_or_search(interaction, "solo") == []
         assert await autocomplete.track_new_url_or_search(interaction, "solo l") == []
         assert calls == ["solo", "solo l"]
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_uses_selected_series_from_namespace() -> None:
+    async def _run() -> None:
+        calls: list[dict[str, Any]] = []
+
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                calls.append({"type": type_, **fields})
+                return {
+                    "chapters": [
+                        {"chapter": "Chapter 1", "url": "https://example.test/c1"},
+                        {"chapter": "Chapter 2", "url": "https://example.test/c2"},
+                    ]
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await BookmarkStore(pool).upsert_bookmark(200, "asura", "solo-leveling")
+                await TrackedStore(pool).upsert_series(
+                    "asura",
+                    "solo-leveling",
+                    "https://example.test/solo-leveling",
+                    "Solo Leveling",
+                )
+
+                choices = await autocomplete.user_bookmark_chapters(
+                    _interaction(
+                        pool=pool,
+                        crawler=Crawler(),
+                        namespace=SimpleNamespace(manga="asura:solo-leveling"),
+                    ),
+                    "",
+                )
+
+                assert calls == [
+                    {
+                        "type": "chapters",
+                        "website_key": "asura",
+                        "url": "https://example.test/solo-leveling",
+                    }
+                ]
+                assert [(choice.name, choice.value) for choice in choices] == [
+                    ("0 - Chapter 1", 0),
+                    ("1 - Chapter 2", 1),
+                ]
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_filters_by_typed_value() -> None:
+    async def _run() -> None:
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                del type_, fields
+                return {
+                    "chapters": [
+                        {"chapter": "Chapter 1"},
+                        {"chapter": "Side Story 1"},
+                        {"chapter": "Chapter 2"},
+                    ]
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await BookmarkStore(pool).upsert_bookmark(200, "asura", "solo-leveling")
+
+                choices = await autocomplete.user_bookmark_chapters(
+                    _interaction(
+                        pool=pool,
+                        crawler=Crawler(),
+                        namespace=SimpleNamespace(series="asura:solo-leveling"),
+                    ),
+                    "side",
+                )
+
+                assert [(choice.name, choice.value) for choice in choices] == [
+                    ("1 - Side Story 1", 1)
+                ]
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_returns_empty_without_selected_bookmark() -> None:
+    async def _run() -> None:
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                raise AssertionError("chapter autocomplete should not query without a bookmark")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                autocomplete.clear_chapter_autocomplete_cache()
+                choices = await autocomplete.user_bookmark_chapters(
+                    _interaction(
+                        pool=pool,
+                        crawler=Crawler(),
+                        namespace=SimpleNamespace(manga="asura:solo-leveling"),
+                    ),
+                    "",
+                )
+
+                assert choices == []
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_returns_quickly_while_fetch_warms_cache(monkeypatch) -> None:
+    async def _run() -> None:
+        release = asyncio.Event()
+        calls: list[dict[str, Any]] = []
+
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                calls.append({"type": type_, **fields})
+                await release.wait()
+                return {
+                    "chapters": [
+                        {"chapter": "Chapter 1"},
+                        {"chapter": "Chapter 2"},
+                    ]
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                await BookmarkStore(pool).upsert_bookmark(200, "asura", "solo-leveling")
+                await TrackedStore(pool).upsert_series(
+                    "asura",
+                    "solo-leveling",
+                    "https://example.test/solo-leveling",
+                    "Solo Leveling",
+                )
+                interaction = _interaction(
+                    pool=pool,
+                    crawler=Crawler(),
+                    namespace=SimpleNamespace(manga="asura:solo-leveling"),
+                )
+
+                monkeypatch.setattr(
+                    autocomplete, "CHAPTER_AUTOCOMPLETE_WAIT_SECONDS", 0.01, raising=False
+                )
+                autocomplete.clear_chapter_autocomplete_cache()
+
+                first_task = asyncio.create_task(
+                    autocomplete.user_bookmark_chapters(interaction, "")
+                )
+                await asyncio.sleep(0)
+                first = await asyncio.wait_for(first_task, timeout=0.2)
+                assert first == []
+                assert calls == [
+                    {
+                        "type": "chapters",
+                        "website_key": "asura",
+                        "url": "https://example.test/solo-leveling",
+                    }
+                ]
+
+                release.set()
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+
+                second = await autocomplete.user_bookmark_chapters(interaction, "2")
+                assert [(choice.name, choice.value) for choice in second] == [("1 - Chapter 2", 1)]
+                assert len(calls) == 1
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_falls_back_to_info_when_chapters_lookup_fails() -> None:
+    async def _run() -> None:
+        calls: list[dict[str, Any]] = []
+
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                calls.append({"type": type_, **fields})
+                if type_ == "chapters":
+                    raise RuntimeError("series not found")
+                return {
+                    "chapters": [
+                        {"chapter": "Chapter 10"},
+                    ]
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                await BookmarkStore(pool).upsert_bookmark(
+                    200, "toongod", "someone-stop-her-uncensored"
+                )
+                interaction = _interaction(
+                    pool=pool,
+                    crawler=Crawler(),
+                    namespace=SimpleNamespace(manga="toongod:someone-stop-her-uncensored"),
+                )
+                autocomplete.clear_chapter_autocomplete_cache()
+
+                choices = await autocomplete.user_bookmark_chapters(interaction, "")
+
+                assert calls == [
+                    {
+                        "type": "chapters",
+                        "website_key": "toongod",
+                        "url": "someone-stop-her-uncensored",
+                    },
+                    {
+                        "type": "info",
+                        "website_key": "toongod",
+                        "url": "someone-stop-her-uncensored",
+                    },
+                ]
+                assert [(choice.name, choice.value) for choice in choices] == [
+                    ("0 - Chapter 10", 0)
+                ]
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
 
     asyncio.run(_run())

@@ -75,6 +75,7 @@ _DEV_COMMAND_DESCRIPTIONS = {
     "sql": "Run a SQL statement against the bot database.",
     "disabled_scanlators": "List crawler websites currently marked as disabled.",
     "refetch": "Fetch fresh series data and overwrite the crawler DB snapshot.",
+    "renotify": "Rewind a crawler series so its latest chapter can notify again.",
     "g_update": "Send a system alert message to configured guild channels.",
     "test_update": "Dispatch a fake update through the update cog.",
     "crawler": "Crawler maintenance commands.",
@@ -116,6 +117,10 @@ def _flag(args: list[str], name: str) -> tuple[bool, list[str]]:
         else:
             remaining.append(a)
     return present, remaining
+
+
+def _truthy(value: object) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "run", "now"}
 
 
 def _named(args: list[str], name: str) -> tuple[str | None, list[str]]:
@@ -603,6 +608,61 @@ class DevCog(commands.Cog, name="Dev"):
             view=build_diagnostic_view(
                 title=f"{emojis.CHECK}  Refetched series",
                 body=body,
+                lang="yaml",
+                accent=discord.Color.green(),
+                bot=self.bot,
+            )
+        )
+
+    @developer.command(name="renotify")
+    async def renotify(
+        self,
+        ctx: commands.Context,
+        website_key: str,
+        url_name: str,
+        run_now: str | None = None,
+    ) -> None:
+        """Rewind the latest crawler chapter/notification so it can be re-emitted."""
+        website_key = str(website_key or "").strip()
+        url_name = str(url_name or "").strip()
+        if not website_key or not url_name:
+            await ctx.send("Usage: `?d renotify <website_key> <url_name> [run_now]`")
+            return
+
+        try:
+            data = await self.bot.crawler.request(
+                "rewind_latest_notification",
+                website_key=website_key,
+                url_name=url_name,
+            )
+            check_data = None
+            if _truthy(run_now):
+                check_data = await self.bot.crawler.request(
+                    "check_series",
+                    website_key=website_key,
+                    url_name=url_name,
+                )
+        except (CrawlerError, RequestTimeout, Disconnected) as exc:
+            await ctx.send(f"crawler error: `{exc}`")
+            return
+
+        body_lines = [
+            f"website_key: {data.get('website_key') or website_key}",
+            f"url_name: {data.get('url_name') or url_name}",
+            f"removed_chapter: {data.get('removed_chapter_index')} - {data.get('removed_chapter_name') or '-'}",
+            f"rewound_to: {data.get('previous_chapter_index')} - {data.get('previous_chapter_name') or '-'}",
+            f"deleted_chapters: {data.get('deleted_chapters')}",
+            f"deleted_notifications: {data.get('deleted_notifications')}",
+        ]
+        if check_data is not None:
+            body_lines.append(f"check_new_chapters: {check_data.get('new_chapters')}")
+        else:
+            body_lines.append("check_new_chapters: not_run")
+
+        await ctx.send(
+            view=build_diagnostic_view(
+                title=f"{emojis.CHECK}  Rewound latest notification",
+                body="\n".join(body_lines),
                 lang="yaml",
                 accent=discord.Color.green(),
                 bot=self.bot,

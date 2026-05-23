@@ -90,7 +90,7 @@ def build_g_update_view(
         "and ping the maintainers.*"
     )
     container = discord.ui.Container(
-        discord.ui.TextDisplay(f"# {emojis.WARNING}  Important Update"),
+        discord.ui.TextDisplay(f"## {emojis.WARNING}  Important Update"),
         small_separator(),
         discord.ui.TextDisplay(body),
         small_separator(),

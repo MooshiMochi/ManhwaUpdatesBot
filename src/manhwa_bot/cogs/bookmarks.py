@@ -526,7 +526,10 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         chapter_index="The chapter you want to update the bookmark to",
         folder="The folder you want to view. If manga is specified, this is ignored.",
     )
-    @app_commands.autocomplete(series=autocomplete.user_bookmarks)
+    @app_commands.autocomplete(
+        series=autocomplete.user_bookmarks,
+        chapter_index=autocomplete.user_bookmark_chapters,
+    )
     @app_commands.choices(folder=_FOLDER_CHOICES)
     @app_commands.rename(series="manga")
     @app_commands.rename(chapter_index="chapter")

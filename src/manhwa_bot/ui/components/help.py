@@ -99,7 +99,7 @@ def build_help_view(
     support_url = support_url or DEFAULT_SUPPORT_URL
 
     container = discord.ui.Container()
-    container.add_item(discord.ui.TextDisplay("# 📚  Manhwa Updates Bot — Help"))
+    container.add_item(discord.ui.TextDisplay("## 📚  Manhwa Updates Bot — Help"))
     container.add_item(small_separator())
 
     container.add_item(
@@ -204,7 +204,7 @@ def build_stats_view(
     grid += f"\n**⌛  Total Uptime:** <t:{start_unix}:R>\n**🐣  Born:** <t:{bot_created_unix}:R>"
 
     container = discord.ui.Container(
-        discord.ui.TextDisplay("# 📊  Manhwa Updates Bot Statistics"),
+        discord.ui.TextDisplay("## 📊  Manhwa Updates Bot Statistics"),
         small_separator(),
         discord.ui.TextDisplay(grid),
         small_separator(),
@@ -261,7 +261,7 @@ def build_patreon_view(*, bot: discord.Client | None) -> discord.ui.LayoutView:
     ]
 
     container = discord.ui.Container(
-        discord.ui.TextDisplay("# 🟧  Patreon"),
+        discord.ui.TextDisplay("## 🟧  Patreon"),
         small_separator(),
         discord.ui.TextDisplay(body),
     )
@@ -298,7 +298,7 @@ def build_next_update_check_views(
         else:
             lines.append(f"**{key.title()}** → *unknown*")
 
-    title = "# 🕑  Update check schedule (max 25 min)"
+    title = "## 🕑  Update check schedule (max 25 min)"
 
     if not lines:
         container = discord.ui.Container(

@@ -15,6 +15,23 @@ class _FakeCrawler:
         self.calls.append((type_, kwargs))
         if type_ == "supported_websites":
             return {"websites": [{"key": "asura", "base_url": "https://asura.test"}]}
+        if type_ == "rewind_latest_notification":
+            return {
+                "website_key": kwargs.get("website_key"),
+                "url_name": kwargs.get("url_name"),
+                "removed_chapter_index": 200,
+                "removed_chapter_name": "Chapter 200",
+                "previous_chapter_index": 199,
+                "previous_chapter_name": "Chapter 199",
+                "deleted_chapters": 1,
+                "deleted_notifications": 1,
+            }
+        if type_ == "check_series":
+            return {
+                "website_key": kwargs.get("website_key"),
+                "url_name": kwargs.get("url_name"),
+                "new_chapters": 1,
+            }
         return {
             "website_key": kwargs.get("website_key"),
             "url_name": kwargs.get("url_name") or "solo-leveling",
@@ -106,6 +123,57 @@ def test_dev_refetch_website_key_and_url_name_forces_refresh() -> None:
                     "allow_live": True,
                 },
             )
+        ]
+        assert ctx.sent
+
+    asyncio.run(_run())
+
+
+def test_dev_renotify_rewinds_latest_notification() -> None:
+    async def _run() -> None:
+        bot = _FakeBot()
+        ctx = _FakeContext()
+        cog = DevCog(bot)  # type: ignore[arg-type]
+
+        await DevCog.renotify.callback(cog, ctx, "asura", "solo-leveling")
+
+        assert bot.crawler.calls == [
+            (
+                "rewind_latest_notification",
+                {
+                    "website_key": "asura",
+                    "url_name": "solo-leveling",
+                },
+            )
+        ]
+        assert ctx.sent
+
+    asyncio.run(_run())
+
+
+def test_dev_renotify_can_run_update_check_after_rewind() -> None:
+    async def _run() -> None:
+        bot = _FakeBot()
+        ctx = _FakeContext()
+        cog = DevCog(bot)  # type: ignore[arg-type]
+
+        await DevCog.renotify.callback(cog, ctx, "asura", "solo-leveling", "yes")
+
+        assert bot.crawler.calls == [
+            (
+                "rewind_latest_notification",
+                {
+                    "website_key": "asura",
+                    "url_name": "solo-leveling",
+                },
+            ),
+            (
+                "check_series",
+                {
+                    "website_key": "asura",
+                    "url_name": "solo-leveling",
+                },
+            ),
         ]
         assert ctx.sent
 

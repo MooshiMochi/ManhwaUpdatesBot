@@ -167,7 +167,7 @@ def _build_settings_container(
 
     accent = discord.Colour.red() if any(w.startswith(emojis.ERROR) for w in warnings) else None
     container = discord.ui.Container(
-        discord.ui.TextDisplay("# ⚙️  Server Settings"),
+        discord.ui.TextDisplay("## ⚙️  Server Settings"),
         small_separator(),
         discord.ui.TextDisplay(safe_truncate(body, LIST_MAX)),
         small_separator(),

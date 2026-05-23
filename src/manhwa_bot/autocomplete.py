@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -20,8 +21,17 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 TRACK_NEW_AUTOCOMPLETE_CACHE_TTL_SECONDS = 20.0
+CHAPTER_AUTOCOMPLETE_CACHE_TTL_SECONDS = 120.0
+CHAPTER_AUTOCOMPLETE_WAIT_SECONDS = 1.5
 _track_new_autocomplete_cache: dict[str, tuple[float, list[app_commands.Choice[str]]]] = {}
 _track_new_autocomplete_inflight: dict[str, asyncio.Task[list[app_commands.Choice[str]]]] = {}
+_ChapterAutocompleteKey = tuple[int, int, str, str]
+_chapter_autocomplete_cache: dict[
+    _ChapterAutocompleteKey, tuple[float, list[app_commands.Choice[int]]]
+] = {}
+_chapter_autocomplete_inflight: dict[
+    _ChapterAutocompleteKey, asyncio.Task[list[app_commands.Choice[int]]]
+] = {}
 
 
 @dataclass(frozen=True)
@@ -57,6 +67,13 @@ def _matches_manga_autocomplete(website_key: str, title: str, current: str) -> b
 def clear_track_new_autocomplete_cache() -> None:
     _track_new_autocomplete_cache.clear()
     _track_new_autocomplete_inflight.clear()
+
+
+def clear_chapter_autocomplete_cache() -> None:
+    _chapter_autocomplete_cache.clear()
+    for task in _chapter_autocomplete_inflight.values():
+        task.cancel()
+    _chapter_autocomplete_inflight.clear()
 
 
 def _normalize_track_new_query(current: str) -> tuple[str, str]:
@@ -200,6 +217,169 @@ async def user_bookmarks(
         return choices
     except Exception:
         _log.exception("user_bookmarks autocomplete failed")
+        return []
+
+
+def _split_series_id(series_id: str) -> tuple[str, str] | None:
+    """Parse ``"website_key:url_name"`` autocomplete values."""
+    if not series_id or ":" not in series_id or series_id.startswith("http"):
+        return None
+    website_key, _, url_name = series_id.partition(":")
+    website_key = website_key.strip()
+    url_name = url_name.strip()
+    if not website_key or not url_name:
+        return None
+    return (website_key, url_name)
+
+
+def _namespace_value(interaction: discord.Interaction, *names: str) -> str:
+    namespace = getattr(interaction, "namespace", None)
+    for name in names:
+        value = getattr(namespace, name, None)
+        if value is not None:
+            return str(value)
+    return ""
+
+
+def _chapter_choice_matches(index: int, label: str, current: object) -> bool:
+    query = str(current or "").strip().casefold()
+    if not query:
+        return True
+    return str(index).startswith(query) or query in label.casefold()
+
+
+def _filter_chapter_choices(
+    choices: list[app_commands.Choice[int]], current: object
+) -> list[app_commands.Choice[int]]:
+    return [
+        choice
+        for choice in choices
+        if _chapter_choice_matches(int(choice.value), str(choice.name), current)
+    ][:25]
+
+
+async def _fetch_chapter_rows(bot: Any, website_key: str, identifier: str) -> list[dict]:
+    try:
+        data = await bot.crawler.request("chapters", website_key=website_key, url=identifier)
+        chapters = list(data.get("chapters") or [])
+        if chapters:
+            return chapters
+    except Exception:
+        _log.debug("chapter autocomplete chapters lookup failed", exc_info=True)
+
+    try:
+        info_data = await bot.crawler.request("info", website_key=website_key, url=identifier)
+    except Exception:
+        _log.debug("chapter autocomplete info fallback failed", exc_info=True)
+        return []
+
+    chapters = list(info_data.get("chapters") or info_data.get("latest_chapters") or [])
+    if chapters:
+        return chapters
+
+    series_url = info_data.get("series_url") or info_data.get("url")
+    if not series_url or series_url == identifier:
+        return []
+
+    try:
+        data = await bot.crawler.request("chapters", website_key=website_key, url=series_url)
+        return list(data.get("chapters") or [])
+    except Exception:
+        _log.debug("chapter autocomplete series-url fallback failed", exc_info=True)
+        return []
+
+
+async def _fetch_chapter_choices(
+    bot: Any,
+    key: _ChapterAutocompleteKey,
+    website_key: str,
+    url_name: str,
+) -> list[app_commands.Choice[int]]:
+    from .crawler.chapter import Chapter
+    from .db.tracked import TrackedStore
+
+    try:
+        tracked = await TrackedStore(bot.db).find(website_key, url_name)
+        identifier = tracked.series_url if tracked else url_name
+        raw_chapters = await _fetch_chapter_rows(bot, website_key, identifier)
+        chapters = Chapter.list_from_payload({"chapters": raw_chapters})
+        choices = [
+            app_commands.Choice(name=f"{index} - {chapter.name}"[:100], value=index)
+            for index, chapter in enumerate(chapters)
+        ]
+    except Exception:
+        _log.debug("chapter autocomplete fetch failed", exc_info=True)
+        choices = []
+
+    _chapter_autocomplete_cache[key] = (
+        time.monotonic() + CHAPTER_AUTOCOMPLETE_CACHE_TTL_SECONDS,
+        choices,
+    )
+    return choices
+
+
+def _forget_chapter_inflight(
+    key: _ChapterAutocompleteKey,
+) -> Callable[[asyncio.Task[list[app_commands.Choice[int]]]], None]:
+    def _done(task: asyncio.Task[list[app_commands.Choice[int]]]) -> None:
+        if _chapter_autocomplete_inflight.get(key) is task:
+            _chapter_autocomplete_inflight.pop(key, None)
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+
+    return _done
+
+
+async def user_bookmark_chapters(
+    interaction: discord.Interaction,
+    current: int | str,
+) -> list[app_commands.Choice[int]]:
+    """Chapters for the bookmark selected in the sibling ``series``/``manga`` option.
+
+    Choice value is the zero-based chapter list index consumed by
+    ``/bookmark update``'s ``chapter`` option.
+    """
+    try:
+        selected_series = _namespace_value(interaction, "manga", "series")
+        parsed = _split_series_id(selected_series)
+        if parsed is None:
+            return []
+        website_key, url_name = parsed
+
+        bot: Any = interaction.client
+        from .db.bookmarks import BookmarkStore
+
+        bookmarks = BookmarkStore(bot.db)
+        bookmark = await bookmarks.get_bookmark(interaction.user.id, website_key, url_name)
+        if bookmark is None:
+            return []
+
+        key = (id(bot), int(interaction.user.id), website_key, url_name)
+        cached = _chapter_autocomplete_cache.get(key)
+        now = time.monotonic()
+        if cached is not None:
+            expires_at, choices = cached
+            if expires_at > now:
+                return _filter_chapter_choices(choices, current)
+            _chapter_autocomplete_cache.pop(key, None)
+
+        task = _chapter_autocomplete_inflight.get(key)
+        if task is None:
+            task = asyncio.create_task(_fetch_chapter_choices(bot, key, website_key, url_name))
+            task.add_done_callback(_forget_chapter_inflight(key))
+            _chapter_autocomplete_inflight[key] = task
+
+        try:
+            choices = await asyncio.wait_for(
+                asyncio.shield(task), timeout=CHAPTER_AUTOCOMPLETE_WAIT_SECONDS
+            )
+        except TimeoutError:
+            return []
+        return _filter_chapter_choices(choices, current)
+    except Exception:
+        _log.exception("user_bookmark_chapters autocomplete failed")
         return []
 
 

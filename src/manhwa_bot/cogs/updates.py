@@ -92,6 +92,16 @@ class UpdatesCog(commands.Cog, name="Updates"):
 
         guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)
         user_ids = await self._subs.list_subscribers_for_series(website_key, url_name)
+        series_row = (
+            guild_rows[0] if guild_rows else await self._tracked.find(website_key, url_name)
+        )
+        if series_row is not None:
+            if not str(payload.get("series_title") or "").strip():
+                payload["series_title"] = series_row.title
+            if not str(payload.get("series_url") or "").strip():
+                payload["series_url"] = series_row.series_url
+            if not str(payload.get("cover_url") or "").strip() and series_row.cover_url:
+                payload["cover_url"] = series_row.cover_url
 
         guild_tasks = [
             self._dispatch_to_guild(row, payload, is_premium, website_key) for row in guild_rows
@@ -135,23 +145,20 @@ class UpdatesCog(commands.Cog, name="Updates"):
 
                 content = self._compose_ping(row, settings)
                 allowed = settings.update_buttons if settings is not None else ALL_UPDATE_BUTTONS
-                view = build_chapter_update_view(payload, bot=self.bot, allowed_buttons=allowed)
-
-                # V2 messages cannot have `content`; send the ping as a separate
-                # tiny message immediately before the view so role pings still
-                # fire. The view itself is the canonical chapter notification.
+                view = build_chapter_update_view(
+                    payload,
+                    bot=self.bot,
+                    allowed_buttons=allowed,
+                    ping=content,
+                )
+                send_kwargs: dict[str, Any] = {"view": view}
                 if content:
-                    try:
-                        await channel.send(
-                            content=content,
-                            allowed_mentions=discord.AllowedMentions(roles=True),
-                        )
-                    except discord.HTTPException:
-                        _log.exception(
-                            "guild %s ping prefix send failed; continuing with view",
-                            getattr(row, "guild_id", "?"),
-                        )
-                await channel.send(view=view)
+                    send_kwargs["allowed_mentions"] = discord.AllowedMentions(
+                        everyone=False,
+                        users=False,
+                        roles=True,
+                    )
+                await channel.send(**send_kwargs)
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.warning(
                     "guild %s send failed (%s); skipping",

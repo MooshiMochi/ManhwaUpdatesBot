@@ -30,9 +30,9 @@ def build_chapter_list_views(
 ) -> list[discord.ui.LayoutView]:
     """Build paginated chapter-list LayoutViews. Two-column visual layout per page."""
     title_block = (
-        f"# 📚 [Chapters for {manga_title}]({manga_url})"
+        f"## 📚 [Chapters for {manga_title}]({manga_url})"
         if manga_url
-        else f"# 📚 Chapters for {manga_title}"
+        else f"## 📚 Chapters for {manga_title}"
     )
 
     if not chapters:
@@ -93,7 +93,7 @@ def build_supported_websites_views(
     invoker_id: int | None = None,
 ) -> list[discord.ui.LayoutView]:
     """Paginated `/supported_websites` list."""
-    title = "# 🌐 Supported websites"
+    title = "## 🌐 Supported websites"
     note = (
         "More websites will be added in the future. "
         "Don't forget to leave suggestions for sites you'd like to see."

@@ -8,7 +8,6 @@ from ...crawler.chapter import Chapter
 from .base import (
     BaseLayoutView,
     chapter_markdown,
-    footer_section,
     hero_cover_gallery,
     small_separator,
 )
@@ -27,6 +26,7 @@ def build_chapter_update_view(
     *,
     bot: discord.Client | None = None,
     allowed_buttons: frozenset[str] = ALL_UPDATE_BUTTONS,
+    ping: str | None = None,
 ) -> discord.ui.LayoutView:
     """Build a fresh push-notification LayoutView for a new chapter.
 
@@ -71,10 +71,11 @@ def build_chapter_update_view(
         container.add_item(small_separator())
         container.add_item(button_row)
 
-    container.add_item(small_separator())
-    container.add_item(footer_section(bot, extra=website_key or None))
-
+    del bot
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
+    ping = (ping or "").strip()
+    if ping:
+        view.add_item(discord.ui.TextDisplay(ping))
     view.add_item(container)
     return view
 
@@ -97,7 +98,8 @@ def _build_button_row(
     # inspect directly. Dispatch still works because the DynamicItem templates
     # are registered globally in ManhwaBot.setup_hook and matched by custom_id.
     chapter_index = chapter.index if chapter.index is not None else -1
-    for key in UPDATE_BUTTON_KEYS:
+    ordered_keys = ("open_chapter", *(key for key in UPDATE_BUTTON_KEYS if key != "open_chapter"))
+    for key in ordered_keys:
         if key not in allowed_buttons:
             continue
         if key == "mark_read":
@@ -110,11 +112,10 @@ def _build_button_row(
             chapter_url = (chapter.url or "").strip()
             if not chapter_url:
                 continue
-            label, emoji, _ = UPDATE_BUTTON_LABELS["open_chapter"]
+            label, _, _ = UPDATE_BUTTON_LABELS["open_chapter"]
             row.add_item(
                 discord.ui.Button(
                     label=label,
-                    emoji=emoji,
                     style=discord.ButtonStyle.link,
                     url=chapter_url,
                 )

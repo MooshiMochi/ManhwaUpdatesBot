@@ -104,6 +104,7 @@ def test_bookmark_metadata_matches_v1() -> None:
     assert _param(update, "chapter_index").description == (
         "The chapter you want to update the bookmark to"
     )
+    assert _param(update, "chapter_index").autocomplete is True
 
     delete = _subcommand(BookmarksCog.bookmark, "delete")
     assert delete.description == "Delete a bookmark"
