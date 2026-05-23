@@ -31,6 +31,55 @@ _log = logging.getLogger(__name__)
 _SEARCH_LIMIT = 20
 _SEARCH_TIMEOUT_MS = 15_000
 
+# Cap the per-update "still running" preview so the progress card stays readable
+# when /search is fanning out across 40+ websites.
+_PARTIAL_PENDING_PREVIEW_LIMIT = 4
+
+
+def _format_search_partial(data: dict) -> tuple[str | None, str]:
+    """Render one ``search_partial`` payload as a progress line + severity.
+
+    Returns ``(None, "info")`` if the event should be suppressed.
+    """
+    status = str(data.get("status") or "").strip().lower()
+    total = data.get("total")
+    completed = data.get("completed")
+    website_key = data.get("website_key")
+    pending = data.get("pending_websites") or []
+
+    if status == "started" and isinstance(total, int) and total > 0:
+        return f"Searching {total} website{'s' if total != 1 else ''}.", "info"
+
+    if not isinstance(total, int) or not isinstance(completed, int):
+        return None, "info"
+
+    pending_count = len(pending) if isinstance(pending, list) else max(0, total - completed)
+    counter = f"{completed}/{total}"
+    suffix = (
+        f" - {pending_count} still running"
+        if pending_count > 0
+        else " - all websites searched"
+    )
+    if isinstance(pending, list) and 0 < len(pending) <= _PARTIAL_PENDING_PREVIEW_LIMIT:
+        suffix += f" ({', '.join(str(item) for item in pending)})"
+    elif isinstance(pending, list) and len(pending) > _PARTIAL_PENDING_PREVIEW_LIMIT:
+        preview = ", ".join(str(item) for item in pending[:_PARTIAL_PENDING_PREVIEW_LIMIT])
+        suffix += f" ({preview}, +{len(pending) - _PARTIAL_PENDING_PREVIEW_LIMIT} more)"
+
+    site = str(website_key) if website_key else "website"
+    if status == "success":
+        results = data.get("results") or []
+        hit_count = len(results) if isinstance(results, list) else 0
+        hits = f" ({hit_count} result{'s' if hit_count != 1 else ''})" if hit_count else ""
+        return f"Searched {site}{hits} [{counter}]{suffix}", "info"
+    if status == "blocked":
+        reason = str(data.get("failure_reason") or "blocked").strip() or "blocked"
+        return f"Skipped {site}: {reason} [{counter}]{suffix}", "warning"
+    if status == "failed":
+        reason = str(data.get("failure_reason") or "failed").strip() or "failed"
+        return f"Failed {site}: {reason} [{counter}]{suffix}", "warning"
+    return None, "info"
+
 
 async def _get_websites_lookup(bot) -> dict[str, dict]:
     """Return a lookup of website_key -> website metadata dict using the cache."""
@@ -169,6 +218,16 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 progress.add(message, severity=severity)
                 await interaction.edit_original_response(view=progress.to_view())
 
+        async def on_partial(data: dict) -> None:
+            async with progress_edit_lock:
+                if terminal_started:
+                    return
+                message, severity = _format_search_partial(data)
+                if message is None:
+                    return
+                progress.add(message, severity=severity)
+                await interaction.edit_original_response(view=progress.to_view())
+
         try:
             kwargs: dict = {
                 "query": query,
@@ -181,6 +240,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
                 "search",
                 request_id=request_id,
                 on_progress=on_progress,
+                on_partial=on_partial if not scanlator_website else None,
                 **kwargs,
             )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:

@@ -47,6 +47,7 @@ def _wrap_chapter_payload(type_: str, data: dict[str, Any]) -> dict[str, Any]:
 
 PushHandler = Callable[[dict[str, Any]], Awaitable[None]]
 ProgressCallback = Callable[[CrawlerProgressEvent], Awaitable[None] | None]
+PartialCallback = Callable[[dict[str, Any]], Awaitable[None] | None]
 
 
 _log = get(__name__)
@@ -65,6 +66,7 @@ class CrawlerClient:
         self._pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self._progress_callbacks: dict[str, ProgressCallback] = {}
         self._progress_tasks_by_request: dict[str, asyncio.Task[None]] = {}
+        self._partial_callbacks: dict[str, PartialCallback] = {}
         self._push_handlers: dict[str, list[PushHandler]] = {}
         self._connected_event = asyncio.Event()
         self._stopping = False
@@ -115,6 +117,7 @@ class CrawlerClient:
             await asyncio.gather(*background_tasks, return_exceptions=True)
             self._background_tasks.difference_update(background_tasks)
         self._progress_tasks_by_request.clear()
+        self._partial_callbacks.clear()
         if self._session is not None:
             await self._session.close()
             self._session = None
@@ -138,6 +141,7 @@ class CrawlerClient:
             timeout=timeout,
             request_id=request_id,
             progress_callback=None,
+            partial_callback=None,
             **fields,
         )
 
@@ -149,15 +153,23 @@ class CrawlerClient:
         request_id: str | None = None,
         on_progress: ProgressCallback | None = None,
         progress_callback: ProgressCallback | None = None,
+        on_partial: PartialCallback | None = None,
         **fields: Any,
     ) -> dict[str, Any]:
-        """Send a correlated request and route progress updates to a callback."""
+        """Send a correlated request and route progress updates to a callback.
+
+        Pass ``on_partial`` to receive intermediate streamed messages whose
+        ``type`` is ``f"{type_}_partial"`` (for example ``"search_partial"``
+        events from a multi-website ``"search"`` request). The callback gets
+        the raw payload ``data`` dict. The final response future is unaffected.
+        """
         timeout_s = timeout if timeout is not None else self._config.transport_watchdog_seconds
         return await self._request(
             type_,
             timeout=timeout_s,
             request_id=request_id,
             progress_callback=on_progress or progress_callback,
+            partial_callback=on_partial,
             **fields,
         )
 
@@ -168,6 +180,7 @@ class CrawlerClient:
         timeout: float | None,
         request_id: str | None,
         progress_callback: ProgressCallback | None,
+        partial_callback: PartialCallback | None,
         **fields: Any,
     ) -> dict[str, Any]:
         if self._ws is None or self._ws.closed:
@@ -179,6 +192,8 @@ class CrawlerClient:
         self._pending[rid] = fut
         if progress_callback is not None:
             self._progress_callbacks[rid] = progress_callback
+        if partial_callback is not None:
+            self._partial_callbacks[rid] = partial_callback
         envelope = {"type": type_, "request_id": rid, **fields}
         response_received = False
         try:
@@ -192,12 +207,14 @@ class CrawlerClient:
             except TimeoutError as exc:
                 raise RequestTimeout(request_id=rid) from exc
             self._progress_callbacks.pop(rid, None)
+            self._partial_callbacks.pop(rid, None)
             progress_task = self._progress_tasks_by_request.pop(rid, None)
             if progress_task is not None:
                 await self._drain_progress_task(progress_task)
         finally:
             self._pending.pop(rid, None)
             self._progress_callbacks.pop(rid, None)
+            self._partial_callbacks.pop(rid, None)
             if not response_received:
                 progress_task = self._progress_tasks_by_request.pop(rid, None)
                 if progress_task is not None:
@@ -309,11 +326,21 @@ class CrawlerClient:
         if type_ == "request_progress":
             await self._dispatch_progress(payload, rid)
             return
+        # Intermediate streamed update for an in-flight request (e.g. search_partial).
+        if (
+            isinstance(rid, str)
+            and rid in self._pending
+            and type_.endswith("_partial")
+            and rid in self._partial_callbacks
+        ):
+            await self._dispatch_partial(payload, rid)
+            return
         # Correlated response.
         if isinstance(rid, str) and rid in self._pending:
             fut = self._pending.get(rid)
             if fut is not None and not fut.done():
                 self._progress_callbacks.pop(rid, None)
+                self._partial_callbacks.pop(rid, None)
                 fut.set_result(payload)
             return
         # Otherwise, treat as a push.
@@ -325,6 +352,34 @@ class CrawlerClient:
             task = asyncio.create_task(self._safe_push(handler, payload), name=f"push-{type_}")
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
+
+    async def _dispatch_partial(self, payload: dict[str, Any], rid: str) -> None:
+        callback = self._partial_callbacks.get(rid)
+        if callback is None:
+            return
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            data = {}
+        task = asyncio.create_task(
+            self._safe_partial_callback(callback, data),
+            name=f"partial-{rid}",
+        )
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
+    async def _safe_partial_callback(
+        self,
+        callback: PartialCallback,
+        data: dict[str, Any],
+    ) -> None:
+        try:
+            result = callback(data)
+            if inspect.isawaitable(result):
+                await result
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _log.exception("crawler partial callback failed; continuing")
 
     async def _dispatch_progress(self, payload: dict[str, Any], rid: object) -> None:
         if not isinstance(rid, str):
