@@ -41,6 +41,12 @@ class SubscriptionStore:
                 (user_id,),
             )
 
+    async def unsubscribe_all_for_series(self, website_key: str, url_name: str) -> None:
+        await self._pool.execute(
+            "DELETE FROM subscriptions WHERE website_key = ? AND url_name = ?",
+            (website_key, url_name),
+        )
+
     async def list_for_user(
         self,
         user_id: int,

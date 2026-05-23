@@ -16,6 +16,7 @@ from ..checks import has_premium
 from ..crawler.chapter import Chapter
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
 from ..crawler.website_detect import detect_website_key
+from ..db.bookmarks import BookmarkStore
 from ..db.guild_settings import GuildSettingsStore
 from ..db.tracked import TrackedStore
 from ..ui.components.error import SOURCE_CRAWLER, build_error_view
@@ -25,6 +26,7 @@ from ..ui.components.tracking import (
     build_grouped_list_views,
     build_role_hierarchy_view,
     build_role_managed_view,
+    build_terminal_tracking_blocked_view,
     build_track_remove_view,
     build_track_update_view,
     build_tracking_success_view,
@@ -48,6 +50,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._tracked = TrackedStore(bot.db)  # type: ignore[attr-defined]
+        self._bookmarks = BookmarkStore(bot.db)  # type: ignore[attr-defined]
         self._guild_settings = GuildSettingsStore(bot.db)  # type: ignore[attr-defined]
 
     track = app_commands.Group(
@@ -201,6 +204,18 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 last_chapter_text=latest_text,
                 last_chapter_url=latest_url,
             )
+            if _is_terminal_track_response(data):
+                view = build_terminal_tracking_blocked_view(
+                    title=title,
+                    series_url=series_url,
+                    status=status,
+                    cover_url=cover_url,
+                    bookmark_row=self._bookmark_row(website_key=website_key, url_name=url_name),
+                    bot=self.bot,
+                )
+                terminal_started = True
+                await try_terminal_edit(view)
+                return
             await self._tracked.add_to_guild(
                 guild_id, website_key, url_name, ping_role.id if ping_role else None
             )
@@ -262,6 +277,34 @@ class TrackingCog(commands.Cog, name="Tracking"):
             if ch is not None:
                 return ch
         return None
+
+    def _bookmark_row(self, *, website_key: str, url_name: str) -> discord.ui.ActionRow:
+        row = discord.ui.ActionRow()
+        button = discord.ui.Button(
+            label="Bookmark",
+            emoji="🔖",
+            style=discord.ButtonStyle.secondary,
+        )
+
+        async def callback(interaction: discord.Interaction) -> None:
+            try:
+                await self._bookmarks.upsert_bookmark(
+                    interaction.user.id,
+                    website_key,
+                    url_name,
+                )
+            except Exception:
+                _log.exception("terminal track bookmark failed for %s:%s", website_key, url_name)
+                await interaction.response.send_message(
+                    "Failed to create bookmark. Please try `/bookmark new`.",
+                    ephemeral=True,
+                )
+                return
+            await interaction.response.send_message("Bookmarked.", ephemeral=True)
+
+        button.callback = callback  # type: ignore[assignment]
+        row.add_item(button)
+        return row
 
     # -- /track update ------------------------------------------------------
 
@@ -505,6 +548,14 @@ def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
         if len(parts) == 2 and parts[0] and parts[1]:
             return (parts[0], parts[1])
     return None
+
+
+def _is_terminal_track_response(data: dict[str, Any]) -> bool:
+    return (
+        data.get("tracked") is False
+        and data.get("source") == "terminal_status"
+        and data.get("blocked_reason") == "terminal_status"
+    )
 
 
 async def setup(bot: commands.Bot) -> None:

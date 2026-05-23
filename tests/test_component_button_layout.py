@@ -6,6 +6,7 @@ import ast
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import discord
 
@@ -373,6 +374,23 @@ def test_error_and_success_component_v2_containers_keep_accent_colour() -> None:
         assert all(accent is not None for accent in accents)
 
 
+def test_terminal_tracking_blocked_view_shows_bookmark_button() -> None:
+    row = discord.ui.ActionRow()
+    row.add_item(discord.ui.Button(label="Bookmark", style=discord.ButtonStyle.secondary))
+
+    view = tracking.build_terminal_tracking_blocked_view(
+        title="Done Series",
+        series_url="https://example.test/done",
+        status="Completed",
+        cover_url=None,
+        bookmark_row=row,
+        bot=None,
+    )
+
+    buttons = [item for item in view.walk_children() if isinstance(item, discord.ui.Button)]
+    assert [button.label for button in buttons] == ["Bookmark"]
+
+
 def test_bookmark_browser_buttons_are_nested_inside_container() -> None:
     class FakeTrackedStore:
         async def find(self, website_key: str, url_name: str) -> None:
@@ -664,6 +682,45 @@ class _CountingBookmarkCrawler:
         if type_ == "supported_websites":
             return {"websites": [{"key": "site", "name": "Site", "base_url": "https://site.test"}]}
         return {}
+
+
+class _TerminalTrackCrawler(_CountingBookmarkCrawler):
+    async def request(self, type_: str, **kwargs):
+        if type_ == "track_series":
+            self.calls.append((type_, str(kwargs.get("series_url") or "")))
+            return {
+                "website_key": "site",
+                "url_name": "series",
+                "series_url": "https://site.test/series/series",
+                "tracked": False,
+                "source": "terminal_status",
+                "blocked_reason": "terminal_status",
+                "series": {
+                    "title": "Series",
+                    "cover_url": None,
+                    "status": "Completed",
+                    "latest_chapters": [],
+                },
+            }
+        return await super().request(type_, **kwargs)
+
+
+class _RecordingTrackedStore(_UntrackedStore):
+    def __init__(self) -> None:
+        self.upserts: list[tuple] = []
+        self.guild_adds: list[tuple] = []
+
+    async def upsert_series(self, *args, **kwargs) -> None:
+        self.upserts.append((args, kwargs))
+
+    async def add_to_guild(self, *args, **kwargs) -> None:
+        self.guild_adds.append((args, kwargs))
+
+
+class _TrackInteraction(_EditInteraction):
+    def __init__(self) -> None:
+        super().__init__()
+        self.followup = SimpleNamespace(send=AsyncMock())
 
 
 class _SeriesDataBookmarkCrawler:
@@ -1072,6 +1129,44 @@ def test_bookmark_browser_rebuild_keeps_dispatch_custom_ids_stable() -> None:
         assert after["Move bookmark: Reading"] == before["Move bookmark: Reading"]
 
     asyncio.run(run())
+
+
+def test_bookmark_browser_track_button_keeps_terminal_series_bookmark_only() -> None:
+    guild = _Guild(_Member(roles=[_Role(123)]))
+    tracked = _RecordingTrackedStore()
+    crawler = _TerminalTrackCrawler()
+    browser = bookmark.BookmarkBrowserView(
+        [
+            Bookmark(
+                user_id=1,
+                website_key="site",
+                url_name="series",
+                folder="Reading",
+                last_read_chapter="Chapter 1",
+                last_read_index=0,
+                created_at="2026-05-14T00:00:00",
+                updated_at="2026-05-14T00:00:00",
+            )
+        ],
+        store=SimpleNamespace(),
+        tracked=tracked,
+        subscriptions=_NoopSubscriptionStore(),
+        guild_settings=_TrackButtonGuildSettingsStore(bot_manager_role_id=123),
+        crawler=crawler,
+        invoker_id=1,
+        guild_id=guild.id,
+        bot=_Bot(guild),
+    )
+
+    async def run() -> None:
+        await browser.initial_render()
+        await browser._on_track(_TrackInteraction())  # type: ignore[arg-type]
+
+    asyncio.run(run())
+
+    assert ("track_series", "https://site.test/series/series") in crawler.calls
+    assert tracked.upserts
+    assert tracked.guild_adds == []
 
 
 def test_bookmark_browser_navigation_defers_before_rebuild() -> None:

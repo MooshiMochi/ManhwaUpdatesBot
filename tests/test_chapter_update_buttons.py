@@ -7,6 +7,7 @@ import discord
 from manhwa_bot.ui.components.notifications import (
     ALL_UPDATE_BUTTONS,
     build_chapter_update_view,
+    build_status_change_view,
 )
 
 
@@ -114,3 +115,23 @@ def test_mark_read_falls_back_to_index_when_missing() -> None:
 def test_view_has_no_timeout() -> None:
     view = build_chapter_update_view(_payload(), bot=None, allowed_buttons=ALL_UPDATE_BUTTONS)
     assert view.timeout is None
+
+
+def test_status_change_view_sends_without_buttons() -> None:
+    view = build_status_change_view(
+        {
+            "website_key": "comick",
+            "url_name": "demo",
+            "series_title": "Demo Series",
+            "series_url": "https://example.com/demo",
+            "old_status": "Ongoing",
+            "new_status": "Completed",
+            "terminal": True,
+        },
+        bot=None,
+        ping="<@&42>",
+    )
+
+    assert _buttons(view) == []
+    assert isinstance(view.children[0], discord.ui.TextDisplay)
+    assert view.children[0].content == "<@&42>"

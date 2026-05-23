@@ -1229,15 +1229,68 @@ class BookmarkBrowserView(BaseLayoutView):
         series_url = str(meta.get("series_url") or bm.url_name)
         title = str(meta.get("title") or bm.url_name)
         try:
+            track_data = await self._crawler.request(
+                "track_series",
+                website_key=bm.website_key,
+                series_url=series_url,
+            )
+        except Exception:
+            _log.exception("track button crawler track_series failed")
+            await self._send_ephemeral(
+                interaction, "Failed to track this series — please try `/track new`."
+            )
+            return
+        if isinstance(track_data, dict) and _is_terminal_track_response(track_data):
+            series_payload = (
+                track_data.get("series") if isinstance(track_data.get("series"), dict) else {}
+            )
+            tracked_website_key = str(track_data.get("website_key") or bm.website_key)
+            tracked_url_name = str(track_data.get("url_name") or bm.url_name)
+            tracked_series_url = str(track_data.get("series_url") or series_url)
+            tracked_title = str(series_payload.get("title") or title)
+            try:
+                await self._tracked.upsert_series(
+                    tracked_website_key,
+                    tracked_url_name,
+                    tracked_series_url,
+                    tracked_title,
+                    cover_url=series_payload.get("cover_url") or meta.get("cover_url"),
+                    status=series_payload.get("status") or meta.get("status"),
+                )
+            except Exception:
+                _log.debug("terminal track metadata cache failed", exc_info=True)
+            await self._send_ephemeral(
+                interaction,
+                "This series is already completed or cancelled, so it can't be tracked. "
+                "Your bookmark is unchanged.",
+            )
+            return
+        if isinstance(track_data, dict):
+            series_payload = (
+                track_data.get("series") if isinstance(track_data.get("series"), dict) else {}
+            )
+            tracked_website_key = str(track_data.get("website_key") or bm.website_key)
+            tracked_url_name = str(track_data.get("url_name") or bm.url_name)
+            series_url = str(track_data.get("series_url") or series_url)
+            title = str(series_payload.get("title") or title)
+            meta = {
+                **meta,
+                "cover_url": series_payload.get("cover_url") or meta.get("cover_url"),
+                "status": series_payload.get("status") or meta.get("status"),
+            }
+        else:
+            tracked_website_key = bm.website_key
+            tracked_url_name = bm.url_name
+        try:
             await self._tracked.upsert_series(
-                bm.website_key,
-                bm.url_name,
+                tracked_website_key,
+                tracked_url_name,
                 series_url,
                 title,
                 cover_url=meta.get("cover_url"),
                 status=meta.get("status"),
             )
-            await self._tracked.add_to_guild(int(guild.id), bm.website_key, bm.url_name)
+            await self._tracked.add_to_guild(int(guild.id), tracked_website_key, tracked_url_name)
         except Exception:
             _log.exception("track button failed")
             await self._send_ephemeral(
@@ -1249,8 +1302,8 @@ class BookmarkBrowserView(BaseLayoutView):
         try:
             await self._crawler.request(
                 "check_series",
-                website_key=bm.website_key,
-                url_name=bm.url_name,
+                website_key=tracked_website_key,
+                url_name=tracked_url_name,
             )
         except Exception:
             _log.debug("track button immediate check failed", exc_info=True)
@@ -1443,6 +1496,14 @@ def _format_last_read(bm: Bookmark, chapters: list[Chapter]) -> str:
     if bm.last_read_chapter:
         return bm.last_read_chapter
     return "—"
+
+
+def _is_terminal_track_response(data: dict[str, Any]) -> bool:
+    return (
+        data.get("tracked") is False
+        and data.get("source") == "terminal_status"
+        and data.get("blocked_reason") == "terminal_status"
+    )
 
 
 # ---------------------------------------------------------------------------

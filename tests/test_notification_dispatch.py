@@ -110,6 +110,26 @@ def _payload(*, website_key: str = "comick", url_name: str = "demo", premium: bo
     }
 
 
+def _status_payload(*, terminal: bool = False) -> dict:
+    return {
+        "id": 2,
+        "website_key": "comick",
+        "url_name": "demo",
+        "chapter_index": None,
+        "payload": {
+            "event": "status_change",
+            "website_key": "comick",
+            "url_name": "demo",
+            "series_title": "Demo",
+            "series_url": "https://example.com/demo",
+            "old_status": "Ongoing",
+            "new_status": "Completed" if terminal else "Hiatus",
+            "terminal": terminal,
+        },
+        "created_at": "2026-04-26T00:00:00+00:00",
+    }
+
+
 async def _setup() -> tuple[_BotStub, UpdatesCog, tempfile.TemporaryDirectory]:
     tmp = tempfile.TemporaryDirectory()
     pool = await DbPool.open(str(Path(tmp.name) / "bot.db"))
@@ -433,6 +453,60 @@ def test_guild_default_settings_sends_view_with_all_buttons() -> None:
             view = channel.send.await_args.kwargs["view"]
             buttons = [c for c in view.walk_children() if isinstance(c, discord.ui.Button)]
             assert len(buttons) == 4
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_status_change_dispatch_sends_without_buttons() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1], ping_role_id=42)
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_status_payload())
+
+            assert channel.send.await_count == 1
+            view = channel.send.await_args.kwargs["view"]
+            buttons = [c for c in view.walk_children() if isinstance(c, discord.ui.Button)]
+            assert buttons == []
+            assert _top_level_text(view)[0] == "<@&42>"
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_terminal_status_change_dispatch_removes_local_tracking_and_subscriptions() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1])
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+            subs = SubscriptionStore(bot.db)
+            await subs.subscribe(42, 1, "comick", "demo")
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+            user = MagicMock()
+            user.send = AsyncMock()
+            bot.fetch_user.return_value = user
+
+            await cog.dispatch(_status_payload(terminal=True))
+
+            assert channel.send.await_count == 1
+            assert user.send.await_count == 1
+            assert await TrackedStore(bot.db).find("comick", "demo") is None
+            assert await subs.list_subscribers_for_series("comick", "demo") == []
         finally:
             await bot.db.close()
             tmp.cleanup()

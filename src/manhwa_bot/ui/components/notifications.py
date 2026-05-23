@@ -80,6 +80,40 @@ def build_chapter_update_view(
     return view
 
 
+def build_status_change_view(
+    payload: dict,
+    *,
+    bot: discord.Client | None = None,
+    ping: str | None = None,
+) -> discord.ui.LayoutView:
+    series_title = payload.get("series_title") or payload.get("url_name") or "Series"
+    series_url = payload.get("series_url") or None
+    old_status = str(payload.get("old_status") or "Unknown")
+    new_status = str(payload.get("new_status") or payload.get("status") or "Unknown")
+    cover_url = payload.get("cover_url")
+
+    header = f"## 🔔  [{series_title}]({series_url})" if series_url else f"## 🔔  {series_title}"
+    body = f"**Status changed:** `{old_status}` → `{new_status}`"
+    if bool(payload.get("terminal")):
+        body += "\n\nTracking has ended for this series."
+
+    container = discord.ui.Container()
+    gallery = hero_cover_gallery(cover_url)
+    if gallery is not None:
+        container.add_item(gallery)
+    container.add_item(discord.ui.TextDisplay(header))
+    container.add_item(small_separator())
+    container.add_item(discord.ui.TextDisplay(body))
+
+    del bot
+    view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
+    ping = (ping or "").strip()
+    if ping:
+        view.add_item(discord.ui.TextDisplay(ping))
+    view.add_item(container)
+    return view
+
+
 def _build_button_row(
     *,
     allowed_buttons: frozenset[str],
@@ -131,4 +165,5 @@ __all__ = [
     "UPDATE_BUTTON_KEYS",
     "UPDATE_BUTTON_LABELS",
     "build_chapter_update_view",
+    "build_status_change_view",
 ]

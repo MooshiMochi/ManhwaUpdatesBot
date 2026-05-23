@@ -76,6 +76,40 @@ def build_tracking_success_view(
     return view
 
 
+def build_terminal_tracking_blocked_view(
+    *,
+    title: str,
+    series_url: str,
+    status: str | None,
+    cover_url: str | None,
+    bookmark_row: discord.ui.ActionRow | None = None,
+    bot: discord.Client | None = None,
+) -> discord.ui.LayoutView:
+    status_text = str(status or "Completed").strip() or "Completed"
+    body = (
+        f"**[{title}]({series_url})** is marked as **{status_text}**, so it can't be "
+        "tracked for update notifications.\n\n"
+        "You can bookmark it instead to keep it in your library."
+    )
+
+    container = discord.ui.Container(accent_colour=None)
+    gallery = hero_cover_gallery(cover_url)
+    if gallery is not None:
+        container.add_item(gallery)
+    container.add_item(discord.ui.TextDisplay("## Tracking unavailable"))
+    container.add_item(small_separator())
+    container.add_item(discord.ui.TextDisplay(body))
+    if bookmark_row is not None:
+        container.add_item(small_separator())
+        container.add_item(bookmark_row)
+    container.add_item(small_separator())
+    container.add_item(footer_section(bot))
+
+    view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
+    view.add_item(container)
+    return view
+
+
 # ---------------------------------------------------------------------------
 # /track update — small green acknowledgement, optional hero cover
 # ---------------------------------------------------------------------------

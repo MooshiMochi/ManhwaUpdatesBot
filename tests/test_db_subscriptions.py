@@ -49,3 +49,22 @@ def test_list_for_user_includes_series_title_and_url() -> None:
                 await pool.close()
 
     asyncio.run(_run())
+
+
+def test_unsubscribe_all_for_series_removes_only_target_series() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool, store = await _make_store(tmp)
+            try:
+                await store.subscribe(42, 100, "asura", "solo-leveling")
+                await store.subscribe(43, 100, "asura", "solo-leveling")
+                await store.subscribe(42, 100, "asura", "other-series")
+
+                await store.unsubscribe_all_for_series("asura", "solo-leveling")
+
+                assert await store.list_subscribers_for_series("asura", "solo-leveling") == []
+                assert await store.list_subscribers_for_series("asura", "other-series") == [42]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
