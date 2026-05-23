@@ -7,11 +7,15 @@ import re
 
 import discord
 
+from ...crawler.chapter import Chapter
 from ...db.bookmarks import BookmarkStore
 from ...db.dm_settings import DmSettingsStore
 from ...db.guild_settings import GuildSettingsStore
+from ...db.notification_button_state import MarkReadToggleStore
 from ...db.subscriptions import SubscriptionStore
-from ...db.tracked import TrackedStore
+from ...db.tracked import TrackedSeries, TrackedStore
+from .. import emojis
+from .base import BaseLayoutView, safe_truncate, severity_accent, small_separator
 
 _log = logging.getLogger(__name__)
 
@@ -59,6 +63,83 @@ def _assert_slug(value: str, *, field: str) -> str:
     return value
 
 
+def _series_link(tracked: TrackedSeries | None, url_name: str) -> str:
+    if tracked is None:
+        return f"`{url_name}`"
+    title = tracked.title or url_name
+    return f"[{title}]({tracked.series_url})"
+
+
+def _chapter_markdown(label: str, url: str | None) -> str:
+    return f"[{label}]({url})" if url else label
+
+
+async def _resolve_mark_read_chapter(
+    *,
+    client: object,
+    tracked: TrackedSeries | None,
+    website_key: str,
+    url_name: str,
+    chapter_index: int,
+) -> tuple[str, str]:
+    crawler = getattr(client, "crawler", None)
+    identifier = tracked.series_url if tracked is not None else url_name
+    if crawler is not None:
+        try:
+            data = await crawler.request("chapters", website_key=website_key, url=identifier)
+            chapters = Chapter.list_from_payload(data)
+        except Exception:
+            _log.exception(
+                "failed to resolve notification chapter for %s:%s", website_key, url_name
+            )
+        else:
+            chapter = next(
+                (chapter for chapter in chapters if chapter.index == chapter_index),
+                chapters[chapter_index] if 0 <= chapter_index < len(chapters) else None,
+            )
+            if chapter is not None:
+                return chapter.name, str(chapter)
+
+    if tracked is not None and tracked.last_chapter_text:
+        return tracked.last_chapter_text, _chapter_markdown(
+            tracked.last_chapter_text,
+            tracked.last_chapter_url,
+        )
+
+    return "selected chapter", "the selected chapter"
+
+
+def _ack_view(
+    *,
+    title: str,
+    description: str,
+    level: str = "success",
+) -> discord.ui.LayoutView:
+    accent = severity_accent("success" if level == "success" else "warning")
+    container = discord.ui.Container(
+        discord.ui.TextDisplay(f"## {title}"),
+        small_separator(),
+        discord.ui.TextDisplay(safe_truncate(description, 3800)),
+        accent_colour=accent,
+    )
+    view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
+    view.add_item(container)
+    return view
+
+
+async def _send_ack(
+    interaction: discord.Interaction,
+    *,
+    title: str,
+    description: str,
+    level: str = "success",
+) -> None:
+    await interaction.followup.send(
+        view=_ack_view(title=title, description=description, level=level),
+        ephemeral=True,
+    )
+
+
 MARK_READ_TEMPLATE = r"mu:upd:mr:(?P<wk>[^:]+):(?P<un>[^:]+):(?P<idx>-?\d+)"
 BOOKMARK_TEMPLATE = r"mu:upd:bm:(?P<wk>[^:]+):(?P<un>[^:]+)"
 SUBSCRIBE_TEMPLATE = r"mu:upd:sub:(?P<wk>[^:]+):(?P<un>[^:]+)"
@@ -68,7 +149,6 @@ class MarkReadButton(
     discord.ui.DynamicItem[discord.ui.Button],
     template=MARK_READ_TEMPLATE,
 ):
-
     def __init__(self, website_key: str, url_name: str, chapter_index: int) -> None:
         wk = _assert_slug(website_key, field="website_key")
         un = _assert_slug(url_name, field="url_name")
@@ -97,14 +177,63 @@ class MarkReadButton(
         await interaction.response.defer(ephemeral=True, thinking=True)
         pool = interaction.client.db  # type: ignore[attr-defined]
         store = BookmarkStore(pool)
-        existing = await store.get_bookmark(
-            interaction.user.id, self.website_key, self.url_name
-        )
+        toggles = MarkReadToggleStore(pool)
+        tracked = await TrackedStore(pool).find(self.website_key, self.url_name)
+        link = _series_link(tracked, self.url_name)
+        existing = await store.get_bookmark(interaction.user.id, self.website_key, self.url_name)
         chapter_index = self.chapter_index
-        # The encoded index is a hint; we don't have a live chapters lookup
-        # here, so trust it for the write. The bookmark browser re-resolves
-        # against current series_data when the user opens it.
-        chapter_text = f"Chapter index {chapter_index}"
+        toggle_state = await toggles.get(
+            interaction.user.id, self.website_key, self.url_name, chapter_index
+        )
+        if toggle_state is not None:
+            if toggle_state.previous_bookmark_exists:
+                await store.upsert_bookmark(
+                    user_id=interaction.user.id,
+                    website_key=self.website_key,
+                    url_name=self.url_name,
+                    folder=toggle_state.previous_folder or "Reading",
+                    last_read_chapter=toggle_state.previous_last_read_chapter,
+                    last_read_index=toggle_state.previous_last_read_index,
+                )
+                if toggle_state.previous_last_read_index is not None:
+                    _, restored = await _resolve_mark_read_chapter(
+                        client=interaction.client,
+                        tracked=tracked,
+                        website_key=self.website_key,
+                        url_name=self.url_name,
+                        chapter_index=toggle_state.previous_last_read_index,
+                    )
+                else:
+                    restored = _chapter_markdown(
+                        toggle_state.previous_last_read_chapter or "no chapter",
+                        None,
+                    )
+                description = f"Restored {link} to {restored}."
+            else:
+                await store.delete_bookmark(interaction.user.id, self.website_key, self.url_name)
+                description = f"Removed the temporary bookmark for {link}."
+            await toggles.clear(interaction.user.id, self.website_key, self.url_name, chapter_index)
+            await _send_ack(
+                interaction,
+                title=f"{emojis.CHECK}  Mark read undone",
+                description=description,
+            )
+            return
+
+        chapter_text, chapter_display = await _resolve_mark_read_chapter(
+            client=interaction.client,
+            tracked=tracked,
+            website_key=self.website_key,
+            url_name=self.url_name,
+            chapter_index=chapter_index,
+        )
+        await toggles.save_previous(
+            user_id=interaction.user.id,
+            website_key=self.website_key,
+            url_name=self.url_name,
+            chapter_index=chapter_index,
+            bookmark=existing,
+        )
         await store.upsert_bookmark(
             user_id=interaction.user.id,
             website_key=self.website_key,
@@ -113,20 +242,22 @@ class MarkReadButton(
             last_read_chapter=chapter_text,
             last_read_index=chapter_index,
         )
-        msg = (
-            f"✅ Marked **{self.url_name}** chapter index `{chapter_index}` as read."
+        description = (
+            f"Marked {link} - {chapter_display} as read."
             if existing
-            else f"✅ Bookmarked **{self.url_name}** in *Reading* and marked chapter "
-            f"index `{chapter_index}` as read."
+            else f"Bookmarked {link} in *Reading* and marked {chapter_display} as read."
         )
-        await interaction.followup.send(msg, ephemeral=True)
+        await _send_ack(
+            interaction,
+            title=f"{emojis.CHECK}  Marked read",
+            description=description,
+        )
 
 
 class BookmarkButton(
     discord.ui.DynamicItem[discord.ui.Button],
     template=BOOKMARK_TEMPLATE,
 ):
-
     def __init__(self, website_key: str, url_name: str) -> None:
         wk = _assert_slug(website_key, field="website_key")
         un = _assert_slug(url_name, field="url_name")
@@ -154,9 +285,9 @@ class BookmarkButton(
         await interaction.response.defer(ephemeral=True, thinking=True)
         pool = interaction.client.db  # type: ignore[attr-defined]
         store = BookmarkStore(pool)
-        existing = await store.get_bookmark(
-            interaction.user.id, self.website_key, self.url_name
-        )
+        tracked = await TrackedStore(pool).find(self.website_key, self.url_name)
+        link = _series_link(tracked, self.url_name)
+        existing = await store.get_bookmark(interaction.user.id, self.website_key, self.url_name)
         if existing is None:
             await store.upsert_bookmark(
                 user_id=interaction.user.id,
@@ -164,20 +295,18 @@ class BookmarkButton(
                 url_name=self.url_name,
                 folder="Reading",
             )
-            msg = f"🔖 Bookmarked **{self.url_name}** in *Reading*."
+            description = f"Bookmarked {link} in *Reading*."
+            title = "🔖  Bookmark added"
         else:
-            msg = (
-                f"🔖 You already have **{self.url_name}** bookmarked in "
-                f"*{existing.folder}*."
-            )
-        await interaction.followup.send(msg, ephemeral=True)
+            description = f"You already have {link} bookmarked in *{existing.folder}*."
+            title = "🔖  Already bookmarked"
+        await _send_ack(interaction, title=title, description=description)
 
 
 class SubscribeToggleButton(
     discord.ui.DynamicItem[discord.ui.Button],
     template=SUBSCRIBE_TEMPLATE,
 ):
-
     def __init__(self, website_key: str, url_name: str) -> None:
         wk = _assert_slug(website_key, field="website_key")
         un = _assert_slug(url_name, field="url_name")
@@ -205,22 +334,24 @@ class SubscribeToggleButton(
         await interaction.response.defer(ephemeral=True, thinking=True)
         pool = interaction.client.db  # type: ignore[attr-defined]
         tracked_store = TrackedStore(pool)
-        guild_rows = await tracked_store.list_guilds_tracking(
-            self.website_key, self.url_name
-        )
+        tracked = await tracked_store.find(self.website_key, self.url_name)
+        link = _series_link(tracked, self.url_name)
+        guild_rows = await tracked_store.list_guilds_tracking(self.website_key, self.url_name)
         if not guild_rows:
-            await interaction.followup.send(
-                "This series isn't tracked in any server yet — ask a server admin "
-                "to `/track new` it before subscribing.",
-                ephemeral=True,
+            await _send_ack(
+                interaction,
+                title="🔔  Subscription unavailable",
+                description=(
+                    "This series isn't tracked in any server yet. Ask a server admin "
+                    "to `/track new` it before subscribing."
+                ),
+                level="warning",
             )
             return
         # Prefer the guild the click came from, otherwise the first tracking row.
         chosen_guild_id: int | None = None
         for row in guild_rows:
-            if interaction.guild_id is not None and int(row.guild_id) == int(
-                interaction.guild_id
-            ):
+            if interaction.guild_id is not None and int(row.guild_id) == int(interaction.guild_id):
                 chosen_guild_id = int(row.guild_id)
                 break
         if chosen_guild_id is None:
@@ -240,7 +371,8 @@ class SubscribeToggleButton(
                 self.website_key,
                 self.url_name,
             )
-            msg = f"🔔 Unsubscribed from **{self.url_name}**."
+            title = "🔔  Unsubscribed"
+            description = f"Unsubscribed from {link}."
         else:
             await subs.subscribe(
                 interaction.user.id,
@@ -248,8 +380,9 @@ class SubscribeToggleButton(
                 self.website_key,
                 self.url_name,
             )
-            msg = f"🔔 Subscribed to **{self.url_name}**."
-        await interaction.followup.send(msg, ephemeral=True)
+            title = "🔔  Subscribed"
+            description = f"Subscribed to {link}."
+        await _send_ack(interaction, title=title, description=description)
 
 
 # Re-exports referenced by stores when Task 6 wires the callbacks.
