@@ -14,11 +14,15 @@ PREMIUM_REQUIRED = "premium_required"
 def has_premium(*, dm_only: bool = False):
     """Slash-command check that gates on the bot's :class:`PremiumService`.
 
-    On denial, raises ``app_commands.CheckFailure("premium_required")`` so the
-    global tree error handler can render the upgrade embed.
+    When ``dm_only`` is set, the check is bypassed entirely inside guilds —
+    only DM invocations require premium. On denial, raises
+    ``app_commands.CheckFailure("premium_required")`` so the global tree error
+    handler can render the upgrade embed.
     """
 
     async def predicate(interaction: discord.Interaction) -> bool:
+        if dm_only and interaction.guild is not None:
+            return True
         bot: Any = interaction.client
         ok, _ = await bot.premium.is_premium(
             user_id=interaction.user.id,
@@ -37,6 +41,8 @@ def has_premium_prefix(*, dm_only: bool = False):
     """Prefix-command analogue of :func:`has_premium` for the dev cog."""
 
     async def predicate(ctx: commands.Context) -> bool:
+        if dm_only and ctx.guild is not None:
+            return True
         bot: Any = ctx.bot
         ok, _ = await bot.premium.is_premium(
             user_id=ctx.author.id,

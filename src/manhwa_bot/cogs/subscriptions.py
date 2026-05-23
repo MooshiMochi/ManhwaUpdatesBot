@@ -41,6 +41,26 @@ def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
     return (parts[0].strip(), parts[1].strip()) if len(parts) == 2 else None
 
 
+async def _add_role_safe(
+    interaction: discord.Interaction, role: discord.Role
+) -> discord.Role | None:
+    """Add *role* to the invoker. Returns the role on success, ``None`` on failure.
+
+    Treats "user already has the role" as success.
+    """
+    member = interaction.user
+    if not isinstance(member, discord.Member):
+        return None
+    if role in member.roles:
+        return role
+    try:
+        await member.add_roles(role, reason="ManhwaUpdatesBot: /subscribe")
+    except discord.Forbidden, discord.HTTPException:
+        _log.exception("failed to assign role %s to user %s", role.id, member.id)
+        return None
+    return role
+
+
 class SubscriptionsCog(commands.Cog, name="Subscriptions"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -63,7 +83,7 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
     @app_commands.describe(
         manga_id="The name of the tracked manga you want to subscribe to.",
     )
-    @app_commands.autocomplete(manga_id=autocomplete.tracked_manga_in_guild)
+    @app_commands.autocomplete(manga_id=autocomplete.tracked_manga_in_guild_with_all)
     @app_commands.rename(manga_id="manga")
     @has_premium(dm_only=True)
     async def subscribe_new(
@@ -76,7 +96,7 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         guild_id = interaction.guild_id or 0
 
         if manga_id == "*":
-            await self._handle_subscribe_all(interaction, guild_id)
+            await self._handle_assign_default_role(interaction, guild_id)
             return
 
         parsed = _parse_manga_id(manga_id)
@@ -129,10 +149,15 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         notif_channel = None
         if gs and gs.notifications_channel_id and interaction.guild:
             notif_channel = interaction.guild.get_channel(gs.notifications_channel_id)
+
+        ping_role = await self._assign_series_ping_role(
+            interaction, guild_id, website_key, url_name
+        )
+
         view = build_subscribe_success_view(
             title=series_match.title,
             series_url=series_match.series_url,
-            ping_role=None,
+            ping_role=ping_role,
             notif_channel=notif_channel,
             cover_url=series_match.cover_url,
             is_dm=interaction.guild_id is None,
@@ -140,79 +165,91 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         )
         await interaction.followup.send(view=view, ephemeral=True)
 
-    async def _handle_subscribe_all(self, interaction: discord.Interaction, guild_id: int) -> None:
-        """Handle /subscribe new manga_id=*."""
-        try:
-            tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
-            existing_subs = await self._subs.list_for_user(
-                interaction.user.id, guild_id=guild_id, limit=500
-            )
-            existing_set = {(s["website_key"], s["url_name"]) for s in existing_subs}
-            to_subscribe = [
-                s for s in tracked_list if (s.website_key, s.url_name) not in existing_set
-            ]
+    async def _assign_series_ping_role(
+        self,
+        interaction: discord.Interaction,
+        guild_id: int,
+        website_key: str,
+        url_name: str,
+    ) -> discord.Role | None:
+        """Assign the per-series ping role to the invoker, if one is configured."""
+        if guild_id == 0 or interaction.guild is None:
+            return None
+        guild_list = await self._tracked.list_for_guild(guild_id, limit=500)
+        row = next(
+            (s for s in guild_list if s.website_key == website_key and s.url_name == url_name),
+            None,
+        )
+        if row is None or row.ping_role_id is None:
+            return None
+        role = interaction.guild.get_role(row.ping_role_id)
+        if role is None:
+            return None
+        return await _add_role_safe(interaction, role)
 
-            if not to_subscribe:
-                await interaction.followup.send(
-                    view=build_simple_status_view(
-                        title=f"{emojis.CHECK}  Already subscribed",
-                        description="You're already subscribed to every tracked series here.",
-                        accent=discord.Colour.green(),
-                        bot=self.bot,
-                    ),
-                    ephemeral=True,
-                )
-                return
-
-            confirm = ConfirmLayoutView(
-                author_id=interaction.user.id,
-                prompt=(
-                    f"You are about to subscribe to an additional **{len(to_subscribe)}** "
-                    "tracked series from this server.\n\n**Do you wish to continue?**"
-                ),
-                prompt_title="Subscribe to all?",
-                bot=self.bot,
-            )
-            confirm_msg = await interaction.followup.send(view=confirm, ephemeral=True, wait=True)
-            confirm.bind_message(confirm_msg)
-            await confirm.wait()
-
-            if confirm.value is not True:
-                await interaction.edit_original_response(
-                    view=build_simple_status_view(
-                        title="Operation cancelled",
-                        description="No subscriptions were created.",
-                        accent=discord.Colour.greyple(),
-                        bot=self.bot,
-                    ),
-                )
-                return
-
-            successes = 0
-            fails = 0
-            for series in to_subscribe:
-                try:
-                    await self._subs.subscribe(
-                        interaction.user.id, guild_id, series.website_key, series.url_name
-                    )
-                    successes += 1
-                except Exception:
-                    _log.exception(
-                        "batch subscribe failed for %s:%s", series.website_key, series.url_name
-                    )
-                    fails += 1
-
-            await interaction.edit_original_response(
-                view=build_bulk_subscribe_result_view(
-                    successes=successes, fails=fails, action="subscribe", bot=self.bot
-                ),
-            )
-        except Exception as exc:
-            _log.exception("batch subscribe failed")
+    async def _handle_assign_default_role(
+        self, interaction: discord.Interaction, guild_id: int
+    ) -> None:
+        """Handle /subscribe new manga=All — assign the guild's default ping role."""
+        if guild_id == 0 or interaction.guild is None:
             await interaction.followup.send(
-                view=build_error_view(f"Batch subscribe failed: {exc}", bot=self.bot),
+                view=build_error_view("The 'All' option only works inside a server.", bot=self.bot),
                 ephemeral=True,
             )
+            return
+
+        gs = await self._guild_settings.get(guild_id)
+        if gs is None or gs.default_ping_role_id is None:
+            await interaction.followup.send(
+                view=build_error_view(
+                    "This server has no default ping role configured.", bot=self.bot
+                ),
+                ephemeral=True,
+            )
+            return
+
+        role = interaction.guild.get_role(gs.default_ping_role_id)
+        if role is None:
+            await interaction.followup.send(
+                view=build_error_view(
+                    "The configured default ping role no longer exists.", bot=self.bot
+                ),
+                ephemeral=True,
+            )
+            return
+
+        assigned = await _add_role_safe(interaction, role)
+        if assigned is None:
+            await interaction.followup.send(
+                view=build_error_view(
+                    f"I couldn't assign {role.mention} — check my permissions and role order.",
+                    bot=self.bot,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        member = interaction.user
+        already_had = isinstance(member, discord.Member) and role in member.roles
+        title = (
+            f"{emojis.CHECK}  Already have the role"
+            if already_had
+            else f"{emojis.CHECK}  Role assigned"
+        )
+        description = (
+            f"You already have {role.mention} — you'll keep getting all update pings."
+            if already_had
+            else f"You've been given {role.mention} and will receive all update pings."
+        )
+        await interaction.followup.send(
+            view=build_simple_status_view(
+                title=title,
+                description=description,
+                accent=discord.Colour.green(),
+                bot=self.bot,
+            ),
+            ephemeral=True,
+        )
 
     # -- /subscribe delete ---------------------------------------------------------
 

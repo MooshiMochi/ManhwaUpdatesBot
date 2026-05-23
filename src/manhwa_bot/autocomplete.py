@@ -162,6 +162,29 @@ async def tracked_manga_in_guild(
         return []
 
 
+async def tracked_manga_in_guild_with_all(
+    interaction: discord.Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    """Like :func:`tracked_manga_in_guild` but prepends an ``All`` option.
+
+    The first choice carries value ``"*"`` and represents "get the default ping
+    role" for the guild. Hidden when the input is non-empty and doesn't match.
+    """
+    if interaction.guild is None:
+        return []
+    base = await tracked_manga_in_guild(interaction, current)
+    query = str(current or "").strip().lower()
+    show_all = not query or query in "all" or query.startswith("*")
+    if not show_all:
+        return base
+    all_choice = app_commands.Choice(
+        name="All - Get the default ping role",
+        value="*",
+    )
+    return [all_choice, *base[:24]]
+
+
 async def user_subscribed_manga(
     interaction: discord.Interaction,
     current: str,
