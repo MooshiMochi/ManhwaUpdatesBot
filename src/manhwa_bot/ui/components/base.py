@@ -180,12 +180,13 @@ def chapter_markdown(chapter: object, fallback_idx: int | None = None) -> str:
         return str(chapter)
     label = chapter_label(chapter, fallback_idx)
     url = chapter_url(chapter)
-    if chapter_is_premium(chapter):
-        if url:
-            label = f"{label} {emojis.LOCK}"
-        else:
-            label = f"{emojis.LOCK} {label}"
-    return f"[{label}]({url})" if url else label
+    premium = chapter_is_premium(chapter)
+    # Keep the lock emoji OUTSIDE the masked link — a custom emoji inside the
+    # `[text](url)` label breaks Discord's link rendering (discord-api-docs#6116).
+    if url:
+        link = f"[{label}]({url})"
+        return f"{link} {emojis.LOCK}" if premium else link
+    return f"{emojis.LOCK} {label}" if premium else label
 
 
 def hero_cover_gallery(

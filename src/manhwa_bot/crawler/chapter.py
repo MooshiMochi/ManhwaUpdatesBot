@@ -71,10 +71,10 @@ class Chapter:
     def __str__(self) -> str:
         from ..ui import emojis
 
-        if self.is_premium and self.url:
-            label = f"{self.name} {emojis.LOCK}"
-        elif self.is_premium:
-            label = f"{emojis.LOCK} {self.name}"
-        else:
-            label = self.name
-        return f"[{label}]({self.url})" if self.url else label
+        # The premium lock emoji must sit OUTSIDE the masked link: Discord
+        # breaks `[text](url)` rendering when the label contains a custom emoji,
+        # spilling the raw markdown into the message. See discord-api-docs#6116.
+        if self.url:
+            link = f"[{self.name}]({self.url})"
+            return f"{link} {emojis.LOCK}" if self.is_premium else link
+        return f"{emojis.LOCK} {self.name}" if self.is_premium else self.name

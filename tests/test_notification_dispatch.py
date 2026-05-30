@@ -85,6 +85,7 @@ class _BotStub:
     crawler: object  # unused in dispatch path
     get_channel: MagicMock
     fetch_user: AsyncMock
+    premium: object  # PremiumService-like; .is_premium(...) -> (bool, str | None)
 
 
 def _payload(*, website_key: str = "comick", url_name: str = "demo", premium: bool = False) -> dict:
@@ -140,6 +141,7 @@ async def _setup() -> tuple[_BotStub, UpdatesCog, tempfile.TemporaryDirectory]:
         crawler=SimpleNamespace(),
         get_channel=MagicMock(),
         fetch_user=AsyncMock(),
+        premium=SimpleNamespace(is_premium=AsyncMock(return_value=(True, "disabled"))),
     )
     cog = UpdatesCog(bot)  # type: ignore[arg-type]
     return bot, cog, tmp
@@ -373,6 +375,38 @@ def test_dm_disabled_user_is_skipped() -> None:
             bot.fetch_user.return_value = user
 
             await cog.dispatch(_payload())
+            assert user.send.await_count == 0
+            assert bot.fetch_user.await_count == 0
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_non_premium_subscriber_is_skipped_for_dm() -> None:
+    """DMs only go to currently-premium subscribers; the channel still posts."""
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            bot.premium.is_premium = AsyncMock(return_value=(False, None))
+            await _seed_tracked(bot.db, guild_ids=[1])
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+            await SubscriptionStore(bot.db).subscribe(42, 1, "comick", "demo")
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            user = MagicMock()
+            user.send = AsyncMock()
+            bot.fetch_user.return_value = user
+
+            await cog.dispatch(_payload())
+
+            # Channel notification still fires; the DM is suppressed.
+            assert channel.send.await_count == 1
             assert user.send.await_count == 0
             assert bot.fetch_user.await_count == 0
         finally:

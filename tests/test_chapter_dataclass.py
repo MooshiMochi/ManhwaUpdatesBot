@@ -53,7 +53,7 @@ def test_str_renders_hyperlink_with_lock_when_premium() -> None:
     no_url = Chapter(name="Chapter 5", url="", index=0, is_premium=False)
     no_url_premium = Chapter(name="Chapter 5", url="", index=0, is_premium=True)
 
-    assert str(premium) == f"[Chapter 9 {emojis.LOCK}](https://example.test/9)"
+    assert str(premium) == f"[Chapter 9](https://example.test/9) {emojis.LOCK}"
     assert str(free) == "[Chapter 1](https://example.test/1)"
     assert str(no_url) == "Chapter 5"
     assert str(no_url_premium) == f"{emojis.LOCK} Chapter 5"

@@ -215,6 +215,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 dm_settings = await self._dm_settings.get(user_id)
                 if dm_settings is not None and not dm_settings.notifications_enabled:
                     return
+                if not await self._user_has_premium(user_id):
+                    return
                 user = await self.bot.fetch_user(user_id)
                 await user.send(view=build_status_change_view(payload, bot=self.bot))
             except (discord.Forbidden, discord.NotFound) as exc:
@@ -306,6 +308,23 @@ class UpdatesCog(commands.Cog, name="Updates"):
             return int(settings.notifications_channel_id)
         return None
 
+    async def _user_has_premium(self, user_id: int) -> bool:
+        """DM notifications are a premium perk — re-check on every delivery.
+
+        ``/subscribe`` gates on premium at subscribe time, but premium can
+        lapse afterwards; this keeps DMs flowing only while the user is still
+        premium. When the premium subsystem is disabled, ``is_premium`` returns
+        ``True`` so behaviour is unchanged.
+        """
+        try:
+            ok, _ = await self.bot.premium.is_premium(
+                user_id=user_id, guild_id=None, dm_only=True
+            )
+        except Exception:
+            _log.exception("premium check failed for user %s; skipping DM", user_id)
+            return False
+        return ok
+
     @staticmethod
     def _compose_ping(row: Any, settings: Any) -> str:
         if getattr(row, "ping_role_id", None):
@@ -324,6 +343,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
             try:
                 dm_settings = await self._dm_settings.get(user_id)
                 if dm_settings is not None and not dm_settings.notifications_enabled:
+                    return
+                if not await self._user_has_premium(user_id):
                     return
                 if (
                     is_premium
