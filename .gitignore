@@ -43,6 +43,8 @@ ENV/
 *.sqlite3
 *.log
 logs/
+*.bak
+/data/
 
 # Editor / IDE
 .idea/

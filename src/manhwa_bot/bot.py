@@ -65,7 +65,7 @@ class ManhwaBot(commands.Bot):
     def __init__(self, config: AppConfig, db: DbPool, crawler: CrawlerClient) -> None:
         intents = discord.Intents.default()
         intents.members = True
-        intents.message_content = True
+        intents.message_content = False
         intents.presences = False
 
         allowed_mentions = discord.AllowedMentions(
@@ -102,7 +102,9 @@ class ManhwaBot(commands.Bot):
         _log.info("DB migrations applied")
 
         self.grants = GrantsService(PremiumGrantStore(self.db))
-        self.patreon = PatreonClient(self.config.premium.patreon, PatreonLinkStore(self.db))
+        self.patreon = PatreonClient(
+            self.config.premium.patreon, PatreonLinkStore(self.db)
+        )
         self.discord_ents = DiscordEntitlementsService(self.config.premium.discord)
         self.premium = PremiumService(
             self,
@@ -113,9 +115,15 @@ class ManhwaBot(commands.Bot):
         )
         await self.grants.start()
         await self.patreon.start()
-        self.add_listener(self.discord_ents.on_entitlement_create, "on_entitlement_create")
-        self.add_listener(self.discord_ents.on_entitlement_update, "on_entitlement_update")
-        self.add_listener(self.discord_ents.on_entitlement_delete, "on_entitlement_delete")
+        self.add_listener(
+            self.discord_ents.on_entitlement_create, "on_entitlement_create"
+        )
+        self.add_listener(
+            self.discord_ents.on_entitlement_update, "on_entitlement_update"
+        )
+        self.add_listener(
+            self.discord_ents.on_entitlement_delete, "on_entitlement_delete"
+        )
 
         self.tree.on_error = self._on_app_command_error  # type: ignore[assignment]
         self.add_listener(self._on_command_error, "on_command_error")
@@ -157,7 +165,10 @@ class ManhwaBot(commands.Bot):
         interaction: discord.Interaction,
         error: app_commands.AppCommandError,
     ) -> None:
-        if isinstance(error, app_commands.CheckFailure) and str(error) == PREMIUM_REQUIRED:
+        if (
+            isinstance(error, app_commands.CheckFailure)
+            and str(error) == PREMIUM_REQUIRED
+        ):
             view = build_upgrade_view(self.config.premium, bot=self)
             try:
                 if interaction.response.is_done():
@@ -171,7 +182,11 @@ class ManhwaBot(commands.Bot):
         original = getattr(error, "original", None) or error
         source, message = _user_message_for_error(original)
 
-        cmd_name = interaction.command.qualified_name if interaction.command is not None else "?"
+        cmd_name = (
+            interaction.command.qualified_name
+            if interaction.command is not None
+            else "?"
+        )
         _log.exception("App command error in /%s", cmd_name, exc_info=original)
 
         try:
@@ -215,10 +230,14 @@ def _user_message_for_error(exc: BaseException) -> tuple[str, str]:
             "The crawler took too long to respond. Please try again in a moment."
         )
     if isinstance(exc, Disconnected):
-        return SOURCE_CRAWLER, ("The connection to the crawler was interrupted. Please try again.")
+        return SOURCE_CRAWLER, (
+            "The connection to the crawler was interrupted. Please try again."
+        )
     if isinstance(exc, CrawlerError):
         msg = (exc.message or "").lower()
-        if exc.code == "invalid_request" and ("url template" in msg or "url rebuild failed" in msg):
+        if exc.code == "invalid_request" and (
+            "url template" in msg or "url rebuild failed" in msg
+        ):
             return SOURCE_CRAWLER, (
                 "That URL is not in a valid format for this website. "
                 "Use the autocomplete or paste a full series URL."
@@ -234,13 +253,23 @@ def _user_message_for_error(exc: BaseException) -> tuple[str, str]:
         retry = getattr(exc, "retry_after", 0.0) or 0.0
         return SOURCE_COOLDOWN, f"Slow down — try again in {retry:.0f}s."
     if isinstance(exc, app_commands.MissingPermissions):
-        perms = ", ".join(getattr(exc, "missing_permissions", []) or []) or "permissions"
-        return SOURCE_PERMISSION, (f"You're missing the required {perms} to use this command.")
+        perms = (
+            ", ".join(getattr(exc, "missing_permissions", []) or []) or "permissions"
+        )
+        return SOURCE_PERMISSION, (
+            f"You're missing the required {perms} to use this command."
+        )
     if isinstance(exc, app_commands.BotMissingPermissions):
-        perms = ", ".join(getattr(exc, "missing_permissions", []) or []) or "permissions"
-        return SOURCE_PERMISSION, (f"I'm missing the required {perms} to run this command here.")
+        perms = (
+            ", ".join(getattr(exc, "missing_permissions", []) or []) or "permissions"
+        )
+        return SOURCE_PERMISSION, (
+            f"I'm missing the required {perms} to run this command here."
+        )
     if isinstance(exc, app_commands.CheckFailure):
         return SOURCE_PERMISSION, "You don't have permission to use this command here."
 
     rid = getattr(exc, "request_id", None) or "n/a"
-    return SOURCE_BOT, (f"Something went wrong. Please try again later. (request_id: {rid})")
+    return SOURCE_BOT, (
+        f"Something went wrong. Please try again later. (request_id: {rid})"
+    )

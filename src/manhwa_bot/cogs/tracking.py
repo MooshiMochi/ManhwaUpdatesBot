@@ -80,6 +80,21 @@ class TrackingCog(commands.Cog, name="Tracking"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
+        # When the crawler is unreachable, input resolution (autocomplete and
+        # website-key detection) silently fails, which otherwise surfaces as a
+        # misleading "couldn't resolve that URL". Surface the real cause first.
+        if not self.bot.crawler.connected:  # type: ignore[attr-defined]
+            await interaction.followup.send(
+                view=build_error_view(
+                    "The crawler service is currently unavailable. "
+                    "Please try again in a moment.",
+                    source=SOURCE_CRAWLER,
+                    bot=self.bot,
+                ),
+                ephemeral=True,
+            )
+            return
+
         parsed = await _resolve_track_input(self.bot, manga_url)
         if parsed is None:
             await interaction.followup.send(
