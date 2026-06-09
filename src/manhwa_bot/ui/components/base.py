@@ -77,13 +77,15 @@ def status_emoji(status: str | None) -> str:
 def folder_accent(folder: str) -> discord.Colour:
     """Bookmark-folder string → accent colour."""
     f = (folder or "").lower()
-    if "completed" in f:
+    if "finished" in f or "completed" in f:
         return discord.Colour.blue()
     if "dropped" in f:
         return discord.Colour.red()
+    if "subscribed" in f:
+        return discord.Colour.purple()
     if "hold" in f:
         return discord.Colour.orange()
-    if "plan" in f:
+    if "planned" in f or "plan" in f:
         return discord.Colour.greyple()
     return discord.Colour.green()
 

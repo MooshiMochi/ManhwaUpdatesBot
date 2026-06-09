@@ -886,6 +886,52 @@ def test_bookmark_browser_keeps_existing_controls_while_rebuild_waits_for_data()
     assert "Browsing folder: All folders" in controls
 
 
+def test_bookmark_browser_folder_controls_include_migrated_database_folders() -> None:
+    browser = _bookmark_browser(
+        [
+            Bookmark(
+                user_id=1,
+                website_key="site",
+                url_name="subscribed-series",
+                folder="Subscribed",
+                last_read_chapter=None,
+                last_read_index=0,
+                created_at="",
+                updated_at="",
+            )
+        ]
+    )
+
+    async def run() -> tuple[list[str], list[str]]:
+        await browser._rebuild()
+        selects = [
+            child
+            for child in browser.walk_children()
+            if isinstance(child, discord.ui.Select)
+            and child.placeholder
+            and (
+                child.placeholder.startswith("Browsing folder:")
+                or child.placeholder.startswith("Move bookmark:")
+            )
+        ]
+        browse = next(s for s in selects if s.placeholder == "Browsing folder: All folders")
+        move = next(s for s in selects if s.placeholder == "Move bookmark: Subscribed")
+        return [opt.label for opt in browse.options], [opt.label for opt in move.options]
+
+    browse_labels, move_labels = asyncio.run(run())
+
+    assert browse_labels == [
+        "All folders",
+        "Reading",
+        "Subscribed",
+        "Planned",
+        "Finished",
+        "Dropped",
+        "All",
+    ]
+    assert move_labels == ["Reading", "Subscribed", "Planned", "Finished", "Dropped", "All"]
+
+
 def test_bookmark_browser_initial_preload_is_limited_to_ten_around_requested() -> None:
     crawler = _SeriesDataBookmarkCrawler()
     browser = bookmark.BookmarkBrowserView(

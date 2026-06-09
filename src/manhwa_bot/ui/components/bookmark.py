@@ -31,11 +31,11 @@ _log = logging.getLogger(__name__)
 
 BOOKMARK_FOLDERS: tuple[str, ...] = (
     "Reading",
-    "On Hold",
-    "Plan to Read",
-    "Re-Reading",
-    "Completed",
+    "Subscribed",
+    "Planned",
+    "Finished",
     "Dropped",
+    "All",
 )
 
 _TEXT_PAGE_SIZE = 10
@@ -44,11 +44,11 @@ _PRELOAD_CHUNK_SIZE = 10
 _PRELOAD_EDGE_THRESHOLD = 3
 _FOLDER_DESCRIPTIONS: dict[str, str] = {
     "Reading": "Actively reading.",
-    "On Hold": "Paused for now.",
-    "Plan to Read": "Saved for later.",
-    "Re-Reading": "Reading again.",
-    "Completed": "Finished series.",
+    "Subscribed": "Marked from update notifications.",
+    "Planned": "Saved for later.",
+    "Finished": "Finished series.",
     "Dropped": "No longer reading.",
+    "All": "Migrated all-folder bookmarks.",
 }
 
 
