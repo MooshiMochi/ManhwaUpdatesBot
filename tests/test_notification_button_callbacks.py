@@ -136,7 +136,10 @@ def test_subscribe_button_toggles_subscription() -> None:
     asyncio.run(_run())
 
 
-def test_mark_read_creates_bookmark_and_sets_last_read() -> None:
+def test_mark_read_creates_hidden_subscribed_bookmark_and_sets_last_read() -> None:
+    # V1 parity: mark-read on an update notification was the main "subscribe"
+    # flow — it created a hidden bookmark in the Subscribed folder, not a
+    # visible Reading one.
     async def _run() -> None:
         pool, tmp = await _open()
         try:
@@ -146,9 +149,31 @@ def test_mark_read_creates_bookmark_and_sets_last_read() -> None:
             store = BookmarkStore(pool)
             bm = await store.get_bookmark(42, "comick", "demo")
             assert bm is not None
-            assert bm.folder == "Reading"
+            assert bm.folder == "Subscribed"
             assert bm.last_read_index == 7
             _sent_component_v2_view(interaction)
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_keeps_existing_folder() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                user_id=42, website_key="comick", url_name="demo", folder="Planned"
+            )
+            interaction = _interaction(db=pool, user_id=42)
+            button = MarkReadButton("comick", "demo", 7)
+            await button.callback(interaction)
+            bm = await store.get_bookmark(42, "comick", "demo")
+            assert bm is not None
+            assert bm.folder == "Planned"
+            assert bm.last_read_index == 7
         finally:
             await pool.close()
             tmp.cleanup()

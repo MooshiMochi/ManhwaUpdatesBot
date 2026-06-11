@@ -262,18 +262,22 @@ class MarkReadButton(
             chapter_index=chapter_index,
             bookmark=existing,
         )
+        # V1 parity: marking a notification as read on a series you haven't
+        # bookmarked creates a hidden bookmark in the Subscribed folder so the
+        # bot keeps tracking your last-read chapter without cluttering the
+        # visible folders.
         await store.upsert_bookmark(
             user_id=interaction.user.id,
             website_key=self.website_key,
             url_name=self.url_name,
-            folder=existing.folder if existing else "Reading",
+            folder=existing.folder if existing else "Subscribed",
             last_read_chapter=chapter_text,
             last_read_index=chapter_index,
         )
         description = (
             f"Marked {link} - {chapter_display} as read."
             if existing
-            else f"Bookmarked {link} in *Reading* and marked {chapter_display} as read."
+            else f"Bookmarked {link} in *Subscribed* and marked {chapter_display} as read."
         )
         await _send_ack(
             interaction,
