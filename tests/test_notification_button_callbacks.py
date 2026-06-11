@@ -17,6 +17,7 @@ from manhwa_bot.db.subscriptions import SubscriptionStore
 from manhwa_bot.db.tracked import TrackedStore
 from manhwa_bot.ui.components.notification_buttons import (
     BookmarkButton,
+    LastReadChapterButton,
     MarkReadButton,
     SubscribeToggleButton,
 )
@@ -203,6 +204,65 @@ def test_mark_read_button_toggles_back_to_previous_last_read() -> None:
             assert bm.last_read_index == 15
             text = _view_text(_sent_component_v2_view(interaction2))
             assert "[Chapter 15](https://example.com/demo/15)" in text
+            assert "index" not in text.lower()
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_last_read_chapter_button_reports_existing_chapter_name() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            tracked = TrackedStore(pool)
+            await tracked.upsert_series(
+                "comick", "demo", "https://example.com/demo", "Demo", None, None
+            )
+            await BookmarkStore(pool).upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 15",
+                last_read_index=14,
+            )
+
+            interaction = _interaction(db=pool, user_id=42)
+            await LastReadChapterButton("comick", "demo").callback(interaction)
+
+            text = _view_text(_sent_component_v2_view(interaction))
+            assert "[Demo](https://example.com/demo)" in text
+            assert "Chapter 15" in text
+            assert "14" not in text
+            assert "index" not in text.lower()
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_last_read_chapter_button_does_not_show_index_when_name_is_missing() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            await BookmarkStore(pool).upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter=None,
+                last_read_index=14,
+            )
+
+            interaction = _interaction(db=pool, user_id=42)
+            await LastReadChapterButton("comick", "demo").callback(interaction)
+
+            text = _view_text(_sent_component_v2_view(interaction))
+            assert "No last read chapter name is available" in text
+            assert "14" not in text
             assert "index" not in text.lower()
         finally:
             await pool.close()

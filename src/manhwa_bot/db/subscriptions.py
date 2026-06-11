@@ -58,10 +58,14 @@ class SubscriptionStore:
         if guild_id is not None:
             rows = await self._pool.fetchall(
                 """
-                SELECT s.*, t.title, t.series_url
+                SELECT s.*, t.title, t.series_url, b.last_read_chapter
                 FROM subscriptions s
                 LEFT JOIN tracked_series t
                   ON t.website_key = s.website_key AND t.url_name = s.url_name
+                LEFT JOIN bookmarks b
+                  ON b.user_id = s.user_id
+                 AND b.website_key = s.website_key
+                 AND b.url_name = s.url_name
                 WHERE s.user_id = ? AND s.guild_id = ?
                 ORDER BY s.subscribed_at DESC
                 LIMIT ? OFFSET ?
@@ -71,10 +75,14 @@ class SubscriptionStore:
         else:
             rows = await self._pool.fetchall(
                 """
-                SELECT s.*, t.title, t.series_url
+                SELECT s.*, t.title, t.series_url, b.last_read_chapter
                 FROM subscriptions s
                 LEFT JOIN tracked_series t
                   ON t.website_key = s.website_key AND t.url_name = s.url_name
+                LEFT JOIN bookmarks b
+                  ON b.user_id = s.user_id
+                 AND b.website_key = s.website_key
+                 AND b.url_name = s.url_name
                 WHERE s.user_id = ?
                 ORDER BY s.subscribed_at DESC
                 LIMIT ? OFFSET ?

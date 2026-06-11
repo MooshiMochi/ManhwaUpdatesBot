@@ -40,6 +40,7 @@ from .ui.components.error import (
 )
 from .ui.components.notification_buttons import (
     BookmarkButton,
+    LastReadChapterButton,
     MarkReadButton,
     SubscribeToggleButton,
 )
@@ -139,9 +140,15 @@ class ManhwaBot(commands.Bot):
             await self.load_extension(cog_path)
             _log.info("Loaded cog: %s", cog_path)
 
-        self.add_dynamic_items(MarkReadButton, BookmarkButton, SubscribeToggleButton)
+        self.add_dynamic_items(
+            MarkReadButton,
+            BookmarkButton,
+            SubscribeToggleButton,
+            LastReadChapterButton,
+        )
         _log.info(
-            "Registered persistent chapter-update buttons: MarkRead, Bookmark, SubscribeToggle"
+            "Registered persistent chapter-update buttons: MarkRead, Bookmark, "
+            "SubscribeToggle, LastReadChapter"
         )
 
     async def on_ready(self) -> None:
