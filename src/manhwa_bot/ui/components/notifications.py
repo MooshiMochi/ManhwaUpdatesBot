@@ -16,6 +16,7 @@ from .notification_buttons import (
     UPDATE_BUTTON_KEYS,
     UPDATE_BUTTON_LABELS,
     BookmarkButton,
+    LastReadChapterButton,
     MarkReadButton,
     SubscribeToggleButton,
 )
@@ -143,17 +144,7 @@ def _build_button_row(
         elif key == "subscribe":
             row.add_item(SubscribeToggleButton(website_key, url_name).item)
         elif key == "open_chapter":
-            chapter_url = (chapter.url or "").strip()
-            if not chapter_url:
-                continue
-            label, _, _ = UPDATE_BUTTON_LABELS["open_chapter"]
-            row.add_item(
-                discord.ui.Button(
-                    label=label,
-                    style=discord.ButtonStyle.link,
-                    url=chapter_url,
-                )
-            )
+            row.add_item(LastReadChapterButton(website_key, url_name).item)
 
     if len(list(row.children)) == 0:
         return None

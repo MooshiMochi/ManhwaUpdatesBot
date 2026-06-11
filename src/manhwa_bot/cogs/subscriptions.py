@@ -409,7 +409,11 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
                     "title": s.get("title") or s.get("url_name") or "Unknown",
                     "url": s.get("series_url") or "",
                     "website_key": s.get("website_key") or "",
-                    "last_chapter": None,
+                    "last_chapter": (
+                        f"Last read: {s['last_read_chapter']}"
+                        if s.get("last_read_chapter")
+                        else None
+                    ),
                 }
                 for s in sorted_subs
             ]

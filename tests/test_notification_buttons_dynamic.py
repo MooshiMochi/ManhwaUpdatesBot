@@ -6,9 +6,11 @@ import re
 
 from manhwa_bot.ui.components.notification_buttons import (
     BOOKMARK_TEMPLATE,
+    LAST_READ_TEMPLATE,
     MARK_READ_TEMPLATE,
     SUBSCRIBE_TEMPLATE,
     BookmarkButton,
+    LastReadChapterButton,
     MarkReadButton,
     SubscribeToggleButton,
 )
@@ -43,6 +45,16 @@ def test_subscribe_template_round_trips() -> None:
     assert match is not None
     assert match["wk"] == "asurascans"
     assert match["un"] == "the-beginning-after-the-end"
+
+
+def test_last_read_template_round_trips() -> None:
+    button = LastReadChapterButton("asura", "solo-leveling")
+    cid = button.item.custom_id
+    assert cid == "mu:upd:lr:asura:solo-leveling"
+    match = re.fullmatch(LAST_READ_TEMPLATE, cid)
+    assert match is not None
+    assert match["wk"] == "asura"
+    assert match["un"] == "solo-leveling"
 
 
 def test_mark_read_custom_id_under_100_chars_for_realistic_inputs() -> None:

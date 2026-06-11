@@ -46,9 +46,9 @@ UPDATE_BUTTON_LABELS: dict[str, tuple[str, str, str]] = {
         "Toggles your subscription for this series.",
     ),
     "open_chapter": (
-        "Open Chapter",
-        "🔗",
-        "Opens the chapter URL in your browser.",
+        "Last Read Chapter",
+        "📖",
+        "Shows your last read chapter for this series.",
     ),
 }
 
@@ -143,6 +143,34 @@ async def _send_ack(
 MARK_READ_TEMPLATE = r"mu:upd:mr:(?P<wk>[^:]+):(?P<un>[^:]+):(?P<idx>-?\d+)"
 BOOKMARK_TEMPLATE = r"mu:upd:bm:(?P<wk>[^:]+):(?P<un>[^:]+)"
 SUBSCRIBE_TEMPLATE = r"mu:upd:sub:(?P<wk>[^:]+):(?P<un>[^:]+)"
+LAST_READ_TEMPLATE = r"mu:upd:lr:(?P<wk>[^:]+):(?P<un>[^:]+)"
+
+
+async def _resolve_last_read_chapter_name(
+    *,
+    client: object,
+    tracked: TrackedSeries | None,
+    website_key: str,
+    url_name: str,
+    chapter_index: int | None,
+) -> str | None:
+    if chapter_index is None:
+        return None
+    crawler = getattr(client, "crawler", None)
+    if crawler is None:
+        return None
+    identifier = tracked.series_url if tracked is not None else url_name
+    try:
+        data = await crawler.request("chapters", website_key=website_key, url=identifier)
+        chapters = Chapter.list_from_payload(data)
+    except Exception:
+        _log.exception("failed to resolve last read chapter for %s:%s", website_key, url_name)
+        return None
+    chapter = next(
+        (chapter for chapter in chapters if chapter.index == chapter_index),
+        chapters[chapter_index] if 0 <= chapter_index < len(chapters) else None,
+    )
+    return chapter.name if chapter is not None else None
 
 
 class MarkReadButton(
@@ -252,6 +280,71 @@ class MarkReadButton(
             title=f"{emojis.CHECK}  Marked read",
             description=description,
         )
+
+
+class LastReadChapterButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=LAST_READ_TEMPLATE,
+):
+    def __init__(self, website_key: str, url_name: str) -> None:
+        wk = _assert_slug(website_key, field="website_key")
+        un = _assert_slug(url_name, field="url_name")
+        super().__init__(
+            discord.ui.Button(
+                label=UPDATE_BUTTON_LABELS["open_chapter"][0],
+                emoji=UPDATE_BUTTON_LABELS["open_chapter"][1],
+                style=discord.ButtonStyle.secondary,
+                custom_id=f"mu:upd:lr:{wk}:{un}",
+            )
+        )
+        self.website_key = wk
+        self.url_name = un
+
+    @classmethod
+    async def from_custom_id(
+        cls,
+        interaction: discord.Interaction,
+        item: discord.ui.Button,
+        match: re.Match[str],
+    ) -> LastReadChapterButton:
+        return cls(match["wk"], match["un"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        pool = interaction.client.db  # type: ignore[attr-defined]
+        store = BookmarkStore(pool)
+        tracked = await TrackedStore(pool).find(self.website_key, self.url_name)
+        link = _series_link(tracked, self.url_name)
+        bookmark = await store.get_bookmark(
+            interaction.user.id, self.website_key, self.url_name
+        )
+
+        chapter_name = bookmark.last_read_chapter if bookmark is not None else None
+        if not chapter_name and bookmark is not None:
+            chapter_name = await _resolve_last_read_chapter_name(
+                client=interaction.client,
+                tracked=tracked,
+                website_key=self.website_key,
+                url_name=self.url_name,
+                chapter_index=bookmark.last_read_index,
+            )
+            if chapter_name:
+                await store.update_last_read(
+                    interaction.user.id,
+                    self.website_key,
+                    self.url_name,
+                    chapter_text=chapter_name,
+                    chapter_index=bookmark.last_read_index or 0,
+                )
+
+        if chapter_name:
+            title = "📖  Last read chapter"
+            description = f"Your last read chapter for {link} is **{chapter_name}**."
+        else:
+            title = "📖  Last read chapter unavailable"
+            description = f"No last read chapter name is available for {link}."
+
+        await _send_ack(interaction, title=title, description=description)
 
 
 class BookmarkButton(
@@ -389,6 +482,7 @@ class SubscribeToggleButton(
 __all__ = [
     "ALL_UPDATE_BUTTONS",
     "BOOKMARK_TEMPLATE",
+    "LAST_READ_TEMPLATE",
     "MARK_READ_TEMPLATE",
     "SUBSCRIBE_TEMPLATE",
     "UPDATE_BUTTON_KEYS",
@@ -397,6 +491,7 @@ __all__ = [
     "BookmarkStore",
     "DmSettingsStore",
     "GuildSettingsStore",
+    "LastReadChapterButton",
     "MarkReadButton",
     "SubscribeToggleButton",
     "SubscriptionStore",

@@ -6,6 +6,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
+from manhwa_bot.db.bookmarks import BookmarkStore
 from manhwa_bot.db.migrate import apply_pending
 from manhwa_bot.db.pool import DbPool
 from manhwa_bot.db.subscriptions import SubscriptionStore
@@ -42,9 +43,42 @@ def test_list_for_user_includes_series_title_and_url() -> None:
                         "url_name": "solo-leveling",
                         "title": "Solo Leveling",
                         "series_url": "https://example.test/solo-leveling",
+                        "last_read_chapter": None,
                         "subscribed_at": rows[0]["subscribed_at"],
                     }
                 ]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_list_for_user_includes_matching_bookmark_last_read_chapter() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool, store = await _make_store(tmp)
+            try:
+                tracked = TrackedStore(pool)
+                await tracked.upsert_series(
+                    "asura",
+                    "solo-leveling",
+                    "https://example.test/solo-leveling",
+                    "Solo Leveling",
+                )
+                await store.subscribe(42, 100, "asura", "solo-leveling")
+                await BookmarkStore(pool).upsert_bookmark(
+                    42,
+                    "asura",
+                    "solo-leveling",
+                    folder="Subscribed",
+                    last_read_chapter="Chapter 179",
+                    last_read_index=178,
+                )
+
+                rows = await store.list_for_user(42, guild_id=100)
+
+                assert rows[0]["last_read_chapter"] == "Chapter 179"
+                assert "last_read_index" not in rows[0]
             finally:
                 await pool.close()
 

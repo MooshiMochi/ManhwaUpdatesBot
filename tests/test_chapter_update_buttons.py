@@ -59,26 +59,27 @@ def test_no_buttons_when_allowed_empty() -> None:
     assert _buttons(view) == []
 
 
-def test_only_open_chapter_renders_link_button() -> None:
+def test_open_chapter_setting_renders_last_read_chapter_button() -> None:
     view = build_chapter_update_view(
         _payload(), bot=None, allowed_buttons=frozenset({"open_chapter"})
     )
     buttons = _buttons(view)
     assert len(buttons) == 1
-    assert buttons[0].label == "Open Chapter"
-    assert buttons[0].emoji is None
-    assert buttons[0].style is discord.ButtonStyle.link
-    assert buttons[0].url == "https://example.com/demo/7"
+    assert buttons[0].label == "Last Read Chapter"
+    assert str(buttons[0].emoji) == "📖"
+    assert buttons[0].style is discord.ButtonStyle.secondary
+    assert buttons[0].custom_id == "mu:upd:lr:comick:demo"
+    assert buttons[0].url is None
 
 
 def test_all_buttons_appear_in_canonical_order() -> None:
     view = build_chapter_update_view(_payload(), bot=None, allowed_buttons=ALL_UPDATE_BUTTONS)
     buttons = _buttons(view)
     assert len(buttons) == 4
-    # Open Chapter is the leading link button; the rest come from DynamicItem.item.
-    assert buttons[0].style is discord.ButtonStyle.link
-    assert buttons[0].url == "https://example.com/demo/7"
-    assert buttons[0].emoji is None
+    # Last Read Chapter replaces the old Open Chapter link while preserving setting order.
+    assert buttons[0].custom_id == "mu:upd:lr:comick:demo"
+    assert buttons[0].style is discord.ButtonStyle.secondary
+    assert buttons[0].url is None
     assert buttons[1].custom_id == "mu:upd:mr:comick:demo:7"
     assert buttons[2].custom_id == "mu:upd:bm:comick:demo"
     assert buttons[3].custom_id == "mu:upd:sub:comick:demo"
