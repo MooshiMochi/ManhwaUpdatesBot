@@ -70,6 +70,32 @@ def test_list_by_folder() -> None:
     asyncio.run(_run())
 
 
+def test_list_without_folder_orders_by_last_updated_across_folders() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool, store = await _make_store(tmp)
+            try:
+                await store.upsert_bookmark(6, "asura", "oldest", folder="Reading")
+                await store.upsert_bookmark(6, "asura", "newest", folder="Subscribed")
+                await store.upsert_bookmark(6, "asura", "middle", folder="Dropped")
+                for name, stamp in (
+                    ("oldest", "2026-01-01T00:00:00"),
+                    ("middle", "2026-02-01T00:00:00"),
+                    ("newest", "2026-03-01T00:00:00"),
+                ):
+                    await pool.execute(
+                        "UPDATE bookmarks SET updated_at = ? WHERE url_name = ?",
+                        (stamp, name),
+                    )
+
+                rows = await store.list_user_bookmarks(6)
+                assert [bm.url_name for bm in rows] == ["newest", "middle", "oldest"]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_delete_bookmark() -> None:
     async def _run() -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -91,6 +91,35 @@ def test_subscription_and_bookmark_autocomplete_use_prefix_labels_and_filters() 
     asyncio.run(_run())
 
 
+def test_bookmark_autocomplete_includes_subscribed_folder_beyond_first_page() -> None:
+    # The old folder-ordered LIMIT 100 fetch silently dropped 'Subscribed'
+    # bookmarks (that folder sorts last) for users with many bookmarks.
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                store = BookmarkStore(pool)
+                for i in range(120):
+                    await store.upsert_bookmark(200, "asura", f"series-{i}", folder="Reading")
+                await store.upsert_bookmark(200, "asura", "tomb-raider-king", folder="Subscribed")
+                await TrackedStore(pool).upsert_series(
+                    "asura",
+                    "tomb-raider-king",
+                    "https://example.test/tomb",
+                    "Tomb Raider King",
+                )
+
+                choices = await autocomplete.user_bookmarks(_interaction(pool=pool), "tomb")
+
+                assert [(choice.name, choice.value) for choice in choices] == [
+                    ("(asura) Tomb Raider King", "asura:tomb-raider-king")
+                ]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_track_new_autocomplete_queries_crawler_for_empty_input() -> None:
     async def _run() -> None:
         calls: list[dict[str, Any]] = []

@@ -927,9 +927,8 @@ def test_bookmark_browser_folder_controls_include_migrated_database_folders() ->
         "Planned",
         "Finished",
         "Dropped",
-        "All",
     ]
-    assert move_labels == ["Reading", "Subscribed", "Planned", "Finished", "Dropped", "All"]
+    assert move_labels == ["Reading", "Subscribed", "Planned", "Finished", "Dropped"]
 
 
 def test_bookmark_browser_initial_preload_is_limited_to_ten_around_requested() -> None:
@@ -1134,7 +1133,7 @@ def test_bookmark_browser_track_button_enabled_for_bot_manager_role() -> None:
         )
     )
     labels = [child.label for child in action_row.children]
-    assert labels == ["Text mode", "Delete bookmark", "Track"]
+    assert labels == ["Text mode", "Search", "Delete bookmark", "Track"]
     track_button = next(child for child in action_row.children if child.label == "Track")
     assert track_button.disabled is False
 
@@ -1421,7 +1420,7 @@ def test_bookmark_browser_text_paginator_clamps_and_uses_plain_labels() -> None:
             created_at="2026-05-14T00:00:00",
             updated_at=f"2026-05-14T00:00:{i:02d}",
         )
-        for i in range(12)
+        for i in range(25)
     ]
     browser = _bookmark_browser(bookmarks)
 
@@ -1466,7 +1465,7 @@ def test_bookmark_browser_text_paginator_clamps_and_uses_plain_labels() -> None:
 
         next_button = next(child for child in pagination.children if child.label == ">")
         await next_button.callback(interaction)
-        assert browser._index == 10
+        assert browser._index == 20
 
         container = _first_container(browser)
         pagination = next(
@@ -1479,6 +1478,87 @@ def test_bookmark_browser_text_paginator_clamps_and_uses_plain_labels() -> None:
         )
         next_button = next(child for child in pagination.children if child.label == ">")
         assert next_button.disabled is True
+
+    asyncio.run(run())
+
+
+def test_bookmark_browser_text_rows_show_index_scanlator_status_and_last_read() -> None:
+    browser = _bookmark_browser(_bookmark_series(3))
+
+    async def run() -> str:
+        await browser.initial_render()
+        assert browser._preload_task is not None
+        await browser._preload_task
+        browser._mode = "text"
+        await browser._rebuild()
+        container = _first_container(browser)
+        return "\n".join(
+            item.content
+            for item in container.walk_children()
+            if isinstance(item, discord.ui.TextDisplay)
+        )
+
+    text = asyncio.run(run())
+
+    assert (
+        "`1. (R)` [Site] [Series 0](https://site.test/series/series-0)"
+        " · `Ongoing` · [Chapter 1](https://example.test/1)" in text
+    )
+    assert "`3. (R)` [Site] [Series 2](https://site.test/series/series-2)" in text
+
+
+def test_bookmark_browser_search_button_sits_next_to_mode_toggle() -> None:
+    browser = _bookmark_browser(_bookmark_series(2))
+
+    async def run() -> list[str]:
+        await browser.initial_render()
+        container = _first_container(browser)
+        action_row = next(
+            row
+            for row in _action_rows(container)
+            if any(
+                isinstance(child, discord.ui.Button) and child.label == "Text mode"
+                for child in row.children
+            )
+        )
+        return [
+            child.label for child in action_row.children if isinstance(child, discord.ui.Button)
+        ]
+
+    labels = asyncio.run(run())
+    assert labels[:2] == ["Text mode", "Search"]
+
+
+def test_bookmark_browser_search_jumps_to_first_prefix_match() -> None:
+    browser = _bookmark_browser(_bookmark_series(30))
+
+    async def run() -> None:
+        await browser.initial_render()
+        interaction = _EditInteraction()
+        await browser._jump_to_search(interaction, "Series-25")
+        assert browser._index == 25
+
+    asyncio.run(run())
+
+
+def test_bookmark_browser_search_reports_no_match_without_moving() -> None:
+    browser = _bookmark_browser(_bookmark_series(5))
+
+    async def run() -> None:
+        await browser.initial_render()
+        messages: list[str] = []
+
+        class Response:
+            def is_done(self) -> bool:
+                return False
+
+            async def send_message(self, content: str, *, ephemeral: bool = False) -> None:
+                messages.append(content)
+
+        interaction = SimpleNamespace(response=Response())
+        await browser._jump_to_search(interaction, "zzz-not-there")
+        assert browser._index == 0
+        assert messages and "zzz-not-there" in messages[0]
 
     asyncio.run(run())
 

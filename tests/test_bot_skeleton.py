@@ -85,7 +85,9 @@ def _make_bot(command_prefix: str = "?") -> ManhwaBot:
 def test_intents() -> None:
     bot = _make_bot()
     assert bot.intents.members is True
-    assert bot.intents.message_content is True
+    # Slash-command bot: the privileged message-content intent stays off
+    # (mention-prefix commands receive content without it).
+    assert bot.intents.message_content is False
     assert bot.intents.presences is False
 
 

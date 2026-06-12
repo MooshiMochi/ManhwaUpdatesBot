@@ -51,6 +51,27 @@ def test_migrations_are_idempotent() -> None:
     asyncio.run(_run())
 
 
+def test_migration_016_folds_legacy_all_folder_into_reading() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await DbPool.open(str(Path(tmp) / "test.db"))
+            try:
+                await apply_pending(pool)
+                await pool.execute(
+                    "INSERT INTO bookmarks (user_id, website_key, url_name, folder)"
+                    " VALUES (1, 'site', 'legacy', 'All')"
+                )
+                # Re-run 016 against the seeded row.
+                await pool.execute("DELETE FROM schema_migrations WHERE filename LIKE '016%'")
+                await apply_pending(pool)
+                row = await pool.fetchone("SELECT folder FROM bookmarks WHERE url_name = 'legacy'")
+                assert row is not None and row["folder"] == "Reading"
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_expected_tables_exist() -> None:
     async def _run() -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -90,7 +90,7 @@ class BookmarkStore:
                 """
                 SELECT * FROM bookmarks
                 WHERE user_id = ?
-                ORDER BY folder, updated_at DESC
+                ORDER BY updated_at DESC
                 LIMIT ? OFFSET ?
                 """,
                 (user_id, limit, offset),
@@ -131,7 +131,7 @@ class BookmarkStore:
                 LEFT JOIN tracked_series t
                   ON t.website_key = b.website_key AND t.url_name = b.url_name
                 WHERE b.user_id = ?
-                ORDER BY b.folder, b.updated_at DESC
+                ORDER BY b.updated_at DESC
                 LIMIT ? OFFSET ?
                 """,
                 (user_id, limit, offset),

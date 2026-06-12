@@ -35,10 +35,9 @@ BOOKMARK_FOLDERS: tuple[str, ...] = (
     "Planned",
     "Finished",
     "Dropped",
-    "All",
 )
 
-_TEXT_PAGE_SIZE = 10
+_TEXT_PAGE_SIZE = 20
 _BROWSER_TIMEOUT_SECONDS = 2 * 24 * 60 * 60
 _PRELOAD_CHUNK_SIZE = 10
 _PRELOAD_EDGE_THRESHOLD = 3
@@ -48,7 +47,6 @@ _FOLDER_DESCRIPTIONS: dict[str, str] = {
     "Planned": "Saved for later.",
     "Finished": "Finished series.",
     "Dropped": "No longer reading.",
-    "All": "Migrated all-folder bookmarks.",
 }
 
 
@@ -955,21 +953,28 @@ class BookmarkBrowserView(BaseLayoutView):
         start = page * _TEXT_PAGE_SIZE
         chunk = self._filtered[start : start + _TEXT_PAGE_SIZE]
         lines: list[str] = []
-        for bm in chunk:
+        for offset, bm in enumerate(chunk):
             meta = self._meta.get((bm.website_key, bm.url_name)) or {}
             title = meta.get("title") or bm.url_name
             series_url = meta.get("series_url") or ""
+            status = str(meta.get("status") or "Unknown")
+            site = self._site_meta_cache.get(bm.website_key) or {}
+            scanlator = str(site.get("name") or bm.website_key.title())
             chapters = self._chapter_cache.get((bm.website_key, bm.url_name)) or []
             last_md = _format_last_read(bm, chapters)
             title_link = f"[{title}]({series_url})" if series_url else f"**{title}**"
-            lines.append(f"**{title_link}** · `{bm.folder}` · last: {last_md}")
+            folder_initial = (bm.folder or "?")[:1].upper()
+            lines.append(
+                f"`{start + offset + 1}. ({folder_initial})` [{scanlator}] {title_link}"
+                f" · `{status}` · {last_md}"
+            )
         body = "\n".join(lines) if lines else "No bookmarks in this folder."
         folder_label = self._current_folder or "All"
 
         container = discord.ui.Container(accent_colour=None)
         container.add_item(discord.ui.TextDisplay("## 🔖  Your bookmarks"))
         container.add_item(small_separator())
-        container.add_item(discord.ui.TextDisplay(safe_truncate(body, 3500)))
+        container.add_item(discord.ui.TextDisplay(safe_truncate(body, 3700)))
 
         # Sort select (text-mode only) also inside the container.
         sort_row = discord.ui.ActionRow()
@@ -1076,6 +1081,17 @@ class BookmarkBrowserView(BaseLayoutView):
         )
         toggle_btn.callback = self._on_mode_toggle  # type: ignore[assignment]
         row.add_item(toggle_btn)
+        # Skipped during delete confirmation: the row is already at Discord's
+        # five-button cap there (toggle, confirm, cancel, track, subscribe).
+        if not self._delete_confirmation_active():
+            search_btn = discord.ui.Button(
+                label="Search",
+                emoji="🔎",
+                style=discord.ButtonStyle.secondary,
+                custom_id=self._custom_id("search"),
+            )
+            search_btn.callback = self._on_search  # type: ignore[assignment]
+            row.add_item(search_btn)
         if self._mode == "visual":
             if self._delete_confirmation_active():
                 confirm_btn = discord.ui.Button(
@@ -1154,6 +1170,57 @@ class BookmarkBrowserView(BaseLayoutView):
         self._mode = "text" if self._mode == "visual" else "visual"
         if self._mode == "text":
             self._index = (self._index // _TEXT_PAGE_SIZE) * _TEXT_PAGE_SIZE
+        await self._rebuild_and_edit(interaction)
+
+    async def _on_search(self, interaction: discord.Interaction) -> None:
+        if not self._filtered:
+            await self._send_ephemeral(interaction, "No bookmarks to search in this view.")
+            return
+        await interaction.response.send_modal(_BookmarkSearchModal(self))
+
+    async def _display_titles(self) -> dict[tuple[str, str], str]:
+        """One-query map of (website_key, url_name) → display title for search."""
+        lister = getattr(self._store, "list_user_bookmarks_with_titles", None)
+        if lister is None:
+            return {}
+        try:
+            rows = await lister(int(self._invoker_id or 0), limit=5000)
+            return {(bm.website_key, bm.url_name): title for bm, title in rows}
+        except Exception:
+            _log.debug("bookmark title lookup for search failed", exc_info=True)
+            return {}
+
+    async def _jump_to_search(self, interaction: discord.Interaction, raw_query: str) -> None:
+        query = raw_query.strip().casefold()
+        if not query:
+            await self._send_ephemeral(interaction, "Enter part of a title to search for.")
+            return
+        titles = await self._display_titles()
+
+        def _title_of(bm: Bookmark) -> str:
+            key = self._bookmark_key(bm)
+            meta = self._meta.get(key) or {}
+            return str(titles.get(key) or meta.get("title") or bm.url_name)
+
+        pos = next(
+            (
+                i
+                for i, bm in enumerate(self._filtered)
+                if _title_of(bm).casefold().startswith(query)
+            ),
+            None,
+        )
+        if pos is None:
+            where = (
+                f"in **{self._current_folder}**" if self._current_folder else "in your bookmarks"
+            )
+            await self._send_ephemeral(
+                interaction,
+                f"No bookmark title starting with **{raw_query.strip()}** {where}.",
+            )
+            return
+        self._index = pos
+        self._reset_preload_window()
         await self._rebuild_and_edit(interaction)
 
     async def _on_sort_select(self, interaction: discord.Interaction) -> None:
@@ -1487,6 +1554,24 @@ class BookmarkBrowserView(BaseLayoutView):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+class _BookmarkSearchModal(discord.ui.Modal, title="Search bookmarks"):
+    """Prefix-search the browser's current bookmark list by title."""
+
+    query = discord.ui.TextInput(
+        label="Title",
+        placeholder="e.g. Tomb — jumps to the first title starting with this",
+        required=True,
+        max_length=100,
+    )
+
+    def __init__(self, browser: BookmarkBrowserView) -> None:
+        super().__init__()
+        self._browser = browser
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:  # type: ignore[override]
+        await self._browser._jump_to_search(interaction, str(self.query.value or ""))
 
 
 def _format_last_read(bm: Bookmark, chapters: list[Chapter]) -> str:

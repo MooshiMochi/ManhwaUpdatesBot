@@ -227,7 +227,9 @@ async def user_bookmarks(
         from .db.bookmarks import BookmarkStore
 
         store = BookmarkStore(bot.db)
-        rows = await store.list_user_bookmarks_with_titles(interaction.user.id, limit=100)
+        # Fetch the user's full bookmark list — a small page here silently hid
+        # whole folders (the old folder-ordered query cut 'Subscribed' off).
+        rows = await store.list_user_bookmarks_with_titles(interaction.user.id, limit=2000)
         choices: list[app_commands.Choice[str]] = []
         for bm, title in rows:
             if not _matches_manga_autocomplete(bm.website_key, title, current):
