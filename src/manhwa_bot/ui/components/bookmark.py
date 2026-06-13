@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import logging
 from dataclasses import dataclass, replace
 from typing import Any, Literal
@@ -41,6 +42,9 @@ _TEXT_PAGE_SIZE = 20
 _BROWSER_TIMEOUT_SECONDS = 2 * 24 * 60 * 60
 _PRELOAD_CHUNK_SIZE = 10
 _PRELOAD_EDGE_THRESHOLD = 3
+# Minimum SequenceMatcher ratio for the bookmark-search fuzzy fallback to accept
+# a non-prefix match (query vs. the title's leading slice).
+_SEARCH_SIMILARITY_THRESHOLD = 0.6
 _FOLDER_DESCRIPTIONS: dict[str, str] = {
     "Reading": "Actively reading.",
     "Subscribed": "Marked from update notifications.",
@@ -797,8 +801,8 @@ class BookmarkBrowserView(BaseLayoutView):
 
         container.add_item(small_separator())
 
-        # Last-read row: [Mark previous] + [link button to chapter] + [Mark next].
-        container.add_item(discord.ui.TextDisplay("**Last Read:**"))
+        # Last-read row: [-5] [-1] + [link button to current chapter] + [+1] [+5].
+        container.add_item(discord.ui.TextDisplay("**Set last read chapter:**"))
         container.add_item(self._build_last_read_row(bm, chapters))
         return container, chapters
 
@@ -856,7 +860,7 @@ class BookmarkBrowserView(BaseLayoutView):
         return row
 
     def _build_last_read_row(self, bm: Bookmark, chapters: list[Chapter]) -> discord.ui.ActionRow:
-        """[Mark previous] [Chapter X (link)] [Mark next]."""
+        """[-5] [-1] [Chapter X (link)] [+1] [+5]."""
         row = discord.ui.ActionRow()
 
         last_ch: Chapter | None = None
@@ -864,15 +868,23 @@ class BookmarkBrowserView(BaseLayoutView):
             last_ch = chapters[bm.last_read_index]
 
         current_idx = bm.last_read_index
-        prev_btn = discord.ui.Button(
-            label="Mark previous chapter as read",
-            style=discord.ButtonStyle.secondary,
-            disabled=current_idx is None or current_idx <= 0 or not chapters,
-            custom_id=self._custom_id("mark-previous"),
-        )
-        prev_btn.callback = self._on_mark_previous  # type: ignore[assignment]
-        row.add_item(prev_btn)
+        has_chapters = bool(chapters)
+        can_go_back = has_chapters and current_idx is not None and current_idx > 0
+        at_latest = current_idx is not None and has_chapters and current_idx >= len(chapters) - 1
+        can_go_forward = has_chapters and not at_latest
 
+        # Backward steps.
+        for delta, label in ((-5, "-5"), (-1, "-1")):
+            back_btn = discord.ui.Button(
+                label=label,
+                style=discord.ButtonStyle.secondary,
+                disabled=not can_go_back,
+                custom_id=self._custom_id(f"mark-delta-{delta}"),
+            )
+            back_btn.callback = self._make_mark_delta_callback(delta)  # type: ignore[assignment]
+            row.add_item(back_btn)
+
+        # Current chapter (link when available).
         if last_ch is not None and last_ch.url:
             label = safe_truncate(last_ch.name or "Last chapter", 60)
             row.add_item(
@@ -897,15 +909,16 @@ class BookmarkBrowserView(BaseLayoutView):
                 )
             )
 
-        at_latest = current_idx is not None and chapters and current_idx >= len(chapters) - 1
-        next_btn = discord.ui.Button(
-            label="Mark next chapter as read",
-            style=discord.ButtonStyle.secondary,
-            disabled=at_latest or not chapters,
-            custom_id=self._custom_id("mark-next"),
-        )
-        next_btn.callback = self._on_mark_next  # type: ignore[assignment]
-        row.add_item(next_btn)
+        # Forward steps.
+        for delta, label in ((1, "+1"), (5, "+5")):
+            fwd_btn = discord.ui.Button(
+                label=label,
+                style=discord.ButtonStyle.secondary,
+                disabled=not can_go_forward,
+                custom_id=self._custom_id(f"mark-delta-{delta}"),
+            )
+            fwd_btn.callback = self._make_mark_delta_callback(delta)  # type: ignore[assignment]
+            row.add_item(fwd_btn)
         return row
 
     def _build_pagination_row(self) -> discord.ui.ActionRow:
@@ -1202,6 +1215,7 @@ class BookmarkBrowserView(BaseLayoutView):
             meta = self._meta.get(key) or {}
             return str(titles.get(key) or meta.get("title") or bm.url_name)
 
+        # First: jump to the first title that starts with the query.
         pos = next(
             (
                 i
@@ -1210,13 +1224,27 @@ class BookmarkBrowserView(BaseLayoutView):
             ),
             None,
         )
+        # Fallback: no prefix match → fuzzy-match the query against each title's
+        # leading slice (truncated to the query length), so a near-miss typo at
+        # the start of a title still lands on the closest bookmark.
+        if pos is None:
+            best_pos: int | None = None
+            best_score = 0.0
+            for i, bm in enumerate(self._filtered):
+                title_prefix = _title_of(bm).casefold()[: len(query)]
+                score = difflib.SequenceMatcher(None, query, title_prefix).ratio()
+                if score > best_score:
+                    best_score = score
+                    best_pos = i
+            if best_pos is not None and best_score >= _SEARCH_SIMILARITY_THRESHOLD:
+                pos = best_pos
         if pos is None:
             where = (
                 f"in **{self._current_folder}**" if self._current_folder else "in your bookmarks"
             )
             await self._send_ephemeral(
                 interaction,
-                f"No bookmark title starting with **{raw_query.strip()}** {where}.",
+                f"No bookmark title matching **{raw_query.strip()}** {where}.",
             )
             return
         self._index = pos
@@ -1377,65 +1405,47 @@ class BookmarkBrowserView(BaseLayoutView):
 
         await self._rebuild_and_edit(interaction)
 
-    async def _on_mark_previous(self, interaction: discord.Interaction) -> None:
-        if not self._filtered:
-            await interaction.response.defer()
-            return
-        await self._defer_update(interaction)
-        bm = self._filtered[self._index]
-        chapters = await self._get_chapters(bm)
-        if not chapters:
-            await self._send_ephemeral(interaction, "Couldn't fetch chapters for this series.")
-            return
-        current = bm.last_read_index
-        if current is None or current <= 0:
-            await self._send_ephemeral(interaction, "You're already on the first chapter.")
-            return
-        prev_idx = current - 1
-        ch = chapters[prev_idx]
-        try:
-            await self._store.update_last_read(
-                bm.user_id,
-                bm.website_key,
-                bm.url_name,
-                chapter_text=ch.name,
-                chapter_index=prev_idx,
-            )
-        except Exception:
-            _log.exception("update_last_read failed")
-            await self._send_ephemeral(interaction, "Failed to update — please try again.")
-            return
-        await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=prev_idx)
+    def _make_mark_delta_callback(self, delta: int):
+        """Build a callback that steps the last-read chapter by ``delta`` (clamped)."""
 
-    async def _on_mark_next(self, interaction: discord.Interaction) -> None:
-        if not self._filtered:
-            await interaction.response.defer()
-            return
-        await self._defer_update(interaction)
-        bm = self._filtered[self._index]
-        chapters = await self._get_chapters(bm)
-        if not chapters:
-            await self._send_ephemeral(interaction, "Couldn't fetch chapters for this series.")
-            return
-        current = bm.last_read_index if bm.last_read_index is not None else -1
-        next_idx = current + 1
-        if next_idx >= len(chapters):
-            await self._send_ephemeral(interaction, "You're already on the latest chapter.")
-            return
-        ch = chapters[next_idx]
-        try:
-            await self._store.update_last_read(
-                bm.user_id,
-                bm.website_key,
-                bm.url_name,
-                chapter_text=ch.name,
-                chapter_index=next_idx,
-            )
-        except Exception:
-            _log.exception("update_last_read failed")
-            await self._send_ephemeral(interaction, "Failed to update — please try again.")
-            return
-        await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=next_idx)
+        async def cb(interaction: discord.Interaction) -> None:
+            if not self._filtered:
+                await interaction.response.defer()
+                return
+            await self._defer_update(interaction)
+            bm = self._filtered[self._index]
+            chapters = await self._get_chapters(bm)
+            if not chapters:
+                await self._send_ephemeral(interaction, "Couldn't fetch chapters for this series.")
+                return
+            current = bm.last_read_index
+            if delta < 0:
+                if current is None or current <= 0:
+                    await self._send_ephemeral(interaction, "You're already on the first chapter.")
+                    return
+                target = max(0, current + delta)
+            else:
+                base = current if current is not None else -1
+                if base >= len(chapters) - 1:
+                    await self._send_ephemeral(interaction, "You're already on the latest chapter.")
+                    return
+                target = min(len(chapters) - 1, base + delta)
+            ch = chapters[target]
+            try:
+                await self._store.update_last_read(
+                    bm.user_id,
+                    bm.website_key,
+                    bm.url_name,
+                    chapter_text=ch.name,
+                    chapter_index=target,
+                )
+            except Exception:
+                _log.exception("update_last_read failed")
+                await self._send_ephemeral(interaction, "Failed to update — please try again.")
+                return
+            await self._refresh_current(interaction, chapter_text=ch.name, chapter_index=target)
+
+        return cb
 
     async def _on_subscribe_toggle(self, interaction: discord.Interaction) -> None:
         if not self._filtered:

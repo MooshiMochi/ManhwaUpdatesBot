@@ -316,11 +316,14 @@ def test_user_bookmark_chapters_uses_selected_series_from_namespace() -> None:
                     "",
                 )
 
+                # Reads the crawler's cached series_data (keyed by url_name),
+                # never a live chapters/info scrape.
                 assert calls == [
                     {
-                        "type": "chapters",
+                        "type": "series_data",
                         "website_key": "asura",
-                        "url": "https://example.test/solo-leveling",
+                        "url_name": "solo-leveling",
+                        "allow_live": False,
                     }
                 ]
                 assert [(choice.name, choice.value) for choice in choices] == [
@@ -444,9 +447,10 @@ def test_user_bookmark_chapters_returns_quickly_while_fetch_warms_cache(monkeypa
                 assert first == []
                 assert calls == [
                     {
-                        "type": "chapters",
+                        "type": "series_data",
                         "website_key": "asura",
-                        "url": "https://example.test/solo-leveling",
+                        "url_name": "solo-leveling",
+                        "allow_live": False,
                     }
                 ]
 
@@ -464,15 +468,16 @@ def test_user_bookmark_chapters_returns_quickly_while_fetch_warms_cache(monkeypa
     asyncio.run(_run())
 
 
-def test_user_bookmark_chapters_falls_back_to_info_when_chapters_lookup_fails() -> None:
+def test_user_bookmark_chapters_uses_url_name_for_untracked_bookmark() -> None:
+    # Untracked bookmarks have no stored series_url; the autocomplete must key
+    # the cached series_data lookup on url_name (a bare url_name passed to a
+    # live `chapters`/`info` op used to silently fail to resolve).
     async def _run() -> None:
         calls: list[dict[str, Any]] = []
 
         class Crawler:
             async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
                 calls.append({"type": type_, **fields})
-                if type_ == "chapters":
-                    raise RuntimeError("series not found")
                 return {
                     "chapters": [
                         {"chapter": "Chapter 10"},
@@ -496,14 +501,10 @@ def test_user_bookmark_chapters_falls_back_to_info_when_chapters_lookup_fails() 
 
                 assert calls == [
                     {
-                        "type": "chapters",
+                        "type": "series_data",
                         "website_key": "toongod",
-                        "url": "someone-stop-her-uncensored",
-                    },
-                    {
-                        "type": "info",
-                        "website_key": "toongod",
-                        "url": "someone-stop-her-uncensored",
+                        "url_name": "someone-stop-her-uncensored",
+                        "allow_live": False,
                     },
                 ]
                 assert [(choice.name, choice.value) for choice in choices] == [

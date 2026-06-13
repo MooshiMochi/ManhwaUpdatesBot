@@ -283,37 +283,6 @@ def _filter_chapter_choices(
     ][:25]
 
 
-async def _fetch_chapter_rows(bot: Any, website_key: str, identifier: str) -> list[dict]:
-    try:
-        data = await bot.crawler.request("chapters", website_key=website_key, url=identifier)
-        chapters = list(data.get("chapters") or [])
-        if chapters:
-            return chapters
-    except Exception:
-        _log.debug("chapter autocomplete chapters lookup failed", exc_info=True)
-
-    try:
-        info_data = await bot.crawler.request("info", website_key=website_key, url=identifier)
-    except Exception:
-        _log.debug("chapter autocomplete info fallback failed", exc_info=True)
-        return []
-
-    chapters = list(info_data.get("chapters") or info_data.get("latest_chapters") or [])
-    if chapters:
-        return chapters
-
-    series_url = info_data.get("series_url") or info_data.get("url")
-    if not series_url or series_url == identifier:
-        return []
-
-    try:
-        data = await bot.crawler.request("chapters", website_key=website_key, url=series_url)
-        return list(data.get("chapters") or [])
-    except Exception:
-        _log.debug("chapter autocomplete series-url fallback failed", exc_info=True)
-        return []
-
-
 async def _fetch_chapter_choices(
     bot: Any,
     key: _ChapterAutocompleteKey,
@@ -321,13 +290,21 @@ async def _fetch_chapter_choices(
     url_name: str,
 ) -> list[app_commands.Choice[int]]:
     from .crawler.chapter import Chapter
-    from .db.tracked import TrackedStore
 
     try:
-        tracked = await TrackedStore(bot.db).find(website_key, url_name)
-        identifier = tracked.series_url if tracked else url_name
-        raw_chapters = await _fetch_chapter_rows(bot, website_key, identifier)
-        chapters = Chapter.list_from_payload({"chapters": raw_chapters})
+        # Read the crawler's stored (deduped, ascending) chapter list rather than
+        # triggering a live scrape. ``chapters``/``info`` can take 30-60s, which
+        # always blows past the autocomplete budget and leaves the field empty;
+        # ``series_data`` with ``allow_live=False`` is a fast local-DB read keyed
+        # by url_name, so it works for tracked and untracked bookmarks alike.
+        data = await bot.crawler.request(
+            "series_data",
+            website_key=website_key,
+            url_name=url_name,
+            allow_live=False,
+        )
+        payload = data if isinstance(data, dict) else {}
+        chapters = Chapter.list_from_payload(payload)
         choices = [
             app_commands.Choice(name=f"{index} - {chapter.name}"[:100], value=index)
             for index, chapter in enumerate(chapters)

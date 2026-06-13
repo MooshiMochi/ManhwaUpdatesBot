@@ -1313,14 +1313,15 @@ def test_bookmark_browser_visual_controls_match_requested_layout() -> None:
         row
         for row in rows
         if any(
-            isinstance(child, discord.ui.Button) and child.label == "Mark previous chapter as read"
-            for child in row.children
+            isinstance(child, discord.ui.Button) and child.label == "-5" for child in row.children
         )
     )
     assert [child.label for child in last_read_row.children] == [
-        "Mark previous chapter as read",
+        "-5",
+        "-1",
         "Chapter 2",
-        "Mark next chapter as read",
+        "+1",
+        "+5",
     ]
 
     move_select = next(
@@ -1561,6 +1562,94 @@ def test_bookmark_browser_search_reports_no_match_without_moving() -> None:
         assert messages and "zzz-not-there" in messages[0]
 
     asyncio.run(run())
+
+
+def test_bookmark_browser_search_falls_back_to_similarity_for_typo() -> None:
+    # No title starts with "Seires 2" (transposed typo of "Series 2"), so the
+    # search falls back to a similarity score over each title's leading slice
+    # and lands on the closest bookmark.
+    browser = _bookmark_browser(_bookmark_series(5))
+
+    async def run() -> None:
+        await browser.initial_render()
+        assert browser._preload_task is not None
+        await browser._preload_task  # warms titles ("Series N") into meta cache
+        interaction = _EditInteraction()
+        await browser._jump_to_search(interaction, "Seires 2")
+        assert browser._index == 2
+
+    asyncio.run(run())
+
+
+class _UpdatingBookmarkStore:
+    def __init__(self) -> None:
+        self.updates: list[tuple[int, str, str, str, int]] = []
+
+    async def update_last_read(
+        self,
+        user_id: int,
+        website_key: str,
+        url_name: str,
+        *,
+        chapter_text: str,
+        chapter_index: int,
+    ) -> None:
+        self.updates.append((user_id, website_key, url_name, chapter_text, chapter_index))
+
+
+def _bookmark_browser_for_marking(
+    last_read_index: int, store: _UpdatingBookmarkStore
+) -> bookmark.BookmarkBrowserView:
+    bm = Bookmark(
+        user_id=1,
+        website_key="site",
+        url_name="series",
+        folder="Reading",
+        last_read_chapter=f"Chapter {last_read_index + 1}",
+        last_read_index=last_read_index,
+        created_at="2026-05-14T00:00:00",
+        updated_at="2026-05-14T00:00:00",
+    )
+    return _bookmark_browser_with_store([bm], store)  # type: ignore[arg-type]
+
+
+def test_bookmark_browser_mark_plus5_clamps_to_latest_chapter() -> None:
+    # _FakeBookmarkCrawler returns 3 chapters (indexes 0..2).
+    store = _UpdatingBookmarkStore()
+    browser = _bookmark_browser_for_marking(0, store)
+
+    async def run() -> None:
+        await browser.initial_render()
+        await _button(browser, "+5").callback(_EditInteraction())
+
+    asyncio.run(run())
+
+    assert store.updates == [(1, "site", "series", "Chapter 3", 2)]
+
+
+def test_bookmark_browser_mark_minus1_steps_back_one_chapter() -> None:
+    store = _UpdatingBookmarkStore()
+    browser = _bookmark_browser_for_marking(2, store)
+
+    async def run() -> None:
+        await browser.initial_render()
+        await _button(browser, "-1").callback(_EditInteraction())
+
+    asyncio.run(run())
+
+    assert store.updates == [(1, "site", "series", "Chapter 2", 1)]
+
+
+def test_bookmark_browser_backward_buttons_disabled_at_first_chapter() -> None:
+    store = _UpdatingBookmarkStore()
+    browser = _bookmark_browser_for_marking(0, store)
+
+    asyncio.run(browser.initial_render())
+
+    assert _button(browser, "-1").disabled is True
+    assert _button(browser, "-5").disabled is True
+    assert _button(browser, "+1").disabled is False
+    assert _button(browser, "+5").disabled is False
 
 
 def test_paginator_buttons_are_nested_inside_page_containers() -> None:
