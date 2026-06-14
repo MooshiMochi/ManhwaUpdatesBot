@@ -589,7 +589,16 @@ class DevCog(commands.Cog, name="Dev"):
             }
 
         try:
-            data = await self.bot.crawler.request("series_data", **request)
+            # refresh=True forces a full live scrape (CF solve + chapter
+            # pagination), which routinely runs well past the default 30s
+            # request timeout. Give it the long-operation watchdog budget the
+            # other live-scrape commands use, or it times out while the crawler
+            # is still working.
+            data = await self.bot.crawler.request(
+                "series_data",
+                timeout=self.bot.config.crawler.transport_watchdog_seconds,
+                **request,
+            )
         except (CrawlerError, RequestTimeout, Disconnected) as exc:
             await ctx.send(f"crawler error: `{exc}`")
             return

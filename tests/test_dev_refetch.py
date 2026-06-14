@@ -10,9 +10,13 @@ from manhwa_bot.cogs.dev import DevCog
 class _FakeCrawler:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.timeouts: list[float | None] = []
 
-    async def request(self, type_: str, **kwargs: Any) -> dict[str, Any]:
+    async def request(
+        self, type_: str, *, timeout: float | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         self.calls.append((type_, kwargs))
+        self.timeouts.append(timeout)
         if type_ == "supported_websites":
             return {"websites": [{"key": "asura", "base_url": "https://asura.test"}]}
         if type_ == "rewind_latest_notification":
@@ -51,7 +55,10 @@ class _FakeBot:
     def __init__(self) -> None:
         self.crawler = _FakeCrawler()
         self.websites_cache = _FakeCache()
-        self.config = SimpleNamespace(supported_websites_cache=SimpleNamespace(ttl_seconds=3600))
+        self.config = SimpleNamespace(
+            supported_websites_cache=SimpleNamespace(ttl_seconds=3600),
+            crawler=SimpleNamespace(transport_watchdog_seconds=180.0),
+        )
 
     async def is_owner(self, _author: object) -> bool:
         return True
@@ -125,6 +132,21 @@ def test_dev_refetch_website_key_and_url_name_forces_refresh() -> None:
             )
         ]
         assert ctx.sent
+
+    asyncio.run(_run())
+
+
+def test_dev_refetch_uses_long_scrape_timeout() -> None:
+    # refresh=True forces a live scrape that exceeds the default 30s request
+    # timeout; the command must use the long-operation watchdog budget instead.
+    async def _run() -> None:
+        bot = _FakeBot()
+        ctx = _FakeContext()
+        cog = DevCog(bot)  # type: ignore[arg-type]
+
+        await DevCog.refetch.callback(cog, ctx, "asura", "solo-leveling")
+
+        assert bot.crawler.timeouts[-1] == 180.0
 
     asyncio.run(_run())
 
