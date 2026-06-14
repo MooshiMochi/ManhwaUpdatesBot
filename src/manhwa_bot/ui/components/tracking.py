@@ -238,8 +238,21 @@ def build_grouped_list_views(
     invoker_id: int | None = None,
     accent_colour: discord.Colour | None = None,
 ) -> list[discord.ui.LayoutView]:
-    """Scanlator-grouped numbered list rendered as paginated LayoutViews."""
+    """Scanlator-grouped numbered list rendered as paginated LayoutViews.
+
+    Entries are grouped by scanlator (``website_key``) in alphabetical order and
+    sorted by title within each group. An optional per-item ``note`` string is
+    appended to the line (used by ``/track list`` to surface the ping role).
+    """
     del accent_colour
+
+    items = sorted(
+        items,
+        key=lambda it: (
+            (str(it.get("website_key") or "").strip().lower() or "unknown"),
+            str(it.get("title") or "").strip().lower(),
+        ),
+    )
 
     if not items:
         container = discord.ui.Container(
@@ -286,6 +299,10 @@ def build_grouped_list_views(
             line = f"**{line_index}.** [{item_title}]({url}) • {chapter_part}"
         else:
             line = f"**{line_index}.** [{item_title}]({url})"
+
+        note = str(item.get("note") or "").strip()
+        if note:
+            line = f"{line} • {note}"
 
         # Section header when scanlator changes.
         if scanlator != last_scanlator:

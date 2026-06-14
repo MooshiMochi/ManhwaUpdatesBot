@@ -403,7 +403,7 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         try:
             subs = await self._subs.list_for_user(interaction.user.id, guild_id=guild_id, limit=500)
 
-            sorted_subs = sorted(subs, key=lambda s: str(s.get("title") or "").lower())
+            # build_grouped_list_views groups by scanlator and sorts by title.
             items = [
                 {
                     "title": s.get("title") or s.get("url_name") or "Unknown",
@@ -415,7 +415,7 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
                         else None
                     ),
                 }
-                for s in sorted_subs
+                for s in subs
             ]
             count = len(items)
             title_prefix = "Your (Global) Subscriptions" if _global else "Your Subscriptions"

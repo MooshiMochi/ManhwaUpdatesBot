@@ -999,6 +999,7 @@ class BookmarkBrowserView(BaseLayoutView):
             options=[
                 discord.SelectOption(label="Last Updated", value="last_updated"),
                 discord.SelectOption(label="Title", value="title"),
+                discord.SelectOption(label="Scanlator", value="scanlator"),
             ],
         )
         sort_select.callback = self._on_sort_select  # type: ignore[assignment]
@@ -1253,8 +1254,14 @@ class BookmarkBrowserView(BaseLayoutView):
 
     async def _on_sort_select(self, interaction: discord.Interaction) -> None:
         values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
-        if values and values[0] == "title":
+        choice = values[0] if values else "last_updated"
+        if choice == "title":
             self._filtered = sorted(self._filtered, key=lambda bm: bm.url_name.lower())
+        elif choice == "scanlator":
+            self._filtered = sorted(
+                self._filtered,
+                key=lambda bm: (bm.website_key.lower(), bm.url_name.lower()),
+            )
         else:
             self._filtered = sorted(self._filtered, key=lambda bm: bm.updated_at, reverse=True)
         self._index = 0

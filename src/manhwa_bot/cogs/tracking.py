@@ -493,7 +493,19 @@ class TrackingCog(commands.Cog, name="Tracking"):
         guild_id = interaction.guild_id  # type: ignore[union-attr]
         rows = await self._tracked.list_for_guild(guild_id, limit=_LIST_FETCH_LIMIT)
 
-        sorted_rows = sorted(rows, key=lambda r: r.title.lower())
+        guild = interaction.guild
+
+        def _ping_note(role_id: int | None) -> str | None:
+            # Surface whether a series has a custom ping role set. A deleted role
+            # (renders as @unknown-role when pinged) is flagged explicitly; series
+            # with no custom role fall back to the guild default and show nothing.
+            if not role_id:
+                return None
+            role = guild.get_role(int(role_id)) if guild is not None else None
+            if role is not None:
+                return f"🔔 {role.mention}"
+            return "🔔 ⚠️ deleted role"
+
         items = [
             {
                 "title": r.title,
@@ -501,8 +513,9 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 "website_key": r.website_key,
                 "last_chapter": r.last_chapter_text,
                 "last_chapter_url": r.last_chapter_url,
+                "note": _ping_note(getattr(r, "ping_role_id", None)),
             }
-            for r in sorted_rows
+            for r in rows
         ]
         pages = build_grouped_list_views(
             items,
