@@ -468,6 +468,50 @@ def test_user_bookmark_chapters_returns_quickly_while_fetch_warms_cache(monkeypa
     asyncio.run(_run())
 
 
+def test_user_bookmark_chapters_does_not_cache_empty_result_long(monkeypatch) -> None:
+    # A transient miss (crawler busy during an update check) must not blackhole
+    # the field: once the crawler recovers the next keystroke should re-fetch
+    # instead of returning a stale empty list cached for the full TTL.
+    async def _run() -> None:
+        state = {"fail": True}
+
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                if state["fail"]:
+                    raise RuntimeError("crawler busy")
+                return {"chapters": [{"chapter": "Chapter 1"}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                autocomplete.clear_chapter_autocomplete_cache()
+                monkeypatch.setattr(
+                    autocomplete,
+                    "CHAPTER_AUTOCOMPLETE_EMPTY_CACHE_TTL_SECONDS",
+                    0.0,
+                    raising=False,
+                )
+                await BookmarkStore(pool).upsert_bookmark(200, "asura", "solo-leveling")
+                interaction = _interaction(
+                    pool=pool,
+                    crawler=Crawler(),
+                    namespace=SimpleNamespace(manga="asura:solo-leveling"),
+                )
+
+                first = await autocomplete.user_bookmark_chapters(interaction, "")
+                assert first == []
+
+                state["fail"] = False
+                await asyncio.sleep(0)
+                second = await autocomplete.user_bookmark_chapters(interaction, "")
+                assert [(c.name, c.value) for c in second] == [("0 - Chapter 1", 0)]
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_user_bookmark_chapters_uses_url_name_for_untracked_bookmark() -> None:
     # Untracked bookmarks have no stored series_url; the autocomplete must key
     # the cached series_data lookup on url_name (a bare url_name passed to a

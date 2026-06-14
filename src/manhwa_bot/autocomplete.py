@@ -22,6 +22,10 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 TRACK_NEW_AUTOCOMPLETE_CACHE_TTL_SECONDS = 20.0
 CHAPTER_AUTOCOMPLETE_CACHE_TTL_SECONDS = 120.0
+# Empty/failed fetches are cached only briefly so a transient miss (crawler busy
+# during an update check, or a series whose chapters aren't stored yet) doesn't
+# blackhole the field for the full TTL — it retries on the next keystroke.
+CHAPTER_AUTOCOMPLETE_EMPTY_CACHE_TTL_SECONDS = 8.0
 CHAPTER_AUTOCOMPLETE_WAIT_SECONDS = 1.5
 _track_new_autocomplete_cache: dict[str, tuple[float, list[app_commands.Choice[str]]]] = {}
 _track_new_autocomplete_inflight: dict[str, asyncio.Task[list[app_commands.Choice[str]]]] = {}
@@ -313,10 +317,12 @@ async def _fetch_chapter_choices(
         _log.debug("chapter autocomplete fetch failed", exc_info=True)
         choices = []
 
-    _chapter_autocomplete_cache[key] = (
-        time.monotonic() + CHAPTER_AUTOCOMPLETE_CACHE_TTL_SECONDS,
-        choices,
+    ttl = (
+        CHAPTER_AUTOCOMPLETE_CACHE_TTL_SECONDS
+        if choices
+        else CHAPTER_AUTOCOMPLETE_EMPTY_CACHE_TTL_SECONDS
     )
+    _chapter_autocomplete_cache[key] = (time.monotonic() + ttl, choices)
     return choices
 
 
