@@ -181,7 +181,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                         row.guild_id,
                     )
                     return
-                content = self._compose_ping(row, settings)
+                guild = getattr(channel, "guild", None) or self.bot.get_guild(row.guild_id)
+                content = self._compose_ping(guild, row, settings)
                 send_kwargs: dict[str, Any] = {
                     "view": build_status_change_view(payload, bot=self.bot, ping=content)
                 }
@@ -259,7 +260,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     )
                     return
 
-                content = self._compose_ping(row, settings)
+                guild = getattr(channel, "guild", None) or self.bot.get_guild(row.guild_id)
+                content = self._compose_ping(guild, row, settings)
                 allowed = settings.update_buttons if settings is not None else ALL_UPDATE_BUTTONS
                 view = build_chapter_update_view(
                     payload,
@@ -326,11 +328,34 @@ class UpdatesCog(commands.Cog, name="Updates"):
         return ok
 
     @staticmethod
-    def _compose_ping(row: Any, settings: Any) -> str:
-        if getattr(row, "ping_role_id", None):
-            return f"<@&{int(row.ping_role_id)}>"
-        if settings is not None and settings.default_ping_role_id:
-            return f"<@&{int(settings.default_ping_role_id)}>"
+    def _compose_ping(guild: discord.Guild | None, row: Any, settings: Any) -> str:
+        """Build the role-mention prefix, verifying the role still exists.
+
+        A series can carry a custom ``ping_role_id``. If that role has since been
+        deleted, mentioning its dangling id renders as "@unknown-role" in Discord,
+        so verify it against the guild first and fall back to the guild's default
+        ping role (also verified), then to no ping at all.
+        """
+
+        def _role_mention(role_id: Any) -> str | None:
+            try:
+                rid = int(role_id)
+            except (TypeError, ValueError):
+                return None
+            if rid <= 0:
+                return None
+            # When the guild isn't cached we can't verify; mention best-effort.
+            if guild is not None and guild.get_role(rid) is None:
+                return None
+            return f"<@&{rid}>"
+
+        custom = _role_mention(getattr(row, "ping_role_id", None))
+        if custom is not None:
+            return custom
+        if settings is not None:
+            default = _role_mention(getattr(settings, "default_ping_role_id", None))
+            if default is not None:
+                return default
         return ""
 
     async def _dispatch_to_user(
