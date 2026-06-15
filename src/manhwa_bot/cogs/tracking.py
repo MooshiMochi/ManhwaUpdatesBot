@@ -231,6 +231,24 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 terminal_started = True
                 await try_terminal_edit(view)
                 return
+            # Auto-create a ping role when the server opted in and the user
+            # didn't supply one (settings → "Auto-Create Role").
+            auto_role_warning: str | None = None
+            if ping_role is None and interaction.guild is not None:
+                try:
+                    gs = await self._guild_settings.get(guild_id)
+                except Exception:
+                    _log.exception("failed to load guild settings for auto-create role")
+                    gs = None
+                if gs is not None and gs.auto_create_role:
+                    ping_role = await self._auto_create_ping_role(interaction.guild, title)
+                    if ping_role is None:
+                        auto_role_warning = (
+                            "Auto-Create Role is on, but I couldn't create a role — check that "
+                            "I have the **Manage Roles** permission and the server isn't at the "
+                            "250-role limit. Tracking was saved without a role."
+                        )
+
             await self._tracked.add_to_guild(
                 guild_id, website_key, url_name, ping_role.id if ping_role else None
             )
@@ -248,12 +266,15 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 immediate_check_failed = True
                 _log.exception("immediate check_series failed for %s:%s", website_key, url_name)
 
-            warning = None
+            warnings: list[str] = []
+            if auto_role_warning:
+                warnings.append(auto_role_warning)
             if immediate_check_failed:
-                warning = (
+                warnings.append(
                     "Tracking was saved, but the immediate update check failed. "
                     "The scheduler will retry later."
                 )
+            warning = "\n\n".join(warnings) if warnings else None
             view = build_tracking_success_view(
                 title=title,
                 series_url=series_url,
@@ -320,6 +341,30 @@ class TrackingCog(commands.Cog, name="Tracking"):
         button.callback = callback  # type: ignore[assignment]
         row.add_item(button)
         return row
+
+    async def _auto_create_ping_role(self, guild: discord.Guild, title: str) -> discord.Role | None:
+        """Create a mentionable ping role named after the tracked series.
+
+        Used by ``/track new`` when the server has *Auto-Create Role* enabled and
+        the user didn't pass an explicit ``ping_role``. Returns the new role, or
+        ``None`` if the bot lacks the **Manage Roles** permission or Discord
+        rejects the creation (e.g. the 250-role-per-guild limit) — callers treat
+        ``None`` as "tracked without a role" and surface a warning.
+        """
+        me = guild.me
+        if me is None or not me.guild_permissions.manage_roles:
+            return None
+        # Discord caps role names at 100 characters.
+        role_name = (title or "").strip()[:100] or "Tracked series"
+        try:
+            return await guild.create_role(
+                name=role_name,
+                mentionable=True,
+                reason=f"Auto-created ping role for tracked series: {title}",
+            )
+        except discord.HTTPException:
+            _log.exception("auto-create ping role failed for guild=%s title=%s", guild.id, title)
+            return None
 
     # -- /track update ------------------------------------------------------
 
