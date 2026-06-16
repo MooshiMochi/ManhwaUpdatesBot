@@ -245,6 +245,28 @@ class _SetLastReadModal(discord.ui.Modal, title="Set last read chapter"):
         await self._view._refresh_current(interaction, chapter_text=ch.name, chapter_index=idx)
 
 
+def resolve_last_read_nav(
+    last_read_index: int | None, chapter_count: int
+) -> tuple[int | None, bool, bool]:
+    """Resolve the last-read row's nav state: ``(clamped_index, can_back, can_forward)``.
+
+    ``last_read_index`` is a 0-based position into the chapter list, but a value
+    carried over from a context with a different (or not-yet-loaded) chapter list
+    can fall outside the current range — which otherwise flips the ±1/±5 enabled
+    states and can index out of bounds on click. Clamp it into ``[0, count-1]`` and
+    derive the button states from the clamped value.
+
+    With no chapters there is nothing to navigate. With nothing read yet
+    (``None``) the reader can only move forward into the list.
+    """
+    if chapter_count <= 0:
+        return None, False, False
+    if last_read_index is None:
+        return None, False, True
+    idx = max(0, min(last_read_index, chapter_count - 1))
+    return idx, idx > 0, idx < chapter_count - 1
+
+
 class BookmarkBrowserView(BaseLayoutView):
     """V2 bookmark browser. Visual + text modes, folder select, tracking, subscribe."""
 
@@ -870,15 +892,10 @@ class BookmarkBrowserView(BaseLayoutView):
         """[-5] [-1] [Chapter X (link)] [+1] [+5]."""
         row = discord.ui.ActionRow()
 
-        last_ch: Chapter | None = None
-        if bm.last_read_index is not None and 0 <= bm.last_read_index < len(chapters):
-            last_ch = chapters[bm.last_read_index]
-
-        current_idx = bm.last_read_index
-        has_chapters = bool(chapters)
-        can_go_back = has_chapters and current_idx is not None and current_idx > 0
-        at_latest = current_idx is not None and has_chapters and current_idx >= len(chapters) - 1
-        can_go_forward = has_chapters and not at_latest
+        current_idx, can_go_back, can_go_forward = resolve_last_read_nav(
+            bm.last_read_index, len(chapters)
+        )
+        last_ch: Chapter | None = chapters[current_idx] if current_idx is not None else None
 
         # Backward steps.
         for delta, label in ((-5, "-5"), (-1, "-1")):
@@ -1432,18 +1449,23 @@ class BookmarkBrowserView(BaseLayoutView):
             if not chapters:
                 await self._send_ephemeral(interaction, "Couldn't fetch chapters for this series.")
                 return
-            current = bm.last_read_index
+            current, can_back, can_forward = resolve_last_read_nav(
+                bm.last_read_index, len(chapters)
+            )
             if delta < 0:
-                if current is None or current <= 0:
+                if not can_back:
                     await self._send_ephemeral(interaction, "You're already on the first chapter.")
                     return
-                target = max(0, current + delta)
+                target = current + delta  # current is a valid index when can_back
             else:
-                base = current if current is not None else -1
-                if base >= len(chapters) - 1:
+                if not can_forward:
                     await self._send_ephemeral(interaction, "You're already on the latest chapter.")
                     return
-                target = min(len(chapters) - 1, base + delta)
+                base = current if current is not None else -1
+                target = base + delta
+            # Clamp into range so an over/under-shoot (e.g. -5 near the start) lands
+            # on a real chapter instead of raising.
+            target = max(0, min(len(chapters) - 1, target))
             ch = chapters[target]
             try:
                 await self._store.update_last_read(
