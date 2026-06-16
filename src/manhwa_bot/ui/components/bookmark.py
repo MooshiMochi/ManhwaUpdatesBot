@@ -27,6 +27,7 @@ from .base import (
     small_separator,
     status_emoji,
 )
+from .nsfw import should_spoiler
 
 _log = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ def build_bookmark_detail_view(
     bot: discord.Client | None = None,
     invoker_id: int | None = None,
     extra_action_row: discord.ui.ActionRow | None = None,
+    is_nsfw: bool | None = None,
 ) -> discord.ui.LayoutView:
     """Hero `/bookmark new`/`view` single-card layout."""
     if next_chapter:
@@ -104,7 +106,7 @@ def build_bookmark_detail_view(
     )
 
     container = discord.ui.Container(accent_colour=None)
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=should_spoiler(is_nsfw))
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(header_block))
@@ -336,12 +338,14 @@ class BookmarkBrowserView(BaseLayoutView):
         series_url = ""
         cover_url: str | None = None
         status: str | None = None
+        is_nsfw: bool | None = None
         series_data = await self._series_data_for(bm)
         if series_data:
             title = str(series_data.get("title") or title)
             series_url = str(series_data.get("url") or series_data.get("series_url") or "")
             cover_url = series_data.get("cover_url")
             status = series_data.get("status")
+            is_nsfw = series_data.get("is_nsfw")
         try:
             tracked = await self._tracked.find(bm.website_key, bm.url_name)
         except Exception:
@@ -351,11 +355,14 @@ class BookmarkBrowserView(BaseLayoutView):
             series_url = series_url or tracked.series_url
             cover_url = cover_url or tracked.cover_url
             status = status or tracked.status
+            if is_nsfw is None:
+                is_nsfw = tracked.is_nsfw
         meta = {
             "title": title,
             "series_url": series_url,
             "cover_url": cover_url,
             "status": status or "Unknown",
+            "is_nsfw": is_nsfw,
         }
         self._meta[key] = meta
         return meta
@@ -789,7 +796,7 @@ class BookmarkBrowserView(BaseLayoutView):
         details_block = "\n".join(details_lines)
 
         container = discord.ui.Container(accent_colour=None)
-        gallery = hero_cover_gallery(cover_url)
+        gallery = hero_cover_gallery(cover_url, spoiler=should_spoiler(meta.get("is_nsfw")))
         if gallery is not None:
             container.add_item(gallery)
         container.add_item(discord.ui.TextDisplay(header_block))

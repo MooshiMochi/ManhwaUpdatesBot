@@ -20,6 +20,7 @@ from ..db.bookmarks import BookmarkStore
 from ..db.guild_settings import GuildSettingsStore
 from ..db.tracked import TrackedStore
 from ..ui.components.error import SOURCE_CRAWLER, build_error_view
+from ..ui.components.nsfw import should_spoiler
 from ..ui.components.paginator import LayoutPaginator
 from ..ui.components.progress import ProgressLayoutState, progress_event_message
 from ..ui.components.tracking import (
@@ -182,6 +183,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
             title: str = series_data.get("title") or url_name
             status: str | None = series_data.get("status")
             cover_url: str | None = series_data.get("cover_url")
+            is_nsfw: bool | None = series_data.get("is_nsfw")
 
             latest_chapters = Chapter.list_from_payload(
                 {"chapters": series_data.get("latest_chapters") or []}
@@ -218,6 +220,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 status=status,
                 last_chapter_text=latest_text,
                 last_chapter_url=latest_url,
+                is_nsfw=is_nsfw,
             )
             if _is_terminal_track_response(data):
                 view = build_terminal_tracking_blocked_view(
@@ -227,6 +230,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
                     cover_url=cover_url,
                     bookmark_row=self._bookmark_row(website_key=website_key, url_name=url_name),
                     bot=self.bot,
+                    spoiler=should_spoiler(is_nsfw),
                 )
                 terminal_started = True
                 await try_terminal_edit(view)
@@ -284,6 +288,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 is_dm=interaction.guild_id is None,
                 warning=warning,
                 bot=self.bot,
+                spoiler=should_spoiler(is_nsfw),
             )
             terminal_started = True
             await try_terminal_edit(view)

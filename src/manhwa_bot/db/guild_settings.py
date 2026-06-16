@@ -12,6 +12,15 @@ _VALID_UPDATE_BUTTONS: frozenset[str] = frozenset(
     {"mark_read", "bookmark", "subscribe", "open_chapter"}
 )
 
+_VALID_NSFW_SPOILER_MODES: frozenset[str] = frozenset(
+    {"always", "never", "nsfw_channel_aware"}
+)
+
+
+def _clean_nsfw_mode(value: object) -> str:
+    candidate = str(value or "").strip().lower()
+    return candidate if candidate in _VALID_NSFW_SPOILER_MODES else "always"
+
 
 def _parse_update_buttons(raw: str | None) -> frozenset[str]:
     if not raw:
@@ -40,6 +49,7 @@ class GuildSettings:
     auto_create_role: bool
     update_buttons: frozenset[str]
     updated_at: str
+    nsfw_spoiler_mode: str = "always"
 
 
 def _row_to_settings(row: Any) -> GuildSettings:
@@ -53,7 +63,15 @@ def _row_to_settings(row: Any) -> GuildSettings:
         auto_create_role=bool(row["auto_create_role"]),
         update_buttons=_parse_update_buttons(row["update_buttons"]),
         updated_at=row["updated_at"],
+        nsfw_spoiler_mode=_clean_nsfw_mode(_optional_row(row, "nsfw_spoiler_mode")),
     )
+
+
+def _optional_row(row: Any, key: str) -> object:
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return None
 
 
 class GuildSettingsStore:
@@ -72,8 +90,8 @@ class GuildSettingsStore:
             INSERT INTO guild_settings
               (guild_id, notifications_channel_id, system_alerts_channel_id,
                default_ping_role_id, bot_manager_role_id,
-               paid_chapter_notifs, auto_create_role, update_buttons)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               paid_chapter_notifs, auto_create_role, update_buttons, nsfw_spoiler_mode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
               notifications_channel_id = excluded.notifications_channel_id,
               system_alerts_channel_id = excluded.system_alerts_channel_id,
@@ -82,6 +100,7 @@ class GuildSettingsStore:
               paid_chapter_notifs      = excluded.paid_chapter_notifs,
               auto_create_role         = excluded.auto_create_role,
               update_buttons           = excluded.update_buttons,
+              nsfw_spoiler_mode        = excluded.nsfw_spoiler_mode,
               updated_at               = CURRENT_TIMESTAMP
             """,
             (
@@ -93,7 +112,20 @@ class GuildSettingsStore:
                 int(settings.paid_chapter_notifs),
                 int(settings.auto_create_role),
                 _serialize_update_buttons(settings.update_buttons),
+                _clean_nsfw_mode(settings.nsfw_spoiler_mode),
             ),
+        )
+
+    async def set_nsfw_spoiler_mode(self, guild_id: int, mode: str) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO guild_settings (guild_id, nsfw_spoiler_mode)
+            VALUES (?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET
+              nsfw_spoiler_mode = excluded.nsfw_spoiler_mode,
+              updated_at        = CURRENT_TIMESTAMP
+            """,
+            (guild_id, _clean_nsfw_mode(mode)),
         )
 
     async def set_notifications_channel(self, guild_id: int, channel_id: int | None) -> None:

@@ -20,6 +20,7 @@ class TrackedSeries:
     last_chapter_text: str | None = None
     last_chapter_url: str | None = None
     last_chapter_at: str | None = None
+    is_nsfw: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,11 @@ class GuildTrackedSeries:
     last_chapter_text: str | None = None
     last_chapter_url: str | None = None
     last_chapter_at: str | None = None
+    is_nsfw: bool | None = None
+
+
+def _as_bool(value: Any) -> bool | None:
+    return None if value is None else bool(value)
 
 
 def _row_to_tracked(row: Any) -> TrackedSeries:
@@ -50,6 +56,7 @@ def _row_to_tracked(row: Any) -> TrackedSeries:
         last_chapter_text=_optional(row, "last_chapter_text"),
         last_chapter_url=_optional(row, "last_chapter_url"),
         last_chapter_at=_optional(row, "last_chapter_at"),
+        is_nsfw=_as_bool(_optional(row, "is_nsfw")),
     )
 
 
@@ -67,6 +74,7 @@ def _row_to_guild_tracked(row: Any) -> GuildTrackedSeries:
         last_chapter_text=_optional(row, "last_chapter_text"),
         last_chapter_url=_optional(row, "last_chapter_url"),
         last_chapter_at=_optional(row, "last_chapter_at"),
+        is_nsfw=_as_bool(_optional(row, "is_nsfw")),
     )
 
 
@@ -93,14 +101,15 @@ class TrackedStore:
         last_chapter_text: str | None = None,
         last_chapter_url: str | None = None,
         last_chapter_at: str | None = None,
+        is_nsfw: bool | None = None,
     ) -> None:
         await self._pool.execute(
             """
             INSERT INTO tracked_series (
               website_key, url_name, series_url, title, cover_url, status,
-              last_chapter_text, last_chapter_url, last_chapter_at
+              last_chapter_text, last_chapter_url, last_chapter_at, is_nsfw
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(website_key, url_name) DO UPDATE SET
               series_url        = excluded.series_url,
               title             = excluded.title,
@@ -108,7 +117,8 @@ class TrackedStore:
               status            = excluded.status,
               last_chapter_text = COALESCE(excluded.last_chapter_text, last_chapter_text),
               last_chapter_url  = COALESCE(excluded.last_chapter_url,  last_chapter_url),
-              last_chapter_at   = COALESCE(excluded.last_chapter_at,   last_chapter_at)
+              last_chapter_at   = COALESCE(excluded.last_chapter_at,   last_chapter_at),
+              is_nsfw           = COALESCE(excluded.is_nsfw, is_nsfw)
             """,
             (
                 website_key,
@@ -120,6 +130,7 @@ class TrackedStore:
                 last_chapter_text,
                 last_chapter_url,
                 last_chapter_at,
+                None if is_nsfw is None else int(is_nsfw),
             ),
         )
 

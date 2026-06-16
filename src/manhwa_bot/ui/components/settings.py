@@ -134,6 +134,10 @@ def _build_settings_container(
     )
     auto_create = _bool_emoji(bool(settings and settings.auto_create_role))
     paid = _bool_emoji(bool(settings and settings.paid_chapter_notifs))
+    nsfw_mode_value = settings.nsfw_spoiler_mode if settings is not None else "always"
+    nsfw_mode_label = next(
+        (lbl for v, lbl, _ in _NSFW_MODE_OPTIONS if v == nsfw_mode_value), "Always spoiler"
+    )
     if settings is None or not settings.update_buttons:
         update_buttons_display = "Disabled"
     else:
@@ -161,7 +165,9 @@ def _build_settings_container(
         f"**🔘 Update Buttons:** {update_buttons_display}\n"
         f"-# Pick which buttons appear on update notifications.\n\n"
         f"**💰 Paid Chapter Notifs:** {paid}\n"
-        f"-# Notify subscribers about premium / locked chapters."
+        f"-# Notify subscribers about premium / locked chapters.\n\n"
+        f"**🔞 NSFW Cover Spoilers:** {nsfw_mode_label}\n"
+        f"-# How NSFW/borderline covers are spoilered in this server."
     )
     overrides_section = f"**🗨️ Per-Scanlator Channels:**\n{overrides_text}"
 
@@ -193,6 +199,18 @@ _SETTING_AUTO_CREATE_ROLE = "auto_create_role"
 _SETTING_UPDATE_BUTTONS = "update_buttons"
 _SETTING_PAID_CHAPTER_NOTIFS = "paid_chapter_notifs"
 _SETTING_SCANLATOR_CHANNELS = "scanlator_channels"
+_SETTING_NSFW_SPOILER = "nsfw_spoiler_mode"
+
+# NSFW spoiler-mode select options (value -> label/description).
+_NSFW_MODE_OPTIONS: list[tuple[str, str, str]] = [
+    ("always", "Always spoiler", "Hide every NSFW cover behind a spoiler (recommended)."),
+    (
+        "nsfw_channel_aware",
+        "Only outside NSFW channels",
+        "Show unblurred in age-gated NSFW channels.",
+    ),
+    ("never", "Never spoiler", "Always show NSFW covers unblurred."),
+]
 
 _BOOL_SETTINGS = frozenset(
     {
@@ -251,6 +269,12 @@ _MAIN_OPTIONS: list[discord.SelectOption] = [
         value=_SETTING_PAID_CHAPTER_NOTIFS,
         emoji="💵",
         description="Send notifications for paid / locked chapters.",
+    ),
+    discord.SelectOption(
+        label="NSFW cover spoilers",
+        value=_SETTING_NSFW_SPOILER,
+        emoji="🔞",
+        description="How to spoiler NSFW/borderline covers in this server.",
     ),
 ]
 
@@ -434,6 +458,23 @@ class SettingsLayoutView(BaseLayoutView):
             )
             bool_select.callback = self._on_bool_picked  # type: ignore[assignment]
             self._set_dynamic(bool_select)
+        elif value == _SETTING_NSFW_SPOILER:
+            current_mode = (
+                self._settings.nsfw_spoiler_mode if self._settings is not None else "always"
+            )
+            mode_select = discord.ui.Select(
+                placeholder="Choose how NSFW covers are spoilered…",
+                options=[
+                    discord.SelectOption(
+                        label=label, value=val, description=desc, default=(val == current_mode)
+                    )
+                    for val, label, desc in _NSFW_MODE_OPTIONS
+                ],
+                min_values=1,
+                max_values=1,
+            )
+            mode_select.callback = self._on_nsfw_mode_picked  # type: ignore[assignment]
+            self._set_dynamic(mode_select)
         elif value == _SETTING_UPDATE_BUTTONS:
             current = (
                 self._settings.update_buttons if self._settings else frozenset(UPDATE_BUTTON_KEYS)
@@ -527,6 +568,14 @@ class SettingsLayoutView(BaseLayoutView):
             return
         chosen = [v for v in item.values if v in UPDATE_BUTTON_KEYS]
         await self._store.set_update_buttons(self._guild_id, chosen)
+        await self._refresh(interaction)
+
+    async def _on_nsfw_mode_picked(self, interaction: discord.Interaction) -> None:
+        item = self._current_dynamic_item()
+        if not isinstance(item, discord.ui.Select):
+            await interaction.response.defer()
+            return
+        await self._store.set_nsfw_spoiler_mode(self._guild_id, item.values[0])
         await self._refresh(interaction)
 
     async def _open_scanlator_channels(self, interaction: discord.Interaction) -> None:
@@ -847,6 +896,7 @@ class DmSettingsLayoutView(BaseLayoutView):
         self._notifications_enabled = True
         self._paid_chapter_notifs = True
         self._update_buttons: frozenset[str] = frozenset(UPDATE_BUTTON_KEYS)
+        self._nsfw_spoiler_mode = "always"
 
     async def initialize(self) -> None:
         record = await self._store.get(self._user_id)
@@ -854,6 +904,7 @@ class DmSettingsLayoutView(BaseLayoutView):
             self._notifications_enabled = record.notifications_enabled
             self._paid_chapter_notifs = record.paid_chapter_notifs
             self._update_buttons = record.update_buttons
+            self._nsfw_spoiler_mode = record.nsfw_spoiler_mode
         self._rebuild()
 
     def _container(self) -> discord.ui.Container:
@@ -869,7 +920,10 @@ class DmSettingsLayoutView(BaseLayoutView):
             f"**🔘 Update Buttons:** {update_buttons_display}\n"
             "-# Pick which buttons appear on chapter updates in DMs.\n\n"
             f"**💰 Paid Chapter Notifs:** {_bool_emoji(self._paid_chapter_notifs)}\n"
-            "-# Notify me about premium / locked chapters."
+            "-# Notify me about premium / locked chapters.\n\n"
+            f"**🔞 NSFW Cover Spoilers:** "
+            f"{next((lbl for v, lbl, _ in _NSFW_MODE_OPTIONS if v == self._nsfw_spoiler_mode), 'Always spoiler')}\n"
+            "-# How NSFW/borderline covers are spoilered in your DMs."
         )
         return discord.ui.Container(
             discord.ui.TextDisplay("## ⚙️  DM Settings"),
@@ -921,6 +975,26 @@ class DmSettingsLayoutView(BaseLayoutView):
         container.add_item(small_separator())
         container.add_item(buttons_row)
 
+        nsfw_row = discord.ui.ActionRow()
+        nsfw_select = discord.ui.Select(
+            placeholder="NSFW cover spoilers…",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(
+                    label=lbl,
+                    value=val,
+                    description=desc,
+                    default=(val == self._nsfw_spoiler_mode),
+                )
+                for val, lbl, desc in _NSFW_MODE_OPTIONS
+            ],
+        )
+        nsfw_select.callback = self._on_nsfw_mode_picked  # type: ignore[assignment]
+        nsfw_row.add_item(nsfw_select)
+        container.add_item(small_separator())
+        container.add_item(nsfw_row)
+
         self.add_item(container)
 
     async def _toggle_notifs(self, interaction: discord.Interaction) -> None:
@@ -946,6 +1020,23 @@ class DmSettingsLayoutView(BaseLayoutView):
         chosen = [v for v in select.values if v in UPDATE_BUTTON_KEYS]
         await self._store.set_update_buttons(self._user_id, chosen)
         self._update_buttons = frozenset(chosen)
+        self._rebuild()
+        if not interaction.response.is_done():
+            await interaction.response.edit_message(view=self)
+        else:
+            await interaction.edit_original_response(view=self)
+
+    async def _on_nsfw_mode_picked(self, interaction: discord.Interaction) -> None:
+        select = next(
+            c
+            for c in self.walk_children()
+            if isinstance(c, discord.ui.Select)
+            and c.placeholder
+            and c.placeholder.lower().startswith("nsfw cover spoilers")
+        )
+        mode = select.values[0]
+        await self._store.set_nsfw_spoiler_mode(self._user_id, mode)
+        self._nsfw_spoiler_mode = mode
         self._rebuild()
         if not interaction.response.is_done():
             await interaction.response.edit_message(view=self)

@@ -27,11 +27,21 @@ from ..ui.components.notifications import (
     build_chapter_update_view,
     build_status_change_view,
 )
+from ..ui.components.nsfw import should_spoiler
 
 if TYPE_CHECKING:
     from ..bot import ManhwaBot
 
 _log = logging.getLogger(__name__)
+
+
+def _channel_is_nsfw(channel: Any) -> bool:
+    """True if a Discord channel is age-gated NSFW (DMs/threads default to False)."""
+    flag = getattr(channel, "is_nsfw", None)
+    try:
+        return bool(flag()) if callable(flag) else bool(flag)
+    except Exception:
+        return False
 
 
 class UpdatesCog(commands.Cog, name="Updates"):
@@ -109,6 +119,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 payload["series_url"] = series_row.series_url
             if not str(payload.get("cover_url") or "").strip() and series_row.cover_url:
                 payload["cover_url"] = series_row.cover_url
+            if payload.get("is_nsfw") is None and series_row.is_nsfw is not None:
+                payload["is_nsfw"] = series_row.is_nsfw
 
         guild_tasks = [
             self._dispatch_to_guild(row, payload, is_premium, website_key) for row in guild_rows
@@ -135,6 +147,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 payload["series_url"] = series_row.series_url
             if not str(payload.get("cover_url") or "").strip() and series_row.cover_url:
                 payload["cover_url"] = series_row.cover_url
+            if payload.get("is_nsfw") is None and series_row.is_nsfw is not None:
+                payload["is_nsfw"] = series_row.is_nsfw
             try:
                 await self._tracked.upsert_series(
                     website_key,
@@ -143,6 +157,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     str(payload.get("series_title") or series_row.title),
                     cover_url=payload.get("cover_url") or series_row.cover_url,
                     status=payload.get("new_status") or payload.get("status") or series_row.status,
+                    is_nsfw=payload.get("is_nsfw"),
                 )
             except Exception:
                 _log.exception("failed to persist status for %s:%s", website_key, url_name)
@@ -183,8 +198,15 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     return
                 guild = getattr(channel, "guild", None) or self.bot.get_guild(row.guild_id)
                 content = self._compose_ping(guild, row, settings)
+                spoiler = should_spoiler(
+                    payload.get("is_nsfw") if payload.get("is_nsfw") is not None else row.is_nsfw,
+                    mode=settings.nsfw_spoiler_mode if settings is not None else "always",
+                    channel_is_nsfw=_channel_is_nsfw(channel),
+                )
                 send_kwargs: dict[str, Any] = {
-                    "view": build_status_change_view(payload, bot=self.bot, ping=content)
+                    "view": build_status_change_view(
+                        payload, bot=self.bot, ping=content, spoiler=spoiler
+                    )
                 }
                 if content:
                     send_kwargs["allowed_mentions"] = discord.AllowedMentions(
@@ -219,7 +241,13 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 if not await self._user_has_premium(user_id):
                     return
                 user = await self.bot.fetch_user(user_id)
-                await user.send(view=build_status_change_view(payload, bot=self.bot))
+                spoiler = should_spoiler(
+                    payload.get("is_nsfw"),
+                    mode=dm_settings.nsfw_spoiler_mode if dm_settings is not None else "always",
+                )
+                await user.send(
+                    view=build_status_change_view(payload, bot=self.bot, spoiler=spoiler)
+                )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("status DM to user %s skipped (%s)", user_id, exc.__class__.__name__)
             except discord.HTTPException:
@@ -263,11 +291,17 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 guild = getattr(channel, "guild", None) or self.bot.get_guild(row.guild_id)
                 content = self._compose_ping(guild, row, settings)
                 allowed = settings.update_buttons if settings is not None else ALL_UPDATE_BUTTONS
+                spoiler = should_spoiler(
+                    payload.get("is_nsfw") if payload.get("is_nsfw") is not None else row.is_nsfw,
+                    mode=settings.nsfw_spoiler_mode if settings is not None else "always",
+                    channel_is_nsfw=_channel_is_nsfw(channel),
+                )
                 view = build_chapter_update_view(
                     payload,
                     bot=self.bot,
                     allowed_buttons=allowed,
                     ping=content,
+                    spoiler=spoiler,
                 )
                 send_kwargs: dict[str, Any] = {"view": view}
                 if content:
@@ -319,9 +353,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
         ``True`` so behaviour is unchanged.
         """
         try:
-            ok, _ = await self.bot.premium.is_premium(
-                user_id=user_id, guild_id=None, dm_only=True
-            )
+            ok, _ = await self.bot.premium.is_premium(user_id=user_id, guild_id=None, dm_only=True)
         except Exception:
             _log.exception("premium check failed for user %s; skipping DM", user_id)
             return False
@@ -340,7 +372,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
         def _role_mention(role_id: Any) -> str | None:
             try:
                 rid = int(role_id)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return None
             if rid <= 0:
                 return None
@@ -382,8 +414,14 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 allowed = (
                     dm_settings.update_buttons if dm_settings is not None else ALL_UPDATE_BUTTONS
                 )
+                spoiler = should_spoiler(
+                    payload.get("is_nsfw"),
+                    mode=dm_settings.nsfw_spoiler_mode if dm_settings is not None else "always",
+                )
                 await user.send(
-                    view=build_chapter_update_view(payload, bot=self.bot, allowed_buttons=allowed)
+                    view=build_chapter_update_view(
+                        payload, bot=self.bot, allowed_buttons=allowed, spoiler=spoiler
+                    )
                 )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("DM to user %s skipped (%s)", user_id, exc.__class__.__name__)

@@ -39,6 +39,7 @@ def build_tracking_success_view(
     is_dm: bool,
     warning: str | None = None,
     bot: discord.Client | None = None,
+    spoiler: bool = False,
 ) -> discord.ui.LayoutView:
     """Hero image-forward 'Tracking Successful' view."""
     if is_dm:
@@ -59,7 +60,7 @@ def build_tracking_success_view(
         )
 
     container = discord.ui.Container(accent_colour=discord.Colour.green())
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(f"## {emojis.CHECK}  Tracking Successful"))
@@ -84,6 +85,7 @@ def build_terminal_tracking_blocked_view(
     cover_url: str | None,
     bookmark_row: discord.ui.ActionRow | None = None,
     bot: discord.Client | None = None,
+    spoiler: bool = False,
 ) -> discord.ui.LayoutView:
     status_text = str(status or "Completed").strip() or "Completed"
     body = (
@@ -93,7 +95,7 @@ def build_terminal_tracking_blocked_view(
     )
 
     container = discord.ui.Container(accent_colour=None)
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay("## Tracking unavailable"))
@@ -121,10 +123,11 @@ def build_track_update_view(
     role_text: str,
     cover_url: str | None,
     bot: discord.Client | None = None,
+    spoiler: bool = False,
 ) -> discord.ui.LayoutView:
     body = f"The role for **{title}** has been updated to {role_text}."
     container = discord.ui.Container(accent_colour=discord.Colour.green())
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(f"## {emojis.CHECK}  Track updated"))
@@ -352,6 +355,7 @@ def build_subscribe_success_view(
     cover_url: str | None,
     is_dm: bool,
     bot: discord.Client | None = None,
+    spoiler: bool = False,
 ) -> discord.ui.LayoutView:
     """Hero image-forward 'Subscribed to Series' view."""
     if is_dm:
@@ -368,7 +372,7 @@ def build_subscribe_success_view(
         )
 
     container = discord.ui.Container(accent_colour=discord.Colour.green())
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(f"## {emojis.CHECK}  Subscribed"))

@@ -28,6 +28,7 @@ def build_chapter_update_view(
     bot: discord.Client | None = None,
     allowed_buttons: frozenset[str] = ALL_UPDATE_BUTTONS,
     ping: str | None = None,
+    spoiler: bool = False,
 ) -> discord.ui.LayoutView:
     """Build a fresh push-notification LayoutView for a new chapter.
 
@@ -55,7 +56,7 @@ def build_chapter_update_view(
     body = f"**New chapter:** {chapter_display}"
 
     container = discord.ui.Container()  # no accent_colour
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(header))
@@ -86,6 +87,7 @@ def build_status_change_view(
     *,
     bot: discord.Client | None = None,
     ping: str | None = None,
+    spoiler: bool = False,
 ) -> discord.ui.LayoutView:
     series_title = payload.get("series_title") or payload.get("url_name") or "Series"
     series_url = payload.get("series_url") or None

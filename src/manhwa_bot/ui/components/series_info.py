@@ -24,6 +24,7 @@ from .base import (
     safe_truncate,
     small_separator,
 )
+from .nsfw import should_spoiler
 
 _log = logging.getLogger(__name__)
 
@@ -179,9 +180,12 @@ def build_info_view(
     action_row: SeriesActionRow | None = None,
     bot: discord.Client | None = None,
     invoker_id: int | None = None,
+    spoiler: bool | None = None,
 ) -> discord.ui.LayoutView:
     """Hero `/info` view — cover MediaGallery, title, synopsis, metadata, action row."""
     site_meta = site_meta or {}
+    if spoiler is None:
+        spoiler = should_spoiler(data.get("is_nsfw"))
     title = data.get("title") or "Unknown title"
     series_url = data.get("series_url") or data.get("url") or None
     cover_url = data.get("cover_url") or data.get("cover") or None
@@ -236,7 +240,7 @@ def build_info_view(
     )
 
     container = discord.ui.Container()
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(header_block))
@@ -268,9 +272,12 @@ def build_search_result_view(
     action_row: SeriesActionRow | None = None,
     bot: discord.Client | None = None,
     invoker_id: int | None = None,
+    spoiler: bool | None = None,
 ) -> discord.ui.LayoutView:
     """One result per page (image-forward). Used by /search pagination."""
     site_meta = site_meta or {}
+    if spoiler is None:
+        spoiler = should_spoiler(item.get("is_nsfw"))
     title = str(item.get("title") or "Unknown")
     series_url = item.get("series_url") or item.get("url") or None
     cover_url = item.get("cover_url") or item.get("cover") or None
@@ -294,7 +301,7 @@ def build_search_result_view(
     sub_line = " • ".join(sub_parts)
 
     container = discord.ui.Container()
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(header_block))
