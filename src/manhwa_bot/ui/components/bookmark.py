@@ -53,6 +53,11 @@ _FOLDER_DESCRIPTIONS: dict[str, str] = {
     "Finished": "Finished series.",
     "Dropped": "No longer reading.",
 }
+# Statuses that mean no further chapters are expected — used to phrase the
+# "Next Chapter" line when the reader is already caught up.
+_NO_MORE_CHAPTERS_STATUSES: frozenset[str] = frozenset(
+    {"completed", "complete", "finished", "dropped", "cancelled", "canceled"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +74,7 @@ def build_bookmark_detail_view(
     scanlator_base_url: str | None,
     last_read_chapter: str,
     next_chapter: str | None,
+    latest_chapter: str | None = None,
     folder: str,
     available_chapters_label: str,
     chapter_count: int,
@@ -97,10 +103,12 @@ def build_bookmark_detail_view(
         else website_key.title()
     )
     header_block = f"## 🔖  [{title}]({series_url})" if series_url else f"## 🔖  {title}"
+    latest_text = latest_chapter or "`Wait for updates`"
     details_block = (
         f"**Scanlator:** {scanlator_link} • **Status:** {status_emoji(status)} {status}\n"
         f"**Folder:** `{folder}`\n"
         f"**Last Read:** {last_read_chapter}\n"
+        f"**Latest Chapter:** {latest_text}\n"
         f"**Next Chapter:** {next_text}\n"
         f"**Available Chapters:** Up to {available}"
     )
@@ -793,6 +801,26 @@ class BookmarkBrowserView(BaseLayoutView):
             lines.append(f"**Subscribed:** {'Yes' if ts.subscribed else 'No'}")
         return lines
 
+    def _chapter_lines(self, bm: Bookmark, chapters: list[Chapter], status: str) -> tuple[str, str]:
+        """Render the **Latest Chapter** and **Next Chapter** rows as hyperlinks.
+
+        Latest is the newest chapter; next-to-read is the chapter right after the
+        reader's last-read position (the first chapter when nothing is read yet).
+        """
+        if not chapters:
+            return "**Latest Chapter:** `Wait for updates`", "**Next Chapter:** `Wait for updates`"
+        latest_md = chapter_markdown(chapters[-1])
+        current_idx, _, _ = resolve_last_read_nav(bm.last_read_index, len(chapters))
+        if current_idx is None:
+            next_md = chapter_markdown(chapters[0])
+        elif current_idx + 1 < len(chapters):
+            next_md = chapter_markdown(chapters[current_idx + 1])
+        elif (status or "").strip().lower() in _NO_MORE_CHAPTERS_STATUSES:
+            next_md = f"`None — manhwa is {status.lower()}`"
+        else:
+            next_md = "`Wait for updates`"
+        return f"**Latest Chapter:** {latest_md}", f"**Next Chapter:** {next_md}"
+
     async def _visual_container(self, bm: Bookmark) -> tuple[discord.ui.Container, list[Chapter]]:
         meta = await self._meta_for(bm)
         title = meta["title"]
@@ -811,9 +839,12 @@ class BookmarkBrowserView(BaseLayoutView):
         header_block = f"## 🔖  [{title}]({series_url})" if series_url else f"## 🔖  {title}"
 
         # Website + Status share a single line.
+        latest_line, next_line = self._chapter_lines(bm, chapters, status)
         details_lines = [
             f"**Website:** {site_link} • **Status:** {status_emoji(status)} {status}",
             *self._tracking_lines(ts),
+            latest_line,
+            next_line,
         ]
         details_block = "\n".join(details_lines)
 

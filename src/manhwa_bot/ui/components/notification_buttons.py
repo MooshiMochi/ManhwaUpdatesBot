@@ -146,6 +146,44 @@ SUBSCRIBE_TEMPLATE = r"mu:upd:sub:(?P<wk>[^:]+):(?P<un>[^:]+)"
 LAST_READ_TEMPLATE = r"mu:upd:lr:(?P<wk>[^:]+):(?P<un>[^:]+)"
 
 
+async def _resolve_chapter_list(
+    *,
+    client: object,
+    tracked: TrackedSeries | None,
+    website_key: str,
+    url_name: str,
+) -> list[Chapter]:
+    """Fetch the crawler's chapter list for a series (empty on any failure)."""
+    crawler = getattr(client, "crawler", None)
+    if crawler is None:
+        return []
+    identifier = tracked.series_url if tracked is not None else url_name
+    try:
+        data = await crawler.request("chapters", website_key=website_key, url=identifier)
+    except Exception:
+        _log.exception("failed to resolve chapter list for %s:%s", website_key, url_name)
+        return []
+    return Chapter.list_from_payload(data)
+
+
+def _locate_chapter(
+    chapters: list[Chapter], chapter_index: int
+) -> tuple[int | None, Chapter | None]:
+    """Find the bookmark's last-read chapter by its ``index`` field, else by position.
+
+    ``last_read_index`` is a chapter ``index`` value for notification-sourced
+    bookmarks but a 0-based list position for browser-sourced ones; matching on
+    the index field first and falling back to the position handles both, and the
+    returned position lets callers derive the *next* chapter to read.
+    """
+    for position, chapter in enumerate(chapters):
+        if chapter.index == chapter_index:
+            return position, chapter
+    if 0 <= chapter_index < len(chapters):
+        return chapter_index, chapters[chapter_index]
+    return None, None
+
+
 async def _resolve_last_read_chapter_name(
     *,
     client: object,
@@ -156,20 +194,10 @@ async def _resolve_last_read_chapter_name(
 ) -> str | None:
     if chapter_index is None:
         return None
-    crawler = getattr(client, "crawler", None)
-    if crawler is None:
-        return None
-    identifier = tracked.series_url if tracked is not None else url_name
-    try:
-        data = await crawler.request("chapters", website_key=website_key, url=identifier)
-        chapters = Chapter.list_from_payload(data)
-    except Exception:
-        _log.exception("failed to resolve last read chapter for %s:%s", website_key, url_name)
-        return None
-    chapter = next(
-        (chapter for chapter in chapters if chapter.index == chapter_index),
-        chapters[chapter_index] if 0 <= chapter_index < len(chapters) else None,
+    chapters = await _resolve_chapter_list(
+        client=client, tracked=tracked, website_key=website_key, url_name=url_name
     )
+    _, chapter = _locate_chapter(chapters, chapter_index)
     return chapter.name if chapter is not None else None
 
 
@@ -319,9 +347,42 @@ class LastReadChapterButton(
         store = BookmarkStore(pool)
         tracked = await TrackedStore(pool).find(self.website_key, self.url_name)
         link = _series_link(tracked, self.url_name)
-        bookmark = await store.get_bookmark(
-            interaction.user.id, self.website_key, self.url_name
-        )
+        bookmark = await store.get_bookmark(interaction.user.id, self.website_key, self.url_name)
+
+        # When the chapter list resolves, render the current last-read chapter and
+        # the next chapter to read as hyperlinks; otherwise fall back to the stored
+        # name as plain text.
+        current: Chapter | None = None
+        nxt: Chapter | None = None
+        if bookmark is not None and bookmark.last_read_index is not None:
+            chapters = await _resolve_chapter_list(
+                client=interaction.client,
+                tracked=tracked,
+                website_key=self.website_key,
+                url_name=self.url_name,
+            )
+            position, current = _locate_chapter(chapters, bookmark.last_read_index)
+            if position is not None and position + 1 < len(chapters):
+                nxt = chapters[position + 1]
+
+        if current is not None and current.url:
+            if bookmark is not None and bookmark.last_read_chapter != current.name:
+                await store.update_last_read(
+                    interaction.user.id,
+                    self.website_key,
+                    self.url_name,
+                    chapter_text=current.name,
+                    chapter_index=bookmark.last_read_index or 0,
+                )
+            lines = [f"Your last read chapter for {link} is {current}."]
+            if nxt is not None:
+                lines.append(f"**Next chapter to read:** {nxt}")
+            else:
+                lines.append("You're all caught up — no newer chapter to read yet.")
+            await _send_ack(
+                interaction, title="📖  Last read chapter", description="\n".join(lines)
+            )
+            return
 
         chapter_name = bookmark.last_read_chapter if bookmark is not None else None
         if not chapter_name and bookmark is not None:

@@ -190,23 +190,35 @@ def build_stats_view(
     bot_created_unix: int,
     bot: discord.Client | None,
 ) -> discord.ui.LayoutView:
-    """V2 stats panel — grid-style Section list inside a teal Container."""
-    rows = [
-        ("🔖  Bookmarks", bookmarks_count),
-        ("📚  Tracked Manhwas", tracks_count),
-        ("👥  Users subbed to Manhwa", subs_count),
-        ("📘  Total Manhwas", manhwa_count),
-        ("🔍  Supported Websites", websites_count),
-        ("🌐  Total Servers", guilds_count),
-        ("👤  Total Users", users_count),
+    """V2 stats panel — v1-style columnar grid inside a teal Container.
+
+    The seven count metrics render inside a monospace code block so the columns
+    line up regardless of the client's font (Discord has no real table markup).
+    Uptime/Born can't live inside a code block — relative timestamps only render
+    outside one — so they sit on two lines below the grid.
+    """
+    metrics = [
+        ("Bookmarks", bookmarks_count),
+        ("Tracked", tracks_count),
+        ("Subscriptions", subs_count),
+        ("Manhwas", manhwa_count),
+        ("Websites", websites_count),
+        ("Servers", guilds_count),
+        ("Users", users_count),
     ]
-    grid = "\n".join(f"**{name}:** `{value}`" for name, value in rows)
-    grid += f"\n**⌛  Total Uptime:** <t:{start_unix}:R>\n**🐣  Born:** <t:{bot_created_unix}:R>"
+    label_w = max(len(label) for label, _ in metrics)
+    value_w = max(len(f"{value:,}") for _, value in metrics)
+    cells = [f"{label:<{label_w}} {value:>{value_w},}" for label, value in metrics]
+    grid_rows = ["   ".join(cells[i : i + 3]) for i in range(0, len(cells), 3)]
+    grid = "```\n" + "\n".join(grid_rows) + "\n```"
+    timestamps = f"**⌛  Total Uptime:** <t:{start_unix}:R>\n**🐣  Born:** <t:{bot_created_unix}:R>"
 
     container = discord.ui.Container(
         discord.ui.TextDisplay("## 📊  Manhwa Updates Bot Statistics"),
         small_separator(),
         discord.ui.TextDisplay(grid),
+        small_separator(),
+        discord.ui.TextDisplay(timestamps),
         small_separator(),
         footer_section(bot, extra="Stats"),
     )

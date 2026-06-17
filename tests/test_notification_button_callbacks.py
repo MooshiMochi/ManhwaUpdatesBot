@@ -312,3 +312,81 @@ def test_subscribe_without_mutual_guild_replies_only() -> None:
             tmp.cleanup()
 
     asyncio.run(_run())
+
+
+def test_last_read_chapter_button_links_current_and_next_chapter() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            tracked = TrackedStore(pool)
+            await tracked.upsert_series(
+                "comick", "demo", "https://example.com/demo", "Demo", None, None
+            )
+            await BookmarkStore(pool).upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 2",
+                last_read_index=1,
+            )
+            crawler = _Crawler(
+                [
+                    {"name": "Chapter 1", "url": "https://example.com/demo/1"},
+                    {"name": "Chapter 2", "url": "https://example.com/demo/2"},
+                    {"name": "Chapter 3", "url": "https://example.com/demo/3"},
+                ]
+            )
+            interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+            await LastReadChapterButton("comick", "demo").callback(interaction)
+
+            text = _view_text(_sent_component_v2_view(interaction))
+            assert "[Demo](https://example.com/demo)" in text
+            # Current last-read chapter rendered as a hyperlink.
+            assert "[Chapter 2](https://example.com/demo/2)" in text
+            # Next chapter to read rendered as a hyperlink.
+            assert "[Chapter 3](https://example.com/demo/3)" in text
+            assert "index" not in text.lower()
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_last_read_chapter_button_caught_up_has_no_next_link() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            tracked = TrackedStore(pool)
+            await tracked.upsert_series(
+                "comick", "demo", "https://example.com/demo", "Demo", None, None
+            )
+            await BookmarkStore(pool).upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 3",
+                last_read_index=2,
+            )
+            crawler = _Crawler(
+                [
+                    {"name": "Chapter 1", "url": "https://example.com/demo/1"},
+                    {"name": "Chapter 2", "url": "https://example.com/demo/2"},
+                    {"name": "Chapter 3", "url": "https://example.com/demo/3"},
+                ]
+            )
+            interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+            await LastReadChapterButton("comick", "demo").callback(interaction)
+
+            text = _view_text(_sent_component_v2_view(interaction))
+            assert "[Chapter 3](https://example.com/demo/3)" in text
+            # On the latest chapter — no next link, just a caught-up note.
+            assert "caught up" in text.lower()
+            assert "https://example.com/demo/4" not in text
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())

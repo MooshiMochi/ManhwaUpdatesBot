@@ -240,7 +240,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         manga_url_or_id="The name of the bookmarked manga you want to view",
         folder="The folder you want to view. If manga is specified, this is ignored.",
     )
-    @app_commands.autocomplete(manga_url_or_id=autocomplete.tracked_manga_in_guild)
+    @app_commands.autocomplete(manga_url_or_id=autocomplete.all_manga)
     @app_commands.choices(folder=_FOLDER_CHOICES)
     @app_commands.rename(manga_url_or_id="manga_url")
     @has_premium(dm_only=True)
@@ -384,6 +384,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             scanlator_base_url=site_meta.get("base_url"),
             last_read_chapter=first_md,
             next_chapter=next_md,
+            latest_chapter=latest_md,
             folder=folder_value,
             available_chapters_label=latest_md,
             chapter_count=len(chapters),

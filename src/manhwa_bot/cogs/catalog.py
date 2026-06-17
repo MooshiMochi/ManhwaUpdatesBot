@@ -306,7 +306,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
     @app_commands.command(name="info", description="Display info about a manhwa.")
     @app_commands.describe(series="The name of the manhwa you want to get info for.")
-    @app_commands.autocomplete(series=autocomplete.tracked_manga_in_guild)
+    @app_commands.autocomplete(series=autocomplete.all_manga)
     @app_commands.rename(series="manhwa")
     @has_premium(dm_only=True)
     async def info(
@@ -430,7 +430,7 @@ class CatalogCog(commands.Cog, name="Catalog"):
 
     @app_commands.command(name="chapters", description="Get a list of chapters for a manga.")
     @app_commands.describe(series="The name of the manga.")
-    @app_commands.autocomplete(series=autocomplete.tracked_manga_in_guild)
+    @app_commands.autocomplete(series=autocomplete.all_manga)
     @app_commands.rename(series="manga")
     @has_premium(dm_only=True)
     async def chapters(
