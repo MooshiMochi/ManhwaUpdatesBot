@@ -30,17 +30,6 @@ _log = logging.getLogger(__name__)
 _LIST_PAGE_SIZE = 15
 
 
-def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
-    """Parse manga_id from 'website_key:url_name' format.
-
-    Returns (website_key, url_name) or None if invalid.
-    """
-    if ":" not in manga_id:
-        return None
-    parts = manga_id.split(":", 1)
-    return (parts[0].strip(), parts[1].strip()) if len(parts) == 2 else None
-
-
 async def _add_role_safe(
     interaction: discord.Interaction, role: discord.Role
 ) -> discord.Role | None:
@@ -74,6 +63,14 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         guild_only=False,
     )
 
+    async def _guild_tracked_pairs(self, guild_id: int) -> list[tuple[str, str]]:
+        rows = await self._tracked.list_for_guild(guild_id, limit=2000)
+        return [(row.website_key, row.url_name) for row in rows]
+
+    async def _user_subscription_pairs(self, user_id: int, guild_id: int) -> list[tuple[str, str]]:
+        rows = await self._subs.list_for_user(user_id, guild_id=guild_id, limit=2000)
+        return [(row["website_key"], row["url_name"]) for row in rows]
+
     # -- /subscribe new ---------------------------------------------------------
 
     @subscribe.command(
@@ -99,7 +96,9 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             await self._handle_assign_default_role(interaction, guild_id)
             return
 
-        parsed = _parse_manga_id(manga_id)
+        parsed = await autocomplete.resolve_series_value_async(
+            manga_id, lambda: self._guild_tracked_pairs(guild_id)
+        )
         if parsed is None:
             await interaction.followup.send(
                 view=build_error_view(
@@ -273,7 +272,9 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             await self._handle_unsubscribe_all(interaction, guild_id)
             return
 
-        parsed = _parse_manga_id(manga_id)
+        parsed = await autocomplete.resolve_series_value_async(
+            manga_id, lambda: self._user_subscription_pairs(interaction.user.id, guild_id)
+        )
         if parsed is None:
             await interaction.followup.send(
                 view=build_error_view("Invalid manga ID format.", bot=self.bot),

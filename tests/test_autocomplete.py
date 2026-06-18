@@ -326,9 +326,11 @@ def test_user_bookmark_chapters_uses_selected_series_from_namespace() -> None:
                         "allow_live": False,
                     }
                 ]
+                # Newest chapter first (descending) so the latest sits on top.
+                # Values are strings — the chapter option is a string option.
                 assert [(choice.name, choice.value) for choice in choices] == [
-                    ("0 - Chapter 1", 0),
-                    ("1 - Chapter 2", 1),
+                    ("1 - Chapter 2", "1"),
+                    ("0 - Chapter 1", "0"),
                 ]
             finally:
                 autocomplete.clear_chapter_autocomplete_cache()
@@ -366,7 +368,69 @@ def test_user_bookmark_chapters_filters_by_typed_value() -> None:
                 )
 
                 assert [(choice.name, choice.value) for choice in choices] == [
-                    ("1 - Side Story 1", 1)
+                    ("1 - Side Story 1", "1")
+                ]
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_prompts_when_no_series_selected() -> None:
+    # Before a manga is picked the field instantly shows a single hint choice,
+    # without touching the DB or crawler.
+    async def _run() -> None:
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                raise AssertionError("must not query the crawler without a selected series")
+
+        autocomplete.clear_chapter_autocomplete_cache()
+        choices = await autocomplete.user_bookmark_chapters(
+            _interaction(crawler=Crawler(), namespace=SimpleNamespace()),
+            "",
+        )
+
+        assert [(choice.name, choice.value) for choice in choices] == [
+            ("You must select a series first", autocomplete.NO_SERIES_SELECTED_VALUE)
+        ]
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_returns_latest_first_descending() -> None:
+    # No chapter input yet → newest chapters at the top (descending index).
+    async def _run() -> None:
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                del type_, fields
+                return {
+                    "chapters": [
+                        {"chapter": "Chapter 1"},
+                        {"chapter": "Chapter 2"},
+                        {"chapter": "Chapter 3"},
+                    ]
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await BookmarkStore(pool).upsert_bookmark(200, "asura", "solo-leveling")
+
+                choices = await autocomplete.user_bookmark_chapters(
+                    _interaction(
+                        pool=pool,
+                        crawler=Crawler(),
+                        namespace=SimpleNamespace(manga="asura:solo-leveling"),
+                    ),
+                    "",
+                )
+
+                assert [(choice.name, choice.value) for choice in choices] == [
+                    ("2 - Chapter 3", "2"),
+                    ("1 - Chapter 2", "1"),
+                    ("0 - Chapter 1", "0"),
                 ]
             finally:
                 autocomplete.clear_chapter_autocomplete_cache()
@@ -459,7 +523,9 @@ def test_user_bookmark_chapters_returns_quickly_while_fetch_warms_cache(monkeypa
                 await asyncio.sleep(0)
 
                 second = await autocomplete.user_bookmark_chapters(interaction, "2")
-                assert [(choice.name, choice.value) for choice in second] == [("1 - Chapter 2", 1)]
+                assert [(choice.name, choice.value) for choice in second] == [
+                    ("1 - Chapter 2", "1")
+                ]
                 assert len(calls) == 1
             finally:
                 autocomplete.clear_chapter_autocomplete_cache()
@@ -504,7 +570,7 @@ def test_user_bookmark_chapters_does_not_cache_empty_result_long(monkeypatch) ->
                 state["fail"] = False
                 await asyncio.sleep(0)
                 second = await autocomplete.user_bookmark_chapters(interaction, "")
-                assert [(c.name, c.value) for c in second] == [("0 - Chapter 1", 0)]
+                assert [(c.name, c.value) for c in second] == [("0 - Chapter 1", "0")]
             finally:
                 autocomplete.clear_chapter_autocomplete_cache()
                 await pool.close()
@@ -552,7 +618,100 @@ def test_user_bookmark_chapters_uses_url_name_for_untracked_bookmark() -> None:
                     },
                 ]
                 assert [(choice.name, choice.value) for choice in choices] == [
-                    ("0 - Chapter 10", 0)
+                    ("0 - Chapter 10", "0")
+                ]
+            finally:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_series_choice_value_short_is_unchanged() -> None:
+    # Short ids keep the historical "website_key:url_name" form (backward compat).
+    value = autocomplete.series_choice_value("asura", "solo-leveling")
+    assert value == "asura:solo-leveling"
+    assert autocomplete.resolve_series_value(value, []) == ("asura", "solo-leveling")
+
+
+def test_series_choice_value_long_slug_round_trips_via_token() -> None:
+    # A "website_key:url_name" longer than Discord's 100-char choice-value cap
+    # must round-trip through a compact token resolved against the user's rows.
+    long_url = "reincarnation-colosseum-" + "x" * 110
+    raw = f"comix:{long_url}"
+    assert len(raw) > autocomplete.SERIES_VALUE_MAX_LEN
+
+    value = autocomplete.series_choice_value("comix", long_url)
+    assert value != raw
+    assert value.startswith("#")
+    assert len(value) <= autocomplete.SERIES_VALUE_MAX_LEN
+
+    # Resolves only against the invoker's accessible rows.
+    assert autocomplete.resolve_series_value(value, [("comix", long_url)]) == ("comix", long_url)
+    # A token for a series the user doesn't have resolves to nothing.
+    assert autocomplete.resolve_series_value(value, [("comix", "something-else")]) is None
+
+
+def test_user_bookmarks_tokenizes_long_slug_and_resolves_back() -> None:
+    # Full path: the manga autocomplete emits a <=100-char token for a long-slug
+    # bookmark, and command-side resolution against the user's bookmarks recovers
+    # the exact (website_key, url_name).
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                long_url = "kurasu-mushoku-no-eiyuu-tan-" + "y" * 110
+                await BookmarkStore(pool).upsert_bookmark(200, "manganato", long_url)
+                await TrackedStore(pool).upsert_series(
+                    "manganato", long_url, "https://example.test/long", "Long Title Series"
+                )
+
+                choices = await autocomplete.user_bookmarks(_interaction(pool=pool), "Long")
+                assert len(choices) == 1
+                value = choices[0].value
+                assert len(value) <= autocomplete.SERIES_VALUE_MAX_LEN
+                assert value.startswith("#")
+
+                rows = await BookmarkStore(pool).list_user_bookmarks(200, limit=2000)
+                pairs = [(row.website_key, row.url_name) for row in rows]
+                assert autocomplete.resolve_series_value(value, pairs) == ("manganato", long_url)
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_user_bookmark_chapters_resolves_tokenized_series_value() -> None:
+    # The chapter autocomplete must resolve a #-token sibling manga value (long
+    # slug) back to its series before reading the crawler's stored chapters.
+    async def _run() -> None:
+        long_url = "reincarnation-colosseum-" + "z" * 110
+        token = autocomplete.series_choice_value("comix", long_url)
+        assert token.startswith("#")
+
+        class Crawler:
+            async def request(self, type_: str, **fields: Any) -> dict[str, Any]:
+                assert fields["url_name"] == long_url
+                return {"chapters": [{"chapter": "Chapter 1"}, {"chapter": "Chapter 2"}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                autocomplete.clear_chapter_autocomplete_cache()
+                await BookmarkStore(pool).upsert_bookmark(200, "comix", long_url)
+
+                choices = await autocomplete.user_bookmark_chapters(
+                    _interaction(
+                        pool=pool,
+                        crawler=Crawler(),
+                        namespace=SimpleNamespace(manga=token),
+                    ),
+                    "",
+                )
+
+                assert [(c.name, c.value) for c in choices] == [
+                    ("1 - Chapter 2", "1"),
+                    ("0 - Chapter 1", "0"),
                 ]
             finally:
                 autocomplete.clear_chapter_autocomplete_cache()

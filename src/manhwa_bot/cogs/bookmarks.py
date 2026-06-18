@@ -432,7 +432,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         jump_index = 0
         current_folder = folder_value
         if series:
-            parsed = _split_series_id(series)
+            parsed = await self._resolve_selected_series(series, interaction.user.id)
             if parsed is None:
                 await interaction.followup.send(
                     view=build_error_view("Invalid series id.", bot=self.bot), ephemeral=True
@@ -519,6 +519,20 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
             _log.exception("supported_websites lookup failed; not filtering")
             return set()
 
+    async def _bookmark_series_pairs(self, user_id: int) -> list[tuple[str, str]]:
+        rows = await self._bookmarks.list_user_bookmarks(user_id, limit=2000)
+        return [(row.website_key, row.url_name) for row in rows]
+
+    async def _resolve_selected_series(self, value: str, user_id: int) -> tuple[str, str] | None:
+        """Resolve a ``/bookmark`` autocomplete value to ``(website_key, url_name)``.
+
+        Handles both the short ``website_key:url_name`` form and the ``#``-token
+        used for slugs too long for Discord's 100-char choice-value cap.
+        """
+        return await autocomplete.resolve_series_value_async(
+            value, lambda: self._bookmark_series_pairs(user_id)
+        )
+
     # -- /bookmark update -----------------------------------------------
 
     @bookmark.command(name="update", description="Update a bookmark")
@@ -539,21 +553,38 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         self,
         interaction: discord.Interaction,
         series: str,
-        chapter_index: int | None = None,
+        chapter_index: str | None = None,
         folder: app_commands.Choice[str] | None = None,
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
 
-        if chapter_index is None and folder is None:
+        # ``chapter`` is a string option (Discord rejects integer choice values
+        # for it), so its autocomplete carries the chapter list index as a
+        # string. The "select a series first" hint carries the
+        # NO_SERIES_SELECTED_VALUE sentinel — treat it as "no chapter chosen".
+        chapter_pos: int | None = None
+        if chapter_index is not None and chapter_index != autocomplete.NO_SERIES_SELECTED_VALUE:
+            try:
+                chapter_pos = int(chapter_index)
+            except TypeError, ValueError:
+                await interaction.followup.send(
+                    view=build_error_view(
+                        "Invalid chapter — pick one from the autocomplete list.", bot=self.bot
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+        if chapter_pos is None and folder is None:
             await interaction.followup.send(
                 view=build_error_view(
-                    "Specify at least one of `chapter_index` or `folder`.", bot=self.bot
+                    "Specify at least one of `chapter` or `folder`.", bot=self.bot
                 ),
                 ephemeral=True,
             )
             return
 
-        parsed = _split_series_id(series)
+        parsed = await self._resolve_selected_series(series, interaction.user.id)
         if parsed is None:
             await interaction.followup.send(
                 view=build_error_view("Invalid series id.", bot=self.bot), ephemeral=True
@@ -578,7 +609,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         upd_progress_message = None
         upd_progress_edit_lock = asyncio.Lock()
 
-        if chapter_index is not None:
+        if chapter_pos is not None:
             tracked = await self._tracked.find(website_key, url_name)
             identifier = tracked.series_url if tracked else url_name
 
@@ -634,7 +665,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                         )
                     )
                 return
-            if not (0 <= chapter_index < len(chapters)):
+            if not (0 <= chapter_pos < len(chapters)):
                 async with upd_progress_edit_lock:
                     await upd_progress_message.edit(
                         view=build_error_view(
@@ -644,7 +675,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     )
                 return
 
-            chapter = chapters[chapter_index]
+            chapter = chapters[chapter_pos]
             label = chapter.name
             chapter_display = str(chapter)
             await self._bookmarks.update_last_read(
@@ -652,7 +683,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 website_key,
                 url_name,
                 chapter_text=label,
-                chapter_index=chapter_index,
+                chapter_index=chapter_pos,
             )
             new_chapter_label = chapter_display
 
@@ -661,7 +692,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 guild_id=interaction.guild_id,
                 website_key=website_key,
                 url_name=url_name,
-                chapter_index=chapter_index,
+                chapter_index=chapter_pos,
                 total_chapters=len(chapters),
                 status=info_data.get("status"),
             )
@@ -705,7 +736,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
 
-        parsed = _split_series_id(series)
+        parsed = await self._resolve_selected_series(series, interaction.user.id)
         if parsed is None:
             await interaction.followup.send(
                 view=build_error_view("Invalid series id.", bot=self.bot), ephemeral=True

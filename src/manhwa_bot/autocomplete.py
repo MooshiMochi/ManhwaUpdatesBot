@@ -7,9 +7,10 @@ surfacing an exception to the user.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -31,11 +32,24 @@ _track_new_autocomplete_cache: dict[str, tuple[float, list[app_commands.Choice[s
 _track_new_autocomplete_inflight: dict[str, asyncio.Task[list[app_commands.Choice[str]]]] = {}
 _ChapterAutocompleteKey = tuple[int, int, str, str]
 _chapter_autocomplete_cache: dict[
-    _ChapterAutocompleteKey, tuple[float, list[app_commands.Choice[int]]]
+    _ChapterAutocompleteKey, tuple[float, list[app_commands.Choice[str]]]
 ] = {}
 _chapter_autocomplete_inflight: dict[
-    _ChapterAutocompleteKey, asyncio.Task[list[app_commands.Choice[int]]]
+    _ChapterAutocompleteKey, asyncio.Task[list[app_commands.Choice[str]]]
 ] = {}
+
+# The ``chapter`` option is a *string* option: Discord rejects integer choice
+# values for it ("Could not interpret \"0\" as string"), so the chapter list
+# index is carried as a string and parsed back in the command.
+#
+# Shown in the chapter field before a series has been chosen in the sibling
+# ``manga`` option — the chapter list is derived entirely from that selection,
+# so there is nothing to offer until it is set. ``"-1"`` can never collide with
+# a real (0-based) chapter index, so a stray submission is rejected cleanly.
+NO_SERIES_SELECTED_VALUE = "-1"
+NO_SERIES_SELECTED_CHOICE = app_commands.Choice(
+    name="You must select a series first", value=NO_SERIES_SELECTED_VALUE
+)
 
 
 @dataclass(frozen=True)
@@ -154,7 +168,7 @@ async def tracked_manga_in_guild(
         choices: list[app_commands.Choice[str]] = []
         for row in rows:
             label = _manga_choice_name(row.website_key, row.title)
-            value = f"{row.website_key}:{row.url_name}"
+            value = series_choice_value(row.website_key, row.url_name)
             if not _matches_manga_autocomplete(row.website_key, row.title, current):
                 continue
             choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
@@ -209,7 +223,7 @@ async def user_subscribed_manga(
             website_key = row["website_key"]
             url_name = row["url_name"]
             label = _manga_choice_name(website_key, url_name)
-            value = f"{website_key}:{url_name}"
+            value = series_choice_value(website_key, url_name)
             if not _matches_manga_autocomplete(website_key, url_name, current):
                 continue
             choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
@@ -239,7 +253,7 @@ async def user_bookmarks(
             if not _matches_manga_autocomplete(bm.website_key, title, current):
                 continue
             label = _manga_choice_name(bm.website_key, title)
-            value = f"{bm.website_key}:{bm.url_name}"
+            value = series_choice_value(bm.website_key, bm.url_name)
             choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
             if len(choices) >= 25:
                 break
@@ -251,7 +265,12 @@ async def user_bookmarks(
 
 def _split_series_id(series_id: str) -> tuple[str, str] | None:
     """Parse ``"website_key:url_name"`` autocomplete values."""
-    if not series_id or ":" not in series_id or series_id.startswith("http"):
+    if (
+        not series_id
+        or ":" not in series_id
+        or series_id.startswith("http")
+        or series_id.startswith(_SERIES_TOKEN_PREFIX)
+    ):
         return None
     website_key, _, url_name = series_id.partition(":")
     website_key = website_key.strip()
@@ -259,6 +278,71 @@ def _split_series_id(series_id: str) -> tuple[str, str] | None:
     if not website_key or not url_name:
         return None
     return (website_key, url_name)
+
+
+# Discord caps app-command choice values at 100 characters. A handful of series
+# have url_name slugs long enough that "{website_key}:{url_name}" overflows that
+# cap; the old code truncated with ``value[:100]``, so the picked value no longer
+# round-tripped and the command failed with "Invalid series id". For those we
+# emit a compact, deterministic content token instead and resolve it back against
+# the invoker's own rows (which always contain the series they just picked).
+SERIES_VALUE_MAX_LEN = 100
+_SERIES_TOKEN_PREFIX = "#"
+
+
+def _series_token(website_key: str, url_name: str) -> str:
+    digest = hashlib.sha1(f"{website_key}:{url_name}".encode()).hexdigest()[:24]
+    return f"{_SERIES_TOKEN_PREFIX}{website_key}:{digest}"
+
+
+def series_choice_value(website_key: str, url_name: str) -> str:
+    """Build a round-trip-safe Discord choice value for a series.
+
+    Short ids keep the historical ``"{website_key}:{url_name}"`` form (full
+    backward compatibility); only over-long slugs fall back to a ``#``-token.
+    """
+    raw = f"{website_key}:{url_name}"
+    if len(raw) <= SERIES_VALUE_MAX_LEN:
+        return raw
+    return _series_token(website_key, url_name)
+
+
+def is_series_selection(value: str) -> bool:
+    """True if *value* names a series (either short id or ``#``-token form)."""
+    value = str(value or "")
+    return value.startswith(_SERIES_TOKEN_PREFIX) or _split_series_id(value) is not None
+
+
+def resolve_series_value(
+    value: str, candidates: Iterable[tuple[str, str]]
+) -> tuple[str, str] | None:
+    """Resolve a choice *value* to ``(website_key, url_name)``.
+
+    *candidates* (the invoker's accessible ``(website_key, url_name)`` pairs) is
+    consulted only for the ``#``-token form; short values parse directly.
+    """
+    value = str(value or "")
+    if value.startswith(_SERIES_TOKEN_PREFIX):
+        for website_key, url_name in candidates:
+            if value == _series_token(website_key, url_name):
+                return (website_key, url_name)
+        return None
+    return _split_series_id(value)
+
+
+async def resolve_series_value_async(
+    value: str,
+    candidates_provider: Callable[[], Awaitable[Iterable[tuple[str, str]]]],
+) -> tuple[str, str] | None:
+    """Like :func:`resolve_series_value` but fetches candidates lazily.
+
+    *candidates_provider* is awaited only for the ``#``-token form, so short
+    values never trigger a database read.
+    """
+    value = str(value or "")
+    if not value.startswith(_SERIES_TOKEN_PREFIX):
+        return _split_series_id(value)
+    return resolve_series_value(value, await candidates_provider())
 
 
 def _namespace_value(interaction: discord.Interaction, *names: str) -> str:
@@ -278,13 +362,17 @@ def _chapter_choice_matches(index: int, label: str, current: object) -> bool:
 
 
 def _filter_chapter_choices(
-    choices: list[app_commands.Choice[int]], current: object
-) -> list[app_commands.Choice[int]]:
-    return [
+    choices: list[app_commands.Choice[str]], current: object
+) -> list[app_commands.Choice[str]]:
+    matched = [
         choice
         for choice in choices
         if _chapter_choice_matches(int(choice.value), str(choice.name), current)
-    ][:25]
+    ]
+    # Surface the newest chapters first: the cached list is ascending (index 0 =
+    # oldest), so reverse before truncating so the latest matches sit at the top.
+    matched.reverse()
+    return matched[:25]
 
 
 async def _fetch_chapter_choices(
@@ -292,7 +380,7 @@ async def _fetch_chapter_choices(
     key: _ChapterAutocompleteKey,
     website_key: str,
     url_name: str,
-) -> list[app_commands.Choice[int]]:
+) -> list[app_commands.Choice[str]]:
     from .crawler.chapter import Chapter
 
     try:
@@ -309,8 +397,10 @@ async def _fetch_chapter_choices(
         )
         payload = data if isinstance(data, dict) else {}
         chapters = Chapter.list_from_payload(payload)
+        # Value is the list index as a *string* — the ``chapter`` option is a
+        # string option, so Discord rejects integer choice values.
         choices = [
-            app_commands.Choice(name=f"{index} - {chapter.name}"[:100], value=index)
+            app_commands.Choice(name=f"{index} - {chapter.name}"[:100], value=str(index))
             for index, chapter in enumerate(chapters)
         ]
     except Exception:
@@ -328,8 +418,8 @@ async def _fetch_chapter_choices(
 
 def _forget_chapter_inflight(
     key: _ChapterAutocompleteKey,
-) -> Callable[[asyncio.Task[list[app_commands.Choice[int]]]], None]:
-    def _done(task: asyncio.Task[list[app_commands.Choice[int]]]) -> None:
+) -> Callable[[asyncio.Task[list[app_commands.Choice[str]]]], None]:
+    def _done(task: asyncio.Task[list[app_commands.Choice[str]]]) -> None:
         if _chapter_autocomplete_inflight.get(key) is task:
             _chapter_autocomplete_inflight.pop(key, None)
         try:
@@ -340,10 +430,19 @@ def _forget_chapter_inflight(
     return _done
 
 
+async def _user_bookmark_pairs(store: Any, user_id: int) -> list[tuple[str, str]]:
+    """``(website_key, url_name)`` pairs for the invoker's bookmarks.
+
+    Only fetched to resolve a ``#``-token chapter selection back to its series.
+    """
+    rows = await store.list_user_bookmarks(user_id, limit=2000)
+    return [(row.website_key, row.url_name) for row in rows]
+
+
 async def user_bookmark_chapters(
     interaction: discord.Interaction,
     current: int | str,
-) -> list[app_commands.Choice[int]]:
+) -> list[app_commands.Choice[str]]:
     """Chapters for the bookmark selected in the sibling ``series``/``manga`` option.
 
     Choice value is the zero-based chapter list index consumed by
@@ -351,15 +450,22 @@ async def user_bookmark_chapters(
     """
     try:
         selected_series = _namespace_value(interaction, "manga", "series")
-        parsed = _split_series_id(selected_series)
-        if parsed is None:
-            return []
-        website_key, url_name = parsed
+        if not is_series_selection(selected_series):
+            # No series picked yet — prompt instantly without touching the DB or
+            # crawler (the chapter list is keyed off the manga selection).
+            return [NO_SERIES_SELECTED_CHOICE]
 
         bot: Any = interaction.client
         from .db.bookmarks import BookmarkStore
 
         bookmarks = BookmarkStore(bot.db)
+        parsed = await resolve_series_value_async(
+            selected_series,
+            lambda: _user_bookmark_pairs(bookmarks, interaction.user.id),
+        )
+        if parsed is None:
+            return []
+        website_key, url_name = parsed
         bookmark = await bookmarks.get_bookmark(interaction.user.id, website_key, url_name)
         if bookmark is None:
             return []

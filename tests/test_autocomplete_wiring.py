@@ -57,6 +57,7 @@ def test_context_specific_commands_keep_their_autocompletes() -> None:
 
     bm_update = _subcommand(BookmarksCog.bookmark, "update")
     assert _autocomplete_cb(bm_update, "series") is autocomplete.user_bookmarks
+    assert _autocomplete_cb(bm_update, "chapter_index") is autocomplete.user_bookmark_chapters
 
     bm_delete = _subcommand(BookmarksCog.bookmark, "delete")
     assert _autocomplete_cb(bm_delete, "series") is autocomplete.user_bookmarks

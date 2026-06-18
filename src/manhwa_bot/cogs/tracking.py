@@ -61,6 +61,10 @@ class TrackingCog(commands.Cog, name="Tracking"):
         default_permissions=discord.Permissions(manage_roles=True),
     )
 
+    async def _guild_tracked_pairs(self, guild_id: int) -> list[tuple[str, str]]:
+        rows = await self._tracked.list_for_guild(guild_id, limit=2000)
+        return [(row.website_key, row.url_name) for row in rows]
+
     # -- /track new ---------------------------------------------------------
 
     @track.command(
@@ -391,7 +395,9 @@ class TrackingCog(commands.Cog, name="Tracking"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        parsed = _parse_manga_id(manga_id)
+        parsed = await autocomplete.resolve_series_value_async(
+            manga_id, lambda: self._guild_tracked_pairs(interaction.guild_id or 0)
+        )
         if parsed is None:
             await interaction.followup.send(
                 view=build_error_view(
@@ -452,7 +458,9 @@ class TrackingCog(commands.Cog, name="Tracking"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        parsed = _parse_manga_id(manga_id)
+        parsed = await autocomplete.resolve_series_value_async(
+            manga_id, lambda: self._guild_tracked_pairs(interaction.guild_id or 0)
+        )
         if parsed is None:
             await interaction.followup.send(
                 view=build_error_view(
@@ -615,15 +623,6 @@ async def _resolve_track_input(bot: Any, manga_url: str) -> tuple[str, str] | No
         wk = await detect_website_key(bot, manga_url)
         if wk:
             return (wk, manga_url)
-    return None
-
-
-def _parse_manga_id(manga_id: str) -> tuple[str, str] | None:
-    """Parse ``"website_key:url_name"`` → ``(website_key, url_name)``, or None."""
-    if ":" in manga_id and not manga_id.startswith("http"):
-        parts = manga_id.split(":", 1)
-        if len(parts) == 2 and parts[0] and parts[1]:
-            return (parts[0], parts[1])
     return None
 
 
