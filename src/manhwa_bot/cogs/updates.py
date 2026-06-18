@@ -108,9 +108,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     at=str(chapter_at) if chapter_at else None,
                 )
             except Exception:
-                _log.exception(
-                    "failed to persist latest chapter for %s:%s", website_key, url_name
-                )
+                _log.exception("failed to persist latest chapter for %s:%s", website_key, url_name)
 
         guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)
         user_ids = await self._subs.list_subscribers_for_series(website_key, url_name)
