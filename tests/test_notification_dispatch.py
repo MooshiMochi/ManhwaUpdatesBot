@@ -111,6 +111,31 @@ def _payload(*, website_key: str = "comick", url_name: str = "demo", premium: bo
     }
 
 
+def _freed_payload(*, website_key: str = "comick", url_name: str = "demo") -> dict:
+    """A chapter that lost its premium status (premium_freed marker set)."""
+    return {
+        "id": 3,
+        "website_key": website_key,
+        "url_name": url_name,
+        "chapter_index": 1,
+        "payload": {
+            "event": "new_chapter",
+            "premium_freed": True,
+            "website_key": website_key,
+            "url_name": url_name,
+            "series_title": "Demo",
+            "series_url": f"https://example.com/{url_name}",
+            "chapter": {
+                "index": 1,
+                "name": "Chapter 1",
+                "url": f"https://example.com/{url_name}/1",
+                "is_premium": False,
+            },
+        },
+        "created_at": "2026-04-26T00:00:00+00:00",
+    }
+
+
 def _status_payload(*, terminal: bool = False) -> dict:
     return {
         "id": 2,
@@ -249,6 +274,54 @@ def test_premium_chapter_skipped_when_paid_disabled() -> None:
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
 
             await cog.dispatch(_payload(premium=True))
+            assert channel.send.await_count == 0
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_freed_chapter_delivered_to_paid_disabled_guild() -> None:
+    """A premium->free transition reaches exactly the guilds that suppressed
+    the premium version (paid_chapter_notifs OFF)."""
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1])
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+            await settings_store.set_paid_chapter_notifs(1, False)
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_freed_payload())
+            assert channel.send.await_count == 1
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_freed_chapter_skipped_for_paid_enabled_guild() -> None:
+    """Guilds with paid_chapter_notifs ON already got the premium version, so a
+    freed transition must NOT double-notify them."""
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1])
+            settings_store = GuildSettingsStore(bot.db)
+            await settings_store.set_notifications_channel(1, 100)
+            # Default paid_chapter_notifs is True (premium already delivered).
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_freed_payload())
             assert channel.send.await_count == 0
         finally:
             await bot.db.close()

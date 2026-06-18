@@ -93,19 +93,24 @@ class UpdatesCog(commands.Cog, name="Updates"):
         payload["chapter"] = chapter
         is_premium = chapter.is_premium
 
-        chapter_at = (
-            payload.get("released_at") or payload.get("created_at") or record.get("created_at")
-        )
-        try:
-            await self._tracked.update_latest_chapter(
-                website_key,
-                url_name,
-                text=chapter.name or None,
-                url=chapter.url or None,
-                at=str(chapter_at) if chapter_at else None,
+        # A premium->free transition re-notifies an already-known chapter; it is
+        # not a newer release, so it must not advance the stored latest chapter.
+        if not bool(payload.get("premium_freed")):
+            chapter_at = (
+                payload.get("released_at") or payload.get("created_at") or record.get("created_at")
             )
-        except Exception:
-            _log.exception("failed to persist latest chapter for %s:%s", website_key, url_name)
+            try:
+                await self._tracked.update_latest_chapter(
+                    website_key,
+                    url_name,
+                    text=chapter.name or None,
+                    url=chapter.url or None,
+                    at=str(chapter_at) if chapter_at else None,
+                )
+            except Exception:
+                _log.exception(
+                    "failed to persist latest chapter for %s:%s", website_key, url_name
+                )
 
         guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)
         user_ids = await self._subs.list_subscribers_for_series(website_key, url_name)
@@ -271,12 +276,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     _log.warning("guild %s has no notification channel; skipping", row.guild_id)
                     return
 
-                if (
-                    is_premium
-                    and self.bot.config.notifications.respect_paid_chapter_setting
-                    and settings is not None
-                    and not settings.paid_chapter_notifs
-                ):
+                if not self._passes_paid_chapter_gate(payload, is_premium, settings):
                     return
 
                 channel = self.bot.get_channel(channel_id)
@@ -344,6 +344,31 @@ class UpdatesCog(commands.Cog, name="Updates"):
             return int(settings.notifications_channel_id)
         return None
 
+    def _passes_paid_chapter_gate(
+        self,
+        payload: dict[str, Any],
+        is_premium: bool,
+        settings: Any,
+    ) -> bool:
+        """Whether a chapter event should be delivered to one recipient.
+
+        Returns True to deliver, False to suppress. Two mirror-image rules,
+        both keyed on the recipient's ``paid_chapter_notifs`` preference:
+
+        * A *premium* chapter is suppressed for recipients who opted out of paid
+          chapters.
+        * A *premium_freed* chapter (one that just lost premium) goes ONLY to
+          those same opted-out recipients — the ones who never saw the premium
+          version — so recipients tracking premium aren't double-notified.
+        """
+        respect_paid = self.bot.config.notifications.respect_paid_chapter_setting
+        opted_out = respect_paid and settings is not None and not settings.paid_chapter_notifs
+        if bool(payload.get("premium_freed")):
+            return opted_out
+        if is_premium and opted_out:
+            return False
+        return True
+
     async def _user_has_premium(self, user_id: int) -> bool:
         """DM notifications are a premium perk — re-check on every delivery.
 
@@ -403,12 +428,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     return
                 if not await self._user_has_premium(user_id):
                     return
-                if (
-                    is_premium
-                    and self.bot.config.notifications.respect_paid_chapter_setting
-                    and dm_settings is not None
-                    and not dm_settings.paid_chapter_notifs
-                ):
+                if not self._passes_paid_chapter_gate(payload, is_premium, dm_settings):
                     return
                 user = await self.bot.fetch_user(user_id)
                 allowed = (
