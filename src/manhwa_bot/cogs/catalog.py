@@ -56,9 +56,7 @@ def _format_search_partial(data: dict) -> tuple[str | None, str]:
     pending_count = len(pending) if isinstance(pending, list) else max(0, total - completed)
     counter = f"{completed}/{total}"
     suffix = (
-        f" - {pending_count} still running"
-        if pending_count > 0
-        else " - all websites searched"
+        f" - {pending_count} still running" if pending_count > 0 else " - all websites searched"
     )
     if isinstance(pending, list) and 0 < len(pending) <= _PARTIAL_PENDING_PREVIEW_LIMIT:
         suffix += f" ({', '.join(str(item) for item in pending)})"

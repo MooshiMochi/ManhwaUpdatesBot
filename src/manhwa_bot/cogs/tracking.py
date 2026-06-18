@@ -87,8 +87,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
         if not self.bot.crawler.connected:  # type: ignore[attr-defined]
             await interaction.followup.send(
                 view=build_error_view(
-                    "The crawler service is currently unavailable. "
-                    "Please try again in a moment.",
+                    "The crawler service is currently unavailable. Please try again in a moment.",
                     source=SOURCE_CRAWLER,
                     bot=self.bot,
                 ),

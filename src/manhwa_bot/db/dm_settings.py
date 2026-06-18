@@ -41,9 +41,7 @@ class DmSettingsStore:
         self._pool = pool
 
     async def get(self, user_id: int) -> DmSettings | None:
-        row = await self._pool.fetchone(
-            "SELECT * FROM dm_settings WHERE user_id = ?", (user_id,)
-        )
+        row = await self._pool.fetchone("SELECT * FROM dm_settings WHERE user_id = ?", (user_id,))
         return _row_to_dm_settings(row) if row else None
 
     async def upsert(self, settings: DmSettings) -> None:

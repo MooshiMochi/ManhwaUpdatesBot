@@ -231,9 +231,7 @@ class DevCog(commands.Cog, name="Dev"):
 
     @developer.command(name="pull")
     async def pull(self, ctx: commands.Context) -> None:
-        stdout, stderr, rc = await shell_runner.run(
-            ["git", "pull", "--ff-only"], timeout=60.0
-        )
+        stdout, stderr, rc = await shell_runner.run(["git", "pull", "--ff-only"], timeout=60.0)
         out = (stdout or stderr).strip() or f"(rc={rc})"
         await ctx.send(
             view=build_diagnostic_view(
@@ -299,9 +297,7 @@ class DevCog(commands.Cog, name="Dev"):
 
     @developer.command(name="get_emoji", aliases=["gib", "get"])
     @commands.guild_only()
-    async def get_emoji(
-        self, ctx: commands.Context, *emojis: discord.PartialEmoji
-    ) -> None:
+    async def get_emoji(self, ctx: commands.Context, *emojis: discord.PartialEmoji) -> None:
         new_emojis: list[discord.Emoji] = []
         async with aiohttp.ClientSession() as session:
             for emoji in emojis:
@@ -342,9 +338,7 @@ class DevCog(commands.Cog, name="Dev"):
             return
         if len(src) > _DISCORD_LIMIT:
             await ctx.send(
-                file=discord.File(
-                    io.BytesIO(src.encode("utf-8")), filename=f"{command}.py"
-                )
+                file=discord.File(io.BytesIO(src.encode("utf-8")), filename=f"{command}.py")
             )
         else:
             safe = src.replace("```", "`​`​`")
@@ -356,15 +350,11 @@ class DevCog(commands.Cog, name="Dev"):
     async def load(self, ctx: commands.Context, *, cog_name: str) -> None:
         try:
             await self.bot.load_extension(cog_name)
-            await ctx.send(
-                _code_block(f"-<[ Extension {cog_name!r} loaded. ]>-", "diff")
-            )
+            await ctx.send(_code_block(f"-<[ Extension {cog_name!r} loaded. ]>-", "diff"))
         except commands.ExtensionNotFound:
             await ctx.send(_code_block(f"- Extension {cog_name!r} not found.", "diff"))
         except commands.ExtensionAlreadyLoaded:
-            await ctx.send(
-                _code_block(f"- Extension {cog_name!r} already loaded.", "diff")
-            )
+            await ctx.send(_code_block(f"- Extension {cog_name!r} already loaded.", "diff"))
         except commands.ExtensionFailed:
             await ctx.send(_code_block(tb.format_exc()[-1900:], "py"))
 
@@ -372,9 +362,7 @@ class DevCog(commands.Cog, name="Dev"):
     async def unload(self, ctx: commands.Context, *, cog_name: str) -> None:
         try:
             await self.bot.unload_extension(cog_name)
-            await ctx.send(
-                _code_block(f"-<[ Extension {cog_name!r} unloaded. ]>-", "diff")
-            )
+            await ctx.send(_code_block(f"-<[ Extension {cog_name!r} unloaded. ]>-", "diff"))
         except commands.ExtensionNotLoaded:
             await ctx.send(_code_block(f"- Extension {cog_name!r} not loaded.", "diff"))
 
@@ -382,9 +370,7 @@ class DevCog(commands.Cog, name="Dev"):
     async def reload(self, ctx: commands.Context, *, cog_name: str) -> None:
         try:
             await self.bot.reload_extension(cog_name)
-            await ctx.send(
-                _code_block(f"-<[ Extension {cog_name!r} reloaded. ]>-", "diff")
-            )
+            await ctx.send(_code_block(f"-<[ Extension {cog_name!r} reloaded. ]>-", "diff"))
         except commands.ExtensionNotLoaded:
             await ctx.send(_code_block(f"- Extension {cog_name!r} not loaded.", "diff"))
         except commands.ExtensionNotFound:
@@ -725,9 +711,7 @@ class DevCog(commands.Cog, name="Dev"):
 
         # Show the alert preview + confirm prompt as two messages (V2 messages
         # can't combine content with a view in one send).
-        preview_msg = await ctx.send(
-            view=build_g_update_view(message=message, bot=self.bot)
-        )
+        preview_msg = await ctx.send(view=build_g_update_view(message=message, bot=self.bot))
         confirm = ConfirmLayoutView(
             author_id=ctx.author.id,
             prompt=f"Send to **{len(viable)}** guilds?",
@@ -799,9 +783,7 @@ class DevCog(commands.Cog, name="Dev"):
         await ctx.send("Use `crawler health|heal|test|websites`.")
 
     @crawler.command(name="health")
-    async def crawler_health(
-        self, ctx: commands.Context, website_key: str | None = None
-    ) -> None:
+    async def crawler_health(self, ctx: commands.Context, website_key: str | None = None) -> None:
         try:
             data = await self.bot.crawler.request("schema_health_list")
         except CrawlerError as exc:
@@ -841,14 +823,10 @@ class DevCog(commands.Cog, name="Dev"):
         except CrawlerError as exc:
             await ctx.send(f"crawler error: `{exc.code}`: {exc.message}")
             return
-        await self._send_long_text(
-            ctx, json.dumps(data, indent=2, default=str), lang="json"
-        )
+        await self._send_long_text(ctx, json.dumps(data, indent=2, default=str), lang="json")
 
     @crawler.command(name="test")
-    async def crawler_test(
-        self, ctx: commands.Context, website_key: str, *flags: str
-    ) -> None:
+    async def crawler_test(self, ctx: commands.Context, website_key: str, *flags: str) -> None:
         flag_list = list(flags)
         series_url, flag_list = _named(flag_list, "series")
         search_query, _ = _named(flag_list, "query")
@@ -862,9 +840,7 @@ class DevCog(commands.Cog, name="Dev"):
         except CrawlerError as exc:
             await ctx.send(f"crawler error: `{exc.code}`: {exc.message}")
             return
-        await self._send_long_text(
-            ctx, json.dumps(data, indent=2, default=str), lang="json"
-        )
+        await self._send_long_text(ctx, json.dumps(data, indent=2, default=str), lang="json")
 
     @crawler.command(name="websites")
     async def crawler_websites(self, ctx: commands.Context) -> None:
@@ -987,10 +963,7 @@ class DevCog(commands.Cog, name="Dev"):
         sources: list[str] = []
         if await self.bot.premium.grants.is_active("user", user.id):
             sources.append("grant_user")
-        if (
-            self.bot.premium.patreon.enabled
-            and await self.bot.premium.patreon.is_premium(user.id)
-        ):
+        if self.bot.premium.patreon.enabled and await self.bot.premium.patreon.is_premium(user.id):
             sources.append("patreon")
         if self.bot.premium.discord_ents.is_user_premium(user.id):
             sources.append("discord_user")
@@ -1014,9 +987,7 @@ class DevCog(commands.Cog, name="Dev"):
         except Exception:
             await self._send_long_text(ctx, tb.format_exc(), lang="py")
             return
-        await ctx.send(
-            f"{emojis.CHECK} Patreon refresh wrote `{count}` active patrons."
-        )
+        await ctx.send(f"{emojis.CHECK} Patreon refresh wrote `{count}` active patrons.")
 
     @premium_patreon.command(name="link")
     async def premium_patreon_link(
@@ -1042,16 +1013,12 @@ class DevCog(commands.Cog, name="Dev"):
 
     # -- helpers --------------------------------------------------------
 
-    async def _send_long_text(
-        self, ctx: commands.Context, text: str, *, lang: str = ""
-    ) -> None:
+    async def _send_long_text(self, ctx: commands.Context, text: str, *, lang: str = "") -> None:
         if not text:
             text = "(no output)"
         if len(text) <= _DISCORD_LIMIT:
             await ctx.send(
-                view=build_diagnostic_view(
-                    title="Output", body=text, lang=lang, bot=self.bot
-                )
+                view=build_diagnostic_view(title="Output", body=text, lang=lang, bot=self.bot)
             )
             return
         if len(text) > _DISCORD_LIMIT * 4:
@@ -1079,9 +1046,7 @@ class DevCog(commands.Cog, name="Dev"):
         container = discord.ui.Container(
             discord.ui.TextDisplay("# 🛠️  Dev commands"),
             small_separator(),
-            discord.ui.TextDisplay(
-                f"Owner-only prefix commands. Use `{base} <command>`."
-            ),
+            discord.ui.TextDisplay(f"Owner-only prefix commands. Use `{base} <command>`."),
         )
         for name, value in fields:
             container.add_item(small_separator())

@@ -12,9 +12,7 @@ _VALID_UPDATE_BUTTONS: frozenset[str] = frozenset(
     {"mark_read", "bookmark", "subscribe", "open_chapter"}
 )
 
-_VALID_NSFW_SPOILER_MODES: frozenset[str] = frozenset(
-    {"always", "never", "nsfw_channel_aware"}
-)
+_VALID_NSFW_SPOILER_MODES: frozenset[str] = frozenset({"always", "never", "nsfw_channel_aware"})
 
 
 def _clean_nsfw_mode(value: object) -> str:
@@ -70,7 +68,7 @@ def _row_to_settings(row: Any) -> GuildSettings:
 def _optional_row(row: Any, key: str) -> object:
     try:
         return row[key]
-    except (KeyError, IndexError):
+    except KeyError, IndexError:
         return None
 
 
