@@ -102,6 +102,46 @@ def test_update_notification_links_premium_chapter_with_lock_on_the_right() -> N
     assert "(premium)" not in text
 
 
+def test_update_notification_shows_source_footer() -> None:
+    for source, expected in (
+        ("main", "via main check"),
+        ("backup", "via backup check"),
+        ("manual", "via manual check"),
+    ):
+        view = build_chapter_update_view(
+            {
+                "series_title": "Series",
+                "series_url": "https://example.test/series",
+                "chapter": {
+                    "name": "Chapter 9",
+                    "url": "https://example.test/chapter-9",
+                    "is_premium": False,
+                },
+                "source": source,
+            }
+        )
+        text = _view_text(view)
+        assert expected in text
+
+
+def test_update_notification_omits_source_footer_when_absent() -> None:
+    view = build_chapter_update_view(
+        {
+            "series_title": "Series",
+            "series_url": "https://example.test/series",
+            "chapter": {
+                "name": "Chapter 9",
+                "url": "https://example.test/chapter-9",
+                "is_premium": False,
+            },
+        }
+    )
+    text = _view_text(view)
+    assert "via main check" not in text
+    assert "via backup check" not in text
+    assert "via manual check" not in text
+
+
 def test_bookmark_chapter_markdown_links_premium_chapters_with_lock() -> None:
     assert (
         _chapter_markdown(

@@ -21,6 +21,21 @@ from .notification_buttons import (
     SubscribeToggleButton,
 )
 
+# Which update check produced this notification. Surfaced as a subtle footer so a
+# stuck check is easy to diagnose (e.g. only "via backup check" updates arriving
+# for a site means its main/front-page path is broken).
+_SOURCE_FOOTERS = {
+    "main": "via main check",
+    "backup": "via backup check",
+    "manual": "via manual check",
+}
+
+
+def _source_footer(payload: dict) -> str | None:
+    """Return the footer line for a notification's ``source``, or ``None``."""
+    source = str(payload.get("source") or "").strip().lower()
+    return _SOURCE_FOOTERS.get(source)
+
 
 def build_chapter_update_view(
     payload: dict,
@@ -73,6 +88,10 @@ def build_chapter_update_view(
         container.add_item(small_separator())
         container.add_item(button_row)
 
+    footer = _source_footer(payload)
+    if footer is not None:
+        container.add_item(discord.ui.TextDisplay(f"-# {footer}"))
+
     del bot
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     ping = (ping or "").strip()
@@ -107,6 +126,10 @@ def build_status_change_view(
     container.add_item(discord.ui.TextDisplay(header))
     container.add_item(small_separator())
     container.add_item(discord.ui.TextDisplay(body))
+
+    footer = _source_footer(payload)
+    if footer is not None:
+        container.add_item(discord.ui.TextDisplay(f"-# {footer}"))
 
     del bot
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
