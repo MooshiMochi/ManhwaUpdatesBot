@@ -270,8 +270,10 @@ class GeneralCog(commands.Cog, name="General"):
         try:
             ws_data = await bot.crawler.request("supported_websites")
             websites_count = len(ws_data.get("websites") or [])
-        except CrawlerError, RequestTimeout, Disconnected:
+        except (CrawlerError, RequestTimeout, Disconnected):
             websites_count = 0
+
+        website_health = await self._fetch_website_health(bot)
 
         bot_user = bot.user
         bot_created_unix = (
@@ -290,8 +292,40 @@ class GeneralCog(commands.Cog, name="General"):
             start_unix=start_unix,
             bot_created_unix=bot_created_unix,
             bot=bot,
+            website_health=website_health,
         )
         await interaction.followup.send(view=view, ephemeral=True)
+
+    async def _fetch_website_health(self, bot: Any) -> list[dict] | None:
+        """Pull per-website request stats (7d) from the crawler for /stats.
+
+        Best-effort: on any transport error the section is simply omitted.
+        """
+        try:
+            data = await bot.crawler.request("website_stats", window="7d", recent_limit=0)
+        except (CrawlerError, RequestTimeout, Disconnected):
+            return None
+        rows = data.get("rows") if isinstance(data, dict) else None
+        if not isinstance(rows, list):
+            return None
+        health: list[dict] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            by_reason = row.get("failures_by_reason")
+            top_reason = ""
+            if isinstance(by_reason, dict) and by_reason:
+                top_reason = max(by_reason.items(), key=lambda kv: kv[1])[0]
+            health.append(
+                {
+                    "website_key": row.get("website_key"),
+                    "requests": int(row.get("requests") or 0),
+                    "failures": int(row.get("failures") or 0),
+                    "fail_pct": round(float(row.get("fail_rate") or 0.0) * 100, 1),
+                    "top_reason": top_reason,
+                }
+            )
+        return health
 
     # -- /get_lost_manga -------------------------------------------------
 

@@ -57,6 +57,46 @@ def test_stats_view_renders_columnar_grid_and_timestamps() -> None:
     assert "<t:2000:R>" in text
 
 
+def test_stats_view_renders_website_health_when_provided() -> None:
+    view = build_stats_view(
+        bookmarks_count=1,
+        tracks_count=1,
+        subs_count=1,
+        manhwa_count=1,
+        websites_count=1,
+        guilds_count=1,
+        users_count=1,
+        start_unix=1,
+        bot_created_unix=2,
+        bot=None,
+        website_health=[
+            {"website_key": "comix", "requests": 100, "failures": 40, "fail_pct": 40.0, "top_reason": "cloudflare_block"},
+            {"website_key": "asura", "requests": 200, "failures": 2, "fail_pct": 1.0, "top_reason": "timeout"},
+        ],
+    )
+    text = _collect_text(view)
+    assert "comix" in text
+    assert "40" in text
+    assert "cloudflare_block" in text
+
+
+def test_stats_view_omits_website_health_when_absent() -> None:
+    view = build_stats_view(
+        bookmarks_count=1,
+        tracks_count=1,
+        subs_count=1,
+        manhwa_count=1,
+        websites_count=1,
+        guilds_count=1,
+        users_count=1,
+        start_unix=1,
+        bot_created_unix=2,
+        bot=None,
+    )
+    text = _collect_text(view)
+    assert "Website Health" not in text
+
+
 def test_stats_grid_rows_are_width_aligned() -> None:
     view = build_stats_view(
         bookmarks_count=1,

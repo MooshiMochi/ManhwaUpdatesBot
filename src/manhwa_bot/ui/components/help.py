@@ -189,6 +189,7 @@ def build_stats_view(
     start_unix: int,
     bot_created_unix: int,
     bot: discord.Client | None,
+    website_health: list[dict] | None = None,
 ) -> discord.ui.LayoutView:
     """V2 stats panel — v1-style columnar grid inside a teal Container.
 
@@ -196,6 +197,9 @@ def build_stats_view(
     line up regardless of the client's font (Discord has no real table markup).
     Uptime/Born can't live inside a code block — relative timestamps only render
     outside one — so they sit on two lines below the grid.
+
+    ``website_health`` (optional) appends a compact "Website Health" block listing
+    the worst-offending sites by failure rate, for spotting a broken scraper.
     """
     metrics = [
         ("Bookmarks", bookmarks_count),
@@ -220,12 +224,47 @@ def build_stats_view(
         small_separator(),
         discord.ui.TextDisplay(timestamps),
         small_separator(),
-        footer_section(bot, extra="Stats"),
     )
+
+    health_block = _website_health_block(website_health)
+    if health_block is not None:
+        container.add_item(discord.ui.TextDisplay(health_block))
+        container.add_item(small_separator())
+
+    container.add_item(footer_section(bot, extra="Stats"))
 
     view = BaseLayoutView(invoker_id=None, lock=False, timeout=None)
     view.add_item(container)
     return view
+
+
+def _website_health_block(rows: list[dict] | None, *, limit: int = 5) -> str | None:
+    """Compact 'worst offenders' table, or None when there's nothing useful.
+
+    Only sites with failures are shown (a fully-healthy fleet adds no signal),
+    sorted by failure rate, capped to ``limit`` rows.
+    """
+    if not rows:
+        return None
+    offenders = [r for r in rows if int(r.get("failures") or 0) > 0]
+    if not offenders:
+        return None
+    offenders.sort(key=lambda r: float(r.get("fail_pct") or 0.0), reverse=True)
+    offenders = offenders[:limit]
+
+    key_w = max(len(str(r.get("website_key") or "")) for r in offenders)
+    cells = []
+    for r in offenders:
+        key = str(r.get("website_key") or "")
+        fail_pct = float(r.get("fail_pct") or 0.0)
+        failures = int(r.get("failures") or 0)
+        requests = int(r.get("requests") or 0)
+        reason = str(r.get("top_reason") or "")
+        cells.append(
+            f"{key:<{key_w}}  {fail_pct:>5.1f}%  {failures:>4}/{requests:<5}  {reason}"
+        )
+    grid = "```\n" + "\n".join(cells) + "\n```"
+    return f"**🩺  Website Health (worst by fail rate)**\n{grid}"
 
 
 # ---------------------------------------------------------------------------
