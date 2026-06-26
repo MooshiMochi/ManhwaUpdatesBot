@@ -82,6 +82,11 @@ class ManhwaBot(commands.Bot):
             case_insensitive=True,
             owner_ids=set(config.bot.owner_ids),
             allowed_mentions=allowed_mentions,
+            # Chunking every guild's member list over the gateway at startup
+            # saturates the 120-commands/60s budget (logged as "WebSocket ... is
+            # ratelimited, waiting ~60s") and stalls readiness on every restart.
+            # The members intent stays on; members resolve on demand / via events.
+            chunk_guilds_at_startup=False,
         )
 
         self.config = config

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 import discord
 
@@ -191,17 +192,40 @@ def chapter_markdown(chapter: object, fallback_idx: int | None = None) -> str:
     return f"{emojis.LOCK} {label}" if premium else label
 
 
+def _clean_media_url(url: str | None) -> str | None:
+    """Return a trimmed http(s) URL Discord will accept as media, else None.
+
+    A malformed/relative cover URL makes the MediaGallery item's ``media.url``
+    fail validation (``400`` error code ``50035``), which rejects the *entire*
+    message — silently dropping the chapter notification. Filtering here drops
+    just the thumbnail so the notification still sends.
+    """
+    if not isinstance(url, str):
+        return None
+    candidate = url.strip()
+    if not candidate or any(ch.isspace() for ch in candidate):
+        return None
+    parsed = urlparse(candidate)
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        return candidate
+    return None
+
+
 def hero_cover_gallery(
     cover_url: str | None,
     *,
     description: str | None = None,
     spoiler: bool = False,
 ) -> discord.ui.MediaGallery | None:
-    """Single-item MediaGallery for image-forward hero layouts. Returns None if no URL."""
-    if not cover_url:
+    """Single-item MediaGallery for image-forward hero layouts.
+
+    Returns None if the URL is missing or not a well-formed http(s) URL.
+    """
+    cleaned = _clean_media_url(cover_url)
+    if cleaned is None:
         return None
     gallery = discord.ui.MediaGallery()
-    gallery.add_item(media=cover_url, description=description, spoiler=spoiler)
+    gallery.add_item(media=cleaned, description=description, spoiler=spoiler)
     return gallery
 
 

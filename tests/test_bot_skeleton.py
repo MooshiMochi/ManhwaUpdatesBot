@@ -91,6 +91,14 @@ def test_intents() -> None:
     assert bot.intents.presences is False
 
 
+def test_chunk_guilds_at_startup_disabled() -> None:
+    # Chunking every guild's member list over the gateway at startup saturates
+    # the 120-commands/60s budget (logged as "WebSocket ... is ratelimited") and
+    # delays readiness on every restart. Members are resolved on demand instead.
+    bot = _make_bot()
+    assert bot._connection._chunk_guilds is False  # type: ignore[attr-defined]
+
+
 def test_command_prefix() -> None:
     bot = _make_bot()
     assert bot.command_prefix is not commands.when_mentioned

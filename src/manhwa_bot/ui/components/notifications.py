@@ -30,6 +30,9 @@ _SOURCE_FOOTERS = {
     "manual": "via manual check",
 }
 
+# Discord's hard cap on a component custom_id; longer ids 400 the whole message.
+_CUSTOM_ID_MAX = 100
+
 
 def _source_footer(payload: dict) -> str | None:
     """Return the footer line for a notification's ``source``, or ``None``."""
@@ -152,24 +155,43 @@ def _build_button_row(
 
     row = discord.ui.ActionRow()
 
-    # Iterate in canonical order so the visual layout is stable.
-    # We add the inner .item (the plain Button) rather than the DynamicItem
-    # wrapper so that walk_children() yields Button instances that tests can
-    # inspect directly. Dispatch still works because the DynamicItem templates
-    # are registered globally in ManhwaBot.setup_hook and matched by custom_id.
     chapter_index = chapter.index if chapter.index is not None else -1
+
+    def _make(key: str) -> discord.ui.Button | None:
+        # Build the inner .item (the plain Button) rather than the DynamicItem
+        # wrapper so walk_children() yields Button instances tests can inspect.
+        # Dispatch still works: the DynamicItem templates are registered
+        # globally in ManhwaBot.setup_hook and matched by custom_id.
+        if key == "mark_read":
+            return MarkReadButton(website_key, url_name, chapter_index).item
+        if key == "bookmark":
+            return BookmarkButton(website_key, url_name).item
+        if key == "subscribe":
+            return SubscribeToggleButton(website_key, url_name).item
+        if key == "open_chapter":
+            return LastReadChapterButton(website_key, url_name).item
+        return None
+
+    # Iterate in canonical order so the visual layout is stable.
     ordered_keys = ("open_chapter", *(key for key in UPDATE_BUTTON_KEYS if key != "open_chapter"))
     for key in ordered_keys:
         if key not in allowed_buttons:
             continue
-        if key == "mark_read":
-            row.add_item(MarkReadButton(website_key, url_name, chapter_index).item)
-        elif key == "bookmark":
-            row.add_item(BookmarkButton(website_key, url_name).item)
-        elif key == "subscribe":
-            row.add_item(SubscribeToggleButton(website_key, url_name).item)
-        elif key == "open_chapter":
-            row.add_item(LastReadChapterButton(website_key, url_name).item)
+        try:
+            item = _make(key)
+        except ValueError:
+            # Slug holds the ':' custom_id delimiter — can't build a
+            # dispatchable button; omit it rather than fail the whole message.
+            continue
+        if item is None:
+            continue
+        # Discord rejects custom_ids longer than 100 chars (error code 50035),
+        # which 400s the *entire* notification. Long series slugs overflow the
+        # mu:upd:* template, so drop just the offending button and still deliver
+        # the chapter update.
+        if item.custom_id and len(item.custom_id) > _CUSTOM_ID_MAX:
+            continue
+        row.add_item(item)
 
     if len(list(row.children)) == 0:
         return None
