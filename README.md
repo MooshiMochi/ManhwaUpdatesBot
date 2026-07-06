@@ -1,10 +1,93 @@
-# ManhwaUpdatesBot v2
+# Manhwa Updates Bot - Discord Bot for Manhwa Chapter Notifications
 
-A thin Discord bot that delegates all manga scraping, search, chapter listing, tracking, and update detection to a separate crawler service. The bot keeps Discord-facing state locally: bookmarks, per-guild tracking, user subscriptions, guild settings, premium grants, and notification offsets.
+Manhwa Updates Bot is a hosted Discord bot that tracks manhwa, manga, and manhua chapter updates and sends notifications to your Discord server or DMs.
+
+**No self-hosting required. Invite the hosted bot and use it out of the box.**
+
+[Invite the Hosted Bot](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands) · [Support Server](https://discord.gg/TYkw8VBZkr) · [Top.gg](https://top.gg/bot/1031998059447590955) · [Discord App Directory](https://discord.com/discovery/applications/1031998059447590955)
+
+## Features
+
+- Automatic manhwa chapter update notifications in Discord.
+- Track series in server channels and optionally ping roles when chapters release.
+- Subscribe to personal DM alerts for tracked series.
+- Bookmark manga/manhwa/manhua and update reading progress.
+- Browse supported manhwa and manga websites with `/supported_websites`.
+- Search titles, view series info, and list chapters with slash commands.
+- Hosted public bot for communities, reading groups, and scanlation-style update tracking.
+
+## Quick Start for Discord Servers
+
+1. [Invite the hosted bot](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands).
+2. Run `/help` to see the main commands.
+3. Run `/settings` to choose your server notification channel.
+4. Run `/track new` to track a manhwa, manga, or manhua series.
+5. Use `/supported_websites` to see which sources are currently available.
+
+## Common Commands
+
+| Command | What it does |
+| --- | --- |
+| `/track new` | Track a series in a server channel and optionally ping a role. |
+| `/track list` | View all series tracked by the server. |
+| `/subscribe new` | Subscribe to personal DM chapter notifications. |
+| `/bookmark new` | Save a series and track your reading progress. |
+| `/search` | Search for a series by title. |
+| `/info` | Show series metadata and links. |
+| `/chapters` | List available chapters. |
+| `/supported_websites` | Browse supported manhwa/manga websites. |
+| `/stats` | View public bot stats. |
+| `/help` | Get started with the bot. |
+
+## Who is it for?
+
+Manhwa Updates Bot is built for Discord communities that want automatic chapter notifications without manually checking websites. It is useful for:
+
+- Manhwa servers and reading groups.
+- Manga/manhua communities that follow multiple sources.
+- Server owners who want update channels and role pings.
+- Readers who want DM notifications and bookmarks.
+- Users who need direct website tracking instead of only MangaDex/RSS-based alerts.
+
+## Supported Websites
+
+Supported websites are provided by the crawler service and can change over time. In Discord, run:
+
+```text
+/supported_websites
+```
+
+The bot is designed for manhwa, manga, and manhua chapter update tracking from supported websites, including scanlator-style sources when available.
+
+## FAQ
+
+### Is Manhwa Updates Bot hosted?
+
+Yes. **No self-hosting is required.** The public hosted Discord bot can be invited and used out of the box.
+
+### Is this a manhwa Discord bot?
+
+Yes. Manhwa Updates Bot is a Discord bot for manhwa chapter notifications, server tracking, role pings, DM subscriptions, bookmarks, and supported-website browsing.
+
+### Does it only support manhwa?
+
+No. The bot is focused on manhwa update tracking, but it can also track manga and manhua from supported websites.
+
+### Is this a manwha updates bot?
+
+Yes — if you searched for "manwha updates bot," you probably mean "manhwa updates bot." Manhwa Updates Bot tracks manhwa chapter releases and sends Discord notifications.
+
+### Can I self-host it?
+
+This repository contains the bot source code for development and self-hosted deployments, but normal users should use the hosted invite above.
+
+## Self-hosting / Developer Setup
+
+A thin Discord bot delegates all manga scraping, search, chapter listing, tracking, and update detection to a separate crawler service. The bot keeps Discord-facing state locally: bookmarks, per-guild tracking, user subscriptions, guild settings, premium grants, and notification offsets.
 
 > **v1 users:** the original bot with in-bot scraping and the 25-minute polling cog is archived on the [`v1`](https://github.com/MooshiMochi/ManhwaUpdatesBot/tree/v1) branch. v2 is a clean rewrite with no shared runtime code.
 
-## What changed
+### What changed in v2
 
 - **Push, not poll.** New chapters arrive from the crawler over `notification_event` WebSocket pushes.
 - **No in-bot scraping.** The bot does not ship cloudscraper, captcha logic, or scanlator HTML parsers.
@@ -13,7 +96,7 @@ A thin Discord bot that delegates all manga scraping, search, chapter listing, t
 - **Three-source premium.** Manual DB grants, Patreon active patrons, and Discord App Subscription entitlements can all unlock premium gates.
 - **Same user-facing commands.** Slash command names, core parameters, embeds, and pagination behavior are preserved from v1.
 
-## Requirements
+### Requirements
 
 - Python 3.14.2
 - A running crawler service with a WebSocket API key
@@ -24,7 +107,7 @@ A thin Discord bot that delegates all manga scraping, search, chapter listing, t
 
 Message content and presences intents are intentionally not used. Owner dev commands are invoked by mentioning the bot, for example `@ManhwaUpdatesBot d sync`.
 
-## Quick start
+### Local quick start
 
 ```bash
 gh repo clone MooshiMochi/ManhwaUpdatesBot

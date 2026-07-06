@@ -104,6 +104,14 @@ def build_help_view(
 
     container.add_item(
         discord.ui.TextDisplay(
+            "Hosted Discord bot for manhwa, manga, and manhua chapter notifications.\n"
+            "No self-hosting required — invite the hosted bot and use it out of the box."
+        )
+    )
+    container.add_item(small_separator())
+
+    container.add_item(
+        discord.ui.TextDisplay(
             "**🚀  Getting Started**\n"
             "• `/settings` — Configure the bot for your server. *(Requires Manage Server)*"
         )
@@ -260,9 +268,7 @@ def _website_health_block(rows: list[dict] | None, *, limit: int = 5) -> str | N
         failures = int(r.get("failures") or 0)
         requests = int(r.get("requests") or 0)
         reason = str(r.get("top_reason") or "")
-        cells.append(
-            f"{key:<{key_w}}  {fail_pct:>5.1f}%  {failures:>4}/{requests:<5}  {reason}"
-        )
+        cells.append(f"{key:<{key_w}}  {fail_pct:>5.1f}%  {failures:>4}/{requests:<5}  {reason}")
     grid = "```\n" + "\n".join(cells) + "\n```"
     return f"**🩺  Website Health (worst by fail rate)**\n{grid}"
 

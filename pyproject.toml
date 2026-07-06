@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "manhwa_bot"
 version = "2.0.0"
-description = "Thin Discord bot that delegates manga scraping to a crawler service"
+description = "Hosted Discord bot for manhwa, manga, and manhua chapter update notifications"
 readme = "README.md"
 requires-python = ">=3.14"
 license = { file = "LICENSE" }
