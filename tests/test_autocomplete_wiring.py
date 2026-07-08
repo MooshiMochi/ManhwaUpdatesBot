@@ -50,7 +50,7 @@ def test_context_specific_commands_keep_their_autocompletes() -> None:
     assert _autocomplete_cb(sub_new, "manga_id") is autocomplete.tracked_manga_in_guild_with_all
 
     sub_delete = _subcommand(SubscriptionsCog.subscribe, "delete")
-    assert _autocomplete_cb(sub_delete, "manga_id") is autocomplete.user_subscribed_manga
+    assert _autocomplete_cb(sub_delete, "manga_id") is autocomplete.user_subscribed_manga_with_all
 
     track_remove = _subcommand(TrackingCog.track, "remove")
     assert _autocomplete_cb(track_remove, "manga_id") is autocomplete.tracked_manga_in_guild

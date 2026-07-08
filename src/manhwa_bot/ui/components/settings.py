@@ -7,6 +7,7 @@ from typing import Any
 
 import discord
 
+from ...checks import can_manage_guild, resolve_member
 from ...db.dm_settings import DmSettingsStore
 from ...db.guild_settings import GuildSettings, GuildSettingsStore
 from .. import emojis
@@ -310,10 +311,10 @@ class SettingsLayoutView(BaseLayoutView):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
             return False
-        member = interaction.guild.get_member(interaction.user.id)
+        member = resolve_member(interaction)
         if member is None:
             return False
-        if member.guild_permissions.manage_guild:
+        if can_manage_guild(member):
             return True
         manager_role_id = self._settings.bot_manager_role_id if self._settings else None
         if manager_role_id and any(r.id == manager_role_id for r in member.roles):
@@ -723,8 +724,7 @@ class ScanlatorChannelsLayoutView(BaseLayoutView):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
             return False
-        member = interaction.guild.get_member(interaction.user.id)
-        if member and member.guild_permissions.manage_guild:
+        if can_manage_guild(resolve_member(interaction)):
             return True
         await interaction.response.send_message(
             "You need the **Manage Server** permission to use this.", ephemeral=True
@@ -846,8 +846,7 @@ class ScanlatorAddLayoutView(BaseLayoutView):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not interaction.guild:
             return False
-        member = interaction.guild.get_member(interaction.user.id)
-        if member and member.guild_permissions.manage_guild:
+        if can_manage_guild(resolve_member(interaction)):
             return True
         await interaction.response.send_message(
             "You need the **Manage Server** permission to use this.", ephemeral=True

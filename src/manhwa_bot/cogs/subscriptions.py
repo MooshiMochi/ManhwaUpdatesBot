@@ -50,6 +50,26 @@ async def _add_role_safe(
     return role
 
 
+async def _remove_role_safe(
+    interaction: discord.Interaction, role: discord.Role
+) -> discord.Role | None:
+    """Remove *role* from the invoker. Returns the role on success, ``None`` on failure.
+
+    Treats "user doesn't have the role" as success.
+    """
+    member = interaction.user
+    if not isinstance(member, discord.Member):
+        return None
+    if role not in member.roles:
+        return role
+    try:
+        await member.remove_roles(role, reason="ManhwaUpdatesBot: /subscribe delete")
+    except discord.Forbidden, discord.HTTPException:
+        _log.exception("failed to remove role %s from user %s", role.id, member.id)
+        return None
+    return role
+
+
 class SubscriptionsCog(commands.Cog, name="Subscriptions"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -256,7 +276,7 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
     @app_commands.describe(
         manga_id="The name of the manga.",
     )
-    @app_commands.autocomplete(manga_id=autocomplete.user_subscribed_manga)
+    @app_commands.autocomplete(manga_id=autocomplete.user_subscribed_manga_with_all)
     @app_commands.rename(manga_id="manga")
     @has_premium(dm_only=True)
     async def subscribe_delete(
@@ -314,17 +334,39 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         view = build_unsubscribe_view(title=title, series_url=url, bot=self.bot)
         await interaction.followup.send(view=view, ephemeral=True)
 
+    async def _default_ping_role_of_invoker(
+        self, interaction: discord.Interaction, guild_id: int
+    ) -> discord.Role | None:
+        """Return the guild's default ping role if the invoker currently has it."""
+        if guild_id == 0 or interaction.guild is None:
+            return None
+        member = interaction.user
+        if not isinstance(member, discord.Member):
+            return None
+        gs = await self._guild_settings.get(guild_id)
+        if gs is None or gs.default_ping_role_id is None:
+            return None
+        role = interaction.guild.get_role(gs.default_ping_role_id)
+        if role is None or role not in member.roles:
+            return None
+        return role
+
     async def _handle_unsubscribe_all(
         self, interaction: discord.Interaction, guild_id: int
     ) -> None:
-        """Handle /subscribe delete manga_id=*."""
+        """Handle /subscribe delete manga_id=* — drop every subscription and the
+        default ping role."""
         try:
             subs = await self._subs.list_for_user(interaction.user.id, guild_id=guild_id, limit=500)
-            if not subs:
+            default_role = await self._default_ping_role_of_invoker(interaction, guild_id)
+            if not subs and default_role is None:
                 await interaction.followup.send(
                     view=build_simple_status_view(
                         title=f"{emojis.CHECK}  Nothing to unsubscribe from",
-                        description="You have no subscriptions in this server.",
+                        description=(
+                            "You have no subscriptions in this server and don't have "
+                            "the default ping role."
+                        ),
                         accent=discord.Colour.green(),
                         bot=self.bot,
                     ),
@@ -332,11 +374,18 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
                 )
                 return
 
+            prompt_parts: list[str] = []
+            if subs:
+                prompt_parts.append(
+                    f"unsubscribe from **{len(subs)}** subscribed series in this server"
+                )
+            if default_role is not None:
+                prompt_parts.append(f"remove the {default_role.mention} default ping role")
             confirm = ConfirmLayoutView(
                 author_id=interaction.user.id,
                 prompt=(
-                    f"You are about to unsubscribe from **{len(subs)}** subscribed series "
-                    "from this server.\n\n**Do you wish to continue?**"
+                    f"You are about to {' and '.join(prompt_parts)}."
+                    "\n\n**Do you wish to continue?**"
                 ),
                 prompt_title="Unsubscribe from all?",
                 bot=self.bot,
@@ -372,9 +421,38 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
                     )
                     fails += 1
 
+            role_note: str | None = None
+            if default_role is not None:
+                removed = await _remove_role_safe(interaction, default_role)
+                if removed is not None:
+                    role_note = (
+                        f"The {default_role.mention} default ping role has been removed — "
+                        "you'll no longer get server-wide update pings."
+                    )
+                else:
+                    role_note = (
+                        f"{emojis.WARNING} I couldn't remove {default_role.mention} — "
+                        "check my permissions and role order."
+                    )
+
+            if not subs and role_note is not None:
+                await interaction.edit_original_response(
+                    view=build_simple_status_view(
+                        title=f"{emojis.CHECK}  Unsubscribed",
+                        description=role_note,
+                        accent=discord.Colour.green(),
+                        bot=self.bot,
+                    ),
+                )
+                return
+
             await interaction.edit_original_response(
                 view=build_bulk_subscribe_result_view(
-                    successes=successes, fails=fails, action="unsubscribe", bot=self.bot
+                    successes=successes,
+                    fails=fails,
+                    action="unsubscribe",
+                    extra_note=role_note,
+                    bot=self.bot,
                 ),
             )
         except Exception as exc:

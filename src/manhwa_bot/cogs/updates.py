@@ -384,12 +384,12 @@ class UpdatesCog(commands.Cog, name="Updates"):
 
     @staticmethod
     def _compose_ping(guild: discord.Guild | None, row: Any, settings: Any) -> str:
-        """Build the role-mention prefix, verifying the role still exists.
+        """Build the role-mention prefix, verifying the roles still exist.
 
-        A series can carry a custom ``ping_role_id``. If that role has since been
-        deleted, mentioning its dangling id renders as "@unknown-role" in Discord,
-        so verify it against the guild first and fall back to the guild's default
-        ping role (also verified), then to no ping at all.
+        A series can carry a custom ``ping_role_id`` on top of the guild's
+        default ping role — both get pinged (deduplicated when they're the
+        same role). Deleted roles render as "@unknown-role" in Discord, so
+        each id is verified against the guild before mentioning it.
         """
 
         def _role_mention(role_id: Any) -> str | None:
@@ -404,14 +404,15 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 return None
             return f"<@&{rid}>"
 
+        mentions: list[str] = []
         custom = _role_mention(getattr(row, "ping_role_id", None))
         if custom is not None:
-            return custom
+            mentions.append(custom)
         if settings is not None:
             default = _role_mention(getattr(settings, "default_ping_role_id", None))
-            if default is not None:
-                return default
-        return ""
+            if default is not None and default not in mentions:
+                mentions.append(default)
+        return " ".join(mentions)
 
     async def _dispatch_to_user(
         self,

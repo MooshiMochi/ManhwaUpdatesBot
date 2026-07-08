@@ -91,6 +91,33 @@ def test_subscription_and_bookmark_autocomplete_use_prefix_labels_and_filters() 
     asyncio.run(_run())
 
 
+def test_user_subscribed_manga_with_all_prepends_all_choice() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                await SubscriptionStore(pool).subscribe(200, 100, "asura", "solo-leveling")
+
+                choices = await autocomplete.user_subscribed_manga_with_all(
+                    _interaction(pool=pool), ""
+                )
+                assert choices[0].value == "*"
+                assert "default ping role" in choices[0].name
+                assert [(c.name, c.value) for c in choices[1:]] == [
+                    ("(asura) solo-leveling", "asura:solo-leveling")
+                ]
+
+                # A non-matching query hides the All option.
+                filtered = await autocomplete.user_subscribed_manga_with_all(
+                    _interaction(pool=pool), "solo"
+                )
+                assert all(choice.value != "*" for choice in filtered)
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_bookmark_autocomplete_includes_subscribed_folder_beyond_first_page() -> None:
     # The old folder-ordered LIMIT 100 fetch silently dropped 'Subscribed'
     # bookmarks (that folder sorts last) for users with many bookmarks.

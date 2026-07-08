@@ -387,7 +387,7 @@ def test_ping_role_resolution_uses_row_ping_role() -> None:
             await _seed_tracked(bot.db, guild_ids=[1], ping_role_id=42)
             settings_store = GuildSettingsStore(bot.db)
             await settings_store.set_notifications_channel(1, 100)
-            await settings_store.set_default_ping_role(1, 99)  # should NOT win
+            await settings_store.set_default_ping_role(1, 99)  # pinged alongside custom
 
             channel = _make_channel()
             bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
@@ -397,7 +397,7 @@ def test_ping_role_resolution_uses_row_ping_role() -> None:
             kwargs = channel.send.await_args.kwargs
             assert "content" not in kwargs
             assert kwargs["allowed_mentions"].to_dict()["parse"] == ["roles"]
-            assert _top_level_text(kwargs["view"])[0] == "<@&42>"
+            assert _top_level_text(kwargs["view"])[0] == "<@&42> <@&99>"
         finally:
             await bot.db.close()
             tmp.cleanup()

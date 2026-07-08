@@ -24,6 +24,21 @@ def test_custom_role_used_when_it_still_exists() -> None:
     assert _compose_ping(guild, row, settings) == "<@&111>"
 
 
+def test_custom_and_default_roles_both_pinged() -> None:
+    # A custom series role must not replace the default ping role — both ping.
+    guild = _Guild({111, 222})
+    row = SimpleNamespace(ping_role_id=111)
+    settings = SimpleNamespace(default_ping_role_id=222)
+    assert _compose_ping(guild, row, settings) == "<@&111> <@&222>"
+
+
+def test_custom_role_equal_to_default_pings_once() -> None:
+    guild = _Guild({222})
+    row = SimpleNamespace(ping_role_id=222)
+    settings = SimpleNamespace(default_ping_role_id=222)
+    assert _compose_ping(guild, row, settings) == "<@&222>"
+
+
 def test_deleted_custom_role_falls_back_to_default() -> None:
     # The reported bug: a custom ping role was deleted, so its dangling id
     # rendered as "@unknown-role". It must fall back to the default ping role.
@@ -55,7 +70,7 @@ def test_no_roles_configured_yields_no_ping() -> None:
 
 
 def test_unresolvable_guild_mentions_best_effort() -> None:
-    # When the guild isn't cached we can't verify; still emit the mention.
+    # When the guild isn't cached we can't verify; still emit both mentions.
     row = SimpleNamespace(ping_role_id=111)
     settings = SimpleNamespace(default_ping_role_id=222)
-    assert _compose_ping(None, row, settings) == "<@&111>"
+    assert _compose_ping(None, row, settings) == "<@&111> <@&222>"

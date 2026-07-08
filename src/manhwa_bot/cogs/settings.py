@@ -9,6 +9,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from ..checks import can_manage_guild, resolve_member
 from ..db.guild_settings import GuildSettingsStore
 from ..ui.components.settings import (
     DmSettingsLayoutView,
@@ -43,8 +44,8 @@ class SettingsCog(commands.Cog, name="Settings"):
             )
             return
 
-        member = guild.get_member(interaction.user.id)
-        if member is None or not member.guild_permissions.manage_guild:
+        member = resolve_member(interaction)
+        if not can_manage_guild(member):
             existing = await self._store.get(guild_id)
             allowed = (
                 existing is not None

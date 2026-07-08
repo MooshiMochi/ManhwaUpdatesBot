@@ -414,6 +414,7 @@ def build_bulk_subscribe_result_view(
     successes: int,
     fails: int,
     action: str,
+    extra_note: str | None = None,
     bot: discord.Client | None = None,
 ) -> discord.ui.LayoutView:
     """Result view for /subscribe all and /unsubscribe all."""
@@ -424,6 +425,8 @@ def build_bulk_subscribe_result_view(
             f"\n\n{emojis.WARNING} I was unable to {verb_past.split()[0]} **{fails}** series. "
             "Double-check my permissions and try again."
         )
+    if extra_note:
+        body += f"\n\n{extra_note}"
     accent = None if fails else discord.Colour.green()
     label = "Subscribed" if action == "subscribe" else "Unsubscribed"
     container = discord.ui.Container(

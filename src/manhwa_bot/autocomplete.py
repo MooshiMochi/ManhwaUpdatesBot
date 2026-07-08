@@ -235,6 +235,30 @@ async def user_subscribed_manga(
         return []
 
 
+async def user_subscribed_manga_with_all(
+    interaction: discord.Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    """Like :func:`user_subscribed_manga` but prepends an ``All`` option.
+
+    The first choice carries value ``"*"`` and represents "unsubscribe from
+    everything, including the default ping role". Hidden when the input is
+    non-empty and doesn't match.
+    """
+    if interaction.guild is None:
+        return []
+    base = await user_subscribed_manga(interaction, current)
+    query = str(current or "").strip().lower()
+    show_all = not query or query in "all" or query.startswith("*")
+    if not show_all:
+        return base
+    all_choice = app_commands.Choice(
+        name="All - Remove the default ping role & all subscriptions",
+        value="*",
+    )
+    return [all_choice, *base[:24]]
+
+
 async def user_bookmarks(
     interaction: discord.Interaction,
     current: str,
