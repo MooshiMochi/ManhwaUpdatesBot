@@ -1,0 +1,72 @@
+{
+  "website_key": "kaganeto",
+  "schema_mode": "dom",
+  "_UNVERIFIED": "kagane.to was not DNS-resolvable during recon; values are placeholders requiring live validation.",
+  "base_url": "https://kagane.to",
+  "url_regex": "^https?://(?:www\\.)?kagane\\.to/(?P<url_name>[^/]+)/?$",
+  "url_regex_UNVERIFIED": "Placeholder only; no live URL samples were available.",
+  "chapter_url_regex": "^https?://(?:www\\.)?kagane\\.to/(?P<url_name>[^/]+)/(?P<chapter_slug>[^/]+)/?$",
+  "chapter_url_regex_UNVERIFIED": "Placeholder only; no live chapter URL samples were available.",
+  "series_url_template": "{base_url}/{url_name}/",
+  "series_url_template_UNVERIFIED": "Placeholder only; requires round-trip verification.",
+  "chapter_url_template": "{base_url}/{url_name}/{chapter_slug}/",
+  "chapter_url_template_UNVERIFIED": "Placeholder only; requires round-trip verification.",
+  "series_page": {
+    "metadata": {
+      "extractor": {
+        "kind": "dom",
+        "selectors": {
+          "title": "UNVERIFIED",
+          "cover_url": "UNVERIFIED",
+          "synopsis": "UNVERIFIED",
+          "status": "UNVERIFIED"
+        }
+      },
+      "_UNVERIFIED": "No series HTML fetched."
+    },
+    "chapters": {
+      "primary": {
+        "kind": "dom",
+        "selectors": {
+          "chapter_row": "UNVERIFIED",
+          "name": "UNVERIFIED",
+          "url": "UNVERIFIED",
+          "released_at": "UNVERIFIED"
+        }
+      },
+      "_UNVERIFIED": "No chapter list HTML fetched."
+    }
+  },
+  "search": {
+    "request": {
+      "_UNVERIFIED": "Search transport and parameters unknown (host unreachable)."
+    },
+    "extractor": {
+      "kind": "dom",
+      "selectors": {
+        "item": "UNVERIFIED",
+        "title": "UNVERIFIED",
+        "url": "UNVERIFIED",
+        "cover": "UNVERIFIED"
+      }
+    },
+    "identity_map": {}
+  },
+  "front_page": {
+    "extractor": {
+      "kind": "dom",
+      "selectors": {
+        "item": "UNVERIFIED",
+        "title": "UNVERIFIED",
+        "url": "UNVERIFIED",
+        "cover": "UNVERIFIED",
+        "recent_chapter_name": "UNVERIFIED",
+        "recent_chapter_url": "UNVERIFIED",
+        "recent_chapter_released_at": "UNVERIFIED"
+      }
+    },
+    "identity_map": {}
+  },
+  "cookies": [],
+  "local_storage": []
+}

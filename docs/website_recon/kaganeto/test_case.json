@@ -1,0 +1,26 @@
+{
+  "website_key": "kaganeto",
+  "status": "UNVERIFIED",
+  "reason": "kagane.to was not DNS-resolvable during recon, so no live series/chapter/test candidate could be validated.",
+  "title": "UNVERIFIED",
+  "url": "UNVERIFIED",
+  "status_string": "UNVERIFIED",
+  "chapter_count": 0,
+  "first_chapter": {
+    "index": 0,
+    "name": "UNVERIFIED",
+    "url": "UNVERIFIED"
+  },
+  "last_chapter": {
+    "index": 0,
+    "name": "UNVERIFIED",
+    "url": "UNVERIFIED"
+  },
+  "synopsis_substring": "UNVERIFIED",
+  "search_query": "UNVERIFIED",
+  "cover_url": "UNVERIFIED",
+  "minimum_expectations": {
+    "search_results_min": 0,
+    "front_page_results_min": 0
+  }
+}
