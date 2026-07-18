@@ -311,6 +311,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._site_meta_cache: dict[str, dict[str, Any]] = {}
         self._tracking_cache: dict[tuple[str, str], _TrackingStatus] = {}
         self._track_button_cache: dict[tuple[str, str], _TrackButtonState] = {}
+        self._member_memo: dict[int, discord.Member | None] = {}
         self._preload_task: asyncio.Task[None] | None = None
         self._filtered = self._apply_folder_filter()
         self._index = max(0, min(index, max(0, len(self._filtered) - 1)))
@@ -435,6 +436,29 @@ class BookmarkBrowserView(BaseLayoutView):
         self._chapter_cache[key] = chapters
         return chapters
 
+    async def _resolve_invoker_member(self, guild: discord.Guild) -> discord.Member | None:
+        """Resolve the invoker's membership in *guild* without trusting the cache.
+
+        With ``chunk_guilds_at_startup=False`` the member cache is empty for most
+        guilds, so a bare ``get_member()`` falsely reports "not a member". Fall
+        back to one HTTP fetch per guild (404 = genuinely not a member) and
+        memoise the result for the lifetime of this view.
+        """
+        uid = int(self._invoker_id or 0)
+        if uid <= 0:
+            return None
+        gid = int(guild.id)
+        if gid in self._member_memo:
+            return self._member_memo[gid]
+        member = guild.get_member(uid)
+        if member is None:
+            try:
+                member = await guild.fetch_member(uid)
+            except discord.HTTPException:
+                member = None
+        self._member_memo[gid] = member
+        return member
+
     async def _tracking_status_for(self, bm: Bookmark) -> _TrackingStatus:
         key = self._bookmark_key(bm)
         if key in self._tracking_cache:
@@ -465,7 +489,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 guild = self._bot.get_guild(int(row.guild_id))
                 if guild is None:
                     continue
-                member = guild.get_member(int(self._invoker_id or 0))
+                member = await self._resolve_invoker_member(guild)
                 if member is not None:
                     mutual_guild = guild
                     chosen_row = row
@@ -489,7 +513,7 @@ class BookmarkBrowserView(BaseLayoutView):
             if isinstance(channel, discord.TextChannel | discord.Thread):
                 channel_name = channel.name
                 if mutual_guild is not None:
-                    member = mutual_guild.get_member(int(self._invoker_id or 0))
+                    member = await self._resolve_invoker_member(mutual_guild)
                     if member is not None:
                         try:
                             channel_visible = channel.permissions_for(member).read_messages
@@ -544,7 +568,7 @@ class BookmarkBrowserView(BaseLayoutView):
             self._track_button_cache[key] = state
             return state
 
-        member = guild.get_member(int(self._invoker_id or 0))
+        member = await self._resolve_invoker_member(guild)
         if member is None:
             state = _TrackButtonState(
                 show=True,

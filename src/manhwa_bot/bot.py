@@ -25,6 +25,7 @@ from .db.migrate import apply_pending
 from .db.patreon_links import PatreonLinkStore
 from .db.pool import DbPool
 from .db.premium_grants import PremiumGrantStore
+from .discord_log import setup_discord_logging
 from .premium import (
     DiscordEntitlementsService,
     GrantsService,
@@ -97,6 +98,11 @@ class ManhwaBot(commands.Bot):
     async def setup_hook(self) -> None:
         self.started_at = datetime.now(tz=UTC)
 
+        # Mirror WARNING+ logs to the configured Discord channel. Attached
+        # first so records from the rest of startup are buffered and flushed
+        # once the bot is ready.
+        setup_discord_logging(self)
+
         granted = self._connection._intents  # type: ignore[attr-defined]
         _log.info("Resolved intents: %s", granted)
         if not self.intents.members:
@@ -158,6 +164,9 @@ class ManhwaBot(commands.Bot):
 
     async def close(self) -> None:
         _log.info("Shutting down…")
+        task = getattr(self, "discord_log_task", None)
+        if task is not None:
+            task.cancel()
         await self.patreon.stop()
         await self.grants.stop()
         await self.crawler.stop()

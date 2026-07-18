@@ -193,8 +193,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     return
                 channel = self.bot.get_channel(channel_id)
                 if channel is None or not isinstance(channel, discord.abc.Messageable):
-                    _log.debug(
-                        "channel %s for guild %s not resolvable; skipping",
+                    _log.warning(
+                        "channel %s for guild %s not resolvable; dropping notification",
                         channel_id,
                         row.guild_id,
                     )
@@ -279,8 +279,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
 
                 channel = self.bot.get_channel(channel_id)
                 if channel is None or not isinstance(channel, discord.abc.Messageable):
-                    _log.debug(
-                        "channel %s for guild %s not resolvable; skipping",
+                    _log.warning(
+                        "channel %s for guild %s not resolvable; dropping notification",
                         channel_id,
                         row.guild_id,
                     )

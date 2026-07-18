@@ -61,11 +61,17 @@ def crawler_client_id(config: Any) -> str:
     return consumer_key or "manhwa-bot"
 
 
-async def handle_series_sync_request(bot: Any, envelope: dict[str, Any]) -> None:
-    data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
-    sync_request_id = str(data.get("request_id") or envelope.get("request_id") or "").strip()
-    ttl_days = int(data.get("client_reference_ttl_days") or 365)
+async def submit_series_references(
+    bot: Any, *, sync_request_id: str = "", ttl_days: int = 365
+) -> None:
+    """Push every series this bot references to the crawler.
 
+    Besides refreshing GC-protection refs, the crawler reconciles its
+    ``series_trackers`` against this list — re-creating tracker rows that were
+    lost (terminal-status cleanup, cascade deletes, api-key rotation). A lost
+    tracker silently stops both scheduling and notification delivery for that
+    series, so this submission is the self-healing path.
+    """
     bookmarks = BookmarkStore(bot.db)
     tracked = TrackedStore(bot.db)
     subscriptions = SubscriptionStore(bot.db)
@@ -74,16 +80,38 @@ async def handle_series_sync_request(bot: Any, envelope: dict[str, Any]) -> None
         tracked_refs=await tracked.list_distinct_series_refs(),
         subscription_refs=await subscriptions.list_distinct_series_refs(),
     )
-    await bot.crawler.request(
+    data = await bot.crawler.request(
         "series_sync_submit",
         sync_request_id=sync_request_id,
         client_id=crawler_client_id(bot.config),
         client_reference_ttl_days=ttl_days,
         refs=refs,
     )
-    _log.info(
-        "submitted %d series references to crawler sync request %s", len(refs), sync_request_id
+    repaired = int((data or {}).get("repaired_trackers") or 0)
+    unrepairable = int((data or {}).get("unrepairable_refs") or 0)
+    log = _log.warning if (repaired or unrepairable) else _log.info
+    log(
+        "submitted %d series references to crawler sync request %s "
+        "(repaired_trackers=%d unrepairable_refs=%d)",
+        len(refs),
+        sync_request_id or "(unsolicited)",
+        repaired,
+        unrepairable,
     )
+
+
+async def handle_series_sync_request(bot: Any, envelope: dict[str, Any]) -> None:
+    data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
+    sync_request_id = str(data.get("request_id") or envelope.get("request_id") or "").strip()
+    ttl_days = int(data.get("client_reference_ttl_days") or 365)
+    await submit_series_references(bot, sync_request_id=sync_request_id, ttl_days=ttl_days)
+
+
+async def _submit_on_connect(bot: Any) -> None:
+    try:
+        await submit_series_references(bot)
+    except Exception:
+        _log.exception("series sync submission on connect failed")
 
 
 def register_series_sync_handler(bot: Any) -> None:
@@ -91,3 +119,6 @@ def register_series_sync_handler(bot: Any) -> None:
         "series_sync_request",
         lambda envelope: handle_series_sync_request(bot, envelope),
     )
+    # Submit unprompted on every (re)connect so tracker repair does not wait
+    # for the crawler's periodic sync broadcast.
+    bot.crawler.on_connect(lambda: _submit_on_connect(bot))

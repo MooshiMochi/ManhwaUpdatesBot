@@ -25,6 +25,8 @@ class BotConfig:
     logger_levels: tuple[tuple[str, str], ...]
     dev_guild_id: int
     command_prefix: str
+    # Discord channel that mirrors WARNING+ log records (0 = disabled).
+    error_log_channel_id: int = 0
 
 
 @dataclass(frozen=True)
@@ -205,6 +207,12 @@ def load_config(
             _env_override(
                 "MANHWABOT_BOT_COMMAND_PREFIX",
                 bot_section.get("command_prefix", "?"),
+            )
+        ),
+        error_log_channel_id=int(
+            _env_override(
+                "MANHWABOT_BOT_ERROR_LOG_CHANNEL_ID",
+                bot_section.get("error_log_channel_id", 0),
             )
         ),
     )

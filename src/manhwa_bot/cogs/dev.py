@@ -426,6 +426,9 @@ class DevCog(commands.Cog, name="Dev"):
         if not contents.strip():
             await ctx.send(_code_block("-<[ No logs. ]>-", "diff"))
             return
+        # The rotating handler caps the file at 5MB; only ship the tail.
+        if len(contents) > 8000:
+            contents = f"… (showing last 8000 of {len(contents)} chars)\n" + contents[-8000:]
         await self._send_long_text(ctx, contents, lang="")
 
     # -- export_db / import_db -----------------------------------------
@@ -692,29 +695,52 @@ class DevCog(commands.Cog, name="Dev"):
         store = GuildSettingsStore(self.bot.db)
         targets = await store.list_with_system_alerts()
         viable: list[tuple[int, int]] = []
+        skipped: list[tuple[int, str]] = []
         for s in targets:
             channel_id = s.system_alerts_channel_id
             if channel_id is None:
                 continue
             channel = self.bot.get_channel(int(channel_id))
             if channel is None or not isinstance(channel, discord.abc.Messageable):
+                skipped.append((s.guild_id, f"channel {channel_id} not found or not messageable"))
                 continue
             guild = getattr(channel, "guild", None)
             me = guild.me if guild is not None else None
             perms = channel.permissions_for(me) if me is not None else None
-            if perms is None or (perms.send_messages and perms.embed_links):
-                viable.append((s.guild_id, int(channel_id)))
+            # The alert view is TextDisplay-only, so Send Messages is the only
+            # hard requirement; when perms can't be resolved, try anyway and
+            # let the send surface the real error.
+            if perms is not None and not perms.send_messages:
+                skipped.append(
+                    (
+                        s.guild_id,
+                        f"missing Send Messages in #{getattr(channel, 'name', channel_id)}",
+                    )
+                )
+                continue
+            viable.append((s.guild_id, int(channel_id)))
+
+        for guild_id, reason in skipped:
+            _log.warning("g_update: skipping guild %s: %s", guild_id, reason)
 
         if not viable:
-            await ctx.send("No viable system-alerts channels found.")
+            lines = [self._g_update_outcome_line(guild_id, reason) for guild_id, reason in skipped]
+            detail = ("\n" + "\n".join(lines[:15])) if lines else ""
+            await ctx.send(f"No viable system-alerts channels found.{detail}")
             return
 
         # Show the alert preview + confirm prompt as two messages (V2 messages
         # can't combine content with a view in one send).
         preview_msg = await ctx.send(view=build_g_update_view(message=message, bot=self.bot))
+        target_names = ", ".join(
+            (self.bot.get_guild(guild_id).name if self.bot.get_guild(guild_id) else str(guild_id))
+            for guild_id, _ in viable[:15]
+        )
+        if len(viable) > 15:
+            target_names += f", … +{len(viable) - 15} more"
         confirm = ConfirmLayoutView(
             author_id=ctx.author.id,
-            prompt=f"Send to **{len(viable)}** guilds?",
+            prompt=f"Send to **{len(viable)}** guild(s)?\n-# {target_names}",
             prompt_title="Confirm broadcast",
             bot=self.bot,
         )
@@ -731,9 +757,11 @@ class DevCog(commands.Cog, name="Dev"):
         await confirm_msg.edit(content=f"Sending to {len(viable)}…", view=None)
 
         ok = 0
-        for _guild_id, channel_id in viable:
+        failures: list[tuple[int, str]] = []
+        for guild_id, channel_id in viable:
             channel = self.bot.get_channel(channel_id)
             if not isinstance(channel, discord.abc.Messageable):
+                failures.append((guild_id, f"channel {channel_id} disappeared before send"))
                 continue
             try:
                 await channel.send(
@@ -741,9 +769,32 @@ class DevCog(commands.Cog, name="Dev"):
                     allowed_mentions=discord.AllowedMentions(roles=True),
                 )
                 ok += 1
-            except discord.HTTPException:
-                pass
-        await confirm_msg.edit(content=f"Sent to {ok}/{len(viable)}.")
+            except discord.HTTPException as exc:
+                _log.warning(
+                    "g_update: send failed guild=%s channel=%s status=%s code=%s: %s",
+                    guild_id,
+                    channel_id,
+                    exc.status,
+                    exc.code,
+                    exc.text,
+                )
+                failures.append(
+                    (guild_id, f"HTTP {exc.status} (code {exc.code}): {exc.text or 'no detail'}")
+                )
+        summary = f"Sent to {ok}/{len(viable)}."
+        problem_lines = [
+            self._g_update_outcome_line(guild_id, reason) for guild_id, reason in failures + skipped
+        ]
+        if problem_lines:
+            summary += "\n" + "\n".join(problem_lines[:15])
+            if len(problem_lines) > 15:
+                summary += f"\n… and {len(problem_lines) - 15} more (see logs)"
+        await confirm_msg.edit(content=summary[:1990])
+
+    def _g_update_outcome_line(self, guild_id: int, reason: str) -> str:
+        guild = self.bot.get_guild(int(guild_id))
+        label = guild.name if guild is not None else str(guild_id)
+        return f"- **{label}**: {reason}"
 
     # -- test_update ----------------------------------------------------
 

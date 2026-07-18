@@ -45,3 +45,29 @@ def test_configure_applies_configured_logger_levels_when_root_is_debug() -> None
         discord_logger.setLevel(original_discord_level)
         aiohttp_logger.setLevel(original_aiohttp_level)
         sqlite_logger.setLevel(original_sqlite_level)
+
+
+def test_configure_adds_rotating_error_file_handler(tmp_path) -> None:
+    root = logging.getLogger()
+    original_handlers = list(root.handlers)
+    original_root_level = root.level
+
+    try:
+        root.handlers = []
+        error_log = tmp_path / "logs" / "errors.log"
+        log.configure("INFO", error_log_path=error_log)
+
+        logging.getLogger("manhwa_bot.test").warning("something went wrong")
+        logging.getLogger("manhwa_bot.test").info("routine info line")
+        for handler in root.handlers:
+            handler.flush()
+
+        content = error_log.read_text(encoding="utf-8")
+        assert "something went wrong" in content
+        assert "routine info line" not in content
+    finally:
+        for handler in list(root.handlers):
+            if handler not in original_handlers:
+                handler.close()
+        root.handlers = original_handlers
+        root.setLevel(original_root_level)

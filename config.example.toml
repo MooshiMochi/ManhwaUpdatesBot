@@ -12,6 +12,9 @@ command_prefix = "?"
 # Optional: a single home guild where prefix-mentioned dev commands are allowed (extra defense-in-depth).
 # Leave as 0 to allow dev commands in any guild the owner can reach.
 dev_guild_id = 0
+# Optional: Discord channel that mirrors WARNING+ log records as codeblock
+# messages (oversize records ship as file attachments). 0 disables the mirror.
+error_log_channel_id = 0
 
 [bot.logger_levels]
 # Per-logger thresholds. Useful for keeping noisy libraries quiet while bot.log_level is DEBUG.
