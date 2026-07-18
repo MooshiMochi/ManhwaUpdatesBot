@@ -270,7 +270,7 @@ class GeneralCog(commands.Cog, name="General"):
         try:
             ws_data = await bot.crawler.request("supported_websites")
             websites_count = len(ws_data.get("websites") or [])
-        except (CrawlerError, RequestTimeout, Disconnected):
+        except CrawlerError, RequestTimeout, Disconnected:
             websites_count = 0
 
         website_health = await self._fetch_website_health(bot)
@@ -303,7 +303,7 @@ class GeneralCog(commands.Cog, name="General"):
         """
         try:
             data = await bot.crawler.request("website_stats", window="7d", recent_limit=0)
-        except (CrawlerError, RequestTimeout, Disconnected):
+        except CrawlerError, RequestTimeout, Disconnected:
             return None
         rows = data.get("rows") if isinstance(data, dict) else None
         if not isinstance(rows, list):

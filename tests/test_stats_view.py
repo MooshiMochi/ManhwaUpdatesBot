@@ -70,8 +70,20 @@ def test_stats_view_renders_website_health_when_provided() -> None:
         bot_created_unix=2,
         bot=None,
         website_health=[
-            {"website_key": "comix", "requests": 100, "failures": 40, "fail_pct": 40.0, "top_reason": "cloudflare_block"},
-            {"website_key": "asura", "requests": 200, "failures": 2, "fail_pct": 1.0, "top_reason": "timeout"},
+            {
+                "website_key": "comix",
+                "requests": 100,
+                "failures": 40,
+                "fail_pct": 40.0,
+                "top_reason": "cloudflare_block",
+            },
+            {
+                "website_key": "asura",
+                "requests": 200,
+                "failures": 2,
+                "fail_pct": 1.0,
+                "top_reason": "timeout",
+            },
         ],
     )
     text = _collect_text(view)
