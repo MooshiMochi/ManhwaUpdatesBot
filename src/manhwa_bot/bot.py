@@ -133,8 +133,11 @@ class ManhwaBot(commands.Bot):
         self.add_listener(self._on_command_error, "on_command_error")
         _log.info("Premium subsystem initialized")
 
-        await self.crawler.start()
+        # Register before start() so the on-connect submission (which drives
+        # crawler-side tracker reconciliation) fires on the initial connect
+        # too, not just on later reconnects.
         register_series_sync_handler(self)
+        await self.crawler.start()
         _log.info("Crawler client started")
 
         self.websites_cache: TtlCache[list] = TtlCache()
