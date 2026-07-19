@@ -176,12 +176,18 @@ class LayoutPaginator:
             _log.exception("paginator: failed to edit message for nav %s", target)
 
     async def _stop(self, interaction: discord.Interaction) -> None:
-        try:
-            await interaction.response.edit_message(view=None)
-        except discord.HTTPException:
-            _log.exception("paginator: failed to clear view on stop")
         for page in self._pages:
+            for child in page.walk_children():
+                if hasattr(child, "disabled"):
+                    try:
+                        child.disabled = True  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
             page.stop()
+        try:
+            await interaction.response.edit_message(view=self.current_view)
+        except discord.HTTPException:
+            _log.exception("paginator: failed to disable controls on stop")
 
 
 async def send_paginated(
