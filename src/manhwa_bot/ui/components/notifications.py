@@ -123,7 +123,7 @@ def build_status_change_view(
         body += "\n\nTracking has ended for this series."
 
     container = discord.ui.Container()
-    gallery = hero_cover_gallery(cover_url)
+    gallery = hero_cover_gallery(cover_url, spoiler=spoiler)
     if gallery is not None:
         container.add_item(gallery)
     container.add_item(discord.ui.TextDisplay(header))

@@ -206,6 +206,14 @@ def _media_gallery_urls(view: discord.ui.LayoutView) -> list[str]:
     return urls
 
 
+def _media_gallery_spoilers(view: discord.ui.LayoutView) -> list[bool]:
+    spoilers: list[bool] = []
+    for item in view.walk_children():
+        if isinstance(item, discord.ui.MediaGallery):
+            spoilers.extend(gallery_item.spoiler for gallery_item in item.items)
+    return spoilers
+
+
 def _top_level_text(view: discord.ui.LayoutView) -> list[str]:
     return [item.content for item in view.children if isinstance(item, discord.ui.TextDisplay)]
 
@@ -608,6 +616,33 @@ def test_status_change_dispatch_sends_without_buttons() -> None:
             buttons = [c for c in view.walk_children() if isinstance(c, discord.ui.Button)]
             assert buttons == []
             assert _top_level_text(view)[0] == "<@&42>"
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_status_change_dispatch_spoilers_nsfw_cover() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(
+                bot.db,
+                guild_ids=[1],
+                cover_url="https://example.com/nsfw-cover.jpg",
+            )
+            await GuildSettingsStore(bot.db).set_notifications_channel(1, 100)
+
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            record = _status_payload()
+            record["payload"]["is_nsfw"] = True
+            await cog.dispatch(record)
+
+            view = channel.send.await_args.kwargs["view"]
+            assert _media_gallery_spoilers(view) == [True]
         finally:
             await bot.db.close()
             tmp.cleanup()
