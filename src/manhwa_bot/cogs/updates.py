@@ -44,6 +44,19 @@ def _channel_is_nsfw(channel: Any) -> bool:
         return False
 
 
+async def _resolve_messageable_channel(
+    bot: commands.Bot, channel_id: int
+) -> discord.abc.Messageable | None:
+    """Resolve a configured channel from cache, then Discord's HTTP API."""
+    channel = bot.get_channel(channel_id)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(channel_id)
+        except discord.Forbidden, discord.NotFound, discord.HTTPException:
+            return None
+    return channel if isinstance(channel, discord.abc.Messageable) else None
+
+
 class UpdatesCog(commands.Cog, name="Updates"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: ManhwaBot = bot  # type: ignore[assignment]
@@ -191,8 +204,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 if channel_id is None:
                     _log.warning("guild %s has no notification channel; skipping", row.guild_id)
                     return
-                channel = self.bot.get_channel(channel_id)
-                if channel is None or not isinstance(channel, discord.abc.Messageable):
+                channel = await _resolve_messageable_channel(self.bot, channel_id)
+                if channel is None:
                     _log.warning(
                         "channel %s for guild %s not resolvable; dropping notification",
                         channel_id,
@@ -277,8 +290,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 if not self._passes_paid_chapter_gate(payload, is_premium, settings):
                     return
 
-                channel = self.bot.get_channel(channel_id)
-                if channel is None or not isinstance(channel, discord.abc.Messageable):
+                channel = await _resolve_messageable_channel(self.bot, channel_id)
+                if channel is None:
                     _log.warning(
                         "channel %s for guild %s not resolvable; dropping notification",
                         channel_id,

@@ -84,6 +84,7 @@ class _BotStub:
     config: AppConfig
     crawler: object  # unused in dispatch path
     get_channel: MagicMock
+    fetch_channel: AsyncMock
     fetch_user: AsyncMock
     premium: object  # PremiumService-like; .is_premium(...) -> (bool, str | None)
 
@@ -165,6 +166,7 @@ async def _setup() -> tuple[_BotStub, UpdatesCog, tempfile.TemporaryDirectory]:
         config=_build_config(),
         crawler=SimpleNamespace(),
         get_channel=MagicMock(),
+        fetch_channel=AsyncMock(return_value=None),
         fetch_user=AsyncMock(),
         premium=SimpleNamespace(is_premium=AsyncMock(return_value=(True, "disabled"))),
     )
@@ -227,6 +229,27 @@ def test_three_guilds_one_missing_channel_skipped() -> None:
             assert channels[200].send.await_count == 1
             # No channel resolved for guild 3 → no extra sends.
             assert sum(c.send.await_count for c in channels.values()) == 2
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_dispatch_fetches_a_configured_channel_missing_from_cache() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1])
+            await GuildSettingsStore(bot.db).set_notifications_channel(1, 100)
+            channel = _make_channel()
+            bot.get_channel.return_value = None
+            bot.fetch_channel.return_value = channel
+
+            await cog.dispatch(_payload())
+
+            bot.fetch_channel.assert_awaited_once_with(100)
+            assert channel.send.await_count == 1
         finally:
             await bot.db.close()
             tmp.cleanup()
