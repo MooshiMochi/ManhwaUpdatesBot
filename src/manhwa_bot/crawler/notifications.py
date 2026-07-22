@@ -1,9 +1,9 @@
-"""Notification consumer — catch-up replay + live push handoff.
+"""Ordered crawler stream consumer — catch-up replay + live push handoff.
 
-Owns the WS-level state machine that turns the crawler's `notification_event`
-push and `notifications_list` replay into an in-order stream of records
-delivered to a single ``dispatch`` callback. Persists the last-acked
-notification id locally so reconnects only replay genuinely missed events.
+Owns the WS-level state machine that turns one crawler push/replay protocol
+into an in-order stream of records delivered to a single ``dispatch`` callback.
+The default protocol is chapter notifications; callers can supply another
+protocol, such as operational alerts, while sharing the same replay guarantee.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ DispatchFn = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 class NotificationConsumer:
-    """Catch-up replay + live-push handoff for crawler notification_event.
+    """Catch-up replay + live-push handoff for a crawler record stream.
 
     Designed to be created once per bot lifetime. ``start()`` is idempotent.
     The single ``dispatch`` callback is responsible for any per-target
@@ -40,12 +40,24 @@ class NotificationConsumer:
         consumer_key: str,
         dispatch: DispatchFn,
         catchup_page_size: int = 200,
+        push_type: str = "notification_event",
+        list_request_type: str = "notifications_list",
+        ack_request_type: str = "notifications_ack",
+        records_key: str = "notifications",
+        push_record_key: str = "notification",
+        last_id_key: str = "last_notification_id",
     ) -> None:
         self._client = client
         self._store = store
         self._consumer_key = consumer_key
         self._dispatch = dispatch
         self._catchup_page_size = max(1, min(int(catchup_page_size), 500))
+        self._push_type = str(push_type)
+        self._list_request_type = str(list_request_type)
+        self._ack_request_type = str(ack_request_type)
+        self._records_key = str(records_key)
+        self._push_record_key = str(push_record_key)
+        self._last_id_key = str(last_id_key)
         self._lock = asyncio.Lock()
         self._pending_live: deque[dict[str, Any]] = deque()
         self._catching_up = False
@@ -72,7 +84,7 @@ class NotificationConsumer:
             self._consumer_key,
             self._last_acked,
         )
-        self._client.on_push("notification_event", self._on_push)
+        self._client.on_push(self._push_type, self._on_push)
         self._client.on_connect(self._on_connect)
         if self._client.connected:
             self._initial_task = asyncio.create_task(
@@ -100,15 +112,15 @@ class NotificationConsumer:
         while True:
             try:
                 data = await self._client.request(
-                    "notifications_list",
+                    self._list_request_type,
                     consumer_key=self._consumer_key,
                     since_id=self._last_acked,
                     limit=self._catchup_page_size,
                 )
             except (Disconnected, RequestTimeout, CrawlerError) as exc:
-                _log.warning("notifications_list failed: %s", exc)
+                _log.warning("%s failed: %s", self._list_request_type, exc)
                 return
-            records = data.get("notifications") or []
+            records = data.get(self._records_key) or []
             if not records:
                 _log.info("catch-up complete, last_acked=%d", self._last_acked)
                 return
@@ -154,9 +166,9 @@ class NotificationConsumer:
 
     async def _on_push(self, envelope: dict[str, Any]) -> None:
         data = envelope.get("data") or {}
-        record = data.get("notification")
+        record = data.get(self._push_record_key)
         if not isinstance(record, dict):
-            _log.debug("notification_event with no record payload; ignoring")
+            _log.debug("%s with no record payload; ignoring", self._push_type)
             return
         # Fast queue path: don't take the lock if we know we're catching up.
         if self._catching_up:
@@ -190,13 +202,14 @@ class NotificationConsumer:
             _log.exception("failed to persist last_acked=%d locally", self._last_acked)
         try:
             await self._client.request(
-                "notifications_ack",
+                self._ack_request_type,
                 consumer_key=self._consumer_key,
-                last_notification_id=self._last_acked,
+                **{self._last_id_key: self._last_acked},
             )
         except (Disconnected, RequestTimeout, CrawlerError) as exc:
             _log.warning(
-                "notifications_ack(%d) failed: %s; offset stored locally, will retry on reconnect",
+                "%s(%d) failed: %s; offset stored locally, will retry on reconnect",
+                self._ack_request_type,
                 self._last_acked,
                 exc,
             )
