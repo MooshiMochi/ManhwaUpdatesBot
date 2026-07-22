@@ -164,7 +164,10 @@ async def tracked_manga_in_guild(
         from .db.tracked import TrackedStore
 
         store = TrackedStore(bot.db)
-        rows = await store.list_for_guild(interaction.guild.id, limit=100)
+        # Filter the complete guild list before Discord's 25-choice cap.  A
+        # pre-filter LIMIT silently hid titles whose alphabetical position was
+        # beyond that page, including entries users needed to remove.
+        rows = await store.list_for_guild(interaction.guild.id)
         choices: list[app_commands.Choice[str]] = []
         for row in rows:
             label = _manga_choice_name(row.website_key, row.title)

@@ -15,10 +15,10 @@ from .. import autocomplete
 from ..checks import has_premium
 from ..crawler.chapter import Chapter
 from ..crawler.errors import CrawlerError, Disconnected, RequestTimeout
-from ..crawler.website_detect import detect_website_key
+from ..crawler.website_detect import detect_website_key, series_url_from_maybe_chapter_url
 from ..db.bookmarks import BookmarkStore
 from ..db.guild_settings import GuildSettingsStore
-from ..db.tracked import TrackedStore
+from ..db.tracked import GuildTrackedSeries, TrackedStore
 from ..ui.components.error import SOURCE_CRAWLER, build_error_view
 from ..ui.components.nsfw import should_spoiler
 from ..ui.components.paginator import LayoutPaginator
@@ -36,7 +36,6 @@ from ..ui.components.tracking import (
 _log = logging.getLogger(__name__)
 
 _LIST_PAGE_SIZE = 25
-_LIST_FETCH_LIMIT = 500
 
 _FRIENDLY_ERRORS: dict[str, str] = {
     "website_disabled": "That website is currently disabled on the crawler.",
@@ -64,6 +63,34 @@ class TrackingCog(commands.Cog, name="Tracking"):
     async def _guild_tracked_pairs(self, guild_id: int) -> list[tuple[str, str]]:
         rows = await self._tracked.list_for_guild(guild_id, limit=2000)
         return [(row.website_key, row.url_name) for row in rows]
+
+    async def _resolve_tracked_remove_input(
+        self, *, guild_id: int, manga_id: str
+    ) -> GuildTrackedSeries | None:
+        """Resolve an autocomplete value or series URL to this guild's tracked row."""
+        parsed = await autocomplete.resolve_series_value_async(
+            manga_id, lambda: self._guild_tracked_pairs(guild_id)
+        )
+        if parsed is None:
+            raw_url = str(manga_id or "").strip()
+            if not raw_url.startswith(("http://", "https://")):
+                return None
+            website_key = await detect_website_key(self.bot, raw_url)
+            if not website_key:
+                return None
+            try:
+                data = await self.bot.crawler.request(  # type: ignore[attr-defined]
+                    "info",
+                    website_key=website_key,
+                    url=series_url_from_maybe_chapter_url(raw_url),
+                )
+            except CrawlerError, RequestTimeout, Disconnected:
+                return None
+            url_name = str(data.get("url_name") or "").strip()
+            if not url_name:
+                return None
+            parsed = (website_key, url_name)
+        return await self._tracked.find_in_guild(guild_id, *parsed)
 
     # -- /track new ---------------------------------------------------------
 
@@ -458,28 +485,25 @@ class TrackingCog(commands.Cog, name="Tracking"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
 
-        parsed = await autocomplete.resolve_series_value_async(
-            manga_id, lambda: self._guild_tracked_pairs(interaction.guild_id or 0)
+        guild_id = interaction.guild_id  # type: ignore[union-attr]
+        series = await self._resolve_tracked_remove_input(
+            guild_id=guild_id,
+            manga_id=manga_id,
         )
-        if parsed is None:
+        if series is None:
             await interaction.followup.send(
                 view=build_error_view(
-                    "Couldn't parse that manga ID. Use the autocomplete.", bot=self.bot
+                    "That series is not tracked in this server. Use the autocomplete or paste its full "
+                    "series URL.",
+                    bot=self.bot,
                 ),
                 ephemeral=True,
             )
             return
 
-        website_key, url_name = parsed
-        guild_id = interaction.guild_id  # type: ignore[union-attr]
-
-        # Capture metadata before deletion.
-        series = await self._tracked.find(website_key, url_name)
-        title = series.title if series else f"{website_key}:{url_name}"
-
-        guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)
-        this_row = next((r for r in guild_rows if r.guild_id == guild_id), None)
-        captured_role_id = this_row.ping_role_id if this_row else None
+        website_key, url_name = series.website_key, series.url_name
+        title = series.title
+        captured_role_id = series.ping_role_id
 
         was_last, _remaining = await self._tracked.remove_from_guild(
             guild_id, website_key, url_name
@@ -529,7 +553,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
 
         view = build_track_remove_view(
             title=title,
-            series_url=series.series_url if series else None,
+            series_url=series.series_url,
             deleted_role_name=deleted_role_name,
             crawler_warning=was_last and not crawler_untracked,
             role_warning=delete_role and not role_deleted and bool(captured_role_id),
@@ -548,7 +572,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
         await interaction.response.defer(ephemeral=True)
 
         guild_id = interaction.guild_id  # type: ignore[union-attr]
-        rows = await self._tracked.list_for_guild(guild_id, limit=_LIST_FETCH_LIMIT)
+        rows = await self._tracked.list_for_guild(guild_id)
 
         guild = interaction.guild
 

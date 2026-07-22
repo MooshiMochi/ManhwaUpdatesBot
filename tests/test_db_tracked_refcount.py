@@ -89,3 +89,27 @@ def test_list_for_guild_and_find() -> None:
                 await pool.close()
 
     asyncio.run(_run())
+
+
+def test_list_for_guild_has_no_default_series_cap() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool, store = await _make_store(tmp)
+            try:
+                for index in range(501):
+                    url_name = f"series-{index:03d}"
+                    await store.upsert_series(
+                        "asura",
+                        url_name,
+                        f"https://example.com/{url_name}",
+                        f"Series {index:03d}",
+                    )
+                    await store.add_to_guild(500, "asura", url_name)
+
+                rows = await store.list_for_guild(500)
+
+                assert len(rows) == 501
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())

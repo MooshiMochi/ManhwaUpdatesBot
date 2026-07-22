@@ -62,6 +62,44 @@ def test_tracked_manga_autocomplete_uses_prefix_label_and_filter() -> None:
     asyncio.run(_run())
 
 
+def test_tracked_manga_autocomplete_filters_before_the_legacy_row_cap() -> None:
+    """A matching title after the first 100 alphabetical rows remains selectable."""
+
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = await _make_pool(tmp)
+            try:
+                store = TrackedStore(pool)
+                for index in range(101):
+                    url_name = f"a-series-{index:03d}"
+                    await store.upsert_series(
+                        "comix",
+                        url_name,
+                        f"https://example.test/{url_name}",
+                        f"A Series {index:03d}",
+                    )
+                    await store.add_to_guild(100, "comix", url_name)
+                await store.upsert_series(
+                    "comix",
+                    "dukedoms-legendary-prodigy",
+                    "https://example.test/dukedoms-legendary-prodigy",
+                    "Dukedom's Legendary Prodigy",
+                )
+                await store.add_to_guild(100, "comix", "dukedoms-legendary-prodigy")
+
+                choices = await autocomplete.tracked_manga_in_guild(
+                    _interaction(pool=pool), "dukedom"
+                )
+
+                assert [(choice.name, choice.value) for choice in choices] == [
+                    ("(comix) Dukedom's Legendary Prodigy", "comix:dukedoms-legendary-prodigy")
+                ]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_subscription_and_bookmark_autocomplete_use_prefix_labels_and_filters() -> None:
     async def _run() -> None:
         with tempfile.TemporaryDirectory() as tmp:

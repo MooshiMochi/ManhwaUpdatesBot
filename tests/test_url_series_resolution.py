@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from manhwa_bot.cogs.bookmarks import BookmarksCog
 from manhwa_bot.cogs.catalog import CatalogCog
+from manhwa_bot.cogs.tracking import TrackingCog
 from manhwa_bot.crawler.errors import CrawlerError
 from manhwa_bot.db.migrate import apply_pending
 from manhwa_bot.db.pool import DbPool
@@ -93,6 +94,46 @@ def test_bookmark_url_resolution_accepts_chapter_url_and_caches_metadata() -> No
                     "https://www.toongod.org/webtoon/someone-stop-her-uncensored"
                 )
                 assert stored.last_chapter_text == "Chapter 54"
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
+def test_track_remove_url_resolves_to_the_tracked_series_identifier() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bot, pool, crawler = await _bot(tmp)
+            try:
+                tracked = TrackedStore(pool)
+                await tracked.upsert_series(
+                    "toongod",
+                    "someone-stop-her-uncensored",
+                    "https://www.toongod.org/webtoon/someone-stop-her-uncensored",
+                    "Someone Stop Her",
+                )
+                await tracked.add_to_guild(100, "toongod", "someone-stop-her-uncensored")
+                cog = TrackingCog(bot)  # type: ignore[arg-type]
+
+                resolved = await cog._resolve_tracked_remove_input(
+                    guild_id=100,
+                    manga_id="https://www.toongod.org/webtoon/someone-stop-her-uncensored/",
+                )
+
+                assert resolved is not None
+                assert (resolved.website_key, resolved.url_name) == (
+                    "toongod",
+                    "someone-stop-her-uncensored",
+                )
+                assert crawler.calls == [
+                    (
+                        "info",
+                        {
+                            "website_key": "toongod",
+                            "url": "https://www.toongod.org/webtoon/someone-stop-her-uncensored/",
+                        },
+                    )
+                ]
             finally:
                 await pool.close()
 

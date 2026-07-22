@@ -206,20 +206,50 @@ class TrackedStore:
         )
 
     async def list_for_guild(
-        self, guild_id: int, *, limit: int = 25, offset: int = 0
+        self, guild_id: int, *, limit: int | None = None, offset: int = 0
     ) -> list[GuildTrackedSeries]:
+        if limit is None:
+            query = """
+                SELECT ts.*, tig.guild_id, tig.ping_role_id
+                FROM tracked_in_guild tig
+                JOIN tracked_series ts USING (website_key, url_name)
+                WHERE tig.guild_id = ?
+                ORDER BY ts.title
+            """
+            args: tuple[int, ...] = (guild_id,)
+            if offset:
+                query += " LIMIT -1 OFFSET ?"
+                args = (guild_id, offset)
+        else:
+            query = """
+                SELECT ts.*, tig.guild_id, tig.ping_role_id
+                FROM tracked_in_guild tig
+                JOIN tracked_series ts USING (website_key, url_name)
+                WHERE tig.guild_id = ?
+                ORDER BY ts.title
+                LIMIT ? OFFSET ?
+            """
+            args = (guild_id, limit, offset)
         rows = await self._pool.fetchall(
+            query,
+            args,
+        )
+        return [_row_to_guild_tracked(r) for r in rows]
+
+    async def find_in_guild(
+        self, guild_id: int, website_key: str, url_name: str
+    ) -> GuildTrackedSeries | None:
+        """Return one guild's tracked row by its canonical series identifier."""
+        row = await self._pool.fetchone(
             """
             SELECT ts.*, tig.guild_id, tig.ping_role_id
             FROM tracked_in_guild tig
             JOIN tracked_series ts USING (website_key, url_name)
-            WHERE tig.guild_id = ?
-            ORDER BY ts.title
-            LIMIT ? OFFSET ?
+            WHERE tig.guild_id = ? AND tig.website_key = ? AND tig.url_name = ?
             """,
-            (guild_id, limit, offset),
+            (guild_id, website_key, url_name),
         )
-        return [_row_to_guild_tracked(r) for r in rows]
+        return _row_to_guild_tracked(row) if row else None
 
     async def find(self, website_key: str, url_name: str) -> TrackedSeries | None:
         row = await self._pool.fetchone(
