@@ -38,6 +38,38 @@ _COMPLETED_STATUSES = {"completed", "ended", "finished", "dropped", "cancelled"}
 
 _FOLDER_CHOICES = [app_commands.Choice(name=f, value=f) for f in BOOKMARK_FOLDERS]
 
+_FOLDER_BY_LOWER = {f.lower(): f for f in BOOKMARK_FOLDERS}
+
+
+class _FolderTransformer(app_commands.Transformer):
+    """Tolerant transformer for the bookmark ``folder`` option.
+
+    Keeps the constrained dropdown (via :attr:`choices`) but normalizes the
+    incoming value case-insensitively instead of doing the exact, case-sensitive
+    match a plain ``Choice[str]`` param does.
+
+    This exists because Discord clients that still hold the pre-migration (v1)
+    ``/bookmark`` command definition send *lowercase* folder values
+    (``"reading"``, ``"planned"``, ...) — v1's ``BookmarkFolderType`` enum used
+    lowercase enum *values*, which is what Discord registered as the choice
+    values. v2 registers capitalized values (``"Reading"``), so the built-in
+    choice transformer raised ``TransformerError: Failed to convert reading to
+    Choice`` and crashed the command. Normalizing here maps the legacy value
+    back to the canonical folder. Values that no longer map to any folder (e.g.
+    v1's dropped ``"all"`` folder) resolve to ``None``, which every caller
+    already treats as "no folder specified".
+    """
+
+    @property
+    def choices(self) -> list[app_commands.Choice[str]]:
+        return _FOLDER_CHOICES
+
+    async def transform(self, interaction: discord.Interaction, value: str) -> str | None:
+        return _FOLDER_BY_LOWER.get(str(value).strip().lower())
+
+
+_FolderOption = app_commands.Transform[str, _FolderTransformer] | None
+
 
 @dataclass(frozen=True)
 class _ResolvedSeries:
@@ -241,18 +273,17 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         folder="The folder you want to view. If manga is specified, this is ignored.",
     )
     @app_commands.autocomplete(manga_url_or_id=autocomplete.all_manga)
-    @app_commands.choices(folder=_FOLDER_CHOICES)
     @app_commands.rename(manga_url_or_id="manga_url")
     @has_premium(dm_only=True)
     async def bookmark_new(
         self,
         interaction: discord.Interaction,
         manga_url_or_id: str,
-        folder: app_commands.Choice[str] | None = None,
+        folder: _FolderOption = None,
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
 
-        folder_value = folder.value if folder else _DEFAULT_FOLDER
+        folder_value = folder or _DEFAULT_FOLDER
         if folder_value not in BOOKMARK_FOLDERS:
             await interaction.followup.send(
                 view=build_error_view("Unknown folder.", bot=self.bot), ephemeral=True
@@ -404,18 +435,17 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         folder="The folder you want to view. If manga is specified, this is ignored.",
     )
     @app_commands.autocomplete(series=autocomplete.user_bookmarks)
-    @app_commands.choices(folder=_FOLDER_CHOICES)
     @app_commands.rename(series="manga")
     @has_premium(dm_only=True)
     async def bookmark_view(
         self,
         interaction: discord.Interaction,
         series: str | None = None,
-        folder: app_commands.Choice[str] | None = None,
+        folder: _FolderOption = None,
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
 
-        folder_value = folder.value if folder else None
+        folder_value = folder
         bookmarks = await self._bookmarks.list_user_bookmarks(interaction.user.id, limit=500)
 
         supported = await self._supported_websites_keys()
@@ -545,7 +575,6 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         series=autocomplete.user_bookmarks,
         chapter_index=autocomplete.user_bookmark_chapters,
     )
-    @app_commands.choices(folder=_FOLDER_CHOICES)
     @app_commands.rename(series="manga")
     @app_commands.rename(chapter_index="chapter")
     @has_premium(dm_only=True)
@@ -554,7 +583,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         interaction: discord.Interaction,
         series: str,
         chapter_index: str | None = None,
-        folder: app_commands.Choice[str] | None = None,
+        folder: _FolderOption = None,
     ) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
 
@@ -706,11 +735,11 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
 
         if folder is not None:
             await self._bookmarks.update_folder(
-                interaction.user.id, website_key, url_name, folder.value
+                interaction.user.id, website_key, url_name, folder
             )
 
         view = build_bookmark_update_success_view(
-            moved_folder=folder.value if folder is not None else None,
+            moved_folder=folder if folder is not None else None,
             new_chapter_label=new_chapter_label,
             auto_subscribed_title=auto_subscribed_title,
             should_track=should_track,
