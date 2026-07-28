@@ -94,6 +94,24 @@ def test_recovered_alert_includes_incident_duration() -> None:
     asyncio.run(_run())
 
 
+def test_superseded_alert_is_explicitly_marked_for_review() -> None:
+    async def _run() -> None:
+        channel = _messageable_channel()
+        cog = OperationalAlertCog(_bot(channel))  # type: ignore[arg-type]
+        record = _record(event="superseded")
+        record["payload"]["superseded_by_fingerprint"] = "current-fingerprint"
+
+        await cog.dispatch(record)
+
+        content = channel.send.await_args.kwargs["content"]
+        assert "superseded" in content
+        assert "recovered" not in content
+        assert "review" in content
+        assert "current-fingerprint" in content
+
+    asyncio.run(_run())
+
+
 def test_delivery_failure_raises_so_alert_is_not_acknowledged() -> None:
     async def _run() -> None:
         channel = _messageable_channel()
