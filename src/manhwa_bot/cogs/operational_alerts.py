@@ -84,7 +84,7 @@ def _format_operational_alert(record: Mapping[str, Any]) -> str:
     details = details if isinstance(details, Mapping) else {}
 
     event = str(record.get("event") or payload.get("event") or "opened").lower()
-    status = "recovered" if event == "recovered" else "opened"
+    status = event if event in {"opened", "recovered", "superseded"} else "opened"
     website = str(record.get("website_key") or payload.get("website_key") or "unknown")
     source = str(record.get("source") or payload.get("source") or "unknown")
     issue_code = str(record.get("issue_code") or payload.get("issue_code") or "unknown")
@@ -116,6 +116,11 @@ def _format_operational_alert(record: Mapping[str, Any]) -> str:
                 lines.append(f"duration: {round(float(duration))}s")
             except TypeError, ValueError:
                 pass
+    elif status == "superseded":
+        lines.append("review: prior failure was replaced by a different active error")
+        superseded_by = payload.get("superseded_by_fingerprint")
+        if superseded_by:
+            lines.append(f"superseded by: `{superseded_by}`")
 
     occurrence_count = payload.get("occurrence_count")
     if occurrence_count is not None:
