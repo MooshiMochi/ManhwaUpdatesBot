@@ -218,6 +218,79 @@ def _top_level_text(view: discord.ui.LayoutView) -> list[str]:
     return [item.content for item in view.children if isinstance(item, discord.ui.TextDisplay)]
 
 
+def _all_text(view: discord.ui.LayoutView) -> str:
+    return "\n".join(
+        item.content for item in view.walk_children() if isinstance(item, discord.ui.TextDisplay)
+    )
+
+
+def _button_custom_ids(view: discord.ui.LayoutView) -> list[str]:
+    return [
+        item.custom_id
+        for item in view.walk_children()
+        if isinstance(item, discord.ui.Button) and item.custom_id
+    ]
+
+
+def test_dispatch_persists_compact_context_for_long_comix_slug() -> None:
+    slug = "the-final-boss-prince-is-somehow-obsessed-with-the-chubby-villainess-reincarnated-me"
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1], website_key="comix", url_name=slug)
+            await GuildSettingsStore(bot.db).set_notifications_channel(1, 100)
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+
+            await cog.dispatch(_payload(website_key="comix", url_name=slug))
+
+            sent_view = channel.send.await_args.kwargs["view"]
+            custom_ids = _button_custom_ids(sent_view)
+            assert len(custom_ids) == 4
+            assert all(custom_id.startswith("mu:u:") for custom_id in custom_ids)
+            row = await bot.db.fetchone("SELECT * FROM notification_action_contexts")
+            assert row is not None
+            assert row["website_key"] == "comix"
+            assert row["url_name"] == slug
+            assert row["chapter_index"] == 1
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_dispatch_resolves_human_scanlator_name_from_website_cache() -> None:
+    class _Cache:
+        async def get_or_set(self, _key, loader, _ttl):
+            return await loader()
+
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            await _seed_tracked(bot.db, guild_ids=[1], website_key="comix")
+            await GuildSettingsStore(bot.db).set_notifications_channel(1, 100)
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda cid: channel if cid == 100 else None
+            bot.websites_cache = _Cache()  # type: ignore[attr-defined]
+            bot.crawler = SimpleNamespace(
+                request=AsyncMock(return_value={"websites": [{"key": "comix", "name": "Comix"}]})
+            )
+            record = _payload(website_key="comix")
+            record["payload"]["source"] = "main"
+
+            await cog.dispatch(record)
+
+            sent_view = channel.send.await_args.kwargs["view"]
+            assert "-# Scanlator: Comix • via main check" in _all_text(sent_view)
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
 def test_three_guilds_one_missing_channel_skipped() -> None:
     async def _run() -> None:
         bot, cog, tmp = await _setup()

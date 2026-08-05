@@ -50,6 +50,7 @@ def _interaction(
     response = SimpleNamespace(
         defer=AsyncMock(),
         send_message=AsyncMock(),
+        edit_message=AsyncMock(),
         is_done=MagicMock(return_value=False),
     )
     followup = SimpleNamespace(send=AsyncMock())
@@ -76,6 +77,14 @@ def _sent_component_v2_view(interaction) -> discord.ui.LayoutView:
 def _view_text(view: discord.ui.LayoutView) -> str:
     return "\n".join(
         item.content for item in view.walk_children() if isinstance(item, discord.ui.TextDisplay)
+    )
+
+
+def _view_button(view: discord.ui.LayoutView, label: str) -> discord.ui.Button:
+    return next(
+        item
+        for item in view.walk_children()
+        if isinstance(item, discord.ui.Button) and item.label == label
     )
 
 
@@ -143,7 +152,13 @@ def test_mark_read_creates_hidden_subscribed_bookmark_and_sets_last_read() -> No
     async def _run() -> None:
         pool, tmp = await _open()
         try:
-            interaction = _interaction(db=pool, user_id=42)
+            interaction = _interaction(
+                db=pool,
+                user_id=42,
+                crawler=_Crawler(
+                    [{"index": 7, "name": "Chapter 7", "url": "https://example.com/7"}]
+                ),
+            )
             button = MarkReadButton("comick", "demo", 7)
             await button.callback(interaction)
             store = BookmarkStore(pool)
@@ -167,7 +182,13 @@ def test_mark_read_keeps_existing_folder() -> None:
             await store.upsert_bookmark(
                 user_id=42, website_key="comick", url_name="demo", folder="Planned"
             )
-            interaction = _interaction(db=pool, user_id=42)
+            interaction = _interaction(
+                db=pool,
+                user_id=42,
+                crawler=_Crawler(
+                    [{"index": 7, "name": "Chapter 7", "url": "https://example.com/7"}]
+                ),
+            )
             button = MarkReadButton("comick", "demo", 7)
             await button.callback(interaction)
             bm = await store.get_bookmark(42, "comick", "demo")
@@ -230,6 +251,263 @@ def test_mark_read_button_toggles_back_to_previous_last_read() -> None:
             text = _view_text(_sent_component_v2_view(interaction2))
             assert "[Chapter 15](https://example.com/demo/15)" in text
             assert "index" not in text.lower()
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_expected_next_chapter_writes_without_confirmation() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 22",
+                last_read_index=22,
+            )
+            crawler = _Crawler(
+                [
+                    {
+                        "index": index,
+                        "name": f"Chapter {index}",
+                        "url": f"https://example.com/demo/{index}",
+                    }
+                    for index in (22, 23, 24, 25)
+                ]
+            )
+            interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+
+            await MarkReadButton("comick", "demo", 23).callback(interaction)
+
+            bookmark = await store.get_bookmark(42, "comick", "demo")
+            assert bookmark is not None
+            assert bookmark.last_read_index == 23
+            view = _sent_component_v2_view(interaction)
+            assert "Marked read" in _view_text(view)
+            assert not any(
+                isinstance(item, discord.ui.Button) and item.label == "Proceed"
+                for item in view.walk_children()
+            )
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_skipped_chapter_requires_hyperlinked_confirmation() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 22",
+                last_read_index=22,
+            )
+            crawler = _Crawler(
+                [
+                    {
+                        "index": index,
+                        "name": f"Chapter {index}",
+                        "url": f"https://example.com/demo/{index}",
+                    }
+                    for index in (22, 23, 24, 25)
+                ]
+            )
+            interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+
+            await MarkReadButton("comick", "demo", 25).callback(interaction)
+
+            bookmark = await store.get_bookmark(42, "comick", "demo")
+            assert bookmark is not None
+            assert bookmark.last_read_index == 22
+            view = _sent_component_v2_view(interaction)
+            text = _view_text(view)
+            assert "[Chapter 23](https://example.com/demo/23)" in text
+            assert "[Chapter 25](https://example.com/demo/25)" in text
+            assert _view_button(view, "Proceed")
+            assert _view_button(view, "Discard")
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_confirmation_proceed_advances_to_clicked_chapter() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 22",
+                last_read_index=22,
+            )
+            crawler = _Crawler(
+                [
+                    {
+                        "index": index,
+                        "name": f"Chapter {index}",
+                        "url": f"https://example.com/demo/{index}",
+                    }
+                    for index in (22, 23, 24, 25)
+                ]
+            )
+            first = _interaction(db=pool, user_id=42, crawler=crawler)
+            await MarkReadButton("comick", "demo", 25).callback(first)
+            view = _sent_component_v2_view(first)
+
+            proceed_interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+            await _view_button(view, "Proceed").callback(proceed_interaction)
+
+            bookmark = await store.get_bookmark(42, "comick", "demo")
+            assert bookmark is not None
+            assert bookmark.last_read_index == 25
+            proceed_interaction.response.edit_message.assert_awaited_once()
+            result_view = proceed_interaction.response.edit_message.await_args.kwargs["view"]
+            assert "[Chapter 25](https://example.com/demo/25)" in _view_text(result_view)
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_confirmation_discard_keeps_previous_chapter() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 22",
+                last_read_index=22,
+            )
+            crawler = _Crawler(
+                [
+                    {
+                        "index": index,
+                        "name": f"Chapter {index}",
+                        "url": f"https://example.com/demo/{index}",
+                    }
+                    for index in (22, 23, 24, 25)
+                ]
+            )
+            first = _interaction(db=pool, user_id=42, crawler=crawler)
+            await MarkReadButton("comick", "demo", 25).callback(first)
+            view = _sent_component_v2_view(first)
+
+            discard_interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+            await _view_button(view, "Discard").callback(discard_interaction)
+
+            bookmark = await store.get_bookmark(42, "comick", "demo")
+            assert bookmark is not None
+            assert bookmark.last_read_index == 22
+            result_view = discard_interaction.response.edit_message.await_args.kwargs["view"]
+            assert "No changes were made" in _view_text(result_view)
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_confirmation_rejects_changed_bookmark_snapshot() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 22",
+                last_read_index=22,
+            )
+            crawler = _Crawler(
+                [
+                    {
+                        "index": index,
+                        "name": f"Chapter {index}",
+                        "url": f"https://example.com/demo/{index}",
+                    }
+                    for index in (22, 23, 24, 25)
+                ]
+            )
+            first = _interaction(db=pool, user_id=42, crawler=crawler)
+            await MarkReadButton("comick", "demo", 25).callback(first)
+            view = _sent_component_v2_view(first)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 23",
+                last_read_index=23,
+            )
+
+            proceed_interaction = _interaction(db=pool, user_id=42, crawler=crawler)
+            await _view_button(view, "Proceed").callback(proceed_interaction)
+
+            bookmark = await store.get_bookmark(42, "comick", "demo")
+            assert bookmark is not None
+            assert bookmark.last_read_index == 23
+            result_view = proceed_interaction.response.edit_message.await_args.kwargs["view"]
+            assert "changed" in _view_text(result_view).lower()
+            assert "try again" in _view_text(result_view).lower()
+        finally:
+            await pool.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_mark_read_unknown_sequence_warns_and_timeout_keeps_progress() -> None:
+    async def _run() -> None:
+        pool, tmp = await _open()
+        try:
+            store = BookmarkStore(pool)
+            await store.upsert_bookmark(
+                42,
+                "comick",
+                "demo",
+                folder="Reading",
+                last_read_chapter="Chapter 22",
+                last_read_index=22,
+            )
+            interaction = _interaction(db=pool, user_id=42, crawler=_Crawler([]))
+
+            await MarkReadButton("comick", "demo", 25).callback(interaction)
+
+            view = _sent_component_v2_view(interaction)
+            assert "couldn't reliably determine" in _view_text(view)
+            await view.on_timeout()
+            bookmark = await store.get_bookmark(42, "comick", "demo")
+            assert bookmark is not None
+            assert bookmark.last_read_index == 22
+            assert all(
+                item.disabled
+                for item in view.walk_children()
+                if isinstance(item, discord.ui.Button)
+            )
         finally:
             await pool.close()
             tmp.cleanup()

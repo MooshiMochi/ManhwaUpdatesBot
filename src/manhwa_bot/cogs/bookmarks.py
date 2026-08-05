@@ -94,6 +94,16 @@ def _split_series_id(series_id: str) -> tuple[str, str] | None:
     return (parts[0].strip(), parts[1].strip())
 
 
+def _split_autocomplete_url(value: str) -> tuple[str, str] | None:
+    """Parse the crawler autocomplete's ``website_key|series_url`` value."""
+    if not value or "|" not in value or value.startswith("http"):
+        return None
+    website_key, series_url = (part.strip() for part in value.split("|", 1))
+    if not website_key or not series_url.startswith(("http://", "https://")):
+        return None
+    return website_key, series_url
+
+
 def _url_name_from_url(url: str) -> str | None:
     """Derive a stable slug from the URL path (last non-empty segment)."""
     from urllib.parse import urlparse
@@ -137,7 +147,20 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
         request_id: str | None = None,
         on_progress: Any | None = None,
     ) -> _ResolvedSeries | None:
-        parsed = _split_series_id(manga_url_or_id)
+        autocomplete_value = _split_autocomplete_url(manga_url_or_id)
+        if autocomplete_value is not None:
+            wk, supplied_url = autocomplete_value
+            series_url = series_url_from_maybe_chapter_url(supplied_url)
+        elif manga_url_or_id.startswith("http"):
+            wk = await detect_website_key(self.bot, manga_url_or_id)
+            if not wk:
+                return None
+            series_url = series_url_from_maybe_chapter_url(manga_url_or_id)
+        else:
+            wk = None
+            series_url = None
+
+        parsed = None if autocomplete_value is not None else _split_series_id(manga_url_or_id)
         if parsed is not None:
             website_key, url_name = parsed
             tracked = await self._tracked.find(website_key, url_name)
@@ -145,11 +168,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                 return _ResolvedSeries(website_key, url_name, tracked.series_url, {})
             return None
 
-        if manga_url_or_id.startswith("http"):
-            wk = await detect_website_key(self.bot, manga_url_or_id)
-            if not wk:
-                return None
-            series_url = series_url_from_maybe_chapter_url(manga_url_or_id)
+        if wk is not None and series_url is not None:
             try:
                 if hasattr(self.bot.crawler, "request_with_progress"):  # type: ignore[attr-defined]
                     data = await self.bot.crawler.request_with_progress(  # type: ignore[attr-defined]
@@ -734,9 +753,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     should_track = True
 
         if folder is not None:
-            await self._bookmarks.update_folder(
-                interaction.user.id, website_key, url_name, folder
-            )
+            await self._bookmarks.update_folder(interaction.user.id, website_key, url_name, folder)
 
         view = build_bookmark_update_success_view(
             moved_folder=folder if folder is not None else None,

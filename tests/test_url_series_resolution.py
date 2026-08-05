@@ -100,6 +100,27 @@ def test_bookmark_url_resolution_accepts_chapter_url_and_caches_metadata() -> No
     asyncio.run(_run())
 
 
+def test_bookmark_resolution_accepts_crawler_autocomplete_value() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bot, pool, crawler = await _bot(tmp)
+            try:
+                cog = BookmarksCog(bot)  # type: ignore[arg-type]
+                series_url = "https://www.toongod.org/webtoon/someone-stop-her-uncensored"
+
+                resolved = await cog._resolve_series(f"toongod|{series_url}")
+
+                assert resolved is not None
+                assert resolved.website_key == "toongod"
+                assert resolved.url_name == "someone-stop-her-uncensored"
+                assert resolved.series_url == series_url
+                assert crawler.calls == [("info", {"website_key": "toongod", "url": series_url})]
+            finally:
+                await pool.close()
+
+    asyncio.run(_run())
+
+
 def test_track_remove_url_resolves_to_the_tracked_series_identifier() -> None:
     async def _run() -> None:
         with tempfile.TemporaryDirectory() as tmp:

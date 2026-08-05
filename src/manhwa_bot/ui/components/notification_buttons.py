@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import logging
 import re
+from types import SimpleNamespace
 
 import discord
 
 from ...crawler.chapter import Chapter
-from ...db.bookmarks import BookmarkStore
+from ...db.bookmarks import Bookmark, BookmarkStore
 from ...db.dm_settings import DmSettingsStore
 from ...db.guild_settings import GuildSettingsStore
+from ...db.notification_actions import NotificationActionContext, NotificationActionContextStore
 from ...db.notification_button_state import MarkReadToggleStore
 from ...db.subscriptions import SubscriptionStore
 from ...db.tracked import TrackedSeries, TrackedStore
@@ -144,6 +146,143 @@ MARK_READ_TEMPLATE = r"mu:upd:mr:(?P<wk>[^:]+):(?P<un>[^:]+):(?P<idx>-?\d+)"
 BOOKMARK_TEMPLATE = r"mu:upd:bm:(?P<wk>[^:]+):(?P<un>[^:]+)"
 SUBSCRIBE_TEMPLATE = r"mu:upd:sub:(?P<wk>[^:]+):(?P<un>[^:]+)"
 LAST_READ_TEMPLATE = r"mu:upd:lr:(?P<wk>[^:]+):(?P<un>[^:]+)"
+COMPACT_MARK_READ_TEMPLATE = r"mu:u:mr:(?P<token>[A-Za-z0-9_-]{1,24})"
+COMPACT_BOOKMARK_TEMPLATE = r"mu:u:bm:(?P<token>[A-Za-z0-9_-]{1,24})"
+COMPACT_SUBSCRIBE_TEMPLATE = r"mu:u:sub:(?P<token>[A-Za-z0-9_-]{1,24})"
+COMPACT_LAST_READ_TEMPLATE = r"mu:u:lr:(?P<token>[A-Za-z0-9_-]{1,24})"
+
+
+async def _notification_action_context(
+    interaction: discord.Interaction,
+    token: str,
+) -> NotificationActionContext | None:
+    context = await NotificationActionContextStore(interaction.client.db).get(token)  # type: ignore[attr-defined]
+    if context is not None:
+        return context
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    await _send_ack(
+        interaction,
+        title="Notification action unavailable",
+        description="This notification's action context is no longer available.",
+        level="warning",
+    )
+    return None
+
+
+class CompactMarkReadButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=COMPACT_MARK_READ_TEMPLATE,
+):
+    def __init__(self, token: str) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label=UPDATE_BUTTON_LABELS["mark_read"][0],
+                emoji=UPDATE_BUTTON_LABELS["mark_read"][1],
+                style=discord.ButtonStyle.secondary,
+                custom_id=f"mu:u:mr:{token}",
+            )
+        )
+        self.token = token
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):  # type: ignore[no-untyped-def]
+        del interaction, item
+        return cls(match["token"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        context = await _notification_action_context(interaction, self.token)
+        if context is None:
+            return
+        legacy = SimpleNamespace(
+            website_key=context.website_key,
+            url_name=context.url_name,
+            chapter_index=context.chapter_index,
+        )
+        await MarkReadButton.callback(legacy, interaction)  # type: ignore[arg-type]
+
+
+class CompactBookmarkButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=COMPACT_BOOKMARK_TEMPLATE,
+):
+    def __init__(self, token: str) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label=UPDATE_BUTTON_LABELS["bookmark"][0],
+                emoji=UPDATE_BUTTON_LABELS["bookmark"][1],
+                style=discord.ButtonStyle.secondary,
+                custom_id=f"mu:u:bm:{token}",
+            )
+        )
+        self.token = token
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):  # type: ignore[no-untyped-def]
+        del interaction, item
+        return cls(match["token"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        context = await _notification_action_context(interaction, self.token)
+        if context is None:
+            return
+        legacy = SimpleNamespace(website_key=context.website_key, url_name=context.url_name)
+        await BookmarkButton.callback(legacy, interaction)  # type: ignore[arg-type]
+
+
+class CompactSubscribeToggleButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=COMPACT_SUBSCRIBE_TEMPLATE,
+):
+    def __init__(self, token: str) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label=UPDATE_BUTTON_LABELS["subscribe"][0],
+                emoji=UPDATE_BUTTON_LABELS["subscribe"][1],
+                style=discord.ButtonStyle.secondary,
+                custom_id=f"mu:u:sub:{token}",
+            )
+        )
+        self.token = token
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):  # type: ignore[no-untyped-def]
+        del interaction, item
+        return cls(match["token"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        context = await _notification_action_context(interaction, self.token)
+        if context is None:
+            return
+        legacy = SimpleNamespace(website_key=context.website_key, url_name=context.url_name)
+        await SubscribeToggleButton.callback(legacy, interaction)  # type: ignore[arg-type]
+
+
+class CompactLastReadChapterButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=COMPACT_LAST_READ_TEMPLATE,
+):
+    def __init__(self, token: str) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label=UPDATE_BUTTON_LABELS["open_chapter"][0],
+                emoji=UPDATE_BUTTON_LABELS["open_chapter"][1],
+                style=discord.ButtonStyle.secondary,
+                custom_id=f"mu:u:lr:{token}",
+            )
+        )
+        self.token = token
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):  # type: ignore[no-untyped-def]
+        del interaction, item
+        return cls(match["token"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        context = await _notification_action_context(interaction, self.token)
+        if context is None:
+            return
+        legacy = SimpleNamespace(website_key=context.website_key, url_name=context.url_name)
+        await LastReadChapterButton.callback(legacy, interaction)  # type: ignore[arg-type]
 
 
 async def _resolve_chapter_list(
@@ -182,6 +321,170 @@ def _locate_chapter(
     if 0 <= chapter_index < len(chapters):
         return chapter_index, chapters[chapter_index]
     return None, None
+
+
+def _clicked_chapter_details(
+    *,
+    chapter: Chapter | None,
+    tracked: TrackedSeries | None,
+) -> tuple[str, str]:
+    if chapter is not None:
+        return chapter.name, str(chapter)
+    if tracked is not None and tracked.last_chapter_text:
+        return tracked.last_chapter_text, _chapter_markdown(
+            tracked.last_chapter_text,
+            tracked.last_chapter_url,
+        )
+    return "selected chapter", "the selected chapter"
+
+
+def _expected_next_chapter(
+    chapters: list[Chapter],
+    bookmark: Bookmark | None,
+) -> tuple[int | None, Chapter | None]:
+    if not chapters:
+        return None, None
+    if bookmark is None or bookmark.last_read_index is None:
+        return 0, chapters[0]
+    current_position, _ = _locate_chapter(chapters, bookmark.last_read_index)
+    if current_position is None or current_position + 1 >= len(chapters):
+        return None, None
+    next_position = current_position + 1
+    return next_position, chapters[next_position]
+
+
+async def _apply_mark_read(
+    *,
+    interaction: discord.Interaction,
+    store: BookmarkStore,
+    toggles: MarkReadToggleStore,
+    tracked: TrackedSeries | None,
+    website_key: str,
+    url_name: str,
+    chapter_index: int,
+    chapter_text: str,
+    chapter_display: str,
+    existing: Bookmark | None,
+) -> tuple[str, str]:
+    await toggles.save_previous(
+        user_id=interaction.user.id,
+        website_key=website_key,
+        url_name=url_name,
+        chapter_index=chapter_index,
+        bookmark=existing,
+    )
+    await store.upsert_bookmark(
+        user_id=interaction.user.id,
+        website_key=website_key,
+        url_name=url_name,
+        folder=existing.folder if existing else "Subscribed",
+        last_read_chapter=chapter_text,
+        last_read_index=chapter_index,
+    )
+    link = _series_link(tracked, url_name)
+    description = (
+        f"Marked {link} - {chapter_display} as read."
+        if existing
+        else f"Bookmarked {link} in *Subscribed* and marked {chapter_display} as read."
+    )
+    return f"{emojis.CHECK}  Marked read", description
+
+
+class MarkReadConfirmationView(BaseLayoutView):
+    """Invoker-locked confirmation for a non-sequential Mark Read action."""
+
+    def __init__(
+        self,
+        *,
+        invoker_id: int,
+        website_key: str,
+        url_name: str,
+        chapter_index: int,
+        chapter_text: str,
+        chapter_display: str,
+        expected_next: Chapter | None,
+        bookmark_snapshot: Bookmark | None,
+        tracked: TrackedSeries | None,
+    ) -> None:
+        super().__init__(invoker_id=invoker_id, timeout=120)
+        self._website_key = website_key
+        self._url_name = url_name
+        self._chapter_index = chapter_index
+        self._chapter_text = chapter_text
+        self._chapter_display = chapter_display
+        self._bookmark_snapshot = bookmark_snapshot
+        self._tracked = tracked
+
+        if expected_next is not None:
+            warning = (
+                f"Your next chapter appears to be {expected_next}. "
+                f"Mark {chapter_display} as read anyway?"
+            )
+        else:
+            warning = (
+                "I couldn't reliably determine your next chapter. "
+                f"Mark {chapter_display} as read anyway?"
+            )
+        proceed = discord.ui.Button(label="Proceed", style=discord.ButtonStyle.success)
+        discard = discord.ui.Button(label="Discard", style=discord.ButtonStyle.secondary)
+        proceed.callback = self._proceed
+        discard.callback = self._discard
+        row = discord.ui.ActionRow()
+        row.add_item(proceed)
+        row.add_item(discard)
+        self.add_item(
+            discord.ui.Container(
+                discord.ui.TextDisplay("## Check reading progress"),
+                small_separator(),
+                discord.ui.TextDisplay(warning),
+                row,
+                accent_colour=severity_accent("warning"),
+            )
+        )
+
+    async def _proceed(self, interaction: discord.Interaction) -> None:
+        pool = interaction.client.db  # type: ignore[attr-defined]
+        store = BookmarkStore(pool)
+        current = await store.get_bookmark(
+            interaction.user.id,
+            self._website_key,
+            self._url_name,
+        )
+        if current != self._bookmark_snapshot:
+            result = _ack_view(
+                title="Reading progress changed",
+                description=(
+                    "Your bookmark changed while this confirmation was open. "
+                    "No changes were made; please try again."
+                ),
+                level="warning",
+            )
+        else:
+            title, description = await _apply_mark_read(
+                interaction=interaction,
+                store=store,
+                toggles=MarkReadToggleStore(pool),
+                tracked=self._tracked,
+                website_key=self._website_key,
+                url_name=self._url_name,
+                chapter_index=self._chapter_index,
+                chapter_text=self._chapter_text,
+                chapter_display=self._chapter_display,
+                existing=current,
+            )
+            result = _ack_view(title=title, description=description)
+        self.stop()
+        await interaction.response.edit_message(view=result)
+
+    async def _discard(self, interaction: discord.Interaction) -> None:
+        self.stop()
+        await interaction.response.edit_message(
+            view=_ack_view(
+                title="Mark Read discarded",
+                description="No changes were made to your reading progress.",
+                level="warning",
+            )
+        )
 
 
 async def _resolve_last_read_chapter_name(
@@ -276,42 +579,56 @@ class MarkReadButton(
             )
             return
 
-        chapter_text, chapter_display = await _resolve_mark_read_chapter(
+        chapters = await _resolve_chapter_list(
             client=interaction.client,
             tracked=tracked,
             website_key=self.website_key,
             url_name=self.url_name,
-            chapter_index=chapter_index,
         )
-        await toggles.save_previous(
-            user_id=interaction.user.id,
+        clicked_position, clicked_chapter = _locate_chapter(chapters, chapter_index)
+        chapter_text, chapter_display = _clicked_chapter_details(
+            chapter=clicked_chapter,
+            tracked=tracked,
+        )
+        expected_position, expected_next = _expected_next_chapter(chapters, existing)
+        is_expected_next = (
+            clicked_position is not None
+            and expected_position is not None
+            and clicked_position == expected_position
+        )
+        if not is_expected_next:
+            confirmation = MarkReadConfirmationView(
+                invoker_id=interaction.user.id,
+                website_key=self.website_key,
+                url_name=self.url_name,
+                chapter_index=chapter_index,
+                chapter_text=chapter_text,
+                chapter_display=chapter_display,
+                expected_next=expected_next,
+                bookmark_snapshot=existing,
+                tracked=tracked,
+            )
+            message = await interaction.followup.send(
+                view=confirmation,
+                ephemeral=True,
+                wait=True,
+            )
+            confirmation.bind_message(message)
+            return
+
+        title, description = await _apply_mark_read(
+            interaction=interaction,
+            store=store,
+            toggles=toggles,
+            tracked=tracked,
             website_key=self.website_key,
             url_name=self.url_name,
             chapter_index=chapter_index,
-            bookmark=existing,
+            chapter_text=chapter_text,
+            chapter_display=chapter_display,
+            existing=existing,
         )
-        # V1 parity: marking a notification as read on a series you haven't
-        # bookmarked creates a hidden bookmark in the Subscribed folder so the
-        # bot keeps tracking your last-read chapter without cluttering the
-        # visible folders.
-        await store.upsert_bookmark(
-            user_id=interaction.user.id,
-            website_key=self.website_key,
-            url_name=self.url_name,
-            folder=existing.folder if existing else "Subscribed",
-            last_read_chapter=chapter_text,
-            last_read_index=chapter_index,
-        )
-        description = (
-            f"Marked {link} - {chapter_display} as read."
-            if existing
-            else f"Bookmarked {link} in *Subscribed* and marked {chapter_display} as read."
-        )
-        await _send_ack(
-            interaction,
-            title=f"{emojis.CHECK}  Marked read",
-            description=description,
-        )
+        await _send_ack(interaction, title=title, description=description)
 
 
 class LastReadChapterButton(
@@ -547,6 +864,10 @@ class SubscribeToggleButton(
 __all__ = [
     "ALL_UPDATE_BUTTONS",
     "BOOKMARK_TEMPLATE",
+    "COMPACT_BOOKMARK_TEMPLATE",
+    "COMPACT_LAST_READ_TEMPLATE",
+    "COMPACT_MARK_READ_TEMPLATE",
+    "COMPACT_SUBSCRIBE_TEMPLATE",
     "LAST_READ_TEMPLATE",
     "MARK_READ_TEMPLATE",
     "SUBSCRIBE_TEMPLATE",
@@ -554,6 +875,10 @@ __all__ = [
     "UPDATE_BUTTON_LABELS",
     "BookmarkButton",
     "BookmarkStore",
+    "CompactBookmarkButton",
+    "CompactLastReadChapterButton",
+    "CompactMarkReadButton",
+    "CompactSubscribeToggleButton",
     "DmSettingsStore",
     "GuildSettingsStore",
     "LastReadChapterButton",

@@ -50,3 +50,6 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3\\.16; use inspect\\.iscoroutinefunction\\(\\) instead:DeprecationWarning:discord\\.ext\\.commands\\.core",
+]

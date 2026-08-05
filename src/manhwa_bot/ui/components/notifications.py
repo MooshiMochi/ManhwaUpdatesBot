@@ -16,6 +16,10 @@ from .notification_buttons import (
     UPDATE_BUTTON_KEYS,
     UPDATE_BUTTON_LABELS,
     BookmarkButton,
+    CompactBookmarkButton,
+    CompactLastReadChapterButton,
+    CompactMarkReadButton,
+    CompactSubscribeToggleButton,
     LastReadChapterButton,
     MarkReadButton,
     SubscribeToggleButton,
@@ -34,10 +38,17 @@ _SOURCE_FOOTERS = {
 _CUSTOM_ID_MAX = 100
 
 
-def _source_footer(payload: dict) -> str | None:
-    """Return the footer line for a notification's ``source``, or ``None``."""
+def _notification_footer(payload: dict) -> str | None:
+    """Compose the human scanlator label with the update-check source."""
+    parts: list[str] = []
+    scanlator = str(payload.get("scanlator_name") or "").strip()
+    if scanlator:
+        parts.append(f"Scanlator: {scanlator}")
     source = str(payload.get("source") or "").strip().lower()
-    return _SOURCE_FOOTERS.get(source)
+    source_label = _SOURCE_FOOTERS.get(source)
+    if source_label:
+        parts.append(source_label)
+    return " • ".join(parts) or None
 
 
 def build_chapter_update_view(
@@ -86,12 +97,13 @@ def build_chapter_update_view(
         website_key=website_key,
         url_name=url_name,
         chapter=chapter,
+        action_token=str(payload.get("action_token") or "").strip() or None,
     )
     if button_row is not None:
         container.add_item(small_separator())
         container.add_item(button_row)
 
-    footer = _source_footer(payload)
+    footer = _notification_footer(payload)
     if footer is not None:
         container.add_item(discord.ui.TextDisplay(f"-# {footer}"))
 
@@ -130,7 +142,7 @@ def build_status_change_view(
     container.add_item(small_separator())
     container.add_item(discord.ui.TextDisplay(body))
 
-    footer = _source_footer(payload)
+    footer = _notification_footer(payload)
     if footer is not None:
         container.add_item(discord.ui.TextDisplay(f"-# {footer}"))
 
@@ -149,6 +161,7 @@ def _build_button_row(
     website_key: str,
     url_name: str,
     chapter: Chapter,
+    action_token: str | None = None,
 ) -> discord.ui.ActionRow | None:
     if not allowed_buttons or not website_key or not url_name:
         return None
@@ -162,6 +175,14 @@ def _build_button_row(
         # wrapper so walk_children() yields Button instances tests can inspect.
         # Dispatch still works: the DynamicItem templates are registered
         # globally in ManhwaBot.setup_hook and matched by custom_id.
+        if key == "mark_read" and action_token:
+            return CompactMarkReadButton(action_token).item
+        if key == "bookmark" and action_token:
+            return CompactBookmarkButton(action_token).item
+        if key == "subscribe" and action_token:
+            return CompactSubscribeToggleButton(action_token).item
+        if key == "open_chapter" and action_token:
+            return CompactLastReadChapterButton(action_token).item
         if key == "mark_read":
             return MarkReadButton(website_key, url_name, chapter_index).item
         if key == "bookmark":

@@ -90,6 +90,7 @@ def test_expected_tables_exist() -> None:
                     "consumer_state",
                     "premium_grants",
                     "patreon_links",
+                    "notification_action_contexts",
                 }
                 rows = await pool.fetchall("SELECT name FROM sqlite_master WHERE type='table'")
                 actual = {r["name"] for r in rows}

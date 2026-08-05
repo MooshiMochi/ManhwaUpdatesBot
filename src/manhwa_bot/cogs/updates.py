@@ -20,6 +20,7 @@ from ..crawler.notifications import NotificationConsumer
 from ..db.consumer_state import ConsumerStateStore
 from ..db.dm_settings import DmSettingsStore
 from ..db.guild_settings import GuildSettingsStore
+from ..db.notification_actions import NotificationActionContextStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
 from ..ui.components.notifications import (
@@ -65,10 +66,33 @@ class UpdatesCog(commands.Cog, name="Updates"):
         self._guild_settings = GuildSettingsStore(bot.db)  # type: ignore[attr-defined]
         self._dm_settings = DmSettingsStore(bot.db)  # type: ignore[attr-defined]
         self._consumer_state = ConsumerStateStore(bot.db)  # type: ignore[attr-defined]
+        self._notification_actions = NotificationActionContextStore(bot.db)  # type: ignore[attr-defined]
         cfg = self.bot.config.notifications
         self._channel_sem = asyncio.Semaphore(max(1, int(cfg.fanout_concurrency)))
         self._dm_sem = asyncio.Semaphore(max(1, int(cfg.dm_fanout_concurrency)))
         self._consumer: NotificationConsumer | None = None
+
+    async def _scanlator_name(self, website_key: str) -> str:
+        fallback = website_key.replace("_", " ").replace("-", " ").title()
+        cache = getattr(self.bot, "websites_cache", None)
+        crawler = getattr(self.bot, "crawler", None)
+        if cache is None or crawler is None:
+            return fallback
+        try:
+            ttl = self.bot.config.supported_websites_cache.ttl_seconds
+
+            async def _loader() -> list[dict]:
+                data = await crawler.request("supported_websites")
+                return list(data.get("websites") or [])
+
+            websites = await cache.get_or_set("websites_full", _loader, ttl)
+        except Exception:
+            _log.debug("scanlator display-name lookup failed", exc_info=True)
+            return fallback
+        for website in websites:
+            if str(website.get("key") or "").strip() == website_key:
+                return str(website.get("name") or fallback).strip() or fallback
+        return fallback
 
     async def cog_load(self) -> None:
         self._consumer = NotificationConsumer(
@@ -95,6 +119,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 "notification record missing website_key/url_name: id=%s", record.get("id")
             )
             return
+        if not str(payload.get("scanlator_name") or "").strip():
+            payload["scanlator_name"] = await self._scanlator_name(website_key)
         if payload.get("event") == "status_change":
             await self._dispatch_status_change(payload, website_key, url_name)
             return
@@ -137,6 +163,16 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 payload["cover_url"] = series_row.cover_url
             if payload.get("is_nsfw") is None and series_row.is_nsfw is not None:
                 payload["is_nsfw"] = series_row.is_nsfw
+
+        action_context = await self._notification_actions.get_or_create(
+            website_key=website_key,
+            url_name=url_name,
+            series_url=str(payload.get("series_url") or ""),
+            chapter_index=int(chapter.index if chapter.index is not None else -1),
+            chapter_name=chapter.name or None,
+            chapter_url=chapter.url or None,
+        )
+        payload["action_token"] = action_context.token
 
         guild_tasks = [
             self._dispatch_to_guild(row, payload, is_premium, website_key) for row in guild_rows
