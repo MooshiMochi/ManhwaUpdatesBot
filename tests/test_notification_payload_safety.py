@@ -28,24 +28,29 @@ def _media_galleries(view: discord.ui.LayoutView) -> list[discord.ui.MediaGaller
     return [c for c in view.walk_children() if isinstance(c, discord.ui.MediaGallery)]
 
 
-def test_overlong_slug_drops_only_the_overflowing_button() -> None:
-    # With website_key "site", a 84-char url_name pushes only the mark_read id
-    # (which also encodes the chapter index) past Discord's 100-char ceiling;
-    # bookmark/subscribe/open_chapter still fit and must survive.
+def _view_text(view: discord.ui.LayoutView) -> str:
+    return "\n".join(
+        item.content for item in view.walk_children() if isinstance(item, discord.ui.TextDisplay)
+    )
+
+
+def test_long_comix_slug_keeps_all_four_buttons_with_compact_action_token() -> None:
     payload = {
         "series_title": "S",
-        "website_key": "site",
-        "url_name": "a" * 84,
+        "website_key": "comix",
+        "url_name": (
+            "the-final-boss-prince-is-somehow-obsessed-with-the-chubby-villainess-reincarnated-me"
+        ),
         "chapter": _CHAPTER,
+        "action_token": "AbCdEf123456",
     }
 
     view = build_chapter_update_view(payload)
 
     custom_ids = _button_custom_ids(view)
-    assert custom_ids, "expected the still-valid buttons to be rendered"
     assert all(1 <= len(cid) <= 100 for cid in custom_ids), {cid: len(cid) for cid in custom_ids}
-    assert not any(cid.startswith("mu:upd:mr:") for cid in custom_ids)
-    assert len(custom_ids) == 3
+    assert len(custom_ids) == 4
+    assert {cid.split(":")[2] for cid in custom_ids} == {"mr", "bm", "sub", "lr"}
 
 
 def test_extreme_slug_yields_no_overlong_custom_ids() -> None:
@@ -88,3 +93,18 @@ def test_valid_cover_url_keeps_media_gallery() -> None:
     view = build_chapter_update_view(payload)
 
     assert len(_media_galleries(view)) == 1
+
+
+def test_notification_footer_names_scanlator_and_check_source() -> None:
+    payload = {
+        "series_title": "S",
+        "website_key": "comix",
+        "url_name": "series",
+        "chapter": _CHAPTER,
+        "scanlator_name": "Comix",
+        "source": "main",
+    }
+
+    view = build_chapter_update_view(payload)
+
+    assert "-# Scanlator: Comix • via main check" in _view_text(view)

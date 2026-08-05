@@ -41,6 +41,10 @@ from .ui.components.error import (
 )
 from .ui.components.notification_buttons import (
     BookmarkButton,
+    CompactBookmarkButton,
+    CompactLastReadChapterButton,
+    CompactMarkReadButton,
+    CompactSubscribeToggleButton,
     LastReadChapterButton,
     MarkReadButton,
     SubscribeToggleButton,
@@ -151,6 +155,10 @@ class ManhwaBot(commands.Bot):
             BookmarkButton,
             SubscribeToggleButton,
             LastReadChapterButton,
+            CompactMarkReadButton,
+            CompactBookmarkButton,
+            CompactSubscribeToggleButton,
+            CompactLastReadChapterButton,
         )
         _log.info(
             "Registered persistent chapter-update buttons: MarkRead, Bookmark, "

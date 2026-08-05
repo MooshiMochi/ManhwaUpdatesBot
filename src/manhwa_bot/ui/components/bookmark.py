@@ -302,7 +302,9 @@ class BookmarkBrowserView(BaseLayoutView):
         self._guild_settings = guild_settings
         self._crawler = crawler
         self._guild_id = guild_id
-        self._current_folder = current_folder
+        self._selected_folders = (
+            {current_folder} if current_folder in BOOKMARK_FOLDERS else set(BOOKMARK_FOLDERS)
+        )
         self._mode: Literal["visual", "text"] = "visual"
         self._bot = bot
         self._meta: dict[tuple[str, str], dict[str, Any]] = {}
@@ -354,9 +356,17 @@ class BookmarkBrowserView(BaseLayoutView):
             await interaction.response.send_message(message, ephemeral=True)
 
     def _apply_folder_filter(self) -> list[Bookmark]:
-        if self._current_folder is None:
-            return list(self._all)
-        return [b for b in self._all if b.folder == self._current_folder]
+        return [bookmark for bookmark in self._all if bookmark.folder in self._selected_folders]
+
+    def _folder_filter_label(self) -> str:
+        selected_count = len(self._selected_folders)
+        if selected_count == len(BOOKMARK_FOLDERS):
+            return "All"
+        if selected_count == 0:
+            return "No folders"
+        if selected_count == 1:
+            return next(iter(self._selected_folders))
+        return f"{selected_count} folders"
 
     def _bookmark_key(self, bm: Bookmark) -> tuple[str, str]:
         return (bm.website_key, bm.url_name)
@@ -913,27 +923,19 @@ class BookmarkBrowserView(BaseLayoutView):
         return row
 
     def _build_folder_filter_row(self) -> discord.ui.ActionRow:
-        """Select that filters which folder of bookmarks we are currently viewing."""
-        current = self._current_folder or "All folders"
+        """Multi-select whose selected folders are included in the current view."""
+        selected_count = len(self._selected_folders)
         select = discord.ui.Select(
-            placeholder=f"Browsing folder: {current}",
+            placeholder=f"Folders: {selected_count}/{len(BOOKMARK_FOLDERS)} selected",
             custom_id=self._custom_id("browse-folder"),
-            min_values=1,
-            max_values=1,
+            min_values=0,
+            max_values=len(BOOKMARK_FOLDERS),
             options=[
-                discord.SelectOption(
-                    label="All folders",
-                    value="__all__",
-                    default=self._current_folder is None,
-                    description="Show bookmarks from every folder.",
-                )
-            ]
-            + [
                 discord.SelectOption(
                     label=f,
                     value=f,
-                    default=self._current_folder == f,
-                    description=f"Show bookmarks in {f}. {_FOLDER_DESCRIPTIONS[f]}",
+                    default=f in self._selected_folders,
+                    description=f"Include {f}. {_FOLDER_DESCRIPTIONS[f]}",
                 )
                 for f in BOOKMARK_FOLDERS
             ],
@@ -1061,7 +1063,7 @@ class BookmarkBrowserView(BaseLayoutView):
                 f" · `{status}` · {last_md}"
             )
         body = "\n".join(lines) if lines else "No bookmarks in this folder."
-        folder_label = self._current_folder or "All"
+        folder_label = self._folder_filter_label()
 
         container = discord.ui.Container(accent_colour=None)
         container.add_item(discord.ui.TextDisplay("## 🔖  Your bookmarks"))
@@ -1092,7 +1094,7 @@ class BookmarkBrowserView(BaseLayoutView):
 
     async def _build_container(self) -> discord.ui.Container:
         if not self._filtered:
-            label = self._current_folder or "All"
+            label = self._folder_filter_label()
             return discord.ui.Container(
                 discord.ui.TextDisplay("## 🔖  No bookmarks"),
                 small_separator(),
@@ -1319,9 +1321,8 @@ class BookmarkBrowserView(BaseLayoutView):
             if best_pos is not None and best_score >= _SEARCH_SIMILARITY_THRESHOLD:
                 pos = best_pos
         if pos is None:
-            where = (
-                f"in **{self._current_folder}**" if self._current_folder else "in your bookmarks"
-            )
+            folder_label = self._folder_filter_label()
+            where = "in your bookmarks" if folder_label == "All" else f"in **{folder_label}**"
             await self._send_ephemeral(
                 interaction,
                 f"No bookmark title matching **{raw_query.strip()}** {where}.",
@@ -1349,8 +1350,7 @@ class BookmarkBrowserView(BaseLayoutView):
 
     async def _on_filter_change(self, interaction: discord.Interaction) -> None:
         values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
-        choice = values[0] if values else "__all__"
-        self._current_folder = None if choice == "__all__" else choice
+        self._selected_folders = {value for value in values if value in BOOKMARK_FOLDERS}
         self._filtered = self._apply_folder_filter()
         self._index = 0
         self._reset_preload_window()
