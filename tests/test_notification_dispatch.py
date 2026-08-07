@@ -29,6 +29,7 @@ from manhwa_bot.db.migrate import apply_pending
 from manhwa_bot.db.pool import DbPool
 from manhwa_bot.db.subscriptions import SubscriptionStore
 from manhwa_bot.db.tracked import TrackedStore
+from manhwa_bot.notification_cover_relay import CoverAttachmentAsset
 
 
 def _build_config(*, respect_paid_chapter: bool = True) -> AppConfig:
@@ -358,6 +359,120 @@ def test_dispatch_uses_tracked_cover_when_notification_payload_lacks_cover() -> 
             assert channel.send.await_count == 1
             sent_view = channel.send.await_args.kwargs["view"]
             assert _media_gallery_urls(sent_view) == ["https://example.com/tracked-cover.jpg"]
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_comix_cover_is_prepared_once_and_uploaded_fresh_per_recipient() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            cover_url = "https://i.ibb.co/demo/cover.jpg"
+            await _seed_tracked(
+                bot.db,
+                guild_ids=[1, 2],
+                website_key="comix",
+                cover_url=cover_url,
+            )
+            settings = GuildSettingsStore(bot.db)
+            await settings.set_notifications_channel(1, 100)
+            await settings.set_notifications_channel(2, 200)
+            channels = {100: _make_channel(), 200: _make_channel()}
+            bot.get_channel.side_effect = lambda channel_id: channels.get(channel_id)
+            asset = CoverAttachmentAsset(b"cover", "comix-cover-deadbeef.jpg")
+            cog._cover_relay = SimpleNamespace(
+                prepare=AsyncMock(return_value=asset), close=AsyncMock()
+            )
+
+            await cog.dispatch(_payload(website_key="comix"))
+
+            cog._cover_relay.prepare.assert_awaited_once_with(
+                website_key="comix", cover_url=cover_url
+            )
+            first_kwargs = channels[100].send.await_args.kwargs
+            second_kwargs = channels[200].send.await_args.kwargs
+            assert first_kwargs["file"] is not second_kwargs["file"]
+            assert _media_gallery_urls(first_kwargs["view"]) == [first_kwargs["file"].uri]
+            assert _media_gallery_urls(second_kwargs["view"]) == [second_kwargs["file"].uri]
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_comix_status_cover_is_prepared_once_and_uploaded() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            cover_url = "https://i.ibb.co/demo/cover.jpg"
+            await _seed_tracked(
+                bot.db,
+                guild_ids=[1],
+                website_key="comix",
+                cover_url=cover_url,
+            )
+            await GuildSettingsStore(bot.db).set_notifications_channel(1, 100)
+            channel = _make_channel()
+            bot.get_channel.side_effect = lambda channel_id: channel if channel_id == 100 else None
+            asset = CoverAttachmentAsset(b"cover", "comix-cover-deadbeef.jpg")
+            cog._cover_relay = SimpleNamespace(
+                prepare=AsyncMock(return_value=asset), close=AsyncMock()
+            )
+            record = _status_payload()
+            record["payload"]["website_key"] = "comix"
+
+            await cog.dispatch(record)
+
+            cog._cover_relay.prepare.assert_awaited_once_with(
+                website_key="comix", cover_url=cover_url
+            )
+            kwargs = channel.send.await_args.kwargs
+            assert _media_gallery_urls(kwargs["view"]) == [kwargs["file"].uri]
+        finally:
+            await bot.db.close()
+            tmp.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_attachment_http_failure_retries_recipient_with_remote_cover() -> None:
+    async def _run() -> None:
+        bot, cog, tmp = await _setup()
+        try:
+            cover_url = "https://i.ibb.co/demo/cover.jpg"
+            await _seed_tracked(
+                bot.db,
+                guild_ids=[1],
+                website_key="comix",
+                cover_url=cover_url,
+            )
+            await GuildSettingsStore(bot.db).set_notifications_channel(1, 100)
+            channel = _make_channel()
+            response = MagicMock(status=400, reason="Bad Request")
+            channel.send.side_effect = [
+                discord.HTTPException(response, "bad attachment"),
+                None,
+            ]
+            bot.get_channel.side_effect = lambda channel_id: channel if channel_id == 100 else None
+            cog._cover_relay = SimpleNamespace(
+                prepare=AsyncMock(
+                    return_value=CoverAttachmentAsset(b"cover", "comix-cover-deadbeef.jpg")
+                ),
+                close=AsyncMock(),
+            )
+
+            await cog.dispatch(_payload(website_key="comix"))
+
+            assert channel.send.await_count == 2
+            first_kwargs = channel.send.await_args_list[0].kwargs
+            retry_kwargs = channel.send.await_args_list[1].kwargs
+            assert first_kwargs["file"].uri.startswith("attachment://")
+            assert "file" not in retry_kwargs
+            assert _media_gallery_urls(retry_kwargs["view"]) == [cover_url]
         finally:
             await bot.db.close()
             tmp.cleanup()

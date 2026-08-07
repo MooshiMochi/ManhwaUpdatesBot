@@ -305,6 +305,9 @@ def test_mark_read_skipped_chapter_requires_hyperlinked_confirmation() -> None:
     async def _run() -> None:
         pool, tmp = await _open()
         try:
+            await TrackedStore(pool).upsert_series(
+                "comick", "demo", "https://example.com/demo", "Demo", None, None
+            )
             store = BookmarkStore(pool)
             await store.upsert_bookmark(
                 42,
@@ -333,6 +336,7 @@ def test_mark_read_skipped_chapter_requires_hyperlinked_confirmation() -> None:
             assert bookmark.last_read_index == 22
             view = _sent_component_v2_view(interaction)
             text = _view_text(view)
+            assert "[Demo](https://example.com/demo)" in text
             assert "[Chapter 23](https://example.com/demo/23)" in text
             assert "[Chapter 25](https://example.com/demo/25)" in text
             assert _view_button(view, "Proceed")
@@ -484,6 +488,9 @@ def test_mark_read_unknown_sequence_warns_and_timeout_keeps_progress() -> None:
     async def _run() -> None:
         pool, tmp = await _open()
         try:
+            await TrackedStore(pool).upsert_series(
+                "comick", "demo", "https://example.com/demo", "Demo", None, None
+            )
             store = BookmarkStore(pool)
             await store.upsert_bookmark(
                 42,
@@ -498,7 +505,9 @@ def test_mark_read_unknown_sequence_warns_and_timeout_keeps_progress() -> None:
             await MarkReadButton("comick", "demo", 25).callback(interaction)
 
             view = _sent_component_v2_view(interaction)
-            assert "couldn't reliably determine" in _view_text(view)
+            text = _view_text(view)
+            assert "[Demo](https://example.com/demo)" in text
+            assert "couldn't reliably determine" in text
             await view.on_timeout()
             bookmark = await store.get_bookmark(42, "comick", "demo")
             assert bookmark is not None

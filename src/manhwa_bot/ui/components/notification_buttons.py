@@ -425,6 +425,7 @@ class MarkReadConfirmationView(BaseLayoutView):
                 "I couldn't reliably determine your next chapter. "
                 f"Mark {chapter_display} as read anyway?"
             )
+        warning = f"**Series:** {_series_link(tracked, url_name)}\n\n{warning}"
         proceed = discord.ui.Button(label="Proceed", style=discord.ButtonStyle.success)
         discard = discord.ui.Button(label="Discard", style=discord.ButtonStyle.secondary)
         proceed.callback = self._proceed

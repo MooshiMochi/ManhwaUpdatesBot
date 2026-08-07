@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
+from time import monotonic
 from typing import TYPE_CHECKING, Any
 
 import discord
@@ -23,6 +25,7 @@ from ..db.guild_settings import GuildSettingsStore
 from ..db.notification_actions import NotificationActionContextStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
+from ..notification_cover_relay import CoverAttachmentAsset, NotificationCoverRelay
 from ..ui.components.notifications import (
     ALL_UPDATE_BUTTONS,
     build_chapter_update_view,
@@ -70,6 +73,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
         cfg = self.bot.config.notifications
         self._channel_sem = asyncio.Semaphore(max(1, int(cfg.fanout_concurrency)))
         self._dm_sem = asyncio.Semaphore(max(1, int(cfg.dm_fanout_concurrency)))
+        self._cover_relay = NotificationCoverRelay(cfg)
         self._consumer: NotificationConsumer | None = None
 
     async def _scanlator_name(self, website_key: str) -> str:
@@ -108,9 +112,11 @@ class UpdatesCog(commands.Cog, name="Updates"):
         if self._consumer is not None:
             await self._consumer.stop()
             self._consumer = None
+        await self._cover_relay.close()
 
     async def dispatch(self, record: dict[str, Any]) -> None:
         """Fan a single notification record out to guilds + DM subscribers."""
+        started = monotonic()
         payload = record.get("payload") or {}
         website_key = str(payload.get("website_key") or "").strip()
         url_name = str(payload.get("url_name") or "").strip()
@@ -122,7 +128,16 @@ class UpdatesCog(commands.Cog, name="Updates"):
         if not str(payload.get("scanlator_name") or "").strip():
             payload["scanlator_name"] = await self._scanlator_name(website_key)
         if payload.get("event") == "status_change":
-            await self._dispatch_status_change(payload, website_key, url_name)
+            recipients, attachment_sends = await self._dispatch_status_change(
+                payload, website_key, url_name
+            )
+            self._log_dispatch_completion(
+                record,
+                website_key,
+                recipients,
+                attachment_sends,
+                started,
+            )
             return
         raw_chapter = payload.get("chapter") or {}
         chapter = (
@@ -174,19 +189,87 @@ class UpdatesCog(commands.Cog, name="Updates"):
         )
         payload["action_token"] = action_context.token
 
-        guild_tasks = [
-            self._dispatch_to_guild(row, payload, is_premium, website_key) for row in guild_rows
-        ]
-        dm_tasks = [self._dispatch_to_user(uid, payload, is_premium) for uid in user_ids]
+        recipients = len(guild_rows) + len(user_ids)
+        cover_asset = (
+            await self._cover_relay.prepare(
+                website_key=website_key,
+                cover_url=payload.get("cover_url"),
+            )
+            if recipients
+            else None
+        )
 
-        await asyncio.gather(*guild_tasks, *dm_tasks, return_exceptions=True)
+        guild_tasks = [
+            self._dispatch_to_guild(row, payload, is_premium, website_key, cover_asset)
+            for row in guild_rows
+        ]
+        dm_tasks = [
+            self._dispatch_to_user(uid, payload, is_premium, cover_asset) for uid in user_ids
+        ]
+
+        results = await asyncio.gather(*guild_tasks, *dm_tasks, return_exceptions=True)
+        self._log_dispatch_completion(
+            record,
+            website_key,
+            recipients,
+            sum(result is True for result in results),
+            started,
+        )
+
+    @staticmethod
+    async def _send_with_cover(
+        send: Callable[..., Any],
+        *,
+        view_factory: Callable[[str | None], discord.ui.LayoutView],
+        send_kwargs: dict[str, Any],
+        cover_asset: CoverAttachmentAsset | None,
+    ) -> bool:
+        if cover_asset is None:
+            await send(view=view_factory(None), **send_kwargs)
+            return False
+
+        file = cover_asset.to_file()
+        try:
+            try:
+                await send(
+                    view=view_factory(file.uri),
+                    file=file,
+                    **send_kwargs,
+                )
+                return True
+            except discord.Forbidden, discord.NotFound:
+                raise
+            except discord.HTTPException:
+                _log.warning("notification attachment send rejected; retrying remote cover")
+                await send(view=view_factory(None), **send_kwargs)
+                return False
+        finally:
+            file.close()
+
+    @staticmethod
+    def _log_dispatch_completion(
+        record: dict[str, Any],
+        website_key: str,
+        recipients: int,
+        attachment_sends: int,
+        started: float,
+    ) -> None:
+        _log.info(
+            "notification_dispatch event_id=%s website=%s recipients=%s "
+            "attachment_sends=%s duration_ms=%s",
+            record.get("id"),
+            website_key,
+            recipients,
+            attachment_sends,
+            max(0, int((monotonic() - started) * 1000)),
+        )
 
     async def _dispatch_status_change(
         self,
         payload: dict[str, Any],
         website_key: str,
         url_name: str,
-    ) -> None:
+    ) -> tuple[int, int]:
         guild_rows = await self._tracked.list_guilds_tracking(website_key, url_name)
         user_ids = await self._subs.list_subscribers_for_series(website_key, url_name)
         series_row = (
@@ -214,11 +297,21 @@ class UpdatesCog(commands.Cog, name="Updates"):
             except Exception:
                 _log.exception("failed to persist status for %s:%s", website_key, url_name)
 
+        recipients = len(guild_rows) + len(user_ids)
+        cover_asset = (
+            await self._cover_relay.prepare(
+                website_key=website_key,
+                cover_url=payload.get("cover_url"),
+            )
+            if recipients
+            else None
+        )
         guild_tasks = [
-            self._dispatch_status_to_guild(row, payload, website_key) for row in guild_rows
+            self._dispatch_status_to_guild(row, payload, website_key, cover_asset)
+            for row in guild_rows
         ]
-        dm_tasks = [self._dispatch_status_to_user(uid, payload) for uid in user_ids]
-        await asyncio.gather(*guild_tasks, *dm_tasks, return_exceptions=True)
+        dm_tasks = [self._dispatch_status_to_user(uid, payload, cover_asset) for uid in user_ids]
+        results = await asyncio.gather(*guild_tasks, *dm_tasks, return_exceptions=True)
 
         if bool(payload.get("terminal")):
             try:
@@ -226,20 +319,22 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 await self._tracked.delete_series(website_key, url_name)
             except Exception:
                 _log.exception("terminal cleanup failed for %s:%s", website_key, url_name)
+        return recipients, sum(result is True for result in results)
 
     async def _dispatch_status_to_guild(
         self,
         row: Any,
         payload: dict,
         website_key: str,
-    ) -> None:
+        cover_asset: CoverAttachmentAsset | None,
+    ) -> bool:
         async with self._channel_sem:
             try:
                 settings = await self._guild_settings.get(row.guild_id)
                 channel_id = await self._resolve_channel_id(row.guild_id, website_key, settings)
                 if channel_id is None:
                     _log.warning("guild %s has no notification channel; skipping", row.guild_id)
-                    return
+                    return False
                 channel = await _resolve_messageable_channel(self.bot, channel_id)
                 if channel is None:
                     _log.warning(
@@ -247,7 +342,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                         channel_id,
                         row.guild_id,
                     )
-                    return
+                    return False
                 guild = getattr(channel, "guild", None) or self.bot.get_guild(row.guild_id)
                 content = self._compose_ping(guild, row, settings)
                 spoiler = should_spoiler(
@@ -255,18 +350,25 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     mode=settings.nsfw_spoiler_mode if settings is not None else "always",
                     channel_is_nsfw=_channel_is_nsfw(channel),
                 )
-                send_kwargs: dict[str, Any] = {
-                    "view": build_status_change_view(
-                        payload, bot=self.bot, ping=content, spoiler=spoiler
-                    )
-                }
+                send_kwargs: dict[str, Any] = {}
                 if content:
                     send_kwargs["allowed_mentions"] = discord.AllowedMentions(
                         everyone=False,
                         users=False,
                         roles=True,
                     )
-                await channel.send(**send_kwargs)
+                return await self._send_with_cover(
+                    channel.send,
+                    view_factory=lambda cover_media_url: build_status_change_view(
+                        payload,
+                        bot=self.bot,
+                        ping=content,
+                        spoiler=spoiler,
+                        cover_media_url=cover_media_url,
+                    ),
+                    send_kwargs=send_kwargs,
+                    cover_asset=cover_asset,
+                )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.warning(
                     "guild %s status send failed (%s); skipping",
@@ -283,22 +385,36 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     "unexpected error dispatching status to guild %s",
                     getattr(row, "guild_id", "?"),
                 )
+        return False
 
-    async def _dispatch_status_to_user(self, user_id: int, payload: dict) -> None:
+    async def _dispatch_status_to_user(
+        self,
+        user_id: int,
+        payload: dict,
+        cover_asset: CoverAttachmentAsset | None,
+    ) -> bool:
         async with self._dm_sem:
             try:
                 dm_settings = await self._dm_settings.get(user_id)
                 if dm_settings is not None and not dm_settings.notifications_enabled:
-                    return
+                    return False
                 if not await self._user_has_premium(user_id):
-                    return
+                    return False
                 user = await self.bot.fetch_user(user_id)
                 spoiler = should_spoiler(
                     payload.get("is_nsfw"),
                     mode=dm_settings.nsfw_spoiler_mode if dm_settings is not None else "always",
                 )
-                await user.send(
-                    view=build_status_change_view(payload, bot=self.bot, spoiler=spoiler)
+                return await self._send_with_cover(
+                    user.send,
+                    view_factory=lambda cover_media_url: build_status_change_view(
+                        payload,
+                        bot=self.bot,
+                        spoiler=spoiler,
+                        cover_media_url=cover_media_url,
+                    ),
+                    send_kwargs={},
+                    cover_asset=cover_asset,
                 )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("status DM to user %s skipped (%s)", user_id, exc.__class__.__name__)
@@ -306,6 +422,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 _log.warning("status DM to user %s failed with HTTP error", user_id)
             except Exception:
                 _log.exception("unexpected error dispatching status DM to user %s", user_id)
+        return False
 
     async def _dispatch_to_guild(
         self,
@@ -313,7 +430,8 @@ class UpdatesCog(commands.Cog, name="Updates"):
         payload: dict,
         is_premium: bool,
         website_key: str,
-    ) -> None:
+        cover_asset: CoverAttachmentAsset | None,
+    ) -> bool:
         async with self._channel_sem:
             try:
                 settings = await self._guild_settings.get(row.guild_id)
@@ -321,10 +439,10 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 channel_id = await self._resolve_channel_id(row.guild_id, website_key, settings)
                 if channel_id is None:
                     _log.warning("guild %s has no notification channel; skipping", row.guild_id)
-                    return
+                    return False
 
                 if not self._passes_paid_chapter_gate(payload, is_premium, settings):
-                    return
+                    return False
 
                 channel = await _resolve_messageable_channel(self.bot, channel_id)
                 if channel is None:
@@ -333,7 +451,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                         channel_id,
                         row.guild_id,
                     )
-                    return
+                    return False
 
                 guild = getattr(channel, "guild", None) or self.bot.get_guild(row.guild_id)
                 content = self._compose_ping(guild, row, settings)
@@ -343,21 +461,26 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     mode=settings.nsfw_spoiler_mode if settings is not None else "always",
                     channel_is_nsfw=_channel_is_nsfw(channel),
                 )
-                view = build_chapter_update_view(
-                    payload,
-                    bot=self.bot,
-                    allowed_buttons=allowed,
-                    ping=content,
-                    spoiler=spoiler,
-                )
-                send_kwargs: dict[str, Any] = {"view": view}
+                send_kwargs: dict[str, Any] = {}
                 if content:
                     send_kwargs["allowed_mentions"] = discord.AllowedMentions(
                         everyone=False,
                         users=False,
                         roles=True,
                     )
-                await channel.send(**send_kwargs)
+                return await self._send_with_cover(
+                    channel.send,
+                    view_factory=lambda cover_media_url: build_chapter_update_view(
+                        payload,
+                        bot=self.bot,
+                        allowed_buttons=allowed,
+                        ping=content,
+                        spoiler=spoiler,
+                        cover_media_url=cover_media_url,
+                    ),
+                    send_kwargs=send_kwargs,
+                    cover_asset=cover_asset,
+                )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.warning(
                     "guild %s send failed (%s); skipping",
@@ -374,6 +497,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     "unexpected error dispatching to guild %s",
                     getattr(row, "guild_id", "?"),
                 )
+        return False
 
     async def _resolve_channel_id(
         self,
@@ -468,16 +592,17 @@ class UpdatesCog(commands.Cog, name="Updates"):
         user_id: int,
         payload: dict,
         is_premium: bool,
-    ) -> None:
+        cover_asset: CoverAttachmentAsset | None,
+    ) -> bool:
         async with self._dm_sem:
             try:
                 dm_settings = await self._dm_settings.get(user_id)
                 if dm_settings is not None and not dm_settings.notifications_enabled:
-                    return
+                    return False
                 if not await self._user_has_premium(user_id):
-                    return
+                    return False
                 if not self._passes_paid_chapter_gate(payload, is_premium, dm_settings):
-                    return
+                    return False
                 user = await self.bot.fetch_user(user_id)
                 allowed = (
                     dm_settings.update_buttons if dm_settings is not None else ALL_UPDATE_BUTTONS
@@ -486,10 +611,17 @@ class UpdatesCog(commands.Cog, name="Updates"):
                     payload.get("is_nsfw"),
                     mode=dm_settings.nsfw_spoiler_mode if dm_settings is not None else "always",
                 )
-                await user.send(
-                    view=build_chapter_update_view(
-                        payload, bot=self.bot, allowed_buttons=allowed, spoiler=spoiler
-                    )
+                return await self._send_with_cover(
+                    user.send,
+                    view_factory=lambda cover_media_url: build_chapter_update_view(
+                        payload,
+                        bot=self.bot,
+                        allowed_buttons=allowed,
+                        spoiler=spoiler,
+                        cover_media_url=cover_media_url,
+                    ),
+                    send_kwargs={},
+                    cover_asset=cover_asset,
                 )
             except (discord.Forbidden, discord.NotFound) as exc:
                 _log.debug("DM to user %s skipped (%s)", user_id, exc.__class__.__name__)
@@ -497,6 +629,7 @@ class UpdatesCog(commands.Cog, name="Updates"):
                 _log.warning("DM to user %s failed with HTTP error", user_id)
             except Exception:
                 _log.exception("unexpected error dispatching DM to user %s", user_id)
+        return False
 
 
 async def setup(bot: commands.Bot) -> None:

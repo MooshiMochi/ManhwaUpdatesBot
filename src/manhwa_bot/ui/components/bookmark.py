@@ -303,7 +303,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._crawler = crawler
         self._guild_id = guild_id
         self._selected_folders = (
-            {current_folder} if current_folder in BOOKMARK_FOLDERS else set(BOOKMARK_FOLDERS)
+            {current_folder} if current_folder in BOOKMARK_FOLDERS else {"Reading", "Subscribed"}
         )
         self._mode: Literal["visual", "text"] = "visual"
         self._bot = bot

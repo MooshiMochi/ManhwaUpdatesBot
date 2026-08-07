@@ -42,17 +42,23 @@ def _browse_select(browser: BookmarkBrowserView) -> discord.ui.Select:
     return next(item for item in row.children if isinstance(item, discord.ui.Select))
 
 
-def test_folder_multiselect_defaults_to_all_folders_selected() -> None:
+def test_folder_multiselect_defaults_to_reading_and_subscribed() -> None:
     browser = _browser()
 
     select = _browse_select(browser)
 
-    assert browser._selected_folders == set(BOOKMARK_FOLDERS)
-    assert [bookmark.folder for bookmark in browser._filtered] == list(BOOKMARK_FOLDERS)
+    assert browser._selected_folders == {"Reading", "Subscribed"}
+    assert [bookmark.folder for bookmark in browser._filtered] == [
+        "Reading",
+        "Subscribed",
+    ]
     assert select.min_values == 0
     assert select.max_values == len(BOOKMARK_FOLDERS)
     assert [option.value for option in select.options] == list(BOOKMARK_FOLDERS)
-    assert all(option.default for option in select.options)
+    assert [option.value for option in select.options if option.default] == [
+        "Reading",
+        "Subscribed",
+    ]
 
 
 def test_slash_folder_argument_starts_with_single_included_folder() -> None:

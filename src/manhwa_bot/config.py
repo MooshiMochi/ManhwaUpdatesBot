@@ -81,6 +81,12 @@ class NotificationsConfig:
     fanout_concurrency: int
     dm_fanout_concurrency: int
     respect_paid_chapter_setting: bool
+    cover_attachment_enabled: bool = True
+    cover_attachment_hosts: tuple[str, ...] = ("i.ibb.co",)
+    cover_attachment_timeout_seconds: float = 3.0
+    cover_attachment_max_bytes: int = 2 * 1024 * 1024
+    cover_attachment_cache_ttl_seconds: int = 6 * 60 * 60
+    cover_attachment_cache_max_bytes: int = 32 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -310,7 +316,34 @@ def load_config(
         respect_paid_chapter_setting=bool(
             notifications_section.get("respect_paid_chapter_setting", True)
         ),
+        cover_attachment_enabled=bool(notifications_section.get("cover_attachment_enabled", True)),
+        cover_attachment_hosts=tuple(
+            host.strip().lower()
+            for host in _strs(notifications_section.get("cover_attachment_hosts", ["i.ibb.co"]))
+            if host.strip()
+        ),
+        cover_attachment_timeout_seconds=float(
+            notifications_section.get("cover_attachment_timeout_seconds", 3.0)
+        ),
+        cover_attachment_max_bytes=int(
+            notifications_section.get("cover_attachment_max_bytes", 2 * 1024 * 1024)
+        ),
+        cover_attachment_cache_ttl_seconds=int(
+            notifications_section.get("cover_attachment_cache_ttl_seconds", 6 * 60 * 60)
+        ),
+        cover_attachment_cache_max_bytes=int(
+            notifications_section.get("cover_attachment_cache_max_bytes", 32 * 1024 * 1024)
+        ),
     )
+    notification_limits = {
+        "cover_attachment_timeout_seconds": notifications.cover_attachment_timeout_seconds,
+        "cover_attachment_max_bytes": notifications.cover_attachment_max_bytes,
+        "cover_attachment_cache_ttl_seconds": notifications.cover_attachment_cache_ttl_seconds,
+        "cover_attachment_cache_max_bytes": notifications.cover_attachment_cache_max_bytes,
+    }
+    for name, value in notification_limits.items():
+        if value <= 0:
+            raise ConfigError(f"notifications.{name} must be greater than zero")
     websites_cache = SupportedWebsitesCacheConfig(
         ttl_seconds=int(websites_cache_section.get("ttl_seconds", 3600)),
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 from urllib.parse import urlparse
 
@@ -193,7 +194,7 @@ def chapter_markdown(chapter: object, fallback_idx: int | None = None) -> str:
 
 
 def _clean_media_url(url: str | None) -> str | None:
-    """Return a trimmed http(s) URL Discord will accept as media, else None.
+    """Return a validated remote or attachment media URL, else None.
 
     A malformed/relative cover URL makes the MediaGallery item's ``media.url``
     fail validation (``400`` error code ``50035``), which rejects the *entire*
@@ -204,6 +205,12 @@ def _clean_media_url(url: str | None) -> str | None:
         return None
     candidate = url.strip()
     if not candidate or any(ch.isspace() for ch in candidate):
+        return None
+    attachment_prefix = "attachment://"
+    if candidate.startswith(attachment_prefix):
+        filename = candidate.removeprefix(attachment_prefix)
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", filename):
+            return candidate
         return None
     parsed = urlparse(candidate)
     if parsed.scheme in ("http", "https") and parsed.netloc:

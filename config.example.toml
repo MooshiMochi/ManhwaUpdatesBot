@@ -83,6 +83,14 @@ fanout_concurrency = 8
 dm_fanout_concurrency = 4
 # Skip premium/paid chapter notifications for guilds that have paid_chapter_notifs disabled.
 respect_paid_chapter_setting = true
+# Relay eligible Comix covers directly to Discord when Discord's media proxy breaks hotlinks.
+cover_attachment_enabled = true
+# Exact HTTPS host allowlist. Subdomains are not implicitly trusted.
+cover_attachment_hosts = ["i.ibb.co"]
+cover_attachment_timeout_seconds = 3.0
+cover_attachment_max_bytes = 2097152
+cover_attachment_cache_ttl_seconds = 21600
+cover_attachment_cache_max_bytes = 33554432
 
 [supported_websites_cache]
 # /supported_websites cache TTL.

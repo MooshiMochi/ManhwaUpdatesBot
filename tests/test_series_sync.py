@@ -40,6 +40,13 @@ def test_series_sync_handler_submits_union_of_local_references() -> None:
                     "site", "tracked-only", "https://site.test/tracked-only", "Tracked"
                 )
                 await tracked.add_to_guild(11, "site", "tracked-only")
+                await tracked.add_to_guild(12, "site", "tracked-only")
+                await tracked.upsert_series(
+                    "mangadna",
+                    "son-of-nam",
+                    "https://mangadna.example/son-of-nam",
+                    "Son of Nam",
+                )
                 await subs.subscribe(3, 10, "site", "shared")
                 await subs.subscribe(4, 10, "site", "subscribed-only")
 
@@ -93,7 +100,7 @@ def test_series_sync_handler_submits_union_of_local_references() -> None:
                                     "website_key": "site",
                                     "url_name": "tracked-only",
                                     "bookmarks": 0,
-                                    "tracked": 1,
+                                    "tracked": 2,
                                     "subscriptions": 0,
                                 },
                             ],

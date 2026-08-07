@@ -58,6 +58,7 @@ def build_chapter_update_view(
     allowed_buttons: frozenset[str] = ALL_UPDATE_BUTTONS,
     ping: str | None = None,
     spoiler: bool = False,
+    cover_media_url: str | None = None,
 ) -> discord.ui.LayoutView:
     """Build a fresh push-notification LayoutView for a new chapter.
 
@@ -71,7 +72,7 @@ def build_chapter_update_view(
     raw_chapter = payload.get("chapter") or {}
     chapter = raw_chapter if isinstance(raw_chapter, Chapter) else Chapter.from_dict(raw_chapter)
     is_premium = chapter.is_premium
-    cover_url = payload.get("cover_url")
+    cover_url = cover_media_url or payload.get("cover_url")
     website_key = str(payload.get("website_key") or "")
     url_name = str(payload.get("url_name") or "")
 
@@ -122,12 +123,13 @@ def build_status_change_view(
     bot: discord.Client | None = None,
     ping: str | None = None,
     spoiler: bool = False,
+    cover_media_url: str | None = None,
 ) -> discord.ui.LayoutView:
     series_title = payload.get("series_title") or payload.get("url_name") or "Series"
     series_url = payload.get("series_url") or None
     old_status = str(payload.get("old_status") or "Unknown")
     new_status = str(payload.get("new_status") or payload.get("status") or "Unknown")
-    cover_url = payload.get("cover_url")
+    cover_url = cover_media_url or payload.get("cover_url")
 
     header = f"## 🔔  [{series_title}]({series_url})" if series_url else f"## 🔔  {series_title}"
     body = f"**Status changed:** `{old_status}` → `{new_status}`"

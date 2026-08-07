@@ -285,10 +285,10 @@ class TrackedStore:
             SELECT
               ts.website_key,
               ts.url_name,
-              MAX(1, COUNT(tig.guild_id)) AS tracked
-            FROM tracked_series ts
-            LEFT JOIN tracked_in_guild tig
-              ON tig.website_key = ts.website_key AND tig.url_name = ts.url_name
+              COUNT(*) AS tracked
+            FROM tracked_in_guild tig
+            JOIN tracked_series ts
+              ON ts.website_key = tig.website_key AND ts.url_name = tig.url_name
             GROUP BY ts.website_key, ts.url_name
             """
         )
