@@ -374,20 +374,51 @@ def test_error_and_success_component_v2_containers_keep_accent_colour() -> None:
         assert all(accent is not None for accent in accents)
 
 
-def test_terminal_tracking_blocked_view_shows_bookmark_button() -> None:
+def test_tracking_success_view_shows_linked_title_and_cover() -> None:
+    series_url = "https://theblank.net/serie/milf-exchange-plan/"
+    view = tracking.build_tracking_success_view(
+        title="MILF Exchange Plan",
+        series_url=series_url,
+        ping_role=None,
+        notif_channel=None,
+        cover_url="https://theblank.net/storage/series/covers/milf-exchange-plan.webp",
+        is_dm=False,
+    )
+
+    galleries = [item for item in view.walk_children() if isinstance(item, discord.ui.MediaGallery)]
+    text = "\n".join(
+        item.content for item in view.walk_children() if isinstance(item, discord.ui.TextDisplay)
+    )
+
+    assert len(galleries) == 1
+    assert "Tracking Successful" in text
+    assert f"**[MILF Exchange Plan]({series_url})**" in text
+
+
+def test_terminal_tracking_blocked_view_shows_full_card_and_bookmark_button() -> None:
     row = discord.ui.ActionRow()
     row.add_item(discord.ui.Button(label="Bookmark", style=discord.ButtonStyle.secondary))
 
+    series_url = "https://theblank.net/serie/teach-me-first/"
     view = tracking.build_terminal_tracking_blocked_view(
-        title="Done Series",
-        series_url="https://example.test/done",
+        title="Teach Me First",
+        series_url=series_url,
         status="Completed",
-        cover_url=None,
+        cover_url="https://theblank.net/storage/series/covers/teach-me-first.webp",
         bookmark_row=row,
         bot=None,
     )
 
+    galleries = [item for item in view.walk_children() if isinstance(item, discord.ui.MediaGallery)]
+    text = "\n".join(
+        item.content for item in view.walk_children() if isinstance(item, discord.ui.TextDisplay)
+    )
     buttons = [item for item in view.walk_children() if isinstance(item, discord.ui.Button)]
+
+    assert len(galleries) == 1
+    assert "Tracking unavailable" in text
+    assert f"**[Teach Me First]({series_url})**" in text
+    assert "**Completed**" in text
     assert [button.label for button in buttons] == ["Bookmark"]
 
 
