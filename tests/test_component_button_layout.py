@@ -883,7 +883,7 @@ def test_bookmark_browser_keeps_existing_controls_while_rebuild_waits_for_data()
 
     assert ">" in controls
     assert "<" in controls
-    assert "Folders: 5/5 selected" in controls
+    assert "Folders: 2/5 selected" in controls
 
 
 def test_bookmark_browser_folder_controls_include_migrated_database_folders() -> None:
@@ -914,7 +914,7 @@ def test_bookmark_browser_folder_controls_include_migrated_database_folders() ->
                 or child.placeholder.startswith("Move bookmark:")
             )
         ]
-        browse = next(s for s in selects if s.placeholder == "Folders: 5/5 selected")
+        browse = next(s for s in selects if s.placeholder == "Folders: 2/5 selected")
         move = next(s for s in selects if s.placeholder == "Move bookmark: Subscribed")
         return [opt.label for opt in browse.options], [opt.label for opt in move.options]
 
@@ -1169,7 +1169,7 @@ def test_bookmark_browser_rebuild_keeps_dispatch_custom_ids_stable() -> None:
 
         assert after["Track"] == before["Track"]
         assert after[">"] == before[">"]
-        assert after["Folders: 5/5 selected"] == before["Folders: 5/5 selected"]
+        assert after["Folders: 2/5 selected"] == before["Folders: 2/5 selected"]
         assert after["Move bookmark: Reading"] == before["Move bookmark: Reading"]
 
     asyncio.run(run())
@@ -1343,7 +1343,7 @@ def test_bookmark_browser_visual_controls_match_requested_layout() -> None:
         for i, item in enumerate(container.children)
         if isinstance(item, discord.ui.ActionRow)
         and any(
-            isinstance(child, discord.ui.Select) and child.placeholder == "Folders: 5/5 selected"
+            isinstance(child, discord.ui.Select) and child.placeholder == "Folders: 2/5 selected"
             for child in item.children
         )
     )
