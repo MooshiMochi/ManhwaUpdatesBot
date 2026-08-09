@@ -287,28 +287,6 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 guild_id, website_key, url_name, ping_role.id if ping_role else None
             )
 
-            immediate_check_failed = False
-            try:
-                request = getattr(self.bot.crawler, "request", None)  # type: ignore[attr-defined]
-                if request is not None:
-                    await request(
-                        "check_series",
-                        website_key=website_key,
-                        url_name=url_name,
-                    )
-            except CrawlerError, RequestTimeout, Disconnected:
-                immediate_check_failed = True
-                _log.exception("immediate check_series failed for %s:%s", website_key, url_name)
-
-            warnings: list[str] = []
-            if auto_role_warning:
-                warnings.append(auto_role_warning)
-            if immediate_check_failed:
-                warnings.append(
-                    "Tracking was saved, but the immediate update check failed. "
-                    "The scheduler will retry later."
-                )
-            warning = "\n\n".join(warnings) if warnings else None
             view = build_tracking_success_view(
                 title=title,
                 series_url=series_url,
@@ -316,7 +294,7 @@ class TrackingCog(commands.Cog, name="Tracking"):
                 notif_channel=channel,
                 cover_url=cover_url,
                 is_dm=interaction.guild_id is None,
-                warning=warning,
+                warning=auto_role_warning,
                 bot=self.bot,
                 spoiler=should_spoiler(is_nsfw),
             )
