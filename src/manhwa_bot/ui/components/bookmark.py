@@ -1307,11 +1307,7 @@ class BookmarkBrowserView(BaseLayoutView):
 
         # First: jump to the first title that starts with the query.
         pos = next(
-            (
-                i
-                for i, bm in enumerate(self._all)
-                if _title_of(bm).casefold().startswith(query)
-            ),
+            (i for i, bm in enumerate(self._all) if _title_of(bm).casefold().startswith(query)),
             None,
         )
         # Fallback: no prefix match → fuzzy-match the query against each title's

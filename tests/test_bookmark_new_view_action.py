@@ -95,9 +95,7 @@ def test_view_bookmark_action_opens_the_persisted_folder(monkeypatch) -> None:
             for child in action_row.children
             if isinstance(child, discord.ui.Button) and child.label == "View Bookmark"
         )
-        button_interaction = SimpleNamespace(
-            response=SimpleNamespace(send_message=AsyncMock())
-        )
+        button_interaction = SimpleNamespace(response=SimpleNamespace(send_message=AsyncMock()))
         await button.callback(button_interaction)
 
     asyncio.run(run())

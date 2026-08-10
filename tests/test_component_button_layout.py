@@ -1640,9 +1640,7 @@ def test_bookmark_browser_empty_filtered_view_keeps_search_available() -> None:
     async def run() -> list[str | None]:
         await browser.initial_render()
         return [
-            child.label
-            for child in browser.walk_children()
-            if isinstance(child, discord.ui.Button)
+            child.label for child in browser.walk_children() if isinstance(child, discord.ui.Button)
         ]
 
     labels = asyncio.run(run())
