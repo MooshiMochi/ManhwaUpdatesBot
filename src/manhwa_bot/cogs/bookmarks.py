@@ -419,6 +419,7 @@ class BookmarksCog(commands.Cog, name="Bookmarks"):
                     crawler=self.bot.crawler,  # type: ignore[attr-defined]
                     invoker_id=invoker_id,
                     guild_id=guild_id,
+                    current_folder=bookmark.folder,
                     bot=self.bot,
                 )
                 await view.initial_render()
