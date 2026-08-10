@@ -1144,6 +1144,11 @@ class BookmarkBrowserView(BaseLayoutView):
                 )
                 container.add_item(small_separator())
             container.add_item(self._build_action_row(ts, track_state))
+        elif self._all:
+            container.add_item(small_separator())
+            search_row = discord.ui.ActionRow()
+            search_row.add_item(self._build_search_button())
+            container.add_item(search_row)
 
         container.add_item(small_separator())
         container.add_item(self._build_pagination_row())
@@ -1163,6 +1168,16 @@ class BookmarkBrowserView(BaseLayoutView):
         self.clear_items()
         self.add_item(container)
 
+    def _build_search_button(self) -> discord.ui.Button:
+        button = discord.ui.Button(
+            label="Search",
+            emoji="🔎",
+            style=discord.ButtonStyle.secondary,
+            custom_id=self._custom_id("search"),
+        )
+        button.callback = self._on_search  # type: ignore[assignment]
+        return button
+
     def _build_action_row(
         self,
         ts: _TrackingStatus | None,
@@ -1179,14 +1194,7 @@ class BookmarkBrowserView(BaseLayoutView):
         # Skipped during delete confirmation: the row is already at Discord's
         # five-button cap there (toggle, confirm, cancel, track, subscribe).
         if not self._delete_confirmation_active():
-            search_btn = discord.ui.Button(
-                label="Search",
-                emoji="🔎",
-                style=discord.ButtonStyle.secondary,
-                custom_id=self._custom_id("search"),
-            )
-            search_btn.callback = self._on_search  # type: ignore[assignment]
-            row.add_item(search_btn)
+            row.add_item(self._build_search_button())
         if self._mode == "visual":
             if self._delete_confirmation_active():
                 confirm_btn = discord.ui.Button(
@@ -1268,8 +1276,8 @@ class BookmarkBrowserView(BaseLayoutView):
         await self._rebuild_and_edit(interaction)
 
     async def _on_search(self, interaction: discord.Interaction) -> None:
-        if not self._filtered:
-            await self._send_ephemeral(interaction, "No bookmarks to search in this view.")
+        if not self._all:
+            await self._send_ephemeral(interaction, "No bookmarks to search.")
             return
         await interaction.response.send_modal(_BookmarkSearchModal(self))
 
@@ -1301,7 +1309,7 @@ class BookmarkBrowserView(BaseLayoutView):
         pos = next(
             (
                 i
-                for i, bm in enumerate(self._filtered)
+                for i, bm in enumerate(self._all)
                 if _title_of(bm).casefold().startswith(query)
             ),
             None,
@@ -1312,7 +1320,7 @@ class BookmarkBrowserView(BaseLayoutView):
         if pos is None:
             best_pos: int | None = None
             best_score = 0.0
-            for i, bm in enumerate(self._filtered):
+            for i, bm in enumerate(self._all):
                 title_prefix = _title_of(bm).casefold()[: len(query)]
                 score = difflib.SequenceMatcher(None, query, title_prefix).ratio()
                 if score > best_score:
@@ -1321,14 +1329,20 @@ class BookmarkBrowserView(BaseLayoutView):
             if best_pos is not None and best_score >= _SEARCH_SIMILARITY_THRESHOLD:
                 pos = best_pos
         if pos is None:
-            folder_label = self._folder_filter_label()
-            where = "in your bookmarks" if folder_label == "All" else f"in **{folder_label}**"
             await self._send_ephemeral(
                 interaction,
-                f"No bookmark title matching **{raw_query.strip()}** {where}.",
+                f"No bookmark title matching **{raw_query.strip()}** in your bookmarks.",
             )
             return
-        self._index = pos
+        matched = self._all[pos]
+        matched_key = self._bookmark_key(matched)
+        self._selected_folders = {matched.folder}
+        self._filtered = self._apply_folder_filter()
+        self._index = next(
+            i
+            for i, bookmark in enumerate(self._filtered)
+            if self._bookmark_key(bookmark) == matched_key
+        )
         self._reset_preload_window()
         await self._rebuild_and_edit(interaction)
 

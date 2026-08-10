@@ -509,12 +509,16 @@ class _EditInteraction:
         class Response:
             def __init__(self) -> None:
                 self.deferred = False
+                self.messages: list[str] = []
 
             def is_done(self) -> bool:
                 return self.deferred
 
             async def defer(self) -> None:
                 self.deferred = True
+
+            async def send_message(self, content: str, *, ephemeral: bool = False) -> None:
+                self.messages.append(content)
 
         self.response = Response()
 
@@ -553,7 +557,9 @@ class _FakeBookmarkCrawler:
         return {}
 
 
-def _bookmark_browser(bookmarks: list[Bookmark]) -> bookmark.BookmarkBrowserView:
+def _bookmark_browser(
+    bookmarks: list[Bookmark], *, current_folder: str | None = None
+) -> bookmark.BookmarkBrowserView:
     class FakeTrackedStore:
         async def find(self, website_key: str, url_name: str) -> None:
             return None
@@ -580,6 +586,7 @@ def _bookmark_browser(bookmarks: list[Bookmark]) -> bookmark.BookmarkBrowserView
         guild_settings=FakeGuildSettingsStore(),
         crawler=_FakeBookmarkCrawler(),
         invoker_id=1,
+        current_folder=current_folder,
     )
 
 
@@ -851,6 +858,19 @@ def _bookmark_series(count: int) -> list[Bookmark]:
         )
         for i in range(count)
     ]
+
+
+def _folder_bookmark(url_name: str, folder: str, order: int) -> Bookmark:
+    return Bookmark(
+        user_id=1,
+        website_key="site",
+        url_name=url_name,
+        folder=folder,
+        last_read_chapter="Chapter 1",
+        last_read_index=0,
+        created_at="2026-05-14T00:00:00",
+        updated_at=f"2026-05-14T00:00:{order:02d}",
+    )
 
 
 def _cached_series_names(browser: bookmark.BookmarkBrowserView) -> list[str]:
@@ -1571,11 +1591,74 @@ def test_bookmark_browser_search_jumps_to_first_prefix_match() -> None:
     asyncio.run(run())
 
 
+def test_bookmark_browser_search_switches_to_hidden_match_folder() -> None:
+    browser = _bookmark_browser(
+        [
+            _folder_bookmark("reading-series", "Reading", 0),
+            _folder_bookmark("finished-other", "Finished", 1),
+            _folder_bookmark("finished-target", "Finished", 2),
+        ]
+    )
+
+    async def run() -> None:
+        await browser.initial_render()
+        assert browser._selected_folders == {"Reading", "Subscribed"}
+        interaction = _EditInteraction()
+        await browser._jump_to_search(interaction, "finished-target")
+
+    asyncio.run(run())
+
+    assert browser._selected_folders == {"Finished"}
+    assert browser._filtered[browser._index].url_name == "finished-target"
+
+
+def test_bookmark_browser_fuzzy_search_switches_to_hidden_match_folder() -> None:
+    browser = _bookmark_browser(
+        [
+            _folder_bookmark("reading-series", "Reading", 0),
+            _folder_bookmark("finished-target", "Finished", 1),
+        ]
+    )
+
+    async def run() -> None:
+        await browser.initial_render()
+        interaction = _EditInteraction()
+        await browser._jump_to_search(interaction, "fniished-target")
+
+    asyncio.run(run())
+
+    assert browser._selected_folders == {"Finished"}
+    assert browser._filtered[browser._index].url_name == "finished-target"
+
+
+def test_bookmark_browser_empty_filtered_view_keeps_search_available() -> None:
+    browser = _bookmark_browser(
+        [_folder_bookmark("reading-series", "Reading", 0)],
+        current_folder="Finished",
+    )
+
+    async def run() -> list[str | None]:
+        await browser.initial_render()
+        return [
+            child.label
+            for child in browser.walk_children()
+            if isinstance(child, discord.ui.Button)
+        ]
+
+    labels = asyncio.run(run())
+
+    assert browser._filtered == []
+    assert "Search" in labels
+
+
 def test_bookmark_browser_search_reports_no_match_without_moving() -> None:
     browser = _bookmark_browser(_bookmark_series(5))
 
     async def run() -> None:
         await browser.initial_render()
+        selected_before = set(browser._selected_folders)
+        filtered_before = list(browser._filtered)
+        index_before = browser._index
         messages: list[str] = []
 
         class Response:
@@ -1587,7 +1670,9 @@ def test_bookmark_browser_search_reports_no_match_without_moving() -> None:
 
         interaction = SimpleNamespace(response=Response())
         await browser._jump_to_search(interaction, "zzz-not-there")
-        assert browser._index == 0
+        assert browser._selected_folders == selected_before
+        assert browser._filtered == filtered_before
+        assert browser._index == index_before
         assert messages and "zzz-not-there" in messages[0]
 
     asyncio.run(run())
