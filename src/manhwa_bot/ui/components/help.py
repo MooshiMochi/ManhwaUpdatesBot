@@ -26,9 +26,9 @@ DEFAULT_INVITE_URL = (
     "&permissions=412854111296&scope=bot%20applications.commands"
 )
 DEFAULT_GITHUB_URL = "https://github.com/MooshiMochi/ManhwaUpdatesBot"
-DEFAULT_TOS_URL = "https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/master/.discord/terms.md"
+DEFAULT_TOS_URL = "https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/main/.discord/terms.md"
 DEFAULT_PRIVACY_URL = (
-    "https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/master/.discord/privacy.md"
+    "https://github.com/MooshiMochi/ManhwaUpdatesBot/blob/main/.discord/privacy.md"
 )
 DEFAULT_PATREON_URL = "https://www.patreon.com/mooshi69"
 DEFAULT_KOFI_URL = "https://ko-fi.com/mooshi69"

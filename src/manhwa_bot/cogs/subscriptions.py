@@ -314,25 +314,52 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             )
             return
 
+        series_match = await self._tracked.find(website_key, url_name)
+        title = (
+            series_match.title
+            if series_match
+            else url_name.replace("-", " ").replace("_", " ").title()
+        )
         try:
-            await self._subs.unsubscribe(interaction.user.id, guild_id, website_key, url_name)
+            removed_role = await self._unsubscribe_series(
+                interaction, guild_id, website_key, url_name
+            )
         except Exception as exc:
             _log.exception("unsubscribe failed")
             await interaction.followup.send(
-                view=build_error_view(f"Failed to unsubscribe: {exc}", bot=self.bot),
+                view=build_error_view(f"Failed to unsubscribe from {title}: {exc}", bot=self.bot),
                 ephemeral=True,
             )
             return
 
-        tracked_list = await self._tracked.list_for_guild(guild_id, limit=500)
-        series_match = next(
-            (s for s in tracked_list if s.website_key == website_key and s.url_name == url_name),
-            None,
-        )
-        title = series_match.title if series_match else f"{website_key}:{url_name}"
         url = series_match.series_url if series_match else None
-        view = build_unsubscribe_view(title=title, series_url=url, bot=self.bot)
+        view = build_unsubscribe_view(
+            title=title, series_url=url, removed_role=removed_role, bot=self.bot
+        )
         await interaction.followup.send(view=view, ephemeral=True)
+
+    async def _unsubscribe_series(
+        self,
+        interaction: discord.Interaction,
+        guild_id: int,
+        website_key: str,
+        url_name: str,
+    ) -> discord.Role | None:
+        """Remove the configured role before deleting the retryable subscription."""
+        removed_role = None
+        if guild_id and interaction.guild is not None:
+            tracked = await self._tracked.find_in_guild(guild_id, website_key, url_name)
+            if tracked is not None and tracked.ping_role_id is not None:
+                role = interaction.guild.get_role(tracked.ping_role_id)
+                if role is not None:
+                    removed_role = await _remove_role_safe(interaction, role)
+                    if removed_role is None:
+                        raise RuntimeError(
+                            f"I couldn't remove {role.mention} — check my permissions and role "
+                            "order, then try again. Your subscription has been kept for retry."
+                        )
+        await self._subs.unsubscribe(interaction.user.id, guild_id, website_key, url_name)
+        return removed_role
 
     async def _default_ping_role_of_invoker(
         self, interaction: discord.Interaction, guild_id: int
@@ -355,7 +382,7 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         self, interaction: discord.Interaction, guild_id: int
     ) -> None:
         """Handle /subscribe delete manga_id=* — drop every subscription and the
-        default ping role."""
+        configured series roles and default ping role."""
         try:
             subs = await self._subs.list_for_user(interaction.user.id, guild_id=guild_id, limit=500)
             default_role = await self._default_ping_role_of_invoker(interaction, guild_id)
@@ -377,7 +404,8 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             prompt_parts: list[str] = []
             if subs:
                 prompt_parts.append(
-                    f"unsubscribe from **{len(subs)}** subscribed series in this server"
+                    f"unsubscribe from **{len(subs)}** subscribed series in this server "
+                    "and remove their configured notification roles"
                 )
             if default_role is not None:
                 prompt_parts.append(f"remove the {default_role.mention} default ping role")
@@ -409,8 +437,8 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
             fails = 0
             for sub in subs:
                 try:
-                    await self._subs.unsubscribe(
-                        interaction.user.id, guild_id, sub["website_key"], sub["url_name"]
+                    await self._unsubscribe_series(
+                        interaction, guild_id, sub["website_key"], sub["url_name"]
                     )
                     successes += 1
                 except Exception:

@@ -390,12 +390,15 @@ def build_unsubscribe_view(
     *,
     title: str,
     series_url: str | None,
+    removed_role: discord.Role | None = None,
     bot: discord.Client | None = None,
 ) -> discord.ui.LayoutView:
     if series_url:
         body = f"Successfully unsubscribed from **[{title}]({series_url})**."
     else:
         body = f"Successfully unsubscribed from **{title}**."
+    if removed_role is not None:
+        body += f"\n\nYou no longer have the {removed_role.mention} notification role."
     container = discord.ui.Container(
         discord.ui.TextDisplay(f"## {emojis.CHECK}  Unsubscribed"),
         small_separator(),

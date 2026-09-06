@@ -50,7 +50,9 @@ logs/
 .idea/
 .vscode/
 .idx/
-.discord/
+.discord/*
+!.discord/privacy.md
+!.discord/terms.md
 *.swp
 *.swo
 *~

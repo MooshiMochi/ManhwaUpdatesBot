@@ -6,6 +6,8 @@ Manhwa Updates Bot is a hosted Discord bot that tracks manhwa, manga, and manhua
 
 [Invite the Hosted Bot](https://discord.com/api/oauth2/authorize?client_id=1031998059447590955&permissions=412854111296&scope=bot%20applications.commands) · [Support Server](https://discord.gg/TYkw8VBZkr) · [Top.gg](https://top.gg/bot/1031998059447590955) · [Discord App Directory](https://discord.com/discovery/applications/1031998059447590955)
 
+[Privacy Policy](.discord/privacy.md) · [Terms of Service](.discord/terms.md)
+
 ## Features
 
 - Automatic manhwa chapter update notifications in Discord.

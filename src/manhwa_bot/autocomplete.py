@@ -225,9 +225,10 @@ async def user_subscribed_manga(
         for row in rows:
             website_key = row["website_key"]
             url_name = row["url_name"]
-            label = _manga_choice_name(website_key, url_name)
+            title = row.get("title") or url_name
+            label = _manga_choice_name(website_key, title)
             value = series_choice_value(website_key, url_name)
-            if not _matches_manga_autocomplete(website_key, url_name, current):
+            if not _matches_manga_autocomplete(website_key, title, current):
                 continue
             choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
             if len(choices) >= 25:
@@ -256,7 +257,7 @@ async def user_subscribed_manga_with_all(
     if not show_all:
         return base
     all_choice = app_commands.Choice(
-        name="All - Remove the default ping role & all subscriptions",
+        name="All - Remove series roles, the default ping role & all subscriptions",
         value="*",
     )
     return [all_choice, *base[:24]]
