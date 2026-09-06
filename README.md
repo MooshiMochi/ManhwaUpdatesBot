@@ -221,3 +221,7 @@ Set `[db].path` to a mounted location such as `data/manhwa_bot.db` when running 
 ## License
 
 See [`LICENSE`](LICENSE).
+
+### Member departure cleanup
+
+When the bot receives a server departure event, it removes that member's subscriptions for that server. Personal bookmarks, DM subscriptions and other servers are preserved. Rejoining requires subscribing again. See [behavior and verification](docs/member-departure-cleanup.md).

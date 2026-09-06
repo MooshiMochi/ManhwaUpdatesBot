@@ -6,7 +6,9 @@ import asyncio
 import difflib
 import logging
 from dataclasses import dataclass, replace
+from functools import wraps
 from typing import Any, Literal
+from weakref import WeakSet
 
 import discord
 
@@ -275,8 +277,37 @@ def resolve_last_read_nav(
     return idx, idx > 0, idx < chapter_count - 1
 
 
+def _membership_fresh(method):
+    """Retry a cache fill if a departure invalidated it during an await."""
+
+    @wraps(method)
+    async def wrapped(self, *args, **kwargs):
+        while True:
+            revision = self._membership_revision
+            result = await method(self, *args, **kwargs)
+            if revision == self._membership_revision:
+                return result
+            self._member_memo.clear()
+            self._tracking_cache.clear()
+            self._track_button_cache.clear()
+
+    return wrapped
+
+
 class BookmarkBrowserView(BaseLayoutView):
     """V2 bookmark browser. Visual + text modes, folder select, tracking, subscribe."""
+
+    _active_views: WeakSet[BookmarkBrowserView] = WeakSet()
+    _membership_revision = 0
+
+    @classmethod
+    def invalidate_membership(cls, bot: discord.Client, user_id: int, guild_id: int) -> None:
+        for view in list(cls._active_views):
+            if view._bot is bot and view._invoker_id == user_id:
+                view._membership_revision += 1
+                view._member_memo.pop(guild_id, None)
+                view._tracking_cache.clear()
+                view._track_button_cache.clear()
 
     def __init__(
         self,
@@ -321,6 +352,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._preload_end = 0
         self._reset_preload_window()
         self._pending_delete_key: tuple[str, str] | None = None
+        self._active_views.add(self)
 
     # ---- public ---------------------------------------------------------
 
@@ -446,6 +478,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._chapter_cache[key] = chapters
         return chapters
 
+    @_membership_fresh
     async def _resolve_invoker_member(self, guild: discord.Guild) -> discord.Member | None:
         """Resolve the invoker's membership in *guild* without trusting the cache.
 
@@ -469,6 +502,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._member_memo[gid] = member
         return member
 
+    @_membership_fresh
     async def _tracking_status_for(self, bm: Bookmark) -> _TrackingStatus:
         key = self._bookmark_key(bm)
         if key in self._tracking_cache:
@@ -555,6 +589,7 @@ class BookmarkBrowserView(BaseLayoutView):
         self._tracking_cache[key] = status
         return status
 
+    @_membership_fresh
     async def _track_button_state(
         self, bm: Bookmark, ts: _TrackingStatus | None
     ) -> _TrackButtonState:
@@ -563,6 +598,10 @@ class BookmarkBrowserView(BaseLayoutView):
         if key in self._track_button_cache:
             return self._track_button_cache[key]
 
+        # The caller may have obtained ts before a departure event. Resolve
+        # through the invalidated cache again before deciding button state.
+        if ts is not None:
+            ts = await self._tracking_status_for(bm)
         if ts is not None and ts.mutual_guild is not None and ts.channel_visible:
             state = _TrackButtonState(show=False, enabled=False)
             self._track_button_cache[key] = state

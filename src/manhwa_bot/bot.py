@@ -111,7 +111,7 @@ class ManhwaBot(commands.Bot):
         _log.info("Resolved intents: %s", granted)
         if not self.intents.members:
             _log.warning(
-                "MEMBERS INTENT IS MISSING — ping-role assignment and member resolution will fail"
+                "MEMBERS INTENT IS MISSING — automatic subscription cleanup on member departure is unavailable"
             )
 
         await apply_pending(self.db)

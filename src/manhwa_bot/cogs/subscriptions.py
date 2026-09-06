@@ -14,6 +14,7 @@ from ..db.guild_settings import GuildSettingsStore
 from ..db.subscriptions import SubscriptionStore
 from ..db.tracked import TrackedStore
 from ..ui import emojis
+from ..ui.components.bookmark import BookmarkBrowserView
 from ..ui.components.confirm import ConfirmLayoutView
 from ..ui.components.error import build_error_view
 from ..ui.components.paginator import LayoutPaginator
@@ -76,6 +77,16 @@ class SubscriptionsCog(commands.Cog, name="Subscriptions"):
         self._subs = SubscriptionStore(bot.db)  # type: ignore[attr-defined]
         self._tracked = TrackedStore(bot.db)  # type: ignore[attr-defined]
         self._guild_settings = GuildSettingsStore(bot.db)  # type: ignore[attr-defined]
+
+    @commands.Cog.listener()
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
+        """Forget this server's subscriptions even when the member was not cached."""
+        try:
+            await self._subs.unsubscribe_all_for_user(payload.user.id, guild_id=payload.guild_id)
+        finally:
+            # Membership changed even if the database failed. Let Discord's
+            # event error handler report failures rather than claiming success.
+            BookmarkBrowserView.invalidate_membership(self.bot, payload.user.id, payload.guild_id)
 
     subscribe = app_commands.Group(
         name="subscribe",
