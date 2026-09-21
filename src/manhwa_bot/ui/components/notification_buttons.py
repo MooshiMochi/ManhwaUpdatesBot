@@ -13,7 +13,7 @@ from ...db.bookmarks import Bookmark, BookmarkStore
 from ...db.dm_settings import DmSettingsStore
 from ...db.guild_settings import GuildSettingsStore
 from ...db.notification_actions import NotificationActionContext, NotificationActionContextStore
-from ...db.notification_button_state import MarkReadToggleStore
+from ...db.notification_button_state import MarkReadToggleState, MarkReadToggleStore
 from ...db.subscriptions import SubscriptionStore
 from ...db.tracked import TrackedSeries, TrackedStore
 from .. import emojis
@@ -488,6 +488,138 @@ class MarkReadConfirmationView(BaseLayoutView):
         )
 
 
+async def _apply_mark_unread(
+    *,
+    interaction: discord.Interaction,
+    store: BookmarkStore,
+    toggles: MarkReadToggleStore,
+    tracked: TrackedSeries | None,
+    website_key: str,
+    url_name: str,
+    chapter_index: int,
+    toggle_state: MarkReadToggleState,
+    restored_display: str,
+) -> tuple[str, str]:
+    link = _series_link(tracked, url_name)
+    if toggle_state.previous_bookmark_exists:
+        await store.upsert_bookmark(
+            user_id=interaction.user.id,
+            website_key=website_key,
+            url_name=url_name,
+            folder=toggle_state.previous_folder or "Reading",
+            last_read_chapter=toggle_state.previous_last_read_chapter,
+            last_read_index=toggle_state.previous_last_read_index,
+        )
+        description = f"Restored {link} to {restored_display}."
+    else:
+        await store.delete_bookmark(interaction.user.id, website_key, url_name)
+        description = f"Removed the temporary bookmark for {link}."
+    await toggles.clear(interaction.user.id, website_key, url_name, chapter_index)
+    return f"{emojis.CHECK}  Marked unread", description
+
+
+class MarkUnreadConfirmationView(BaseLayoutView):
+    """Invoker-locked confirmation before undoing a Mark Read action."""
+
+    def __init__(
+        self,
+        *,
+        invoker_id: int,
+        website_key: str,
+        url_name: str,
+        chapter_index: int,
+        current_display: str,
+        restored_display: str,
+        bookmark_snapshot: Bookmark | None,
+        toggle_snapshot: MarkReadToggleState,
+        tracked: TrackedSeries | None,
+    ) -> None:
+        super().__init__(invoker_id=invoker_id, timeout=120)
+        self._website_key = website_key
+        self._url_name = url_name
+        self._chapter_index = chapter_index
+        self._restored_display = restored_display
+        self._bookmark_snapshot = bookmark_snapshot
+        self._toggle_snapshot = toggle_snapshot
+        self._tracked = tracked
+
+        if toggle_snapshot.previous_bookmark_exists:
+            outcome = f"restore your reading progress to {restored_display}"
+        else:
+            outcome = "remove the temporary *Subscribed* bookmark"
+        warning = (
+            f"**Series:** {_series_link(tracked, url_name)}\n"
+            f"**Currently marked read:** {current_display}\n\n"
+            f"Mark as unread and {outcome}?"
+        )
+        confirm = discord.ui.Button(label="Mark as unread", style=discord.ButtonStyle.danger)
+        discard = discord.ui.Button(label="Keep as read", style=discord.ButtonStyle.secondary)
+        confirm.callback = self._confirm
+        discard.callback = self._discard
+        row = discord.ui.ActionRow()
+        row.add_item(confirm)
+        row.add_item(discard)
+        self.add_item(
+            discord.ui.Container(
+                discord.ui.TextDisplay("## Confirm mark as unread"),
+                small_separator(),
+                discord.ui.TextDisplay(warning),
+                row,
+                accent_colour=severity_accent("warning"),
+            )
+        )
+
+    async def _confirm(self, interaction: discord.Interaction) -> None:
+        pool = interaction.client.db  # type: ignore[attr-defined]
+        store = BookmarkStore(pool)
+        toggles = MarkReadToggleStore(pool)
+        current_bookmark = await store.get_bookmark(
+            interaction.user.id,
+            self._website_key,
+            self._url_name,
+        )
+        current_toggle = await toggles.get(
+            interaction.user.id,
+            self._website_key,
+            self._url_name,
+            self._chapter_index,
+        )
+        if current_bookmark != self._bookmark_snapshot or current_toggle != self._toggle_snapshot:
+            result = _ack_view(
+                title="Reading progress changed",
+                description=(
+                    "Your bookmark changed while this confirmation was open. "
+                    "No changes were made; please try again."
+                ),
+                level="warning",
+            )
+        else:
+            title, description = await _apply_mark_unread(
+                interaction=interaction,
+                store=store,
+                toggles=toggles,
+                tracked=self._tracked,
+                website_key=self._website_key,
+                url_name=self._url_name,
+                chapter_index=self._chapter_index,
+                toggle_state=self._toggle_snapshot,
+                restored_display=self._restored_display,
+            )
+            result = _ack_view(title=title, description=description)
+        self.stop()
+        await interaction.response.edit_message(view=result)
+
+    async def _discard(self, interaction: discord.Interaction) -> None:
+        self.stop()
+        await interaction.response.edit_message(
+            view=_ack_view(
+                title="Kept as read",
+                description="No changes were made to your reading progress.",
+                level="warning",
+            )
+        )
+
+
 async def _resolve_last_read_chapter_name(
     *,
     client: object,
@@ -539,24 +671,22 @@ class MarkReadButton(
         store = BookmarkStore(pool)
         toggles = MarkReadToggleStore(pool)
         tracked = await TrackedStore(pool).find(self.website_key, self.url_name)
-        link = _series_link(tracked, self.url_name)
         existing = await store.get_bookmark(interaction.user.id, self.website_key, self.url_name)
         chapter_index = self.chapter_index
         toggle_state = await toggles.get(
             interaction.user.id, self.website_key, self.url_name, chapter_index
         )
         if toggle_state is not None:
+            _, current_display = await _resolve_mark_read_chapter(
+                client=interaction.client,
+                tracked=tracked,
+                website_key=self.website_key,
+                url_name=self.url_name,
+                chapter_index=chapter_index,
+            )
             if toggle_state.previous_bookmark_exists:
-                await store.upsert_bookmark(
-                    user_id=interaction.user.id,
-                    website_key=self.website_key,
-                    url_name=self.url_name,
-                    folder=toggle_state.previous_folder or "Reading",
-                    last_read_chapter=toggle_state.previous_last_read_chapter,
-                    last_read_index=toggle_state.previous_last_read_index,
-                )
                 if toggle_state.previous_last_read_index is not None:
-                    _, restored = await _resolve_mark_read_chapter(
+                    _, restored_display = await _resolve_mark_read_chapter(
                         client=interaction.client,
                         tracked=tracked,
                         website_key=self.website_key,
@@ -564,20 +694,29 @@ class MarkReadButton(
                         chapter_index=toggle_state.previous_last_read_index,
                     )
                 else:
-                    restored = _chapter_markdown(
+                    restored_display = _chapter_markdown(
                         toggle_state.previous_last_read_chapter or "no chapter",
                         None,
                     )
-                description = f"Restored {link} to {restored}."
             else:
-                await store.delete_bookmark(interaction.user.id, self.website_key, self.url_name)
-                description = f"Removed the temporary bookmark for {link}."
-            await toggles.clear(interaction.user.id, self.website_key, self.url_name, chapter_index)
-            await _send_ack(
-                interaction,
-                title=f"{emojis.CHECK}  Mark read undone",
-                description=description,
+                restored_display = "no bookmark"
+            confirmation = MarkUnreadConfirmationView(
+                invoker_id=interaction.user.id,
+                website_key=self.website_key,
+                url_name=self.url_name,
+                chapter_index=chapter_index,
+                current_display=current_display,
+                restored_display=restored_display,
+                bookmark_snapshot=existing,
+                toggle_snapshot=toggle_state,
+                tracked=tracked,
             )
+            message = await interaction.followup.send(
+                view=confirmation,
+                ephemeral=True,
+                wait=True,
+            )
+            confirmation.bind_message(message)
             return
 
         chapters = await _resolve_chapter_list(

@@ -694,18 +694,43 @@ class DevCog(commands.Cog, name="Dev"):
 
         store = GuildSettingsStore(self.bot.db)
         targets = await store.list_with_system_alerts()
-        viable: list[tuple[int, int]] = []
+        viable: list[tuple[int, int, discord.abc.Messageable]] = []
         skipped: list[tuple[int, str]] = []
         for s in targets:
             channel_id = s.system_alerts_channel_id
             if channel_id is None:
                 continue
+            guild = self.bot.get_guild(int(s.guild_id))
+            if guild is None:
+                skipped.append((s.guild_id, "bot is no longer in this guild"))
+                continue
             channel = self.bot.get_channel(int(channel_id))
-            if channel is None or not isinstance(channel, discord.abc.Messageable):
+            if channel is None:
+                try:
+                    channel = await self.bot.fetch_channel(int(channel_id))
+                except discord.NotFound:
+                    skipped.append((s.guild_id, f"channel {channel_id} no longer exists"))
+                    continue
+                except discord.Forbidden:
+                    skipped.append((s.guild_id, f"cannot access channel {channel_id}"))
+                    continue
+                except discord.HTTPException as exc:
+                    skipped.append(
+                        (
+                            s.guild_id,
+                            f"could not fetch channel {channel_id}: HTTP {exc.status} "
+                            f"(code {exc.code})",
+                        )
+                    )
+                    continue
+            if not isinstance(channel, discord.abc.Messageable):
                 skipped.append((s.guild_id, f"channel {channel_id} not found or not messageable"))
                 continue
-            guild = getattr(channel, "guild", None)
-            me = guild.me if guild is not None else None
+            channel_guild = getattr(channel, "guild", None)
+            if getattr(channel_guild, "id", None) != s.guild_id:
+                skipped.append((s.guild_id, f"channel {channel_id} belongs to another guild"))
+                continue
+            me = guild.me
             perms = channel.permissions_for(me) if me is not None else None
             # The alert view is TextDisplay-only, so Send Messages is the only
             # hard requirement; when perms can't be resolved, try anyway and
@@ -718,7 +743,7 @@ class DevCog(commands.Cog, name="Dev"):
                     )
                 )
                 continue
-            viable.append((s.guild_id, int(channel_id)))
+            viable.append((s.guild_id, int(channel_id), channel))
 
         for guild_id, reason in skipped:
             _log.warning("g_update: skipping guild %s: %s", guild_id, reason)
@@ -734,7 +759,7 @@ class DevCog(commands.Cog, name="Dev"):
         preview_msg = await ctx.send(view=build_g_update_view(message=message, bot=self.bot))
         target_names = ", ".join(
             (self.bot.get_guild(guild_id).name if self.bot.get_guild(guild_id) else str(guild_id))
-            for guild_id, _ in viable[:15]
+            for guild_id, _, _ in viable[:15]
         )
         if len(viable) > 15:
             target_names += f", … +{len(viable) - 15} more"
@@ -758,11 +783,7 @@ class DevCog(commands.Cog, name="Dev"):
 
         ok = 0
         failures: list[tuple[int, str]] = []
-        for guild_id, channel_id in viable:
-            channel = self.bot.get_channel(channel_id)
-            if not isinstance(channel, discord.abc.Messageable):
-                failures.append((guild_id, f"channel {channel_id} disappeared before send"))
-                continue
+        for guild_id, channel_id, channel in viable:
             try:
                 await channel.send(
                     view=build_g_update_view(message=message, bot=self.bot),
