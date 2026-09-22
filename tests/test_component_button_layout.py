@@ -242,6 +242,107 @@ def test_scanlator_remove_button_uses_layout_view_after_nesting() -> None:
     assert response.view is view
 
 
+def test_scanlator_add_view_paginates_all_website_options() -> None:
+    class FakeResponse:
+        def __init__(self) -> None:
+            self.view: discord.ui.LayoutView | None = None
+
+        async def edit_message(self, *, view: discord.ui.LayoutView) -> None:
+            self.view = view
+
+    def website_values(view: settings.ScanlatorAddLayoutView) -> list[str]:
+        select = next(
+            child for child in view.walk_children() if isinstance(child, discord.ui.Select)
+        )
+        return [option.value for option in select.options]
+
+    def button(view: settings.ScanlatorAddLayoutView, label: str) -> discord.ui.Button:
+        return next(
+            child
+            for child in view.walk_children()
+            if isinstance(child, discord.ui.Button) and child.label == label
+        )
+
+    website_keys = [f"site-{index:02d}" for index in reversed(range(56))]
+    website_keys.append("site-00")
+    view = settings.ScanlatorAddLayoutView(
+        SimpleNamespace(db=None),
+        1,
+        website_keys,
+        parent=SimpleNamespace(),  # type: ignore[arg-type]
+    )
+
+    assert website_values(view) == [f"site-{index:02d}" for index in range(25)]
+    assert button(view, "Previous").disabled is True
+    assert button(view, "Page 1/3").disabled is True
+    assert button(view, "Next").disabled is False
+
+    response = FakeResponse()
+    interaction = SimpleNamespace(response=response)
+    asyncio.run(button(view, "Next").callback(interaction))
+
+    assert website_values(view) == [f"site-{index:02d}" for index in range(25, 50)]
+    assert button(view, "Previous").disabled is False
+    assert button(view, "Page 2/3").disabled is True
+    assert button(view, "Next").disabled is False
+
+    asyncio.run(button(view, "Next").callback(interaction))
+
+    assert website_values(view) == [f"site-{index:02d}" for index in range(50, 56)]
+    assert button(view, "Previous").disabled is False
+    assert button(view, "Page 3/3").disabled is True
+    assert button(view, "Next").disabled is True
+    assert response.view is view
+
+
+def test_scanlator_add_view_preserves_selections_across_pages() -> None:
+    class FakeResponse:
+        async def edit_message(self, *, view: discord.ui.LayoutView) -> None:
+            self.view = view
+
+    def button(view: settings.ScanlatorAddLayoutView, label: str) -> discord.ui.Button:
+        return next(
+            child
+            for child in view.walk_children()
+            if isinstance(child, discord.ui.Button) and child.label == label
+        )
+
+    def selected_website_values(view: settings.ScanlatorAddLayoutView) -> list[str]:
+        select = next(
+            child for child in view.walk_children() if isinstance(child, discord.ui.Select)
+        )
+        return [option.value for option in select.options if option.default]
+
+    def selected_channel_ids(view: settings.ScanlatorAddLayoutView) -> list[int]:
+        select = next(
+            child for child in view.walk_children() if isinstance(child, discord.ui.ChannelSelect)
+        )
+        return [value.id for value in select.default_values]
+
+    view = settings.ScanlatorAddLayoutView(
+        SimpleNamespace(db=None),
+        1,
+        [f"site-{index:02d}" for index in range(56)],
+        parent=SimpleNamespace(),  # type: ignore[arg-type]
+    )
+    view._page = 1
+    view._selected_key = "site-30"
+    view._selected_channel_id = 987
+    view._rebuild()
+
+    assert selected_website_values(view) == ["site-30"]
+    assert selected_channel_ids(view) == [987]
+
+    interaction = SimpleNamespace(response=FakeResponse())
+    asyncio.run(button(view, "Next").callback(interaction))
+    asyncio.run(button(view, "Previous").callback(interaction))
+
+    assert view._selected_key == "site-30"
+    assert view._selected_channel_id == 987
+    assert selected_website_values(view) == ["site-30"]
+    assert selected_channel_ids(view) == [987]
+
+
 def test_neutral_component_v2_containers_do_not_set_accent_colour() -> None:
     fake_bot = SimpleNamespace(db=None)
     guild_settings = GuildSettings(

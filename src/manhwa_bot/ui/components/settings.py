@@ -22,6 +22,8 @@ from .notification_buttons import UPDATE_BUTTON_KEYS, UPDATE_BUTTON_LABELS
 
 _log = logging.getLogger(__name__)
 
+_SCANLATOR_WEBSITE_PAGE_SIZE = 25
+
 _REQUIRED_GUILD_PERMS = discord.Permissions(
     manage_roles=True,
     send_messages=True,
@@ -784,10 +786,23 @@ class ScanlatorAddLayoutView(BaseLayoutView):
         self._guild_id = guild_id
         self._parent = parent
         self._store = GuildSettingsStore(bot.db)
-        self._website_keys = website_keys
+        self._website_keys = sorted(dict.fromkeys(website_keys), key=str.casefold)
+        self._page = 0
         self._selected_key: str | None = None
         self._selected_channel_id: int | None = None
         self._rebuild()
+
+    @property
+    def _page_count(self) -> int:
+        return max(
+            1,
+            (len(self._website_keys) + _SCANLATOR_WEBSITE_PAGE_SIZE - 1)
+            // _SCANLATOR_WEBSITE_PAGE_SIZE,
+        )
+
+    def _page_keys(self) -> list[str]:
+        start = self._page * _SCANLATOR_WEBSITE_PAGE_SIZE
+        return self._website_keys[start : start + _SCANLATOR_WEBSITE_PAGE_SIZE]
 
     def _status_container(self) -> discord.ui.Container:
         key_text = f"**{self._selected_key}**" if self._selected_key else "*not selected*"
@@ -807,26 +822,59 @@ class ScanlatorAddLayoutView(BaseLayoutView):
 
     def _rebuild(self) -> None:
         self.clear_items()
+        self._page = min(self._page, self._page_count - 1)
         container = self._status_container()
         self.add_item(container)
 
         key_options = [
             discord.SelectOption(label=k, value=k, default=(k == self._selected_key))
-            for k in self._website_keys[:25]
+            for k in self._page_keys()
         ]
         key_row = discord.ui.ActionRow()
         key_select = discord.ui.Select(
-            placeholder="Select a website / scanlator…", options=key_options
+            placeholder=(
+                f"Select a website / scanlator… (Page {self._page + 1}/{self._page_count})"
+            ),
+            options=key_options,
         )
         key_select.callback = self._on_key_selected  # type: ignore[assignment]
         key_row.add_item(key_select)
         self.add_item(key_row)
         self._key_select = key_select
 
+        if self._page_count > 1:
+            nav_row = discord.ui.ActionRow()
+            previous_btn = discord.ui.Button(
+                label="Previous",
+                style=discord.ButtonStyle.secondary,
+                disabled=self._page == 0,
+            )
+            previous_btn.callback = self._on_previous_page  # type: ignore[assignment]
+            nav_row.add_item(previous_btn)
+            nav_row.add_item(
+                discord.ui.Button(
+                    label=f"Page {self._page + 1}/{self._page_count}",
+                    style=discord.ButtonStyle.secondary,
+                    disabled=True,
+                )
+            )
+            next_btn = discord.ui.Button(
+                label="Next",
+                style=discord.ButtonStyle.secondary,
+                disabled=self._page >= self._page_count - 1,
+            )
+            next_btn.callback = self._on_next_page  # type: ignore[assignment]
+            nav_row.add_item(next_btn)
+            container.add_item(small_separator())
+            container.add_item(nav_row)
+
         ch_row = discord.ui.ActionRow()
         ch_select = discord.ui.ChannelSelect(
             placeholder="Select a channel…",
             channel_types=[discord.ChannelType.text],
+            default_values=(
+                [discord.Object(id=self._selected_channel_id)] if self._selected_channel_id else []
+            ),
         )
         ch_select.callback = self._on_channel_selected  # type: ignore[assignment]
         ch_row.add_item(ch_select)
@@ -855,6 +903,18 @@ class ScanlatorAddLayoutView(BaseLayoutView):
 
     async def _on_key_selected(self, interaction: discord.Interaction) -> None:
         self._selected_key = self._key_select.values[0]
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
+
+    async def _on_previous_page(self, interaction: discord.Interaction) -> None:
+        if self._page > 0:
+            self._page -= 1
+        self._rebuild()
+        await interaction.response.edit_message(view=self)
+
+    async def _on_next_page(self, interaction: discord.Interaction) -> None:
+        if self._page < self._page_count - 1:
+            self._page += 1
         self._rebuild()
         await interaction.response.edit_message(view=self)
 
