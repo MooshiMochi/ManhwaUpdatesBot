@@ -63,7 +63,12 @@ def test_g_update_fetches_uncached_configured_channel_before_broadcast(monkeypat
             monkeypatch.setattr(dev_module, "ConfirmLayoutView", _Confirm)
 
             preview = SimpleNamespace(delete=AsyncMock())
-            confirmation = SimpleNamespace(edit=AsyncMock())
+
+            async def edit_confirmation(**kwargs):
+                assert "content" not in kwargs, "Components V2 messages cannot be edited to content"
+                assert isinstance(kwargs.get("view"), discord.ui.LayoutView)
+
+            confirmation = SimpleNamespace(edit=AsyncMock(side_effect=edit_confirmation))
             ctx = SimpleNamespace(
                 author=SimpleNamespace(id=99),
                 send=AsyncMock(side_effect=[preview, confirmation]),
@@ -73,7 +78,12 @@ def test_g_update_fetches_uncached_configured_channel_before_broadcast(monkeypat
 
             bot.fetch_channel.assert_awaited_once_with(channel_id)
             channel.send.assert_awaited_once()
-            confirmation.edit.assert_any_await(content="Sent to 1/1.")
+            result_view = confirmation.edit.await_args_list[-1].kwargs["view"]
+            assert any(
+                "Sent to 1/1." in item.content
+                for item in result_view.walk_children()
+                if isinstance(item, discord.ui.TextDisplay)
+            )
         finally:
             await pool.close()
             tmp.cleanup()

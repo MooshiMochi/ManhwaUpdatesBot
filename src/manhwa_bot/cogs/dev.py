@@ -773,13 +773,23 @@ class DevCog(commands.Cog, name="Dev"):
         confirm.bind_message(confirm_msg)
         await confirm.wait()
         if confirm.value is not True:
-            await confirm_msg.edit(content="Cancelled.", view=None)
+            await confirm_msg.edit(
+                view=build_diagnostic_view(
+                    title="Broadcast cancelled", body="Cancelled.", bot=self.bot
+                )
+            )
             try:
                 await preview_msg.delete()
             except discord.HTTPException:
                 pass
             return
-        await confirm_msg.edit(content=f"Sending to {len(viable)}…", view=None)
+        await confirm_msg.edit(
+            view=build_diagnostic_view(
+                title="Sending system alert",
+                body=f"Sending to {len(viable)} guild(s)…",
+                bot=self.bot,
+            )
+        )
 
         ok = 0
         failures: list[tuple[int, str]] = []
@@ -810,7 +820,9 @@ class DevCog(commands.Cog, name="Dev"):
             summary += "\n" + "\n".join(problem_lines[:15])
             if len(problem_lines) > 15:
                 summary += f"\n… and {len(problem_lines) - 15} more (see logs)"
-        await confirm_msg.edit(content=summary[:1990])
+        await confirm_msg.edit(
+            view=build_diagnostic_view(title="System alert result", body=summary, bot=self.bot)
+        )
 
     def _g_update_outcome_line(self, guild_id: int, reason: str) -> str:
         guild = self.bot.get_guild(int(guild_id))
